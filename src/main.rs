@@ -1,3 +1,5 @@
+mod muse2;
+
 fn main() {
-    println!("Hello from MUSE 2.0!");
+    muse2::run()
 }
