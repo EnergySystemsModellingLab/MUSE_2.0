@@ -27,7 +27,7 @@ jobs:
         toolchain:
           - stable
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: |
           # self update is currently broken on Windows runners:
           #   https://github.com/rust-lang/rustup/issues/3709
