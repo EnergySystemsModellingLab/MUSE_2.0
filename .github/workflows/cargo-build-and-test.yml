@@ -19,10 +19,8 @@ jobs:
           - stable
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          # self update is currently broken on Windows runners:
-          #   https://github.com/rust-lang/rustup/issues/3709
-          rustup update --no-self-update ${{ matrix.toolchain }}
-          rustup default ${{ matrix.toolchain }}
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
       - run: cargo build --verbose
       - run: cargo test --verbose
