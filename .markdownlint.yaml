@@ -1,0 +1,4 @@
+---
+MD013:
+  # Maximum number of characters
+  line_length: 100
