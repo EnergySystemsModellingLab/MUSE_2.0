@@ -8,10 +8,12 @@ Fixes # (issue)
 
 ## Type of change
 
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Optimization (non-breaking, back-end change that speeds up the code)
-- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] Bug fix (non-breaking change to fix an issue)
+- [ ] New feature (non-breaking change to add functionality)
+- [ ] Refactoring (non-breaking, non-functional change to improve maintainability)
+- [ ] Optimization (non-breaking change to speed up the code)
 - [ ] Breaking change (whatever its nature)
+- [ ] Documentation (improve or add documentation)
 
 ## Key checklist
 
