@@ -1,7 +1,6 @@
-use assert_float_eq::*; //assert_f64_near;
-use good_lp::{default_solver, variables, Solution, SolverModel};
+use good_lp::{highs, variables, Solution, SolverModel};
 
-pub fn solve() -> Option<()> {
+pub fn solve() -> Option<(f64, f64)> {
     // Create variables in a readable format with a macro...
     variables! {
     vars:
@@ -14,20 +13,32 @@ pub fn solve() -> Option<()> {
 
     let solution = vars
         .maximise(10 * (a - b / 5) - b)
-        .using(default_solver)
+        .using(highs)
         .with(a + 2. << b) // or (a + 2).leq(b)
         .with(1 + a >> 4. - b)
         .solve()
         .ok()?;
 
-    assert_f64_near!(solution.value(a), 1.); //, abs <= 1e-8);
-    assert_f64_near!(solution.value(b), 3.); //, abs <= 1e-8);
-
-    Some(())
+    Some((solution.value(a), solution.value(b)))
 }
 
 pub fn run() {
     println!("Hello from MUSE 2.0!");
 
-    solve().expect("Failed to compute solution");
+    let (a, b) = solve().expect("Failed to compute solution");
+
+    println!("Calculated solution: a = {}, b = {}", a, b);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use assert_float_eq::*;
+
+    #[test]
+    fn test_solve() {
+        let (a, b) = solve().unwrap();
+        assert_f64_near!(a, 1.);
+        assert_f64_near!(b, 3.);
+    }
 }
