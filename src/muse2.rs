@@ -14,8 +14,8 @@ pub fn solve() -> Option<(f64, f64)> {
     let solution = vars
         .maximise(10 * (a - b / 5) - b)
         .using(highs)
-        .with(a + 2. << b) // or (a + 2).leq(b)
-        .with(1 + a >> 4. - b)
+        .with((a + 2.) << b) // or (a + 2).leq(b)
+        .with((1 + a) >> (4. - b))
         .solve()
         .ok()?;
 
