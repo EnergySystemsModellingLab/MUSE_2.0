@@ -1,44 +1,33 @@
-use good_lp::{highs, variables, Solution, SolverModel};
+//! The main crate for muse2. This contains all of MUSE's functionality.
+pub mod csv;
+mod solver;
 
-pub fn solve() -> Option<(f64, f64)> {
-    // Create variables in a readable format with a macro...
-    variables! {
-    vars:
-        a <= 1;
-        2 <= b <= 4;
-    }
+use csv::{read_constraints, read_variables};
+use solver::{solve_highs, Sense};
 
-    // ... or add variables programmatically
-    // vars.add(variable().min(2).max(9));
+/// Run an optimisation.
+///
+/// Arguments:
+///
+/// * `variables_path`: The path to the CSV file containing variable definitions
+/// * `constraints_path`: The path to the CSV file containing constraints
+pub fn run(variables_path: &str, constraints_path: &str) {
+    // Read variable definitions
+    let (var_names, var_defs) = match read_variables(variables_path) {
+        Ok(x) => x,
+        Err(error) => panic!("Error reading variables from {}: {}", variables_path, error),
+    };
 
-    let solution = vars
-        .maximise(10 * (a - b / 5) - b)
-        .using(highs)
-        .with(a + 2. << b) // or (a + 2).leq(b)
-        .with(1 + a >> 4. - b)
-        .solve()
-        .ok()?;
+    // Read constraints
+    let constraints = match read_constraints(constraints_path, &var_names) {
+        Ok(constraints) => constraints,
+        Err(error) => panic!(
+            "Error reading constraints from {}: {}",
+            constraints_path, error
+        ),
+    };
 
-    Some((solution.value(a), solution.value(b)))
-}
-
-pub fn run() {
-    println!("Hello from MUSE 2.0!");
-
-    let (a, b) = solve().expect("Failed to compute solution");
-
-    println!("Calculated solution: a = {}, b = {}", a, b);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use assert_float_eq::*;
-
-    #[test]
-    fn test_solve() {
-        let (a, b) = solve().unwrap();
-        assert_f64_near!(a, 1.);
-        assert_f64_near!(b, 3.);
-    }
+    // Calculate solution
+    let solution = solve_highs(&var_defs, &constraints, Sense::Maximise);
+    println!("Calculated solution: {:?}", solution);
 }

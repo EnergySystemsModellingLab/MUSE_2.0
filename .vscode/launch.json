@@ -15,7 +15,10 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": [
+                "${workspaceFolder}/example/variables.csv",
+                "${workspaceFolder}/example/constraints.csv"
+            ],
             "cwd": "${workspaceFolder}"
         },
         {
