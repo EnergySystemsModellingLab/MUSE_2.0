@@ -1,6 +1,7 @@
 {
     "recommendations": [
         "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
         "editorconfig.editorconfig",
         "esbenp.prettier-vscode",
         "davidanson.vscode-markdownlint"
