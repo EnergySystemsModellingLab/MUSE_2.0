@@ -1,6 +1,6 @@
 use good_lp::{highs, variables, Solution, SolverModel};
 
-pub fn solve() -> Option<(f64, f64)> {
+fn solve() -> Option<(f64, f64)> {
     // Create variables in a readable format with a macro...
     variables! {
     vars:
