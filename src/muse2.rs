@@ -28,6 +28,7 @@ pub fn run(variables_path: &str, constraints_path: &str) {
     };
 
     // Calculate solution
-    let solution = solve_highs(&var_defs, &constraints, Sense::Maximise);
+    let solution = solve_highs(&var_defs, &constraints, Sense::Maximise)
+        .unwrap_or_else(|err| panic!("Failed to calculate a solution: {:?}", err));
     println!("Calculated solution: {:?}", solution);
 }

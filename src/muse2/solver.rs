@@ -50,7 +50,7 @@ pub fn solve_highs(
     definitions: &[VariableDefinition],
     constraints: &[Constraint],
     sense: Sense,
-) -> Vec<f64> {
+) -> Result<Vec<f64>, HighsModelStatus> {
     let mut pb = RowProblem::default();
 
     // Add variables
@@ -74,9 +74,10 @@ pub fn solve_highs(
     }
 
     let solved = pb.optimise(sense).solve();
-    assert_eq!(solved.status(), HighsModelStatus::Optimal);
-
-    solved.get_solution().columns().to_vec()
+    match solved.status() {
+        HighsModelStatus::Optimal => Ok(solved.get_solution().columns().to_vec()),
+        status => Err(status),
+    }
 }
 
 #[cfg(test)]
@@ -89,7 +90,7 @@ mod tests {
         let (var_names, var_defs) = read_variables(&get_variables_file_path()).unwrap();
         let constraints = read_constraints(&get_constraints_file_path(), &var_names).unwrap();
 
-        let solution = solve_highs(&var_defs, &constraints, Sense::Maximise);
+        let solution = solve_highs(&var_defs, &constraints, Sense::Maximise).unwrap();
         assert_eq!(solution, &[0., 6., 0.5]);
     }
 }
