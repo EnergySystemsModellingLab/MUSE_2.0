@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 highs = "1.6.1"
-itertools = "0.12.1"
+itertools = "0.13.0"
 polars = {version = "0.39.2", features = ["lazy", "csv"]}
