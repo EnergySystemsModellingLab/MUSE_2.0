@@ -1,4 +1,4 @@
-///! Provides data structures and functions for performing optimisation.
+//! Provides data structures and functions for performing optimisation.
 pub use highs::Sense;
 use highs::{HighsModelStatus, RowProblem};
 

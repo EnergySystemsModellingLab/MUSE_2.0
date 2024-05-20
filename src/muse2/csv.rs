@@ -1,4 +1,4 @@
-///! Provides functionality for reading data from CSV files.
+//! Provides functionality for reading data from CSV files.
 use std::path::{Path, PathBuf};
 
 use super::solver::{Constraint, VariableDefinition};
