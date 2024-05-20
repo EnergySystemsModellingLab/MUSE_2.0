@@ -1,6 +1,7 @@
 //! Provides data structures and functions for performing optimisation.
 pub use highs::Sense;
 use highs::{HighsModelStatus, RowProblem};
+use serde::Deserialize;
 
 /// The definition of a variable to be optimised.
 ///
@@ -10,7 +11,7 @@ use highs::{HighsModelStatus, RowProblem};
 /// f = c1*x1 + c2*x2 + ...
 ///
 /// with x1, x2... taking values between min and max.
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Deserialize)]
 pub struct VariableDefinition {
     /// The variable's name
     pub name: String,

@@ -1,12 +1,7 @@
 //! Provides functionality for reading data from CSV files.
 use super::solver::{Constraint, VariableDefinition};
-use itertools::izip;
+use csv;
 use polars::prelude::*;
-
-/// Read a CSV file from the specified path.
-pub fn read_csv(path: &str) -> Result<DataFrame, PolarsError> {
-    CsvReader::from_path(path)?.has_header(true).finish()
-}
 
 /// Read variable definitions from the specified path.
 ///
@@ -15,28 +10,14 @@ pub fn read_csv(path: &str) -> Result<DataFrame, PolarsError> {
 /// # Arguments:
 ///
 /// * `path`: The path to the variable definitions CSV file
-pub fn read_variables(path: &str) -> Result<Vec<VariableDefinition>, PolarsError> {
-    // Read in the data
-    let df = read_csv(path)?;
-
-    // Extract the relevant columns from the dataframe
-    let cols = df.columns(["name", "coefficient", "min", "max"])?;
-    let names = cols[0].str()?.into_no_null_iter();
-    let coeffs = cols[1].f64()?.into_no_null_iter();
-    let mins = cols[2].f64()?.into_no_null_iter();
-    let maxes = cols[3].f64()?.into_no_null_iter();
-
-    // Create a vector of VariableDefinitions
-    let mut vars = Vec::with_capacity(df.shape().0);
-    for (name, coeff, min, max) in izip!(names, coeffs, mins, maxes) {
-        let name = name.to_string();
-        vars.push(VariableDefinition {
-            name,
-            min,
-            max,
-            coefficient: coeff,
-        })
+pub fn read_variables(path: &str) -> Result<Vec<VariableDefinition>, csv::Error> {
+    let mut reader = csv::Reader::from_path(path)?;
+    let mut vars = Vec::new();
+    for result in reader.deserialize() {
+        let var: VariableDefinition = result?;
+        vars.push(var);
     }
+
     Ok(vars)
 }
 
@@ -52,7 +33,7 @@ pub fn read_constraints(
     vars: &[VariableDefinition],
 ) -> Result<Vec<Constraint>, PolarsError> {
     // Read in the data
-    let df = read_csv(path)?;
+    let df = CsvReader::from_path(path)?.has_header(true).finish()?;
 
     // Get min and max values for constraint
     let mins = df.column("min")?.f64()?.into_no_null_iter();
