@@ -1,6 +1,7 @@
 //! Provides the main entry point to the muse2 program.
 
 mod muse2;
+
 use std::env;
 
 /// The main entry point to the program

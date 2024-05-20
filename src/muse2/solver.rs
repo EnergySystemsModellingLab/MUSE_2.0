@@ -1,46 +1,8 @@
 //! Provides data structures and functions for performing optimisation.
+use super::constraint::Constraint;
+use super::variable_definition::VariableDefinition;
 pub use highs::Sense;
 use highs::{HighsModelStatus, RowProblem};
-use serde::Deserialize;
-
-/// The definition of a variable to be optimised.
-///
-/// The coefficients represent the multiplying factors in the objective function to maximise or
-/// minimise, i.e. the Cs in:
-///
-/// f = c1*x1 + c2*x2 + ...
-///
-/// with x1, x2... taking values between min and max.
-#[derive(PartialEq, Debug, Deserialize)]
-pub struct VariableDefinition {
-    /// The variable's name
-    pub name: String,
-    /// The variable's minimum value
-    pub min: f64,
-    /// The variable's maximum value
-    pub max: f64,
-    /// The coefficient of the variable in the objective
-    pub coefficient: f64,
-}
-
-/// A constraint for an optimisation.
-///
-/// Each constraint adds an inequality equation to the problem to solve of the form:
-///
-/// min <= a1*x1 + a2*x2 + ... <= max
-///
-/// Often, constraints will impose only a min or a max value, with the other set to infinity or
-/// minus infinity.
-#[derive(PartialEq, Debug)]
-pub struct Constraint {
-    /// The minimum value for the constraint
-    pub min: f64,
-    /// The maximum value for the constraint
-    pub max: f64,
-    /// The coefficients for each of the variables. Must be the same length as the number of
-    /// variables.
-    pub coefficients: Vec<f64>,
-}
 
 /// Perform an optimisation using the HIGHS solver.
 ///

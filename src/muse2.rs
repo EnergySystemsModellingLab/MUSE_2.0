@@ -1,9 +1,14 @@
 //! The main crate for muse2. This contains all of MUSE's functionality.
-mod csv;
+pub mod constraint;
 mod solver;
+pub mod variable_definition;
 
-use csv::{read_constraints, read_variables};
+#[cfg(test)]
+pub mod test_common;
+
+use constraint::Constraint;
 use solver::{solve_highs, Sense};
+use variable_definition::VariableDefinition;
 
 /// Run an optimisation.
 ///
@@ -13,13 +18,13 @@ use solver::{solve_highs, Sense};
 /// * `constraints_path`: The path to the CSV file containing constraints
 pub fn run(variables_path: &str, constraints_path: &str) {
     // Read variable definitions
-    let vars = match read_variables(variables_path) {
+    let vars = match VariableDefinition::vec_from_csv(variables_path) {
         Ok(x) => x,
         Err(error) => panic!("Error reading variables from {}: {}", variables_path, error),
     };
 
     // Read constraints
-    let constraints = match read_constraints(constraints_path, &vars) {
+    let constraints = match Constraint::vec_from_csv(constraints_path, &vars) {
         Ok(constraints) => constraints,
         Err(error) => panic!(
             "Error reading constraints from {}: {}",
