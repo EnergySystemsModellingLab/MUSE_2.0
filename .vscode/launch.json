@@ -1,0 +1,39 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'muse2'",
+            "cargo": {
+                "args": ["build", "--bin=muse2", "--package=muse2"],
+                "filter": {
+                    "name": "muse2",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "${workspaceFolder}/example/variables.csv",
+                "${workspaceFolder}/example/constraints.csv"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'muse2'",
+            "cargo": {
+                "args": ["test", "--no-run", "--bin=muse2", "--package=muse2"],
+                "filter": {
+                    "name": "muse2",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

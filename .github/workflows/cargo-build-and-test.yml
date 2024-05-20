@@ -12,6 +12,9 @@ jobs:
   build_and_test:
     name: MUSE 2.0
     runs-on: ${{ matrix.os }}
+    env:
+      # Make warnings fatal
+      RUSTFLAGS: -D warnings
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]

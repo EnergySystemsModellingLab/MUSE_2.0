@@ -29,10 +29,10 @@ To build the project, run:
 cargo build
 ```
 
-To run MUSE, you can run:
+To run MUSE with the example input files, you can run:
 
 ```sh
-cargo run
+cargo run example/constraints.csv example/variables.csv
 ```
 
 Tests can be run with:
