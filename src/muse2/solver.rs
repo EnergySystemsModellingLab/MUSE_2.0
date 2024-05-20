@@ -12,6 +12,8 @@ use highs::{HighsModelStatus, RowProblem};
 /// with x1, x2... taking values between min and max.
 #[derive(PartialEq, Debug)]
 pub struct VariableDefinition {
+    /// The variable's name
+    pub name: String,
     /// The variable's minimum value
     pub min: f64,
     /// The variable's maximum value
@@ -90,16 +92,19 @@ mod tests {
     fn test_solve_highs() {
         let var_defs = [
             VariableDefinition {
+                name: "x".to_string(),
                 min: 0.,
                 max: INFINITY,
                 coefficient: 1.,
             },
             VariableDefinition {
+                name: "y".to_string(),
                 min: 0.,
                 max: INFINITY,
                 coefficient: 2.,
             },
             VariableDefinition {
+                name: "z".to_string(),
                 min: 0.,
                 max: INFINITY,
                 coefficient: 1.,

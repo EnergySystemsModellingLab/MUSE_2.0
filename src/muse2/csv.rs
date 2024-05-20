@@ -10,12 +10,12 @@ pub fn read_csv(path: &str) -> Result<DataFrame, PolarsError> {
 
 /// Read variable definitions from the specified path.
 ///
-/// Returns a vector of variable names and a vector of variable definitions or an error.
+/// Returns a variable definitions or an error.
 ///
 /// # Arguments:
 ///
 /// * `path`: The path to the variable definitions CSV file
-pub fn read_variables(path: &str) -> Result<(Vec<String>, Vec<VariableDefinition>), PolarsError> {
+pub fn read_variables(path: &str) -> Result<Vec<VariableDefinition>, PolarsError> {
     // Read in the data
     let df = read_csv(path)?;
 
@@ -28,21 +28,16 @@ pub fn read_variables(path: &str) -> Result<(Vec<String>, Vec<VariableDefinition
 
     // Create a vector of VariableDefinitions
     let mut vars = Vec::with_capacity(df.shape().0);
-    let mut var_names = Vec::with_capacity(df.shape().0);
     for (name, coeff, min, max) in izip!(names, coeffs, mins, maxes) {
         let name = name.to_string();
-        if var_names.contains(&name) {
-            panic!("Variable {} defined more than once", name);
-        }
-        var_names.push(name);
-
         vars.push(VariableDefinition {
+            name,
             min,
             max,
             coefficient: coeff,
         })
     }
-    Ok((var_names, vars))
+    Ok(vars)
 }
 
 /// Read constraints from the specified path.
@@ -52,7 +47,10 @@ pub fn read_variables(path: &str) -> Result<(Vec<String>, Vec<VariableDefinition
 /// # Arguments:
 ///
 /// * `path`: The path to the constrains CSV file
-pub fn read_constraints(path: &str, var_names: &[String]) -> Result<Vec<Constraint>, PolarsError> {
+pub fn read_constraints(
+    path: &str,
+    vars: &[VariableDefinition],
+) -> Result<Vec<Constraint>, PolarsError> {
     // Read in the data
     let df = read_csv(path)?;
 
@@ -61,9 +59,9 @@ pub fn read_constraints(path: &str, var_names: &[String]) -> Result<Vec<Constrai
     let maxes = df.column("max")?.f64()?.into_no_null_iter();
 
     // Get coefficients
-    let mut coeff_cols: Vec<Vec<f64>> = Vec::with_capacity(var_names.len());
-    for var_name in var_names.iter() {
-        let col_name = format!("coeff_{}", var_name);
+    let mut coeff_cols: Vec<Vec<f64>> = Vec::with_capacity(vars.len());
+    for var in vars.iter() {
+        let col_name = format!("coeff_{}", var.name);
         coeff_cols.push(df.column(&col_name)?.f64()?.into_no_null_iter().collect());
     }
 
@@ -71,7 +69,7 @@ pub fn read_constraints(path: &str, var_names: &[String]) -> Result<Vec<Constrai
     let mut constraints = Vec::with_capacity(df.shape().0);
     for (i, (min, max)) in mins.zip(maxes).enumerate() {
         // Get variable coefficients
-        let mut coeffs = Vec::with_capacity(var_names.len());
+        let mut coeffs = Vec::with_capacity(vars.len());
         for col in coeff_cols.iter() {
             coeffs.push(col[i]);
         }
@@ -124,22 +122,24 @@ mod tests {
 
     #[test]
     fn test_read_variables() {
-        let (var_names, var_defs) = read_variables(&get_variables_file_path()).unwrap();
-        assert_eq!(var_names, &["x", "y", "z"]);
+        let definitions = read_variables(&get_variables_file_path()).unwrap();
         assert_eq!(
-            var_defs,
+            definitions,
             &[
                 VariableDefinition {
+                    name: "x".to_string(),
                     min: 0.,
                     max: INFINITY,
                     coefficient: 1.
                 },
                 VariableDefinition {
+                    name: "y".to_string(),
                     min: 0.,
                     max: INFINITY,
                     coefficient: 2.
                 },
                 VariableDefinition {
+                    name: "z".to_string(),
                     min: 0.,
                     max: INFINITY,
                     coefficient: 1.
@@ -150,8 +150,8 @@ mod tests {
 
     #[test]
     fn test_read_constraints() {
-        let (var_names, _) = read_variables(&get_variables_file_path()).unwrap();
-        let constraints = read_constraints(&get_constraints_file_path(), &var_names).unwrap();
+        let definitions = read_variables(&get_variables_file_path()).unwrap();
+        let constraints = read_constraints(&get_constraints_file_path(), &definitions).unwrap();
         assert_eq!(
             constraints,
             &[

@@ -13,13 +13,13 @@ use solver::{solve_highs, Sense};
 /// * `constraints_path`: The path to the CSV file containing constraints
 pub fn run(variables_path: &str, constraints_path: &str) {
     // Read variable definitions
-    let (var_names, var_defs) = match read_variables(variables_path) {
+    let vars = match read_variables(variables_path) {
         Ok(x) => x,
         Err(error) => panic!("Error reading variables from {}: {}", variables_path, error),
     };
 
     // Read constraints
-    let constraints = match read_constraints(constraints_path, &var_names) {
+    let constraints = match read_constraints(constraints_path, &vars) {
         Ok(constraints) => constraints,
         Err(error) => panic!(
             "Error reading constraints from {}: {}",
@@ -28,7 +28,7 @@ pub fn run(variables_path: &str, constraints_path: &str) {
     };
 
     // Calculate solution
-    let solution = solve_highs(&var_defs, &constraints, Sense::Maximise)
+    let solution = solve_highs(&vars, &constraints, Sense::Maximise)
         .unwrap_or_else(|err| panic!("Failed to calculate a solution: {:?}", err));
     println!("Calculated solution: {:?}", solution);
 }
