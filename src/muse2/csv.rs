@@ -1,6 +1,4 @@
 //! Provides functionality for reading data from CSV files.
-use std::path::{Path, PathBuf};
-
 use super::solver::{Constraint, VariableDefinition};
 use itertools::izip;
 use polars::prelude::*;
@@ -88,44 +86,41 @@ pub fn read_constraints(path: &str, var_names: &[String]) -> Result<Vec<Constrai
     Ok(constraints)
 }
 
-/// Get the path to the example folder in this repository.
-#[allow(dead_code)]
-fn get_example_path() -> PathBuf {
-    Path::new(file!())
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("example")
-}
-
-/// Get the path to the example variables.csv file.
-#[allow(dead_code)]
-pub fn get_variables_file_path() -> String {
-    get_example_path()
-        .join("variables.csv")
-        .to_str()
-        .unwrap()
-        .to_owned()
-}
-
-/// Get the path to the example constraints.csv file.
-#[allow(dead_code)]
-pub fn get_constraints_file_path() -> String {
-    get_example_path()
-        .join("constraints.csv")
-        .to_str()
-        .unwrap()
-        .to_owned()
-}
-
 #[cfg(test)]
 mod tests {
-    use std::f64::INFINITY;
-
     use super::*;
+    use std::f64::INFINITY;
+    use std::path::{Path, PathBuf};
+
+    /// Get the path to the example folder in this repository.
+    fn get_example_path() -> PathBuf {
+        Path::new(file!())
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("example")
+    }
+
+    /// Get the path to the example variables.csv file.
+    fn get_variables_file_path() -> String {
+        get_example_path()
+            .join("variables.csv")
+            .to_str()
+            .unwrap()
+            .to_owned()
+    }
+
+    /// Get the path to the example constraints.csv file.
+    fn get_constraints_file_path() -> String {
+        get_example_path()
+            .join("constraints.csv")
+            .to_str()
+            .unwrap()
+            .to_owned()
+    }
 
     #[test]
     fn test_read_variables() {

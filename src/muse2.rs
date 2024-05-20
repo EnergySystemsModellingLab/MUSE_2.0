@@ -1,5 +1,5 @@
 //! The main crate for muse2. This contains all of MUSE's functionality.
-pub mod csv;
+mod csv;
 mod solver;
 
 use csv::{read_constraints, read_variables};
