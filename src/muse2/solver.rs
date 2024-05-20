@@ -2,7 +2,14 @@
 pub use highs::Sense;
 use highs::{HighsModelStatus, RowProblem};
 
-/// The definition of a variable to be optimised
+/// The definition of a variable to be optimised.
+///
+/// The coefficients represent the multiplying factors in the objective function to maximise or
+/// minimise, i.e. the Cs in:
+///
+/// f = c1*x1 + c2*x2 + ...
+///
+/// with x1, x2... taking values between min and max.
 #[derive(PartialEq, Debug)]
 pub struct VariableDefinition {
     /// The variable's minimum value
@@ -13,7 +20,14 @@ pub struct VariableDefinition {
     pub coefficient: f64,
 }
 
-/// A constraint for an optimisation
+/// A constraint for an optimisation.
+///
+/// Each constraint adds an inequality equation to the problem to solve of the form:
+///
+/// min <= a1*x1 + a2*x2 + ... <= max
+///
+/// Often, constraints will impose only a min or a max value, with the other set to infinity or
+/// minus infinity.
 #[derive(PartialEq, Debug)]
 pub struct Constraint {
     /// The minimum value for the constraint
