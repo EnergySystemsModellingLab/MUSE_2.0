@@ -36,7 +36,7 @@ and improvements.
 
 This project and everyone participating in it is governed by the [MUSE Code of Conduct](CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code. Please report unacceptable behavior to
-[the repository Administrator](ict-rse-team@imperial.ac.uk).
+(<ict-rse-team@imperial.ac.uk>.
 
 ## How Can I Contribute?
 
