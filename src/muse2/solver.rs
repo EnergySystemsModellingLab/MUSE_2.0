@@ -82,13 +82,41 @@ pub fn solve_highs(
 
 #[cfg(test)]
 mod tests {
-    use super::super::csv::*;
+    use std::f64::INFINITY;
+
     use super::*;
 
     #[test]
     fn test_solve_highs() {
-        let (var_names, var_defs) = read_variables(&get_variables_file_path()).unwrap();
-        let constraints = read_constraints(&get_constraints_file_path(), &var_names).unwrap();
+        let var_defs = [
+            VariableDefinition {
+                min: 0.,
+                max: INFINITY,
+                coefficient: 1.,
+            },
+            VariableDefinition {
+                min: 0.,
+                max: INFINITY,
+                coefficient: 2.,
+            },
+            VariableDefinition {
+                min: 0.,
+                max: INFINITY,
+                coefficient: 1.,
+            },
+        ];
+        let constraints = [
+            Constraint {
+                min: -INFINITY,
+                max: 6.,
+                coefficients: vec![3., 1., 0.],
+            },
+            Constraint {
+                min: -INFINITY,
+                max: 7.,
+                coefficients: vec![0., 1., 2.],
+            },
+        ];
 
         let solution = solve_highs(&var_defs, &constraints, Sense::Maximise).unwrap();
         assert_eq!(solution, &[0., 6., 0.5]);
