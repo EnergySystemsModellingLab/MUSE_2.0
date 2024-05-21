@@ -44,6 +44,7 @@ pub fn read_settings(settings_file_path: &Path) -> (Vec<VariableDefinition>, Vec
     // relative to the folder the settings file is in.
     let settings_dir = settings_file_path.parent().unwrap(); // will never fail
 
+    // NB: If the path argument to join is absolute, it is passed through
     let var_path = settings_dir.join(config.input_files.variables_file_path);
     let vars = VariableDefinition::vec_from_csv(&var_path)
         .expect("Failed to read variable definition file");
