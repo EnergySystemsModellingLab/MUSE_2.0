@@ -18,7 +18,7 @@ use std::path::Path;
 /// * `settings_file_path`: The path to the TOML file containing the model's configuration
 pub fn run(settings_file_path: &Path) {
     // Read input files
-    let (definitions, constraints) = read_settings(&settings_file_path);
+    let (definitions, constraints) = read_settings(settings_file_path);
 
     // Calculate solution
     let solution = solve_highs(&definitions, &constraints, Sense::Maximise)

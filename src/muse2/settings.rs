@@ -6,7 +6,6 @@ use std::path::Path;
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
-use toml;
 
 /// Represents the contents of the entire settings file.
 #[derive(Debug, Deserialize, PartialEq)]
@@ -27,7 +26,7 @@ struct InputFiles {
 /// Read a settings file from the given path.
 fn read_settings_file(path: &Path) -> Result<Settings, toml::de::Error> {
     let data = fs::read_to_string(path)
-        .expect(&format!("Failed to read file: {}", path.to_string_lossy()));
+        .unwrap_or_else(|_| panic!("Failed to read file: {}", path.to_string_lossy()));
     toml::from_str(&data)
 }
 
