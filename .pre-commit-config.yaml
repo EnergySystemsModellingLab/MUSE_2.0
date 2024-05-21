@@ -24,7 +24,7 @@ repos:
     rev: v1.0
     hooks:
       - id: clippy
-        args: [--fix, --allow-dirty, --allow-staged]
+        args: [--fix, --allow-dirty, --allow-staged, --, -D, clippy::all]
   - repo: https://github.com/codespell-project/codespell
     rev: v2.2.6
     hooks:
