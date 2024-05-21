@@ -1,6 +1,7 @@
 //! Provides variable definition data structures for optimisation.
 use csv;
 use serde::Deserialize;
+use std::path::Path;
 
 /// The definition of a variable to be optimised.
 ///
@@ -30,7 +31,7 @@ impl VariableDefinition {
     /// # Arguments:
     ///
     /// * `path`: The path to the variable definitions CSV file
-    pub fn vec_from_csv(path: &str) -> Result<Vec<VariableDefinition>, csv::Error> {
+    pub fn vec_from_csv(path: &Path) -> Result<Vec<VariableDefinition>, csv::Error> {
         let mut reader = csv::Reader::from_path(path)?;
         let mut vars = Vec::new();
         for result in reader.deserialize() {
@@ -47,14 +48,11 @@ mod tests {
     use super::super::test_common::get_example_path;
     use super::VariableDefinition;
     use std::f64::INFINITY;
+    use std::path::PathBuf;
 
     /// Get the path to the example variables.csv file.
-    fn get_variables_file_path() -> String {
-        get_example_path()
-            .join("variables.csv")
-            .to_str()
-            .unwrap()
-            .to_owned()
+    fn get_variables_file_path() -> PathBuf {
+        get_example_path().join("variables.csv")
     }
 
     #[test]

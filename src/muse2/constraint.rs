@@ -1,6 +1,7 @@
 //! Provides functionality for optimisation constraints.
 use super::variable_definition::VariableDefinition;
 use polars::prelude::*;
+use std::path::Path;
 
 /// A constraint for an optimisation.
 ///
@@ -30,7 +31,7 @@ impl Constraint {
     ///
     /// * `path`: The path to the constraints CSV file
     pub fn vec_from_csv(
-        path: &str,
+        path: &Path,
         vars: &[VariableDefinition],
     ) -> Result<Vec<Constraint>, PolarsError> {
         // Read in the data
@@ -72,14 +73,11 @@ mod tests {
     use super::super::test_common::get_example_path;
     use super::*;
     use std::f64::INFINITY;
+    use std::path::PathBuf;
 
     /// Get the path to the example constraints.csv file.
-    fn get_constraints_file_path() -> String {
-        get_example_path()
-            .join("constraints.csv")
-            .to_str()
-            .unwrap()
-            .to_owned()
+    fn get_constraints_file_path() -> PathBuf {
+        get_example_path().join("constraints.csv")
     }
 
     #[test]

@@ -44,11 +44,11 @@ pub fn read_settings(settings_file_path: &str) -> (Vec<VariableDefinition>, Vec<
     let settings_dir = Path::new(settings_file_path).parent().unwrap(); // will never fail
 
     let var_path = settings_dir.join(config.input_files.variables_file_path);
-    let vars = VariableDefinition::vec_from_csv(&var_path.to_str().unwrap())
+    let vars = VariableDefinition::vec_from_csv(&var_path)
         .expect("Failed to read variable definition file");
 
     let constraints_path = settings_dir.join(config.input_files.constraints_file_path);
-    let constraints = Constraint::vec_from_csv(&constraints_path.to_str().unwrap(), &vars)
+    let constraints = Constraint::vec_from_csv(&constraints_path, &vars)
         .expect("Failed to read constraints file");
 
     (vars, constraints)
