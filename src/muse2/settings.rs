@@ -9,14 +9,14 @@ use std::path::PathBuf;
 use toml;
 
 /// Represents the contents of the entire settings file.
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 struct Settings {
     /// The input files for the model
     input_files: InputFiles,
 }
 
 /// Represents the [input_files] section of the settings file.
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 struct InputFiles {
     /// Path to CSV file containing variable definitions
     variables_file_path: PathBuf,
@@ -53,4 +53,43 @@ pub fn read_settings(settings_file_path: &Path) -> (Vec<VariableDefinition>, Vec
         .expect("Failed to read constraints file");
 
     (vars, constraints)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::super::test_common::{
+        get_example_constraints, get_example_path, get_example_variable_definitions,
+    };
+    use super::*;
+
+    fn get_settings_file_path() -> PathBuf {
+        get_example_path().join("settings.toml")
+    }
+
+    #[test]
+    fn test_read_settings_file() {
+        let settings = read_settings_file(&get_settings_file_path()).unwrap();
+
+        assert_eq!(
+            settings,
+            Settings {
+                input_files: InputFiles {
+                    constraints_file_path: PathBuf::from_str("constraints.csv").unwrap(),
+                    variables_file_path: PathBuf::from_str("variables.csv").unwrap(),
+                }
+            }
+        )
+    }
+
+    #[test]
+    fn test_read_settings() {
+        // Check that the variable definitions and constraints load correctly. It's a bit gross that
+        // we actually load the files given that we test this elsewhere, but mocking it would be a
+        // faff.
+        let (vars, constraints) = read_settings(&get_settings_file_path());
+        assert_eq!(vars, &get_example_variable_definitions());
+        assert_eq!(constraints, &get_example_constraints());
+    }
 }
