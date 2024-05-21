@@ -36,7 +36,7 @@ and improvements.
 
 This project and everyone participating in it is governed by the [MUSE Code of Conduct](CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code. Please report unacceptable behavior to
-(<ict-rse-team@imperial.ac.uk>.
+<ict-rse-team@imperial.ac.uk>.
 
 ## How Can I Contribute?
 
@@ -142,7 +142,7 @@ Please follow these steps to have your contribution considered by the maintainer
    any new addition to the code must come with its own set of tests to avoid going backwards in this
    matter.
 3. **For new features and enhancements, include documentation and examples**. Both in the code, as
-   docstrings in classes, functions and modules, and as proper documentation describing how to use the
+   doc comments in structs, functions and modules, and as proper documentation describing how to use the
    new feature.
 4. Follow the [styleguides](#styleguides)
 5. After you submit your pull request, verify that all
@@ -166,7 +166,6 @@ request can be ultimately accepted.
 - Use the imperative mood ("Move cursor to..." not "Moves cursor to...")
 - Limit the first line to 72 characters or less
 - Reference issues and pull requests liberally after the first line
-- When only changing documentation, include `[ci skip]` in the commit title
 - Consider starting the commit message with an applicable emoji:
   - :art: `:art:` when improving the format/structure of the code
   - :racehorse: `:racehorse:` when improving performance
@@ -192,9 +191,9 @@ request can be ultimately accepted.
   - Reference instance methods with `{ClassName::methodName}`
   - Reference class methods with `{ClassName.methodName}`
 
-## Developer's setup
+## Developer Setup
 
-### Continuous integration
+### Continuous Integration
 
 Pre-commit hooks are set up to run code quality checks (isort and black) before committing. To run
 these locally, you will need to `pip install pre-commit` then `pre-commit install` - meaning you
