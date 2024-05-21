@@ -28,9 +28,11 @@ and improvements.
 - [Git Commit Messages](#git-commit-messages)
 - [Documentation Styleguide](#documentation-styleguide)
 
-[Developer's setup](#developers-setup)
+[Developer Setup](#developer-setup)
 
-- [Continuous integration](#continuous-integration)
+- [Installing the Rust toolchain](#installing-the-rust-toolchain)
+- [Working with the project](#working-with-the-project)
+- [Pre-Commit Hooks](#pre-commit-hooks)
 
 ## Code of Conduct
 
@@ -142,8 +144,8 @@ Please follow these steps to have your contribution considered by the maintainer
    any new addition to the code must come with its own set of tests to avoid going backwards in this
    matter.
 3. **For new features and enhancements, include documentation and examples**. Both in the code, as
-   doc comments in structs, functions and modules, and as proper documentation describing how to use the
-   new feature.
+   doc comments in structs, functions and modules, and as proper documentation describing how to use
+   the new feature.
 4. Follow the [styleguides](#styleguides)
 5. After you submit your pull request, verify that all
    [status checks](https://help.github.com/articles/about-status-checks/) are passing
@@ -185,20 +187,58 @@ request can be ultimately accepted.
 
 ### Documentation Styleguide
 
-- Use [Markdown](https://daringfireball.net/projects/markdown).
-- Reference methods and classes in markdown with the custom `{}` notation:
-  - Reference classes with `{ClassName}`
-  - Reference instance methods with `{ClassName::methodName}`
-  - Reference class methods with `{ClassName.methodName}`
+Documentation is built using `rustdoc`. Either as stand alone documentation files or as part of doc
+comments in struct and functions, a [Markdown](https://daringfireball.net/projects/markdown) syntax
+is used. Please, follow the guidelines in [the rustdoc book](https://doc.rust-lang.org/rustdoc/how-to-write-documentation.html)
+on how to write the documentation.
 
 ## Developer Setup
 
-### Continuous Integration
+### Installing the Rust toolchain
 
-Pre-commit hooks are set up to run code quality checks (isort and black) before committing. To run
-these locally, you will need to `pip install pre-commit` then `pre-commit install` - meaning you
-need to have Python installed in your system and accessible. Now, quality assurance tools will be
-run automatically with every commit.
+We recommend that developers use `rustup` to install the Rust toolchain. Follow the instructions on
+[the `rustup` website](https://rustup.rs/).
 
-Github workflows are set up to run the pre-commit actions and the tests automatically on every push
-action.
+Once you have done so, select the `stable` toolchain (used by this project) as your default with:
+
+```sh
+rustup default stable
+```
+
+### Working with the project
+
+To build the project, run:
+
+```sh
+cargo build
+```
+
+To run MUSE with the example input files, you can run:
+
+```sh
+cargo run example/constraints.csv example/variables.csv
+```
+
+Tests can be run with:
+
+```sh
+cargo test
+```
+
+More information is available in [the official `cargo` book](https://doc.rust-lang.org/cargo/).
+
+### Pre-Commit hooks
+
+Developers must install the `pre-commit` tool in order to automatically run this
+repository's hooks when making a new Git commit. Follow [the instructions on the `pre-commit`
+website] in order to get started.
+
+Once you have installed `pre-commit`, you need to enable its use for this repository by installing
+the hooks, like so:
+
+```sh
+pre-commit install
+```
+
+Thereafter, a series of checks should be run every time you commit with Git. In addition, the
+`pre-commit` hooks are also run as part of the CI pipeline.
