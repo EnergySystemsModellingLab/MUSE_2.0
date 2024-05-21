@@ -9,7 +9,36 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  coverage:
+    name: test with coverage
+    runs-on: ubuntu-latest
+    env:
+      # **HACK**: Explicitly link against zlib to avoid linking failure
+      RUSTFLAGS: -lz
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          apt update
+          apt install -y cmake libclang-dev
+
+      - name: Generate code coverage
+        run: |
+          cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
   build_and_test:
+    needs: coverage
     name: MUSE 2.0
     runs-on: ${{ matrix.os }}
     env:
@@ -17,7 +46,7 @@ jobs:
       RUSTFLAGS: -D warnings
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]
         toolchain:
           - stable
     steps:
