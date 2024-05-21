@@ -3,6 +3,7 @@
 mod muse2;
 
 use std::env;
+use std::path::Path;
 
 /// The main entry point to the program
 fn main() {
@@ -11,5 +12,5 @@ fn main() {
         panic!("Must provide path to model configuration TOML file.");
     }
 
-    muse2::run(&args[1])
+    muse2::run(Path::new(&args[1]))
 }
