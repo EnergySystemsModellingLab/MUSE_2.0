@@ -24,10 +24,11 @@ struct InputFiles {
 }
 
 /// Read a settings file from the given path.
-fn read_settings_file(path: &Path) -> Result<Settings, toml::de::Error> {
-    let data = fs::read_to_string(path)
-        .unwrap_or_else(|_| panic!("Failed to read file: {}", path.to_string_lossy()));
-    toml::from_str(&data)
+fn read_settings_file(path: &Path) -> Settings {
+    let config_str = fs::read_to_string(path)
+        .unwrap_or_else(|err| panic!("Failed to read file {:?}: {:?}", path, err));
+    toml::from_str(&config_str)
+        .unwrap_or_else(|err| panic!("Could not parse settings file: {:?}", err))
 }
 
 /// Read settings from disk.
@@ -37,7 +38,7 @@ fn read_settings_file(path: &Path) -> Result<Settings, toml::de::Error> {
 /// * `settings_file_path`: The path to the settings TOML file (which includes paths to other
 ///                         configuration files)
 pub fn read_settings(settings_file_path: &Path) -> (Vec<VariableDefinition>, Vec<Constraint>) {
-    let config = read_settings_file(settings_file_path).expect("Could not parse settings file");
+    let config = read_settings_file(settings_file_path);
 
     // For paths to other files listed in the settings file, if they're relative, we treat them as
     // relative to the folder the settings file is in.
