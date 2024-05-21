@@ -11,7 +11,7 @@ faster version of [the older MUSE tool].
 ## Getting started
 
 Please, refer to the [Developers Setup section of the Contributing Guidelines](CONTRIBUTING.md#developer-setup)
-to start using or developing MUSE 2.0
+to start using or developing MUSE 2.0.
 
 ## Copyright
 
