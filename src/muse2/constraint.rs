@@ -70,9 +70,10 @@ impl Constraint {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_common::get_example_path;
+    use super::super::test_common::{
+        get_example_constraints, get_example_path, get_example_variable_definitions,
+    };
     use super::*;
-    use std::f64::INFINITY;
     use std::path::PathBuf;
 
     /// Get the path to the example constraints.csv file.
@@ -82,41 +83,11 @@ mod tests {
 
     #[test]
     fn test_read_constraints() {
-        let vars = [
-            VariableDefinition {
-                name: "x".to_string(),
-                min: 0.,
-                max: INFINITY,
-                coefficient: 1.,
-            },
-            VariableDefinition {
-                name: "y".to_string(),
-                min: 0.,
-                max: INFINITY,
-                coefficient: 2.,
-            },
-            VariableDefinition {
-                name: "z".to_string(),
-                min: 0.,
-                max: INFINITY,
-                coefficient: 1.,
-            },
-        ];
-        let constraints = Constraint::vec_from_csv(&get_constraints_file_path(), &vars).unwrap();
-        assert_eq!(
-            constraints,
-            &[
-                Constraint {
-                    min: -INFINITY,
-                    max: 6.,
-                    coefficients: vec![3., 1., 0.]
-                },
-                Constraint {
-                    min: -INFINITY,
-                    max: 7.,
-                    coefficients: vec![0., 1., 2.]
-                }
-            ]
-        );
+        let constraints = Constraint::vec_from_csv(
+            &get_constraints_file_path(),
+            &get_example_variable_definitions(),
+        )
+        .unwrap();
+        assert_eq!(constraints, &get_example_constraints());
     }
 }

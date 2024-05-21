@@ -47,46 +47,18 @@ pub fn solve_highs(
 
 #[cfg(test)]
 mod tests {
-    use std::f64::INFINITY;
-
+    use super::super::test_common::{get_example_constraints, get_example_variable_definitions};
     use super::*;
 
     #[test]
     fn test_solve_highs() {
-        let var_defs = [
-            VariableDefinition {
-                name: "x".to_string(),
-                min: 0.,
-                max: INFINITY,
-                coefficient: 1.,
-            },
-            VariableDefinition {
-                name: "y".to_string(),
-                min: 0.,
-                max: INFINITY,
-                coefficient: 2.,
-            },
-            VariableDefinition {
-                name: "z".to_string(),
-                min: 0.,
-                max: INFINITY,
-                coefficient: 1.,
-            },
-        ];
-        let constraints = [
-            Constraint {
-                min: -INFINITY,
-                max: 6.,
-                coefficients: vec![3., 1., 0.],
-            },
-            Constraint {
-                min: -INFINITY,
-                max: 7.,
-                coefficients: vec![0., 1., 2.],
-            },
-        ];
+        let solution = solve_highs(
+            &get_example_variable_definitions(),
+            &get_example_constraints(),
+            Sense::Maximise,
+        )
+        .unwrap();
 
-        let solution = solve_highs(&var_defs, &constraints, Sense::Maximise).unwrap();
         assert_eq!(solution, &[0., 6., 0.5]);
     }
 }

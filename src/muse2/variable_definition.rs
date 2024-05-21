@@ -45,9 +45,8 @@ impl VariableDefinition {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_common::get_example_path;
+    use super::super::test_common::{get_example_path, get_example_variable_definitions};
     use super::VariableDefinition;
-    use std::f64::INFINITY;
     use std::path::PathBuf;
 
     /// Get the path to the example variables.csv file.
@@ -58,28 +57,6 @@ mod tests {
     #[test]
     fn test_read_variables() {
         let definitions = VariableDefinition::vec_from_csv(&get_variables_file_path()).unwrap();
-        assert_eq!(
-            definitions,
-            &[
-                VariableDefinition {
-                    name: "x".to_string(),
-                    min: 0.,
-                    max: INFINITY,
-                    coefficient: 1.
-                },
-                VariableDefinition {
-                    name: "y".to_string(),
-                    min: 0.,
-                    max: INFINITY,
-                    coefficient: 2.
-                },
-                VariableDefinition {
-                    name: "z".to_string(),
-                    min: 0.,
-                    max: INFINITY,
-                    coefficient: 1.
-                }
-            ]
-        );
+        assert_eq!(definitions, &get_example_variable_definitions());
     }
 }
