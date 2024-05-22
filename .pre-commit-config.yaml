@@ -20,6 +20,12 @@ repos:
       - id: pretty-format-toml
         args: [--autofix, --indent, "4", --no-sort]
       - id: pretty-format-rust
+  - repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
+    hooks:
+      - id: clippy
+        # Warnings can be suppressed by adding "-A clippy::some_warning" to args
+        args: [--fix, --allow-dirty, --allow-staged, --, -D, clippy::all, -A, clippy::precedence]
   - repo: https://github.com/codespell-project/codespell
     rev: v2.2.6
     hooks:
