@@ -1,34 +1,27 @@
 //! The main crate for muse2. This contains all of MUSE's functionality.
-mod csv;
+pub mod constraint;
+mod settings;
 mod solver;
+pub mod variable_definition;
 
-use csv::{read_constraints, read_variables};
+#[cfg(test)]
+pub mod test_common;
+
+use settings::read_settings;
 use solver::{solve_highs, Sense};
+use std::path::Path;
 
 /// Run an optimisation.
 ///
 /// Arguments:
 ///
-/// * `variables_path`: The path to the CSV file containing variable definitions
-/// * `constraints_path`: The path to the CSV file containing constraints
-pub fn run(variables_path: &str, constraints_path: &str) {
-    // Read variable definitions
-    let (var_names, var_defs) = match read_variables(variables_path) {
-        Ok(x) => x,
-        Err(error) => panic!("Error reading variables from {}: {}", variables_path, error),
-    };
-
-    // Read constraints
-    let constraints = match read_constraints(constraints_path, &var_names) {
-        Ok(constraints) => constraints,
-        Err(error) => panic!(
-            "Error reading constraints from {}: {}",
-            constraints_path, error
-        ),
-    };
+/// * `settings_file_path`: The path to the TOML file containing the model's configuration
+pub fn run(settings_file_path: &Path) {
+    // Read input files
+    let (definitions, constraints) = read_settings(settings_file_path);
 
     // Calculate solution
-    let solution = solve_highs(&var_defs, &constraints, Sense::Maximise)
+    let solution = solve_highs(&definitions, &constraints, Sense::Maximise)
         .unwrap_or_else(|err| panic!("Failed to calculate a solution: {:?}", err));
     println!("Calculated solution: {:?}", solution);
 }

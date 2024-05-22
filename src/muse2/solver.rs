@@ -1,43 +1,8 @@
 //! Provides data structures and functions for performing optimisation.
+use super::constraint::Constraint;
+use super::variable_definition::VariableDefinition;
 pub use highs::Sense;
 use highs::{HighsModelStatus, RowProblem};
-
-/// The definition of a variable to be optimised.
-///
-/// The coefficients represent the multiplying factors in the objective function to maximise or
-/// minimise, i.e. the Cs in:
-///
-/// f = c1*x1 + c2*x2 + ...
-///
-/// with x1, x2... taking values between min and max.
-#[derive(PartialEq, Debug)]
-pub struct VariableDefinition {
-    /// The variable's minimum value
-    pub min: f64,
-    /// The variable's maximum value
-    pub max: f64,
-    /// The coefficient of the variable in the objective
-    pub coefficient: f64,
-}
-
-/// A constraint for an optimisation.
-///
-/// Each constraint adds an inequality equation to the problem to solve of the form:
-///
-/// min <= a1*x1 + a2*x2 + ... <= max
-///
-/// Often, constraints will impose only a min or a max value, with the other set to infinity or
-/// minus infinity.
-#[derive(PartialEq, Debug)]
-pub struct Constraint {
-    /// The minimum value for the constraint
-    pub min: f64,
-    /// The maximum value for the constraint
-    pub max: f64,
-    /// The coefficients for each of the variables. Must be the same length as the number of
-    /// variables.
-    pub coefficients: Vec<f64>,
-}
 
 /// Perform an optimisation using the HIGHS solver.
 ///
@@ -82,43 +47,18 @@ pub fn solve_highs(
 
 #[cfg(test)]
 mod tests {
-    use std::f64::INFINITY;
-
+    use super::super::test_common::{get_example_constraints, get_example_variable_definitions};
     use super::*;
 
     #[test]
     fn test_solve_highs() {
-        let var_defs = [
-            VariableDefinition {
-                min: 0.,
-                max: INFINITY,
-                coefficient: 1.,
-            },
-            VariableDefinition {
-                min: 0.,
-                max: INFINITY,
-                coefficient: 2.,
-            },
-            VariableDefinition {
-                min: 0.,
-                max: INFINITY,
-                coefficient: 1.,
-            },
-        ];
-        let constraints = [
-            Constraint {
-                min: -INFINITY,
-                max: 6.,
-                coefficients: vec![3., 1., 0.],
-            },
-            Constraint {
-                min: -INFINITY,
-                max: 7.,
-                coefficients: vec![0., 1., 2.],
-            },
-        ];
+        let solution = solve_highs(
+            &get_example_variable_definitions(),
+            &get_example_constraints(),
+            Sense::Maximise,
+        )
+        .unwrap();
 
-        let solution = solve_highs(&var_defs, &constraints, Sense::Maximise).unwrap();
         assert_eq!(solution, &[0., 6., 0.5]);
     }
 }
