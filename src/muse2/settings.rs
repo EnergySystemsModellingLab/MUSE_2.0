@@ -71,7 +71,7 @@ mod tests {
 
     #[test]
     fn test_read_settings_file() {
-        let settings = read_settings_file(&get_settings_file_path()).unwrap();
+        let settings = read_settings_file(&get_settings_file_path());
 
         assert_eq!(
             settings,
