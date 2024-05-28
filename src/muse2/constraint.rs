@@ -35,7 +35,9 @@ impl Constraint {
         vars: &[VariableDefinition],
     ) -> Result<Vec<Constraint>, PolarsError> {
         // Read in the data
-        let df = CsvReader::from_path(path)?.has_header(true).finish()?;
+        let df = CsvReadOptions::default()
+            .try_into_reader_with_file_path(Some(path.to_path_buf()))?
+            .finish()?;
 
         // Get min and max values for constraint
         let mins = df.column("min")?.f64()?.into_no_null_iter();
