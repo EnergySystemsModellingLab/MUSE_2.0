@@ -1,3 +1,6 @@
+<!-- markdownlint-disable MD041 -->
+[![Build and test](https://github.com/EnergySystemsModellingLab/MUSE_2.0/actions/workflows/cargo-build-and-test.yml/badge.svg)](https://github.com/EnergySystemsModellingLab/MUSE_2.0/actions/workflows/cargo-build-and-test.yml)
+
 # MUSE 2.0
 
 MUSE 2.0 is a tool for running simulations of energy systems, written in Rust. It is a slimmer and
