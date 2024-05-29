@@ -1,5 +1,6 @@
 <!-- markdownlint-disable MD041 -->
 [![Build and test](https://github.com/EnergySystemsModellingLab/MUSE_2.0/actions/workflows/cargo-build-and-test.yml/badge.svg)](https://github.com/EnergySystemsModellingLab/MUSE_2.0/actions/workflows/cargo-build-and-test.yml)
+[![codecov](https://codecov.io/github/EnergySystemsModellingLab/MUSE_2.0/graph/badge.svg?token=nV8gp1NCh8)](https://codecov.io/github/EnergySystemsModellingLab/MUSE_2.0)
 
 # MUSE 2.0
 
