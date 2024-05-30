@@ -45,7 +45,9 @@ jobs:
       RUSTFLAGS: -D warnings
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        ## macOS runner is currently failing: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/43
+        # os: [windows-latest, macos-latest]
+        os: [windows-latest]
         toolchain:
           - stable
     steps:
