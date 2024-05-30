@@ -14,7 +14,7 @@ struct Settings {
     input_files: InputFiles,
 }
 
-/// Represents the [input_files] section of the settings file.
+/// Represents the "input_files" section of the settings file.
 #[derive(Debug, Deserialize, PartialEq)]
 struct InputFiles {
     /// Path to CSV file containing variable definitions
