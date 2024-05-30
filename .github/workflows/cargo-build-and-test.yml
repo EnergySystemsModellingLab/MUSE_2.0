@@ -10,7 +10,7 @@ env:
 
 jobs:
   coverage:
-    name: test with coverage
+    name: Build and test with coverage
     runs-on: ubuntu-latest
     env:
       # **HACK**: Explicitly link against zlib to avoid linking failure
@@ -38,7 +38,7 @@ jobs:
           fail_ci_if_error: true
 
   build_and_test:
-    name: MUSE 2.0
+    name: Build and test
     runs-on: ${{ matrix.os }}
     env:
       # Make warnings fatal
