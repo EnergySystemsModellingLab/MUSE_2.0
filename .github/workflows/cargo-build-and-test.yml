@@ -58,6 +58,7 @@ jobs:
       # Make warnings fatal
       RUSTFLAGS: -D warnings
     strategy:
+      fail-fast: false
       matrix:
         ## macOS runner is currently failing: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/43
         # os: [windows-latest, macos-latest]
