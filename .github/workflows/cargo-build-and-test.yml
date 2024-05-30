@@ -13,8 +13,9 @@ jobs:
     name: Build and test with coverage
     runs-on: ubuntu-latest
     env:
+      # Make warnings fatal
       # **HACK**: Explicitly link against zlib to avoid linking failure
-      RUSTFLAGS: -lz
+      RUSTFLAGS: -D warnings -lz
     container:
       image: xd009642/tarpaulin:develop-nightly
       options: --security-opt seccomp=unconfined
