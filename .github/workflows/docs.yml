@@ -16,10 +16,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
       - name: Setup pages
         uses: actions/configure-pages@v5
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cargo Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo
+            target
+          key: ubuntu-latest-cargo-${{ hashFiles('Cargo.toml') }}
+          restore-keys: |
+            ubuntu-latest-cargo-${{ hashFiles('Cargo.toml') }}
+            ubuntu-latest-cargo
       - name: Install mdBook
         run: cargo install mdbook
       - name: Build docs with mdBook
