@@ -1,0 +1,33 @@
+[input_files]
+regions_file_path = "regions.csv"
+commodities_file_path = "commodities.csv"
+commodity_net_costs_file_path = "commodity_net_costs.csv"
+commodity_constraints_file_path = "commodity_constraints.csv"
+demand_file_path = "demand.csv"
+demand_slicing_file_path = "demand_slicing.csv"
+processes_file_path = "processes.csv"
+processes_flows_file_path = "process_availabilities.csv"
+processes_availabilities_file_path = "process_flows.csv"
+processes_flow_constraints_file_path = "processes_flow_share_constraints.csv"
+assets_file_path = "assets.csv"
+
+[milestone_years]
+years = [2020]
+
+[time_slices]
+winter.night = 0.072916667
+winter.day = 0.104166667
+winter.peak = 0.03125
+winter.evening = 0.041666667
+peak.night = 0.072916667
+peak.day = 0.104166667
+peak.peak = 0.03125
+peak.evening = 0.041666667
+summer.night = 0.072916667
+summer.day = 0.104166667
+summer.peak = 0.03125
+summer.evening = 0.041666667
+autumn.night = 0.072916667
+autumn.day = 0.104166667
+autumn.peak = 0.03125
+autumn.evening = 0.041666667

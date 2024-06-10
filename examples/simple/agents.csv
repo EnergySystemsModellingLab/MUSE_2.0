@@ -1,0 +1,4 @@
+Agent,Description,Region,Commodity name,Commodity portion,Search space,Objectives,Decision rule,Decision weights,Decision lexico tolerance,Capex limit,Annual cost limit
+A0_OAG,Oil and gas IOC,GBR,GASPRD; GASNAT,1,,LCOX,single,,,,
+A0_ELC,Electricity generators,GBR,ELCTRI,1,,LCOX,single,,,,
+A0_RES,Residential consumer,GBR,RSHEAT,1,,EAC,single,,,,

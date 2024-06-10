@@ -1,0 +1,22 @@
+Process name,Limit Type,Timeslice,Value
+GASDRV,UP,,0.9
+GASPRC,UP,,0.9
+GASCGT,UP,,0.9
+RGASBR,UP,,1
+RELCHP,UP,,1
+WNDFRM,UP,winter.night,0.486418015
+WNDFRM,UP,winter.day,0.543166784
+WNDFRM,UP,winter.peak,0.504433498
+WNDFRM,UP,winter.evening,0.493173821
+WNDFRM,UP,peak.night,0.312697296
+WNDFRM,UP,peak.day,0.489120338
+WNDFRM,UP,peak.peak,0.454890922
+WNDFRM,UP,peak.evening,0.331034483
+WNDFRM,UP,summer.night,0.17951141
+WNDFRM,UP,summer.day,0.349950739
+WNDFRM,UP,summer.peak,0.342294159
+WNDFRM,UP,summer.evening,0.202674173
+WNDFRM,UP,autumn.night,0.3513019
+WNDFRM,UP,autumn.day,0.460745954
+WNDFRM,UP,autumn.peak,0.396340605
+WNDFRM,UP,autumn.evening,0.364813512
