@@ -1,0 +1,6 @@
+Commodity name,Description,Type,Timeslice level
+GASPRD,Gas produced,SED,SEASON
+GASNAT,Natural gas,SED,SEASON
+ELCTRI,Electricity,SED,DAYNIGHT
+RSHEAT,Residential heating,SVD,DAYNIGHT
+CO2EMT,CO2 emitted,OUC,ANNUAL
