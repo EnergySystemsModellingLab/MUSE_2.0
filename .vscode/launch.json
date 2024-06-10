@@ -16,8 +16,8 @@
                 }
             },
             "args": [
-                "${workspaceFolder}/example/variables.csv",
-                "${workspaceFolder}/example/constraints.csv"
+                "${workspaceFolder}/examples/placeholder/variables.csv",
+                "${workspaceFolder}/examples/placeholder/constraints.csv"
             ],
             "cwd": "${workspaceFolder}"
         },
@@ -32,7 +32,10 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": [
+                "${workspaceFolder}/examples/placeholder/variables.csv",
+                "${workspaceFolder}/examples/placeholder/constraints.csv"
+            ],
             "cwd": "${workspaceFolder}"
         }
     ]
