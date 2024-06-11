@@ -1,9 +1,9 @@
-Process name,Limit Type,Timeslice,Value
+process_name,limit_type,timeslice,value
 GASDRV,UP,,0.9
 GASPRC,UP,,0.9
 GASCGT,UP,,0.9
-RGASBR,UP,,1
-RELCHP,UP,,1
+RGASBR,UP,,1.0
+RELCHP,UP,,1.0
 WNDFRM,UP,winter.night,0.486418015
 WNDFRM,UP,winter.day,0.543166784
 WNDFRM,UP,winter.peak,0.504433498
