@@ -1,5 +1,17 @@
-Season,Night,Day,Peak,Evening
-winter,0.072916667,0.104166667,0.03125,0.041666667
-peak,0.072916667,0.104166667,0.03125,0.041666667
-summer,0.072916667,0.104166667,0.03125,0.041666667
-autumn,0.072916667,0.104166667,0.03125,0.041666667
+Season,Time of Day,Value
+winter,night,0.072916667
+winter,day,0.104166667
+winter,peak,0.03125
+winter,evening,0.041666667
+peak,night,0.072916667
+peak,day,0.104166667
+peak,peak,0.03125
+peak,evening,0.041666667
+summer,night,0.072916667
+summer,day,0.104166667
+summer,peak,0.03125
+summer,evening,0.041666667
+autumn,night,0.072916667
+autumn,day,0.104166667
+autumn,peak,0.03125
+autumn,evening,0.041666667
