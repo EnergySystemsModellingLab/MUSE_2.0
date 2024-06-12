@@ -1,4 +1,5 @@
 agent,description,commodity_name,commodity_portion,search_space,decision_rule,capex_limit,annual_cost_limit
-A0_OAG,Oil and gas IOC,GASPRD; GASNAT,1,,single,,
+A0_GEX,Gas extractors,GASPRD,1,,single,,
+A0_GPR,Gas processors,GASNAT,1,,single,,
 A0_ELC,Electricity generators,ELCTRI,1,,single,,
 A0_RES,Residential consumer,RSHEAT,1,,single,,
