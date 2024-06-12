@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  coverage:
+    name: Build and test with coverage
+    runs-on: ubuntu-latest
+    env:
+      # Make warnings fatal
+      # **HACK**: Explicitly link against zlib to avoid linking failure
+      RUSTFLAGS: -D warnings -lz
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cargo Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo
+            target
+          key: ubuntu-latest-cargo-${{ hashFiles('Cargo.toml') }}
+          restore-keys: |
+            ubuntu-latest-cargo-${{ hashFiles('Cargo.toml') }}
+            ubuntu-latest-cargo
+
+      - name: Install dependencies
+        run: |
+          apt update
+          apt install -y cmake libclang-dev
+
+      - run: cargo build --verbose
+
+      - name: Generate code coverage
+        run: |
+          cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        ## macOS runner is currently failing: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/43
+        # os: ["windows-latest", "macos-latest"]
+        os: ["windows-latest"]
+        toolchain: ["stable"]
+    uses: ./.github/workflows/cargo-build-and-test.yml
+    with:
+      os: ${{ matrix.os }}
+      toolchain: ${{ matrix.toolchain }}
