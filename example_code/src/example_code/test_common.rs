@@ -13,8 +13,7 @@ pub fn get_example_path() -> PathBuf {
         .unwrap()
         .parent()
         .unwrap()
-        .join("examples")
-        .join("placeholder")
+        .join("example")
 }
 
 pub fn get_example_variable_definitions() -> [VariableDefinition; 3] {
