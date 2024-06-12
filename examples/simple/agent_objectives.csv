@@ -1,0 +1,4 @@
+agent,objective,decision_weight,decision_lexico_tolerance
+A0_OAG,LCOX,,
+A0_ELC,LCOX,,
+A0_RES,EAC,,

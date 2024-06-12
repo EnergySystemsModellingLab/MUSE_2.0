@@ -1,4 +1,4 @@
-agent,description,region,commodity_name,commodity_portion,search_space,objectives,decision_rule,decision_weights,decision_lexico_tolerance,capex_limit,annual_cost_limit
-A0_OAG,Oil and gas IOC,GBR,GASPRD; GASNAT,1,,LCOX,single,,,,
-A0_ELC,Electricity generators,GBR,ELCTRI,1,,LCOX,single,,,,
-A0_RES,Residential consumer,GBR,RSHEAT,1,,EAC,single,,,,
+agent,description,commodity_name,commodity_portion,search_space,decision_rule,capex_limit,annual_cost_limit
+A0_OAG,Oil and gas IOC,GASPRD; GASNAT,1,,single,,
+A0_ELC,Electricity generators,ELCTRI,1,,single,,
+A0_RES,Residential consumer,RSHEAT,1,,single,,
