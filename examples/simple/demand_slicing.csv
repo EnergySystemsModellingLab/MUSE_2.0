@@ -1,4 +1,4 @@
-commodity_name,region,timeslice,value
+commodity_name,region,timeslice,fraction
 RSHEAT,GBR,winter.night,0.065498087
 RSHEAT,GBR,winter.day,0.226148097
 RSHEAT,GBR,winter.peak,0.111199678
