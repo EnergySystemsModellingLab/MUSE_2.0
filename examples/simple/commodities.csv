@@ -1,4 +1,4 @@
-Commodity name,Description,Type,Timeslice level
+commodity_name,description,type,timeslice_level
 GASPRD,Gas produced,SED,SEASON
 GASNAT,Natural gas,SED,SEASON
 ELCTRI,Electricity,SED,DAYNIGHT
