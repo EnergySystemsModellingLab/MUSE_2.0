@@ -1,4 +1,4 @@
-season,time_of_day,length
+season,time_of_day,fraction
 winter,night,0.072916667
 winter,day,0.104166667
 winter,peak,0.03125
