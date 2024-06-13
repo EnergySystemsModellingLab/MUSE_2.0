@@ -10,6 +10,8 @@ faster version of [the older MUSE tool].
 
 Documentation is available on our [GitHub Pages site].
 
+For example Rust code showing how to solve a constrained optimisation, see the [`example_code` subfolder](./example_code/).
+
 :construction: Note that this repository is under heavy development and not suitable for end users!
 :construction:
 
