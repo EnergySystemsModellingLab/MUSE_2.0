@@ -15,10 +15,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [
-                "${workspaceFolder}/examples/placeholder/variables.csv",
-                "${workspaceFolder}/examples/placeholder/constraints.csv"
-            ],
+            "args": ["${workspaceFolder}/examples/placeholder/settings.toml"],
             "cwd": "${workspaceFolder}"
         },
         {
@@ -32,10 +29,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [
-                "${workspaceFolder}/examples/placeholder/variables.csv",
-                "${workspaceFolder}/examples/placeholder/constraints.csv"
-            ],
+            "args": ["${workspaceFolder}/examples/placeholder/settings.toml"],
             "cwd": "${workspaceFolder}"
         }
     ]
