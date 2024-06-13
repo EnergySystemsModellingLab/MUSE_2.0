@@ -1,7 +1,7 @@
-process_name,description,start_year,end_year,capital_cost,fixed_operating_cost,variable_operating_cost,lifetime,discount_rate,cap2act
-GASDRV,Dry gas extraction,2020,2100,10.0,0.3,2.0,25,0.1,1.0
-GASPRC,Gas processing,2020,2100,7.0,0.21,0.5,25,0.1,1.0
-WNDFRM,Wind farm,2020,2100,1000.0,30.0,0.4,25,0.1,31.54
-GASCGT,Gas combined cycle turbine,2020,2100,700.0,21.0,0.55,30,0.1,31.54
-RGASBR,Gas boiler,2020,2100,55.56,1.6668,0.16,15,0.1,1.0
-RELCHP,Heat pump,2020,2100,138.9,4.167,0.17,15,0.1,1.0
+process_name,description
+GASDRV,Dry gas extraction
+GASPRC,Gas processing
+WNDFRM,Wind farm
+GASCGT,Gas combined cycle turbine
+RGASBR,Gas boiler
+RELCHP,Heat pump
