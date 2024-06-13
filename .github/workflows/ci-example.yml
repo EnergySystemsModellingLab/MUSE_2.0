@@ -1,0 +1,23 @@
+name: CI (example code)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-test-example:
+    strategy:
+      fail-fast: false
+      matrix:
+        ## macOS runner is currently failing: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/43
+        os: ["ubuntu-latest", "windows-latest"]
+        toolchain: ["stable"]
+    uses: ./.github/workflows/cargo-build-and-test.yml
+    with:
+      os: ${{ matrix.os }}
+      toolchain: ${{ matrix.toolchain }}
+      working-directory: ./example_code

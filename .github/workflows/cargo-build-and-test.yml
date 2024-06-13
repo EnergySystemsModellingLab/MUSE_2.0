@@ -9,6 +9,9 @@ on:
       toolchain:
         required: true
         type: string
+      working-directory:
+        default: .
+        type: string
 
 jobs:
   build_and_test:
@@ -25,12 +28,14 @@ jobs:
           path: |
             ~/.cargo
             target
-          key: ${{ inputs.os }}-cargo-${{ hashFiles('Cargo.toml') }}
+          key: ${{ format('{0}-cargo-{1}', inputs.os, hashFiles(format('{0}/Cargo.toml', inputs.working-directory))) }}
           restore-keys: |
-            ${{ inputs.os }}-cargo-${{ hashFiles('Cargo.toml') }}
+            ${{ format('{0}-cargo-{1}', inputs.os, hashFiles(format('{0}/Cargo.toml', inputs.working-directory))) }}
             ${{ inputs.os }}-cargo
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.toolchain }}
       - run: cargo build --verbose
+        working-directory: ${{ inputs.working-directory }}
       - run: cargo test --verbose
+        working-directory: ${{ inputs.working-directory }}
