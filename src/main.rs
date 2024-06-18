@@ -1,6 +1,6 @@
-//! Provides the main entry point to the muse2 program.
+//! Provides the main entry point to the program.
 
-mod muse2;
+mod simulation;
 
 use std::env;
 use std::path::Path;
@@ -12,5 +12,5 @@ fn main() {
         panic!("Must provide path to model configuration TOML file.");
     }
 
-    muse2::run(Path::new(&args[1]))
+    simulation::run(Path::new(&args[1]))
 }
