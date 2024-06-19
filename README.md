@@ -10,11 +10,15 @@ faster version of [the older MUSE tool].
 
 Documentation is available on our [GitHub Pages site].
 
+For example Rust code showing how to solve a constrained optimisation, see the
+[`highs-example-rust`] repository.
+
 :construction: Note that this repository is under heavy development and not suitable for end users!
 :construction:
 
 [the older MUSE tool]: https://github.com/EnergySystemsModellingLab/MUSE_OS
 [GitHub Pages site]: https://energysystemsmodellinglab.github.io/MUSE_2.0
+[`highs-example-rust`]: https://github.com/EnergySystemsModellingLab/highs-example-rust
 
 ## Getting started
 

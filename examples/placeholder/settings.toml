@@ -1,3 +1,0 @@
-[input_files]
-variables_file_path = "variables.csv"
-constraints_file_path = "constraints.csv"
