@@ -1,12 +1,16 @@
-//! High level functionality for launching a simulation.
+use crate::settings::read_settings;
 use std::path::Path;
 
-/// Run the simulation
-///
-/// Arguments:
-///
-/// * `settings_file_path`: The path to the TOML file containing the model's configuration
-pub fn run(settings_file_path: &Path) {
-    // Placeholder code
-    println!("Config file: {}", settings_file_path.to_str().unwrap())
+pub fn initialize_simulation() {
+    // Specify the path to the settings.toml file
+    let settings_file_path = Path::new("examples/simple/settings.toml");
+
+    // Read and process the settings file
+    let settings = read_settings(settings_file_path);
+
+    // Example usage: Accessing the milestone years
+    println!("Milestone Years: {:?}", settings.milestone_years.years);
+
+    // Use settings as needed for your simulation or other functionality
+    dbg!(settings);
 }
