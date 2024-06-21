@@ -1,16 +1,19 @@
-//! Provides the main entry point to the program.
+mod regions;
 
-mod simulation;
-
-use std::env;
 use std::path::Path;
+use regions::read_regions_from_csv;
 
-/// The main entry point to the program
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        panic!("Must provide path to model configuration TOML file.");
+    let file_path = Path::new("regions.csv");
+    
+    match read_regions_from_csv(file_path) {
+        Ok(regions) => {
+            for region in regions {
+                println!("Short Name: {}, Description: {}", region.short_name, region.description);
+            }
+        }
+        Err(err) => {
+            eprintln!("Error reading regions from CSV: {}", err);
+        }
     }
-
-    simulation::run(Path::new(&args[1]))
 }
