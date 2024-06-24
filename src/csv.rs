@@ -8,7 +8,7 @@ use serde_with::serde_as;
 #[serde_as]
 #[derive(Debug, Deserialize)]
 /// Represents an agent with various attributes including name, description, and decision rules.
-struct Agent {
+pub struct Agent {
     /// The name of the agent (required).
     name: String,
     /// A description of the agent (optional).
@@ -47,7 +47,7 @@ fn default_search_space() -> String {
 /// ```
 /// let agents = read_agents_from_csv(Path::new("agents.csv")).expect("Failed to read agents");
 /// ```
-fn read_agents_from_csv(file_path: &Path) -> Result<Vec<Agent>, Box<dyn Error>> {
+pub fn read_agents_from_csv(file_path: &Path) -> Result<Vec<Agent>, Box<dyn Error>> {
     let file = File::open(file_path)?;
     let mut rdr = Reader::from_reader(file);
     let mut agents = Vec::new();
@@ -58,17 +58,6 @@ fn read_agents_from_csv(file_path: &Path) -> Result<Vec<Agent>, Box<dyn Error>> 
     }
 
     Ok(agents)
-}
-
-fn main() -> Result<(), Box<dyn Error>> {
-    let file_path = Path::new("agents.csv");
-    let agents = read_agents_from_csv(file_path)?;
-
-    for agent in agents {
-        println!("{:?}", agent);
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]
