@@ -1,16 +1,16 @@
 //! Provides the main entry point to the program.
 
-mod simulation;
-
-use std::env;
+use std::error::Error;
 use std::path::Path;
+mod csv;
+use csv::read_agents_from_csv;
 
-/// The main entry point to the program
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        panic!("Must provide path to model configuration TOML file.");
+fn main() -> Result<(), Box<dyn Error>> {
+    let file_path = Path::new("agents.csv");
+    let agents = read_agents_from_csv(file_path)?;
+
+    for agent in agents {
+        println!("{:?}", agent);
     }
 
-    simulation::run(Path::new(&args[1]))
-}
+    Ok(())
