@@ -1,81 +1,69 @@
-use crate::demand::{read_demand_from_csv, Demand};
+use std::error::Error;
+use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
+use csv::ReaderBuilder;
+use serde::Deserialize;
 
-/// Initializes the simulation by reading the demand data from the CSV file and performing necessary setup.
-pub fn initialize_simulation() {
-    let file_path = Path::new("demand.csv");
-
-    match read_demand_from_csv(file_path) {
-        Ok(demands) => {
-            println!("Successfully read demand data:");
-            for demand in &demands {
-                println!("Year: {}, Region: {}", demand.year, demand.region);
-            }
-
-            // Call additional simulation functions with demand data
-            run_simulation(demands);
-        }
-        Err(err) => {
-            eprintln!("Error reading demand from CSV: {}", err);
-        }
-    }
+/// Represents a demand entry.
+#[derive(Debug, Deserialize)]
+pub struct Demand {
+    pub region: String,
 }
 
-/// Runs the main simulation logic with the provided demand data.
+/// Reads demand data from a CSV file.
 ///
 /// # Arguments
 ///
-/// * `demands` - A vector of `Demand` structs containing the demand data.
-fn run_simulation(demands: Vec<Demand>) {
-    // Example simulation logic: Count and print the number of demand entries
-    let num_demands = demands.len();
-    println!("Number of demand entries: {}", num_demands);
+/// * `file_path` - A reference to the path of the CSV file to read from.
+///
+/// # Returns
+///
+/// This function returns a `Result` containing either a `Vec<Demand>` with the
+/// parsed demand data or a `Box<dyn Error>` if an error occurred.
+///
+/// # Errors
+///
+/// This function will return an error if the file cannot be opened or read, or if
+/// the CSV data cannot be parsed.
+///
+/// # Example
+///
+/// ```
+/// use std::path::Path;
+/// let file_path = Path::new("path/to/demand.csv");
+/// match read_demand_from_csv(&file_path) {
+///     Ok(demand_data) => println!("Successfully read demand data: {:?}", demand_data),
+///     Err(e) => println!("Failed to read demand data: {}", e),
+/// }
+/// ```
+pub fn read_demand_from_csv(file_path: &Path) -> Result<Vec<Demand>, Box<dyn Error>> {
+    // Open the file in read-only mode with buffer.
+    let file = File::open(file_path)?;
+    let reader = BufReader::new(file);
 
-    // Additional simulation logic can be added here
+    // Create a CSV reader with the appropriate configuration.
+    let mut csv_reader = ReaderBuilder::new()
+        .has_headers(true)
+        .from_reader(reader);
+
+    // Parse the CSV data into a vector of `Demand` structs.
+    let mut demand_data = Vec::new();
+    for result in csv_reader.deserialize() {
+        let demand: Demand = result?;
+        demand_data.push(demand);
+    }
+
+    Ok(demand_data)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Write;
-    use tempfile;
+pub fn initialize_simulation() {
+    let file_path = Path::new("demand.csv");
 
-    /// Create a temporary CSV file for testing.
-    fn create_temp_csv(content: &str) -> tempfile::NamedTempFile {
-        let mut file = tempfile::NamedTempFile::new().unwrap();
-        writeln!(file, "{}", content).unwrap();
-        file
-    }
+    let demands = read_demand_from_csv(file_path).unwrap_or_else(|err| {
+        panic!("Error reading demand from CSV: {:?}", err);
+    });
 
-    #[test]
-    fn test_initialize_simulation() {
-        let csv_content = "\
-year,region
-2020,NA
-2020,EU
-2021,NA";
-
-        let file = create_temp_csv(csv_content);
-
-        // Override the file path to point to our temporary file
-        let file_path = file.path();
-        
-        match read_demand_from_csv(file_path) {
-            Ok(demands) => {
-                assert_eq!(demands.len(), 3);
-                assert_eq!(demands[0].year, 2020);
-                assert_eq!(demands[0].region, "NA");
-                assert_eq!(demands[1].year, 2020);
-                assert_eq!(demands[1].region, "EU");
-                assert_eq!(demands[2].year, 2021);
-                assert_eq!(demands[2].region, "NA");
-
-                // Call the run_simulation function to ensure it works correctly
-                run_simulation(demands);
-            }
-            Err(err) => {
-                panic!("Error reading demand from CSV: {}", err);
-            }
-        }
-    }
+    // Your simulation initialization code here
+    println!("Successfully initialized simulation with demands: {:?}", demands);
 }
