@@ -9,6 +9,32 @@ pub struct Demand {
     pub year: u32,
     pub region: String,
 }
+/// Reads demand data from a CSV file.
+///
+/// # Arguments
+///
+/// * `file_path` - A reference to the path of the CSV file to read from.
+///
+/// # Returns
+///
+/// This function returns a `Result` containing either a `Vec<Demand>` with the
+/// parsed demand data or a `Box<dyn Error>` if an error occurred.
+///
+/// # Errors
+///
+/// This function will return an error if the file cannot be opened or read, or if
+/// the CSV data cannot be parsed.
+///
+/// # Example
+///
+/// ```
+/// use std::path::Path;
+/// let file_path = Path::new("path/to/demand.csv");
+/// match read_demand_from_csv(&file_path) {
+///     Ok(demand_data) => println!("Successfully read demand data: {:?}", demand_data),
+///     Err(e) => println!("Failed to read demand data: {}", e),
+/// }
+/// ```
 
 pub fn read_demand_from_csv(file_path: &Path) -> Result<Vec<Demand>, Box<dyn Error>> {
     let file = File::open(file_path)?;
