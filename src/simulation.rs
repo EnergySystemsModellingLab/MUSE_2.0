@@ -57,6 +57,7 @@ pub fn read_demand_from_csv(file_path: &Path) -> Result<Vec<Demand>, Box<dyn Err
     Ok(demand_data)
 }
 
+/// Initializes the simulation.
 pub fn initialize_simulation() {
     let file_path = Path::new("demand.csv");
 
@@ -66,4 +67,13 @@ pub fn initialize_simulation() {
 
     // Your simulation initialization code here
     println!("Successfully initialized simulation with demands: {:?}", demands);
+}
+
+/// Runs the simulation.
+///
+/// # Arguments
+///
+/// * `file_path` - A reference to the path of the CSV file to read from.
+pub fn run(file_path: &Path) {
+    initialize_simulation();
 }
