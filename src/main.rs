@@ -3,5 +3,6 @@ mod simulation;
 
 fn main() {
     // Initialize the simulation
-    simulation::initialize_simulation();
+    let data = simulation::initialize_simulation();
+    simulation::run(data);
 }
