@@ -150,6 +150,5 @@ mod tests {
         assert_eq!(settings.milestone_years.years, vec![2020]);
 
         // Additional assertions can be added to test the absolute paths
-        dbg!(settings);
     }
 }
