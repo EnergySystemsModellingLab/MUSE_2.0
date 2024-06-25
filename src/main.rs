@@ -1,6 +1,7 @@
 //! Provides the main entry point to the program.
 
 mod simulation;
+mod settings;
 
 use std::env;
 use std::path::Path;
