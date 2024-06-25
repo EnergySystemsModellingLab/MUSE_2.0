@@ -2,6 +2,7 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
+use float_cmp::approx_eq;
 use serde::Deserialize;
 use std::error::Error;
 use std::path::Path;
@@ -26,7 +27,23 @@ pub fn read_time_slices(csv_file_path: &Path) -> Result<Vec<TimeSlice>, Box<dyn 
         time_slices.push(time_slice)
     }
 
+    check_time_slice_fractions_sum_to_one(&time_slices)?;
     Ok(time_slices)
+}
+
+/// Check that time slice fractions sum to (approximately) one
+fn check_time_slice_fractions_sum_to_one(time_slices: &[TimeSlice]) -> Result<(), &'static str> {
+    // We still want the check to pass if there are no time slices
+    if time_slices.is_empty() {
+        return Ok(());
+    }
+
+    let sum = time_slices.iter().map(|ts| ts.fraction).sum();
+    if !approx_eq!(f64, sum, 1.0) {
+        Err("Sum of time slice fractions does not equal one")?;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -84,5 +101,37 @@ autumn,evening,0.25"
                 }
             ]
         )
+    }
+
+    #[test]
+    fn test_check_time_slice_fractions_sum_to_one() {
+        macro_rules! ts {
+            ($fraction:expr) => {
+                TimeSlice {
+                    season: "summer".to_string(),
+                    time_of_day: "day".to_string(),
+                    fraction: $fraction,
+                }
+            };
+        }
+
+        // Check that it passes when no time slices are passed in
+        assert!(check_time_slice_fractions_sum_to_one(&[]).is_ok());
+
+        // Single input, valid
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(1.0)]).is_ok());
+
+        // Single input, invalid
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.5)]).is_err());
+
+        // Multiple inputs, valid
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.4), ts!(0.6)]).is_ok());
+
+        // Multiple inputs, invalid
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.4), ts!(0.3)]).is_err());
+
+        // Edge cases
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(f64::INFINITY)]).is_err());
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(f64::NAN)]).is_err());
     }
 }
