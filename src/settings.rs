@@ -1,7 +1,6 @@
 use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
-use toml;
 
 /// Represents the contents of the entire settings file.
 #[derive(Debug, Deserialize, PartialEq)]
