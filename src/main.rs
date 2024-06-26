@@ -12,5 +12,7 @@ fn main() {
         panic!("Must provide path to model configuration TOML file.");
     }
 
+    println!("Hello ashmit");
+
     simulation::run(Path::new(&args[1]))
 }
