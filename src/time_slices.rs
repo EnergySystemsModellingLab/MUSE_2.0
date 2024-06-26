@@ -52,7 +52,7 @@ fn check_time_slice_fractions_sum_to_one(time_slices: &[TimeSlice]) -> Result<()
     }
 
     let sum = time_slices.iter().map(|ts| ts.fraction).sum();
-    if !approx_eq!(f64, sum, 1.0) {
+    if !approx_eq!(f64, sum, 1.0, epsilon = 1e-5) {
         Err(format!(
             "Sum of time slice fractions does not equal one (actual: {})",
             sum
