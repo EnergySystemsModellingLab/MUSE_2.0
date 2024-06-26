@@ -45,7 +45,7 @@ fn check_time_slice_fractions_in_range(time_slices: &[TimeSlice]) -> Result<(), 
 }
 
 /// Check that time slice fractions sum to (approximately) one
-fn check_time_slice_fractions_sum_to_one(time_slices: &[TimeSlice]) -> Result<(), &'static str> {
+fn check_time_slice_fractions_sum_to_one(time_slices: &[TimeSlice]) -> Result<(), String> {
     // We still want the check to pass if there are no time slices
     if time_slices.is_empty() {
         return Ok(());
@@ -53,7 +53,10 @@ fn check_time_slice_fractions_sum_to_one(time_slices: &[TimeSlice]) -> Result<()
 
     let sum = time_slices.iter().map(|ts| ts.fraction).sum();
     if !approx_eq!(f64, sum, 1.0) {
-        Err("Sum of time slice fractions does not equal one")?;
+        Err(format!(
+            "Sum of time slice fractions does not equal one (actual: {})",
+            sum
+        ))?;
     }
 
     Ok(())
