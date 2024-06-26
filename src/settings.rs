@@ -120,24 +120,33 @@ mod tests {
                     agent_regions_file_path: PathBuf::from_str("agent_regions.csv").unwrap(),
                     assets_file_path: PathBuf::from_str("assets.csv").unwrap(),
                     commodities_file_path: PathBuf::from_str("commodities.csv").unwrap(),
-                    commodity_constraints_file_path: PathBuf::from_str("commodity_constraints.csv").unwrap(),
+                    commodity_constraints_file_path: PathBuf::from_str("commodity_constraints.csv")
+                        .unwrap(),
                     commodity_costs_file_path: PathBuf::from_str("commodity_costs.csv").unwrap(),
                     demand_file_path: PathBuf::from_str("demand.csv").unwrap(),
                     demand_slicing_file_path: PathBuf::from_str("demand_slicing.csv").unwrap(),
                     processes_file_path: PathBuf::from_str("processes.csv").unwrap(),
-                    process_availabilities_file_path: PathBuf::from_str("process_availabilities.csv").unwrap(),
-                    process_flow_share_constraints_file_path: PathBuf::from_str("process_flow_share_constraints.csv").unwrap(),
+                    process_availabilities_file_path: PathBuf::from_str(
+                        "process_availabilities.csv"
+                    )
+                    .unwrap(),
+                    process_flow_share_constraints_file_path: PathBuf::from_str(
+                        "process_flow_share_constraints.csv"
+                    )
+                    .unwrap(),
                     process_flows_file_path: PathBuf::from_str("process_flows.csv").unwrap(),
-                    process_investment_constraints_file_path: PathBuf::from_str("process_investment_constraints.csv").unwrap(),
+                    process_investment_constraints_file_path: PathBuf::from_str(
+                        "process_investment_constraints.csv"
+                    )
+                    .unwrap(),
                     process_pacs_file_path: PathBuf::from_str("process_pacs.csv").unwrap(),
-                    process_parameters_file_path: PathBuf::from_str("process_parameters.csv").unwrap(),
+                    process_parameters_file_path: PathBuf::from_str("process_parameters.csv")
+                        .unwrap(),
                     process_regions_file_path: PathBuf::from_str("process_regions.csv").unwrap(),
                     regions_file_path: PathBuf::from_str("regions.csv").unwrap(),
                     time_slices_path: PathBuf::from_str("time_slices.csv").unwrap(),
                 },
-                milestone_years: MilestoneYears {
-                    years: vec![2020]
-                }
+                milestone_years: MilestoneYears { years: vec![2020] }
             }
         )
     }
