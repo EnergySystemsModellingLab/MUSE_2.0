@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 /// Represents the contents of the entire settings file.
 #[derive(Debug, Deserialize, PartialEq)]
-pub struct Settings {
+pub struct SettingsFile {
     pub input_files: InputFiles,
     pub milestone_years: MilestoneYears,
 }
@@ -41,9 +41,9 @@ pub struct MilestoneYears {
 }
 
 /// Read a settings file from the given path.
-fn read_settings_file(path: &Path) -> Result<Settings, Box<dyn Error>> {
+fn read_settings_file(path: &Path) -> Result<SettingsFile, Box<dyn Error>> {
     let settings_str = fs::read_to_string(path)?;
-    let settings: Settings = toml::from_str(&settings_str)?;
+    let settings: SettingsFile = toml::from_str(&settings_str)?;
     Ok(settings)
 }
 
@@ -53,7 +53,7 @@ fn read_settings_file(path: &Path) -> Result<Settings, Box<dyn Error>> {
 ///
 /// * `settings_file_path`: The path to the settings TOML file (which includes paths to other
 ///                         configuration files)
-pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Error>> {
+pub fn read_settings(settings_file_path: &Path) -> Result<SettingsFile, Box<dyn Error>> {
     let mut settings = read_settings_file(settings_file_path)?;
 
     // For paths to other files listed in the settings file, if they're relative, we treat them as
@@ -125,7 +125,7 @@ mod tests {
 
         assert_eq!(
             settings,
-            Settings {
+            SettingsFile {
                 input_files: InputFiles {
                     agents_file_path: PathBuf::from_str("agents.csv").unwrap(),
                     agent_objectives_file_path: PathBuf::from_str("agent_objectives.csv").unwrap(),
