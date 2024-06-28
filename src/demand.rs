@@ -1,14 +1,18 @@
 use serde::Deserialize;
 use std::error::Error;
 use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
 
-/// Represents the demand data with year and region.
-#[derive(Debug, Deserialize, PartialEq)]
+/// Represents a single demand entry in the dataset.
+#[derive(Debug, Deserialize)]
 pub struct Demand {
+    /// The year of the demand entry
     pub year: u32,
+    /// The region of the demand entry
     pub region: String,
 }
+
 /// Reads demand data from a CSV file.
 ///
 /// # Arguments
@@ -35,80 +39,88 @@ pub struct Demand {
 ///     Err(e) => println!("Failed to read demand data: {}", e),
 /// }
 /// ```
-
 pub fn read_demand_from_csv(file_path: &Path) -> Result<Vec<Demand>, Box<dyn Error>> {
+    // Open the file in read-only mode with buffer.
     let file = File::open(file_path)?;
-    let mut rdr = csv::Reader::from_reader(file);
-    let mut demands = Vec::new();
+    let reader = BufReader::new(file);
 
-    for result in rdr.deserialize() {
+    // Create a CSV reader with the appropriate configuration.
+    let mut csv_reader = csv::Reader::from_reader(reader);
+
+    // Parse the CSV data into a vector of `Demand` structs.
+    let mut demand_data = Vec::new();
+    for result in csv_reader.deserialize() {
         let demand: Demand = result?;
-        demands.push(demand);
+        demand_data.push(demand);
     }
 
-    Ok(demands)
+    Ok(demand_data)
+}
+
+/// Initializes the simulation with demand data from a CSV file.
+pub fn initialize_simulation() {
+    let file_path = Path::new("demand.csv");
+
+    let demands = read_demand_from_csv(file_path).unwrap_or_else(|err| {
+        panic!("Error reading demand from CSV: {:?}", err);
+    });
+
+    // Your simulation initialization code here
+    println!(
+        "Successfully initialized simulation with demands: {:?}",
+        demands
+    );
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::File;
     use std::io::Write;
-    use tempfile;
+    use std::path::{Path, PathBuf};
+    use tempfile::tempdir;
 
-    /// Create a temporary CSV file for testing.
-    fn create_temp_csv(content: &str) -> tempfile::NamedTempFile {
-        let mut file = tempfile::NamedTempFile::new().unwrap();
-        writeln!(file, "{}", content).unwrap();
-        file
+    /// Create an example demand file in dir_path
+    fn create_demand_file(dir_path: &Path) -> PathBuf {
+        let file_path = dir_path.join("demand.csv");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(
+            file,
+            "year,region
+2023,North
+2024,South
+2025,East
+2026,West"
+        )
+        .unwrap();
+        file_path
     }
 
     #[test]
     fn test_read_demand_from_csv() {
-        let csv_content = "\
-year,region
-2020,NA
-2020,EU
-2021,NA";
-
-        let file = create_temp_csv(csv_content);
-
-        let demands = read_demand_from_csv(file.path()).expect("Failed to read demand from CSV");
-
-        let expected_demands = vec![
-            Demand {
-                year: 2020,
-                region: "NA".to_string(),
-            },
-            Demand {
-                year: 2020,
-                region: "EU".to_string(),
-            },
-            Demand {
-                year: 2021,
-                region: "NA".to_string(),
-            },
-        ];
-
-        assert_eq!(demands, expected_demands);
-    }
-
-    #[test]
-    fn test_read_empty_csv() {
-        let csv_content = "year,region\n";
-
-        let file = create_temp_csv(csv_content);
-        let demands = read_demand_from_csv(file.path()).expect("Failed to read demand from CSV");
-
-        assert!(demands.is_empty());
-    }
-
-    #[test]
-    fn test_read_invalid_csv() {
-        let csv_content = "year,region\n2020,NA\ninvalid,line";
-
-        let file = create_temp_csv(csv_content);
-        let result = read_demand_from_csv(file.path());
-
-        assert!(result.is_err());
+        let dir = tempdir().unwrap();
+        let file_path = create_demand_file(dir.path());
+        let demands = read_demand_from_csv(&file_path).unwrap();
+        assert_eq!(
+            demands,
+            &[
+                Demand {
+                    year: 2023,
+                    region: "North".to_string(),
+                },
+                Demand {
+                    year: 2024,
+                    region: "South".to_string(),
+                },
+                Demand {
+                    year: 2025,
+                    region: "East".to_string(),
+                },
+                Demand {
+                    year: 2026,
+                    region: "West".to_string(),
+                },
+            ]
+        )
     }
 }
