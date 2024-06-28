@@ -19,7 +19,7 @@ pub struct TimeSlice {
 }
 
 /// Read time slices from a CSV file
-pub fn read_time_slices(csv_file_path: &Path) -> Result<Vec<TimeSlice>, Box<dyn Error>> {
+pub fn read_time_slices(csv_file_path: &Path) -> Result<Option<Vec<TimeSlice>>, Box<dyn Error>> {
     let mut reader = csv::Reader::from_path(csv_file_path)?;
     let mut time_slices = Vec::new();
     for result in reader.deserialize() {
@@ -27,9 +27,14 @@ pub fn read_time_slices(csv_file_path: &Path) -> Result<Vec<TimeSlice>, Box<dyn 
         time_slices.push(time_slice)
     }
 
+    if time_slices.is_empty() {
+        eprintln!("WARNING: Empty time slices CSV file; will use a single time slice");
+        return Ok(None);
+    }
+
     check_time_slice_fractions_in_range(&time_slices)?;
     check_time_slice_fractions_sum_to_one(&time_slices)?;
-    Ok(time_slices)
+    Ok(Some(time_slices))
 }
 
 /// Check that time slice fractions are all in the range 0 to 1
@@ -46,11 +51,6 @@ fn check_time_slice_fractions_in_range(time_slices: &[TimeSlice]) -> Result<(), 
 
 /// Check that time slice fractions sum to (approximately) one
 fn check_time_slice_fractions_sum_to_one(time_slices: &[TimeSlice]) -> Result<(), String> {
-    // We still want the check to pass if there are no time slices
-    if time_slices.is_empty() {
-        return Ok(());
-    }
-
     let sum = time_slices.iter().map(|ts| ts.fraction).sum();
     if !approx_eq!(f64, sum, 1.0, epsilon = 1e-5) {
         Err(format!(
@@ -101,7 +101,7 @@ autumn,evening,0.25"
     fn test_read_time_slices() {
         let dir = tempdir().unwrap();
         let file_path = create_time_slices_file(dir.path());
-        let time_slices = read_time_slices(&file_path).unwrap();
+        let time_slices = read_time_slices(&file_path).unwrap().unwrap();
         assert_eq!(
             time_slices,
             &[
@@ -161,9 +161,6 @@ autumn,evening,0.25"
 
     #[test]
     fn test_check_time_slice_fractions_sum_to_one() {
-        // Check that it passes when no time slices are passed in
-        assert!(check_time_slice_fractions_sum_to_one(&[]).is_ok());
-
         // Single input, valid
         assert!(check_time_slice_fractions_sum_to_one(&[ts!(1.0)]).is_ok());
 

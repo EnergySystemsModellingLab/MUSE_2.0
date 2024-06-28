@@ -21,11 +21,13 @@ pub fn run(settings_file_path: &Path, time_slices_file_path: &Path) {
     dbg!(settings);
 
     // Placeholder code for time slices
-    let time_slices = read_time_slices(time_slices_file_path).unwrap_or_else(|err| {
-        panic!(
-            "Failed to read time slices file {:?}: {:?}",
-            time_slices_file_path, err
-        )
-    });
+    let time_slices = read_time_slices(time_slices_file_path)
+        .unwrap_or_else(|err| {
+            panic!(
+                "Failed to read time slices file {:?}: {:?}",
+                time_slices_file_path, err
+            )
+        })
+        .unwrap();
     dbg!(time_slices);
 }
