@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -40,11 +41,10 @@ pub struct MilestoneYears {
 }
 
 /// Read a settings file from the given path.
-fn read_settings_file(path: &Path) -> Settings {
-    let config_str = fs::read_to_string(path)
-        .unwrap_or_else(|err| panic!("Failed to read file {:?}: {:?}", path, err));
-    toml::from_str(&config_str)
-        .unwrap_or_else(|err| panic!("Could not parse settings file: {:?}", err))
+fn read_settings_file(path: &Path) -> Result<Settings, Box<dyn Error>> {
+    let config_str = fs::read_to_string(path)?;
+    let settings: Settings = toml::from_str(&config_str)?;
+    Ok(settings)
 }
 
 /// Read settings from disk and update paths.
@@ -53,8 +53,8 @@ fn read_settings_file(path: &Path) -> Settings {
 ///
 /// * `settings_file_path`: The path to the settings TOML file (which includes paths to other
 ///                         configuration files)
-pub fn read_settings(settings_file_path: &Path) -> Settings {
-    let mut config = read_settings_file(settings_file_path);
+pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Error>> {
+    let mut config = read_settings_file(settings_file_path)?;
 
     // For paths to other files listed in the settings file, if they're relative, we treat them as
     // relative to the folder the settings file is in.
@@ -87,7 +87,7 @@ pub fn read_settings(settings_file_path: &Path) -> Settings {
     update_path!(config.input_files.regions_file_path);
     update_path!(config.input_files.time_slices_path);
 
-    config
+    Ok(config)
 }
 
 #[cfg(test)]
@@ -109,7 +109,8 @@ mod tests {
 
     #[test]
     fn test_read_settings_file() {
-        let settings = read_settings_file(&get_settings_file_path());
+        let settings = read_settings_file(&get_settings_file_path())
+            .expect("Failed to read read example settings file");
 
         assert_eq!(
             settings,
@@ -153,10 +154,9 @@ mod tests {
 
     #[test]
     fn test_read_settings() {
-        let settings = read_settings(&get_settings_file_path());
+        let settings =
+            read_settings(&get_settings_file_path()).expect("Failed to read example settings file");
 
         assert_eq!(settings.milestone_years.years, vec![2020]);
-
-        // Additional assertions can be added to test the absolute paths
     }
 }

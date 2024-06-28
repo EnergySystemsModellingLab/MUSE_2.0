@@ -3,7 +3,8 @@ use std::path::Path;
 
 pub fn run(settings_file_path: &Path) {
     // Read and process the settings file
-    let settings = read_settings(settings_file_path);
+    let settings = read_settings(settings_file_path)
+        .unwrap_or_else(|err| panic!("Failed to load settings: {}", err));
 
     // Example usage: Accessing the milestone years
     println!("Milestone Years: {:?}", settings.milestone_years.years);
