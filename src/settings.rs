@@ -42,8 +42,8 @@ pub struct MilestoneYears {
 
 /// Read a settings file from the given path.
 fn read_settings_file(path: &Path) -> Result<Settings, Box<dyn Error>> {
-    let config_str = fs::read_to_string(path)?;
-    let settings: Settings = toml::from_str(&config_str)?;
+    let settings_str = fs::read_to_string(path)?;
+    let settings: Settings = toml::from_str(&settings_str)?;
     Ok(settings)
 }
 
@@ -54,40 +54,48 @@ fn read_settings_file(path: &Path) -> Result<Settings, Box<dyn Error>> {
 /// * `settings_file_path`: The path to the settings TOML file (which includes paths to other
 ///                         configuration files)
 pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Error>> {
-    let mut config = read_settings_file(settings_file_path)?;
+    let mut settings = read_settings_file(settings_file_path)?;
 
     // For paths to other files listed in the settings file, if they're relative, we treat them as
     // relative to the folder the settings file is in.
     let settings_dir = settings_file_path.parent().unwrap(); // will never fail
 
-    // Update the file paths in the config to be absolute paths
+    // Update the file paths in settings to be absolute paths
     macro_rules! update_path {
         ($path:expr) => {
             $path = settings_dir.join(&$path);
         };
     }
 
-    update_path!(config.input_files.agents_file_path);
-    update_path!(config.input_files.agent_objectives_file_path);
-    update_path!(config.input_files.agent_regions_file_path);
-    update_path!(config.input_files.assets_file_path);
-    update_path!(config.input_files.commodities_file_path);
-    update_path!(config.input_files.commodity_constraints_file_path);
-    update_path!(config.input_files.commodity_costs_file_path);
-    update_path!(config.input_files.demand_file_path);
-    update_path!(config.input_files.demand_slicing_file_path);
-    update_path!(config.input_files.processes_file_path);
-    update_path!(config.input_files.process_availabilities_file_path);
-    update_path!(config.input_files.process_flow_share_constraints_file_path);
-    update_path!(config.input_files.process_flows_file_path);
-    update_path!(config.input_files.process_investment_constraints_file_path);
-    update_path!(config.input_files.process_pacs_file_path);
-    update_path!(config.input_files.process_parameters_file_path);
-    update_path!(config.input_files.process_regions_file_path);
-    update_path!(config.input_files.regions_file_path);
-    update_path!(config.input_files.time_slices_path);
+    update_path!(settings.input_files.agents_file_path);
+    update_path!(settings.input_files.agent_objectives_file_path);
+    update_path!(settings.input_files.agent_regions_file_path);
+    update_path!(settings.input_files.assets_file_path);
+    update_path!(settings.input_files.commodities_file_path);
+    update_path!(settings.input_files.commodity_constraints_file_path);
+    update_path!(settings.input_files.commodity_costs_file_path);
+    update_path!(settings.input_files.demand_file_path);
+    update_path!(settings.input_files.demand_slicing_file_path);
+    update_path!(settings.input_files.processes_file_path);
+    update_path!(settings.input_files.process_availabilities_file_path);
+    update_path!(
+        settings
+            .input_files
+            .process_flow_share_constraints_file_path
+    );
+    update_path!(settings.input_files.process_flows_file_path);
+    update_path!(
+        settings
+            .input_files
+            .process_investment_constraints_file_path
+    );
+    update_path!(settings.input_files.process_pacs_file_path);
+    update_path!(settings.input_files.process_parameters_file_path);
+    update_path!(settings.input_files.process_regions_file_path);
+    update_path!(settings.input_files.regions_file_path);
+    update_path!(settings.input_files.time_slices_path);
 
-    Ok(config)
+    Ok(settings)
 }
 
 #[cfg(test)]
