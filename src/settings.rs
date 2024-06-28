@@ -31,7 +31,7 @@ pub struct InputFiles {
     pub process_parameters_file_path: PathBuf,
     pub process_regions_file_path: PathBuf,
     pub regions_file_path: PathBuf,
-    pub time_slices_path: PathBuf,
+    pub time_slices_path: Option<PathBuf>,
 }
 
 /// Represents the "milestone_years" section of the settings file.
@@ -93,7 +93,10 @@ pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Erro
     update_path!(settings.input_files.process_parameters_file_path);
     update_path!(settings.input_files.process_regions_file_path);
     update_path!(settings.input_files.regions_file_path);
-    update_path!(settings.input_files.time_slices_path);
+    if let Some(mut time_slices_path) = settings.input_files.time_slices_path {
+        update_path!(time_slices_path);
+        settings.input_files.time_slices_path = Some(time_slices_path);
+    }
 
     Ok(settings)
 }
@@ -153,7 +156,7 @@ mod tests {
                         .unwrap(),
                     process_regions_file_path: PathBuf::from_str("process_regions.csv").unwrap(),
                     regions_file_path: PathBuf::from_str("regions.csv").unwrap(),
-                    time_slices_path: PathBuf::from_str("time_slices.csv").unwrap(),
+                    time_slices_path: Some(PathBuf::from_str("time_slices.csv").unwrap()),
                 },
                 milestone_years: MilestoneYears { years: vec![2020] }
             }
