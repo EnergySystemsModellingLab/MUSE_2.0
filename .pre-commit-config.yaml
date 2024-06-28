@@ -20,6 +20,7 @@ repos:
       - id: pretty-format-toml
         args: [--autofix, --indent, "4", --no-sort]
       - id: pretty-format-rust
+        args: [--autofix]
   - repo: https://github.com/doublify/pre-commit-rust
     rev: v1.0
     hooks:
