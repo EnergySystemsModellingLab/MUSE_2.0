@@ -2,6 +2,7 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
+use crate::input::read_vec_from_csv;
 use float_cmp::approx_eq;
 use serde::Deserialize;
 use std::error::Error;
@@ -20,12 +21,7 @@ pub struct TimeSlice {
 
 /// Read time slices from a CSV file
 pub fn read_time_slices(csv_file_path: &Path) -> Result<Vec<TimeSlice>, Box<dyn Error>> {
-    let mut reader = csv::Reader::from_path(csv_file_path)?;
-    let mut time_slices = Vec::new();
-    for result in reader.deserialize() {
-        let time_slice: TimeSlice = result?;
-        time_slices.push(time_slice)
-    }
+    let time_slices = read_vec_from_csv(csv_file_path)?;
 
     if time_slices.is_empty() {
         Err("Time slices file cannot be empty")?;
