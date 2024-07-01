@@ -126,8 +126,8 @@ pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Erro
     // If there are no time slices to read, use a default time slice which covers the whole year and
     // the whole day
     let time_slices = opt_time_slices.unwrap_or(vec![TimeSlice {
-        season: "all_year".to_string(),
-        time_of_day: "all_day".to_string(),
+        season: "all-year".to_string(),
+        time_of_day: "all-day".to_string(),
         fraction: 1.0,
     }]);
 
