@@ -4,7 +4,7 @@ use std::path::Path;
 
 /// Run the simulation
 ///
-/// Arguments:
+/// # Arguments:
 ///
 /// * `settings_file_path`: The path to the TOML file containing the model's configuration
 pub fn run(settings_file_path: &Path) {
