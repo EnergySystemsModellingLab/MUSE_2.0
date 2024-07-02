@@ -1,0 +1,52 @@
+use std::fs::File;
+use std::io::Write;
+use std::error::Error;
+use toml::Value;
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+pub struct Asset {
+    pub id: u32,
+    pub name: String,
+    pub value: f64,
+}
+
+fn setup_test_demand_csv(file_path: &str) {
+    let mut file = File::create(file_path).expect("Could not create test CSV file");
+    file.write_all(b"id,name,value\n1,Asset1,100.0\n2,Asset2,200.0\n")
+        .expect("Could not write to test CSV file");
+}
+
+fn setup_test_settings_toml(file_path: &str, csv_path: &str) {
+    let toml_content = format!("[csv]\ndemand_file_path = \"{}\"\n", csv_path);
+    let mut file = File::create(file_path).expect("Could not create test TOML file");
+    file.write_all(toml_content.as_bytes())
+        .expect("Could not write to test TOML file");
+}
+
+#[test]
+fn test_read_csv_from_toml() -> Result<(), Box<dyn Error>> {
+    let test_csv_path = "test_demand.csv";
+    let test_toml_path = "test_settings.toml";
+
+    setup_test_demand_csv(test_csv_path);
+    setup_test_settings_toml(test_toml_path, test_csv_path);
+
+    let config_path = test_toml_path;
+    let csv_file = crate::read_toml_config(config_path)?;
+
+    assert_eq!(csv_file, test_csv_path);
+
+    let assets = crate::csv_reader::read_csv(&csv_file)?;
+
+    assert_eq!(assets.len(), 2);
+    assert_eq!(assets[0].id, 1);
+    assert_eq!(assets[0].name, "Asset1");
+    assert_eq!(assets[0].value, 100.0);
+
+    assert_eq!(assets[1].id, 2);
+    assert_eq!(assets[1].name, "Asset2");
+    assert_eq!(assets[1].value, 200.0);
+
+    Ok(())
+}
