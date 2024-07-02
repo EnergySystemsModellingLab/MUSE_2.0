@@ -2,6 +2,7 @@
 
 mod settings;
 mod simulation;
+mod time_slices;
 
 use std::env;
 use std::path::Path;
