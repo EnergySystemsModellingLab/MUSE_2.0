@@ -1,4 +1,5 @@
 use crate::time_slices::{read_time_slices, TimeSlice};
+use log::warn;
 use serde::Deserialize;
 use std::error::Error;
 use std::fs;
@@ -121,7 +122,7 @@ pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Erro
         None => {
             // If there is no time slice file provided, use a default time slice which covers the
             // whole year and the whole day
-            eprintln!("WARNING: No time slices CSV file provided; using a single time slice");
+            warn!("No time slices CSV file provided; using a single time slice");
 
             vec![TimeSlice {
                 season: "all-year".to_string(),
