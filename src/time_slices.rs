@@ -19,7 +19,7 @@ pub struct TimeSlice {
 }
 
 /// Read time slices from a CSV file
-pub fn read_time_slices(csv_file_path: &Path) -> Result<Option<Vec<TimeSlice>>, Box<dyn Error>> {
+pub fn read_time_slices(csv_file_path: &Path) -> Result<Vec<TimeSlice>, Box<dyn Error>> {
     let mut reader = csv::Reader::from_path(csv_file_path)?;
     let mut time_slices = Vec::new();
     for result in reader.deserialize() {
@@ -28,13 +28,12 @@ pub fn read_time_slices(csv_file_path: &Path) -> Result<Option<Vec<TimeSlice>>, 
     }
 
     if time_slices.is_empty() {
-        eprintln!("WARNING: Empty time slices CSV file; will use a single time slice");
-        return Ok(None);
+        Err("Time slices file cannot be empty")?;
     }
 
     check_time_slice_fractions_in_range(&time_slices)?;
     check_time_slice_fractions_sum_to_one(&time_slices)?;
-    Ok(Some(time_slices))
+    Ok(time_slices)
 }
 
 /// Check that time slice fractions are all in the range 0 to 1
@@ -101,7 +100,7 @@ autumn,evening,0.25"
     fn test_read_time_slices() {
         let dir = tempdir().unwrap();
         let file_path = create_time_slices_file(dir.path());
-        let time_slices = read_time_slices(&file_path).unwrap().unwrap();
+        let time_slices = read_time_slices(&file_path).unwrap();
         assert_eq!(
             time_slices,
             &[
@@ -127,6 +126,18 @@ autumn,evening,0.25"
                 }
             ]
         )
+    }
+
+    #[test]
+    fn test_read_time_slices_empty() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("time_slices.csv");
+        {
+            let mut file = File::create(&file_path).unwrap();
+            writeln!(file, "season,time_of_day,fraction").unwrap();
+        }
+
+        assert!(read_time_slices(&file_path).is_err());
     }
 
     #[test]

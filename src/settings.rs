@@ -117,19 +117,21 @@ fn read_settings_file(settings_file_path: &Path) -> Result<SettingsFile, Box<dyn
 pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Error>> {
     let settings_file = read_settings_file(settings_file_path)?;
 
-    // This will be None if a) no path is provided to a time slices file or b) the file is empty
-    let opt_time_slices = match settings_file.input_files.time_slices_path {
-        None => None,
+    let time_slices = match settings_file.input_files.time_slices_path {
+        None => {
+            // If there is no time slice file provided, use a default time slice which covers the
+            // whole year and the whole day
+            eprintln!("WARNING: No time slices CSV file provided; using a single time slice");
+
+            vec![TimeSlice {
+                season: "all-year".to_string(),
+                time_of_day: "all-day".to_string(),
+                fraction: 1.0,
+            }]
+        }
+
         Some(ref path) => read_time_slices(path)?,
     };
-
-    // If there are no time slices to read, use a default time slice which covers the whole year and
-    // the whole day
-    let time_slices = opt_time_slices.unwrap_or(vec![TimeSlice {
-        season: "all-year".to_string(),
-        time_of_day: "all-day".to_string(),
-        fraction: 1.0,
-    }]);
 
     Ok(Settings {
         time_slices,
