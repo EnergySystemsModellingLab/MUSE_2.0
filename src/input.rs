@@ -1,4 +1,5 @@
 //! Common routines for handling input data.
+use nonempty_collections::*;
 use serde::de::DeserializeOwned;
 use std::error::Error;
 use std::path::Path;
@@ -19,4 +20,18 @@ pub fn read_vec_from_csv<T: DeserializeOwned>(
     }
 
     Ok(vec)
+}
+
+/// Read a series of type Ts from a CSV file into a NEVec<T>. The CSV file cannot be empty.
+///
+/// # Arguments
+///
+/// * `csv_file_path`: Path to the CSV file
+pub fn read_nevec_from_csv<T: DeserializeOwned>(
+    csv_file_path: &Path,
+) -> Result<NEVec<T>, Box<dyn Error>> {
+    match NEVec::from_vec(read_vec_from_csv(csv_file_path)?) {
+        None => Err(format!("Input file is empty: {:?}", csv_file_path))?,
+        Some(nevec) => Ok(nevec),
+    }
 }

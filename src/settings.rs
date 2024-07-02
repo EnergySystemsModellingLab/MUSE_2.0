@@ -1,4 +1,5 @@
 use crate::time_slices::{read_time_slices, TimeSlice};
+use nonempty_collections::*;
 use serde::Deserialize;
 use std::error::Error;
 use std::fs;
@@ -6,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 /// Model settings
 pub struct Settings {
-    pub time_slices: Vec<TimeSlice>,
+    pub time_slices: NEVec<TimeSlice>,
     pub milestone_years: Vec<u32>,
 }
 
@@ -123,7 +124,7 @@ pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Erro
             // whole year and the whole day
             eprintln!("WARNING: No time slices CSV file provided; using a single time slice");
 
-            vec![TimeSlice {
+            nev![TimeSlice {
                 season: "all-year".to_string(),
                 time_of_day: "all-day".to_string(),
                 fraction: 1.0,

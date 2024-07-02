@@ -2,8 +2,9 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
-use crate::input::read_vec_from_csv;
+use crate::input::read_nevec_from_csv;
 use float_cmp::approx_eq;
+use nonempty_collections::*;
 use serde::Deserialize;
 use std::error::Error;
 use std::path::Path;
@@ -20,20 +21,18 @@ pub struct TimeSlice {
 }
 
 /// Read time slices from a CSV file
-pub fn read_time_slices(csv_file_path: &Path) -> Result<Vec<TimeSlice>, Box<dyn Error>> {
-    let time_slices = read_vec_from_csv(csv_file_path)?;
+pub fn read_time_slices(csv_file_path: &Path) -> Result<NEVec<TimeSlice>, Box<dyn Error>> {
+    let time_slices: NEVec<TimeSlice> = read_nevec_from_csv(csv_file_path)?;
 
-    if time_slices.is_empty() {
-        Err("Time slices file cannot be empty")?;
-    }
-
-    check_time_slice_fractions_in_range(&time_slices)?;
-    check_time_slice_fractions_sum_to_one(&time_slices)?;
+    check_time_slice_fractions_in_range(time_slices.as_nonempty_slice())?;
+    check_time_slice_fractions_sum_to_one(time_slices.as_nonempty_slice())?;
     Ok(time_slices)
 }
 
 /// Check that time slice fractions are all in the range 0 to 1
-fn check_time_slice_fractions_in_range(time_slices: &[TimeSlice]) -> Result<(), &'static str> {
+fn check_time_slice_fractions_in_range(
+    time_slices: NESlice<TimeSlice>,
+) -> Result<(), &'static str> {
     if !time_slices
         .iter()
         .all(|ts| ts.fraction >= 0.0 && ts.fraction <= 1.0)
@@ -45,7 +44,7 @@ fn check_time_slice_fractions_in_range(time_slices: &[TimeSlice]) -> Result<(), 
 }
 
 /// Check that time slice fractions sum to (approximately) one
-fn check_time_slice_fractions_sum_to_one(time_slices: &[TimeSlice]) -> Result<(), String> {
+fn check_time_slice_fractions_sum_to_one(time_slices: NESlice<TimeSlice>) -> Result<(), String> {
     let sum = time_slices.iter().map(|ts| ts.fraction).sum();
     if !approx_eq!(f64, sum, 1.0, epsilon = 1e-5) {
         Err(format!(
@@ -99,7 +98,7 @@ autumn,evening,0.25"
         let time_slices = read_time_slices(&file_path).unwrap();
         assert_eq!(
             time_slices,
-            &[
+            nev![
                 TimeSlice {
                     season: "winter".to_string(),
                     time_of_day: "day".to_string(),
@@ -138,50 +137,78 @@ autumn,evening,0.25"
 
     #[test]
     fn test_check_time_slice_fractions_in_range() {
-        // Check that it passes when no time slices are passed in
-        assert!(check_time_slice_fractions_in_range(&[]).is_ok());
+        macro_rules! check_ok {
+            ($e:expr) => {
+                assert!(
+                    check_time_slice_fractions_in_range(NESlice::from_slice($e).unwrap()).is_ok()
+                );
+            };
+        }
+        macro_rules! check_err {
+            ($e:expr) => {
+                assert!(
+                    check_time_slice_fractions_in_range(NESlice::from_slice($e).unwrap()).is_err()
+                );
+            };
+        }
 
         // Single inputs, valid
-        assert!(check_time_slice_fractions_in_range(&[ts!(0.0)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&[ts!(0.5)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&[ts!(1.0)]).is_ok());
+        check_ok!(&[ts!(0.0)]);
+        check_ok!(&[ts!(0.5)]);
+        check_ok!(&[ts!(1.0)]);
 
         // Single inputs, invalid
-        assert!(check_time_slice_fractions_in_range(&[ts!(-1.0)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&[ts!(1.5)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&[ts!(2.0)]).is_err());
+        check_err!(&[ts!(-1.0)]);
+        check_err!(&[ts!(1.5)]);
+        check_err!(&[ts!(2.0)]);
 
         // Multiple inputs, valid
-        assert!(check_time_slice_fractions_in_range(&[ts!(0.0), ts!(0.5)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&[ts!(0.5), ts!(1.0)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&[ts!(1.0), ts!(0.25)]).is_ok());
+        check_ok!(&[ts!(0.0), ts!(0.5)]);
+        check_ok!(&[ts!(0.5), ts!(1.0)]);
+        check_ok!(&[ts!(1.0), ts!(0.25)]);
 
         // Multiple inputs, invalid
-        assert!(check_time_slice_fractions_in_range(&[ts!(-1.0), ts!(0.5)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&[ts!(1.5), ts!(-1.0)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&[ts!(2.0), ts!(1.0)]).is_err());
+        check_err!(&[ts!(-1.0), ts!(0.5)]);
+        check_err!(&[ts!(1.5), ts!(-1.0)]);
+        check_err!(&[ts!(2.0), ts!(1.0)]);
 
         // Edge cases
-        assert!(check_time_slice_fractions_in_range(&[ts!(f64::INFINITY)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&[ts!(f64::NAN)]).is_err());
+        check_err!(&[ts!(f64::INFINITY)]);
+        check_err!(&[ts!(f64::NAN)]);
     }
 
     #[test]
     fn test_check_time_slice_fractions_sum_to_one() {
+        macro_rules! check_ok {
+            ($e:expr) => {
+                assert!(
+                    check_time_slice_fractions_sum_to_one(NESlice::from_slice($e).unwrap()).is_ok()
+                );
+            };
+        }
+        macro_rules! check_err {
+            ($e:expr) => {
+                assert!(
+                    check_time_slice_fractions_sum_to_one(NESlice::from_slice($e).unwrap())
+                        .is_err()
+                );
+            };
+        }
+
         // Single input, valid
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(1.0)]).is_ok());
+        check_ok!(&[ts!(1.0)]);
 
         // Single input, invalid
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.5)]).is_err());
+        check_err!(&[ts!(0.5)]);
 
         // Multiple inputs, valid
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.4), ts!(0.6)]).is_ok());
+        check_ok!(&[ts!(0.4), ts!(0.6)]);
 
         // Multiple inputs, invalid
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.4), ts!(0.3)]).is_err());
+        check_err!(&[ts!(0.4), ts!(0.3)]);
 
         // Edge cases
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(f64::INFINITY)]).is_err());
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(f64::NAN)]).is_err());
+        check_err!(&[ts!(f64::INFINITY)]);
+        check_err!(&[ts!(f64::NAN)]);
     }
 }
