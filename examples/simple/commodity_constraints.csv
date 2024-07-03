@@ -1,1 +1,1 @@
-constraint_name,commodity_name,region,limit_type,balance_type,year,timeslice,value
+id,commodity_id,region_id,limit_type,balance_type,year,timeslice,value
