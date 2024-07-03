@@ -1,2 +1,2 @@
-commodity_name,region,balance_type,year,timeslice,value
+commodity_id,region_id,balance_type,year,timeslice,value
 CO2EMT,GBR,net,2020,ANNUAL,0.04
