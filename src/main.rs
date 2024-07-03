@@ -1,12 +1,19 @@
+//! Provides the main entry point to the program.
+
+mod input;
+mod settings;
+mod simulation;
+mod time_slices;
+
 use std::env;
 use std::path::Path;
-mod simulation;
 
+/// The main entry point to the program
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
-        eprintln!("Usage: {} <demand.csv>", args[0]);
-        std::process::exit(1);
+        panic!("Must provide path to model configuration TOML file.");
     }
-    simulation::initialize_simulation(Path::new(&args[1]));
+
+    simulation::run(Path::new(&args[1]))
 }
