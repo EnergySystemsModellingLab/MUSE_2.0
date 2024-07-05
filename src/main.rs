@@ -1,5 +1,4 @@
-//! Provides the main entry point to the program.
-
+mod demand;
 mod input;
 mod settings;
 mod simulation;
@@ -14,6 +13,9 @@ fn main() {
     if args.len() != 2 {
         panic!("Must provide path to model configuration TOML file.");
     }
+
+    // Initialize the simulation with demand data
+    demand::initialize_simulation();
 
     simulation::run(Path::new(&args[1]))
 }
