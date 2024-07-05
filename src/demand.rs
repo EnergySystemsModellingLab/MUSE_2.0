@@ -5,7 +5,7 @@ use std::io::BufReader;
 use std::path::Path;
 
 /// Represents a single demand entry in the dataset.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 pub struct Demand {
     /// The year of the demand entry
     pub year: u32,
@@ -28,26 +28,11 @@ pub struct Demand {
 ///
 /// This function will return an error if the file cannot be opened or read, or if
 /// the CSV data cannot be parsed.
-///
-/// # Example
-///
-/// ```
-/// use std::path::Path;
-/// let file_path = Path::new("path/to/demand.csv");
-/// match read_demand_from_csv(&file_path) {
-///     Ok(demand_data) => println!("Successfully read demand data: {:?}", demand_data),
-///     Err(e) => println!("Failed to read demand data: {}", e),
-/// }
-/// ```
 pub fn read_demand_from_csv(file_path: &Path) -> Result<Vec<Demand>, Box<dyn Error>> {
-    // Open the file in read-only mode with buffer.
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
-
-    // Create a CSV reader with the appropriate configuration.
     let mut csv_reader = csv::Reader::from_reader(reader);
 
-    // Parse the CSV data into a vector of `Demand` structs.
     let mut demand_data = Vec::new();
     for result in csv_reader.deserialize() {
         let demand: Demand = result?;
@@ -55,21 +40,6 @@ pub fn read_demand_from_csv(file_path: &Path) -> Result<Vec<Demand>, Box<dyn Err
     }
 
     Ok(demand_data)
-}
-
-/// Initializes the simulation with demand data from a CSV file.
-pub fn initialize_simulation() {
-    let file_path = Path::new("demand.csv");
-
-    let demands = read_demand_from_csv(file_path).unwrap_or_else(|err| {
-        panic!("Error reading demand from CSV: {:?}", err);
-    });
-
-    // Your simulation initialization code here
-    println!(
-        "Successfully initialized simulation with demands: {:?}",
-        demands
-    );
 }
 
 #[cfg(test)]
@@ -103,7 +73,7 @@ mod tests {
         let demands = read_demand_from_csv(&file_path).unwrap();
         assert_eq!(
             demands,
-            &[
+            vec![
                 Demand {
                     year: 2023,
                     region: "North".to_string(),
