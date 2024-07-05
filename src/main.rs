@@ -15,7 +15,6 @@ fn main() {
     }
 
     // Initialize the simulation with demand data
-    demand::initialize_simulation();
 
     simulation::run(Path::new(&args[1]))
 }
