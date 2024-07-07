@@ -20,7 +20,6 @@ struct SettingsFile {
     pub milestone_years: MilestoneYears,
 }
 
-/// Represents the "input_files" section of the settings file.
 #[derive(Debug, Deserialize, PartialEq)]
 struct InputFiles {
     pub agents_file_path: PathBuf,
@@ -165,7 +164,7 @@ mod tests {
     #[test]
     fn test_read_settings_file_raw() {
         let settings_file = read_settings_file_raw(&get_settings_file_path())
-            .expect("Failed to read read example settings file");
+            .expect("Failed to read example settings file");
 
         assert_eq!(
             settings_file,
@@ -217,7 +216,29 @@ mod tests {
 
     #[test]
     fn test_read_settings() {
-        read_settings(&get_settings_file_path())
+        let settings = read_settings(&get_settings_file_path())
             .unwrap_or_else(|err| panic!("Failed to read example settings file: {:?}", err));
+        assert_eq!(settings.milestone_years, vec![2020]);
+        assert_eq!(
+            settings.demand_data,
+            vec![
+                Demand {
+                    year: 2023,
+                    region: "North".to_string(),
+                },
+                Demand {
+                    year: 2024,
+                    region: "South".to_string(),
+                },
+                Demand {
+                    year: 2025,
+                    region: "East".to_string(),
+                },
+                Demand {
+                    year: 2026,
+                    region: "West".to_string(),
+                },
+            ]
+        );
     }
 }
