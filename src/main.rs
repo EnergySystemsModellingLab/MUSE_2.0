@@ -14,7 +14,5 @@ fn main() {
         panic!("Must provide path to model configuration TOML file.");
     }
 
-    // Initialize the simulation with demand data
-
     simulation::run(Path::new(&args[1]))
 }

@@ -1,4 +1,4 @@
-use crate::demand::{read_demand_from_csv, Demand}; // Correct the imports
+use crate::demand::{read_demand_from_csv, Demand};
 use crate::time_slices::{read_time_slices, TimeSlice};
 use serde::Deserialize;
 use std::error::Error;
@@ -6,11 +6,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Model settings
-#[allow(dead_code)]
 pub struct Settings {
     pub time_slices: Vec<TimeSlice>,
     pub milestone_years: Vec<u32>,
-    pub demand_data: Vec<Demand>, // Use Vec<Demand> as the type
+    pub demand_data: Vec<Demand>,
 }
 
 /// Represents the contents of the entire settings file.
@@ -20,6 +19,7 @@ struct SettingsFile {
     pub milestone_years: MilestoneYears,
 }
 
+/// Represents the "input_files" section of the settings file.
 #[derive(Debug, Deserialize, PartialEq)]
 struct InputFiles {
     pub agents_file_path: PathBuf,
@@ -135,7 +135,7 @@ pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Erro
         Some(ref path) => read_time_slices(path)?,
     };
 
-    let demand_data = read_demand_from_csv(&settings_file.input_files.demand_file_path)?; // Correct the function call
+    let demand_data = read_demand_from_csv(&settings_file.input_files.demand_file_path)?;
 
     Ok(Settings {
         time_slices,
