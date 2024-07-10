@@ -1,16 +1,19 @@
+use crate::input::read_vec_from_csv;
 use serde::Deserialize;
 use std::error::Error;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::Path;
 
 /// Represents a single demand entry in the dataset.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Demand {
     /// The year of the demand entry
-    pub year: u32,
+    pub commodity_id: String,
     /// The region of the demand entry
-    pub region: String,
+    pub region_id: String,
+    /// The year of the demand entry
+    pub year: u32,
+    /// The year of the demand entry
+    pub demand: f64,
 }
 
 /// Reads demand data from a CSV file.
@@ -29,16 +32,13 @@ pub struct Demand {
 /// This function will return an error if the file cannot be opened or read, or if
 /// the CSV data cannot be parsed.
 pub fn read_demand_from_csv(file_path: &Path) -> Result<Vec<Demand>, Box<dyn Error>> {
-    let file = File::open(file_path)?;
-    let reader = BufReader::new(file);
-    let mut csv_reader = csv::Reader::from_reader(reader);
+    let demand_data = read_vec_from_csv(file_path)?;
 
-    let mut demand_data = Vec::new();
-    for result in csv_reader.deserialize() {
-        let demand: Demand = result?;
-        demand_data.push(demand);
+    if demand_data.is_empty() {
+        Err("Demand data file cannot be empty")?;
     }
 
+    // TBD add validation checks here? e.g. check not negative, apply interpolation and extrapolation rules?
     Ok(demand_data)
 }
 
@@ -56,11 +56,11 @@ mod tests {
         let mut file = File::create(&file_path).unwrap();
         writeln!(
             file,
-            "year,region
-2023,North
-2024,South
-2025,East
-2026,West"
+            "commodity_id,region_id,year,demand
+COM1,North,2023,10
+COM1,South,2023,11
+COM1,East,2023,12
+COM1,West,2023,13"
         )
         .unwrap();
         file_path
@@ -76,19 +76,27 @@ mod tests {
             vec![
                 Demand {
                     year: 2023,
-                    region: "North".to_string(),
+                    region_id: "North".to_string(),
+                    commodity_id: "COM1".to_string(),
+                    demand: 10.0,
                 },
                 Demand {
-                    year: 2024,
-                    region: "South".to_string(),
+                    year: 2023,
+                    region_id: "South".to_string(),
+                    commodity_id: "COM1".to_string(),
+                    demand: 11.0,
                 },
                 Demand {
-                    year: 2025,
-                    region: "East".to_string(),
+                    year: 2023,
+                    region_id: "East".to_string(),
+                    commodity_id: "COM1".to_string(),
+                    demand: 12.0,
                 },
                 Demand {
-                    year: 2026,
-                    region: "West".to_string(),
+                    year: 2023,
+                    region_id: "West".to_string(),
+                    commodity_id: "COM1".to_string(),
+                    demand: 13.0,
                 },
             ]
         )

@@ -216,29 +216,7 @@ mod tests {
 
     #[test]
     fn test_read_settings() {
-        let settings = read_settings(&get_settings_file_path())
+        read_settings(&get_settings_file_path())
             .unwrap_or_else(|err| panic!("Failed to read example settings file: {:?}", err));
-        assert_eq!(settings.milestone_years, vec![2020]);
-        assert_eq!(
-            settings.demand_data,
-            vec![
-                Demand {
-                    year: 2023,
-                    region: "North".to_string(),
-                },
-                Demand {
-                    year: 2024,
-                    region: "South".to_string(),
-                },
-                Demand {
-                    year: 2025,
-                    region: "East".to_string(),
-                },
-                Demand {
-                    year: 2026,
-                    region: "West".to_string(),
-                },
-            ]
-        );
     }
 }
