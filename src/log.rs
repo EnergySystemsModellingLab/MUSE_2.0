@@ -1,10 +1,12 @@
 use env_logger::Env;
 
+pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
+
 /// Initialise the program logger.
 ///
-/// The user can specify their preferred logging level via the `settings.toml` file or with the
-/// `MUSE2_LOG_LEVEL` environment variable. If both are provided, the environment variable takes
-/// precedence. If neither is supplied, the default log level is `info`.
+/// The user can specify their preferred logging level via the `settings.toml` file (defaulting to
+/// `info` if not present) or with the `MUSE2_LOG_LEVEL` environment variable. If both are provided,
+/// the environment variable takes precedence.
 ///
 /// Possible options are:
 ///
@@ -22,10 +24,9 @@ use env_logger::Env;
 /// # Arguments
 ///
 /// * `log_level_from_settings`: The log level specified in `settings.toml`
-pub fn init(log_level_from_settings: Option<&str>) {
-    let fallback_log_level = log_level_from_settings.unwrap_or("info");
+pub fn init(log_level_from_settings: &str) {
     let env = Env::new()
-        .filter_or("MUSE2_LOG_LEVEL", fallback_log_level)
+        .filter_or("MUSE2_LOG_LEVEL", log_level_from_settings)
         .write_style("MUSE2_LOG_STYLE");
 
     // Initialise logger

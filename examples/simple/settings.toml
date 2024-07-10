@@ -1,3 +1,6 @@
+[global]
+log_level = "info"
+
 [input_files]
 agents_file_path = "agents.csv"
 agent_objectives_file_path = "agent_objectives.csv"
