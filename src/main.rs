@@ -1,6 +1,7 @@
 //! Provides the main entry point to the program.
 
 mod input;
+mod log;
 mod settings;
 mod simulation;
 mod time_slices;
@@ -10,13 +11,8 @@ use std::path::Path;
 
 /// The main entry point to the program
 fn main() {
-    // Log at the info level by default, unless the user has specified otherwise
-    if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", "info")
-    }
-
-    // Initialise logger
-    env_logger::init();
+    // Initialise program logger
+    log::init();
 
     // Parse command-line arguments
     let args: Vec<String> = env::args().collect();
