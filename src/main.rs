@@ -24,6 +24,7 @@ fn main() {
 
     // Set the program log level
     log::init(reader.log_level());
+    log_panics::init(); // Write panic info to logger rather than stderr
 
     // Load settings from CSV files and verify
     let settings = reader
