@@ -1,12 +1,12 @@
-use std::env;
+use env_logger::Env;
 
 /// Initialise the program logger
 pub fn init() {
     // Log at the info level by default, unless the user has specified otherwise
-    if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", "info")
-    }
+    let env = Env::new()
+        .filter_or("MUSE2_LOG_LEVEL", "info")
+        .write_style("MUSE2_LOG_STYLE");
 
     // Initialise logger
-    env_logger::init();
+    env_logger::init_from_env(env);
 }
