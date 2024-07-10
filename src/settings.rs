@@ -14,8 +14,14 @@ pub struct Settings {
 /// Represents the contents of the entire settings file.
 #[derive(Debug, Deserialize, PartialEq)]
 struct SettingsFile {
+    pub global: Option<Global>,
     pub input_files: InputFiles,
     pub milestone_years: MilestoneYears,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+struct Global {
+    log_level: Option<String>,
 }
 
 /// Represents the "input_files" section of the settings file.
@@ -46,6 +52,15 @@ struct InputFiles {
 #[derive(Debug, Deserialize, PartialEq)]
 struct MilestoneYears {
     pub years: Vec<u32>,
+}
+
+impl SettingsFile {
+    fn get_log_level(&self) -> Option<&str> {
+        match self.global {
+            None => None,
+            Some(ref global) => global.log_level.as_deref(),
+        }
+    }
 }
 
 /// Read the contents of a settings file from the given path.
@@ -118,6 +133,9 @@ fn read_settings_file(settings_file_path: &Path) -> Result<SettingsFile, Box<dyn
 pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Error>> {
     let settings_file = read_settings_file(settings_file_path)?;
 
+    // Initialise program logger
+    crate::log::init(settings_file.get_log_level());
+
     let time_slices = match settings_file.input_files.time_slices_path {
         None => {
             // If there is no time slice file provided, use a default time slice which covers the
@@ -165,6 +183,7 @@ mod tests {
         assert_eq!(
             settings_file,
             SettingsFile {
+                global: None,
                 input_files: InputFiles {
                     agents_file_path: PathBuf::from_str("agents.csv").unwrap(),
                     agent_objectives_file_path: PathBuf::from_str("agent_objectives.csv").unwrap(),

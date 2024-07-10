@@ -1,6 +1,5 @@
 //! High level functionality for launching a simulation.
 use crate::settings::read_settings;
-use log::info;
 use std::path::Path;
 
 /// Run the simulation
@@ -9,8 +8,6 @@ use std::path::Path;
 ///
 /// * `settings_file_path`: The path to the TOML file containing the model's configuration
 pub fn run(settings_file_path: &Path) {
-    info!("Loading settings from {:?}", settings_file_path);
-
     // Read and process the settings file
     let settings = read_settings(settings_file_path)
         .unwrap_or_else(|err| panic!("Failed to load settings: {}", err));

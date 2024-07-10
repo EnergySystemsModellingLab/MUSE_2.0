@@ -11,9 +11,6 @@ use std::path::Path;
 
 /// The main entry point to the program
 fn main() {
-    // Initialise program logger
-    log::init();
-
     // Parse command-line arguments
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
