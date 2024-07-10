@@ -1,4 +1,4 @@
-process_id,description
+id,description
 GASDRV,Dry gas extraction
 GASPRC,Gas processing
 WNDFRM,Wind farm
