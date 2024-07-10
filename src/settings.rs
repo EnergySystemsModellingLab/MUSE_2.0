@@ -3,6 +3,7 @@ use crate::time_slices::{read_time_slices, TimeSlice};
 use log::warn;
 use serde::Deserialize;
 use std::error::Error;
+use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -14,10 +15,22 @@ pub struct Settings {
 
 /// Represents the contents of the entire settings file.
 #[derive(Debug, Deserialize, PartialEq)]
-struct SettingsReader {
+pub struct SettingsReader {
     global: Global,
     input_files: InputFiles,
     milestone_years: MilestoneYears,
+}
+
+/// Indicates that an error occurred while loading model settings.
+#[derive(Debug, Clone)]
+pub struct SettingsError {
+    msg: String,
+}
+
+impl fmt::Display for SettingsError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.msg)
+    }
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -62,6 +75,11 @@ struct MilestoneYears {
 }
 
 impl SettingsReader {
+    /// The user's preferred log level
+    pub fn log_level(&self) -> &str {
+        &self.global.log_level
+    }
+
     /// Read the contents of a settings file from the given path.
     fn from_path_raw(path: &Path) -> Result<SettingsReader, Box<dyn Error>> {
         let settings_str = fs::read_to_string(path)?;
@@ -74,9 +92,11 @@ impl SettingsReader {
     ///
     /// * `path`: The path to the settings TOML file (which includes paths to other configuration
     ///           files)
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<SettingsReader, Box<dyn Error>> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<SettingsReader, SettingsError> {
         // let path: &Path = path;
-        let mut reader = Self::from_path_raw(path.as_ref())?;
+        let mut reader = Self::from_path_raw(path.as_ref()).map_err(|err| SettingsError {
+            msg: err.to_string(),
+        })?;
 
         // For paths to other files listed in the settings file, if they're relative, we treat them as
         // relative to the folder the settings file is in.
@@ -114,40 +134,43 @@ impl SettingsReader {
 
         Ok(reader)
     }
+
+    fn to_settings_raw(self) -> Result<Settings, Box<dyn Error>> {
+        let time_slices = match self.input_files.time_slices_path {
+            None => {
+                // If there is no time slice file provided, use a default time slice which covers the
+                // whole year and the whole day
+                warn!("No time slices CSV file provided; using a single time slice");
+
+                vec![TimeSlice {
+                    season: "all-year".to_string(),
+                    time_of_day: "all-day".to_string(),
+                    fraction: 1.0,
+                }]
+            }
+
+            Some(ref path) => read_time_slices(path)?,
+        };
+
+        Ok(Settings {
+            time_slices,
+            milestone_years: self.milestone_years.years,
+        })
+    }
 }
 
-/// Read settings from disk.
-///
-/// # Arguments
-///
-/// * `settings_file_path`: The path to the settings TOML file (which includes paths to other
-///                         configuration files)
-pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Error>> {
-    let reader = SettingsReader::from_path(settings_file_path)?;
+impl TryInto<Settings> for SettingsReader {
+    type Error = SettingsError;
 
-    // Initialise program logger
-    crate::log::init(&reader.global.log_level);
-
-    let time_slices = match reader.input_files.time_slices_path {
-        None => {
-            // If there is no time slice file provided, use a default time slice which covers the
-            // whole year and the whole day
-            warn!("No time slices CSV file provided; using a single time slice");
-
-            vec![TimeSlice {
-                season: "all-year".to_string(),
-                time_of_day: "all-day".to_string(),
-                fraction: 1.0,
-            }]
+    /// Convert into a Settings struct.
+    fn try_into(self) -> Result<Settings, Self::Error> {
+        match self.to_settings_raw() {
+            Ok(settings) => Ok(settings),
+            Err(err) => Err(Self::Error {
+                msg: err.to_string(),
+            }),
         }
-
-        Some(ref path) => read_time_slices(path)?,
-    };
-
-    Ok(Settings {
-        time_slices,
-        milestone_years: reader.milestone_years.years,
-    })
+    }
 }
 
 #[cfg(test)]
@@ -165,6 +188,11 @@ mod tests {
             .join("examples")
             .join("simple")
             .join("settings.toml")
+    }
+
+    fn get_settings_reader() -> SettingsReader {
+        SettingsReader::from_path(get_settings_file_path())
+            .expect("Failed to read read example settings file")
     }
 
     #[test]
@@ -217,15 +245,15 @@ mod tests {
 
     #[test]
     fn test_settings_reader_from_path() {
-        let settings_file = SettingsReader::from_path(get_settings_file_path())
-            .expect("Failed to read example settings file");
-
-        assert_eq!(settings_file.milestone_years.years, vec![2020]);
+        let reader = get_settings_reader();
+        assert_eq!(reader.milestone_years.years, vec![2020]);
     }
 
     #[test]
     fn test_read_settings() {
-        read_settings(&get_settings_file_path())
+        let reader = get_settings_reader();
+        let _: Settings = reader
+            .try_into()
             .unwrap_or_else(|err| panic!("Failed to read example settings file: {:?}", err));
     }
 }

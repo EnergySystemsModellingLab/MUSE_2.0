@@ -6,8 +6,9 @@ mod settings;
 mod simulation;
 mod time_slices;
 
+use crate::settings::SettingsReader;
+use ::log::info;
 use std::env;
-use std::path::Path;
 
 /// The main entry point to the program
 fn main() {
@@ -17,6 +18,20 @@ fn main() {
         panic!("Must provide path to model configuration TOML file.");
     }
 
+    // Read settings TOML file
+    let reader = SettingsReader::from_path(&args[1])
+        .unwrap_or_else(|err| panic!("Failed to parse TOML file: {}", err));
+
+    // Set the program log level
+    log::init(reader.log_level());
+
+    // Load settings from CSV files and verify
+    let settings = reader
+        .try_into()
+        .unwrap_or_else(|err| panic!("Failed to load settings: {}", err));
+
+    info!("Settings loaded successfully.");
+
     // Run simulation
-    simulation::run(Path::new(&args[1]))
+    simulation::run(&settings)
 }
