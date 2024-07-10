@@ -15,9 +15,9 @@ pub struct Settings {
 /// Represents the contents of the entire settings file.
 #[derive(Debug, Deserialize, PartialEq)]
 struct SettingsFile {
-    pub global: Global,
-    pub input_files: InputFiles,
-    pub milestone_years: MilestoneYears,
+    global: Global,
+    input_files: InputFiles,
+    milestone_years: MilestoneYears,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -34,25 +34,25 @@ fn default_log_level() -> String {
 /// Represents the "input_files" section of the settings file.
 #[derive(Debug, Deserialize, PartialEq)]
 struct InputFiles {
-    pub agents_file_path: PathBuf,
-    pub agent_objectives_file_path: PathBuf,
-    pub agent_regions_file_path: PathBuf,
-    pub assets_file_path: PathBuf,
-    pub commodities_file_path: PathBuf,
-    pub commodity_constraints_file_path: PathBuf,
-    pub commodity_costs_file_path: PathBuf,
-    pub demand_file_path: PathBuf,
-    pub demand_slicing_file_path: PathBuf,
-    pub processes_file_path: PathBuf,
-    pub process_availabilities_file_path: PathBuf,
-    pub process_flow_share_constraints_file_path: PathBuf,
-    pub process_flows_file_path: PathBuf,
-    pub process_investment_constraints_file_path: PathBuf,
-    pub process_pacs_file_path: PathBuf,
-    pub process_parameters_file_path: PathBuf,
-    pub process_regions_file_path: PathBuf,
-    pub regions_file_path: PathBuf,
-    pub time_slices_path: Option<PathBuf>,
+    agents_file_path: PathBuf,
+    agent_objectives_file_path: PathBuf,
+    agent_regions_file_path: PathBuf,
+    assets_file_path: PathBuf,
+    commodities_file_path: PathBuf,
+    commodity_constraints_file_path: PathBuf,
+    commodity_costs_file_path: PathBuf,
+    demand_file_path: PathBuf,
+    demand_slicing_file_path: PathBuf,
+    processes_file_path: PathBuf,
+    process_availabilities_file_path: PathBuf,
+    process_flow_share_constraints_file_path: PathBuf,
+    process_flows_file_path: PathBuf,
+    process_investment_constraints_file_path: PathBuf,
+    process_pacs_file_path: PathBuf,
+    process_parameters_file_path: PathBuf,
+    process_regions_file_path: PathBuf,
+    regions_file_path: PathBuf,
+    time_slices_path: Option<PathBuf>,
 }
 
 /// Represents the "milestone_years" section of the settings file.
