@@ -14,7 +14,7 @@ pub struct Settings {
 
 /// Represents the contents of the entire settings file.
 #[derive(Debug, Deserialize, PartialEq)]
-struct SettingsFile {
+struct SettingsReader {
     global: Global,
     input_files: InputFiles,
     milestone_years: MilestoneYears,
@@ -61,65 +61,59 @@ struct MilestoneYears {
     pub years: Vec<u32>,
 }
 
-/// Read the contents of a settings file from the given path.
-fn read_settings_file_raw(path: &Path) -> Result<SettingsFile, Box<dyn Error>> {
-    let settings_str = fs::read_to_string(path)?;
-    let settings_file: SettingsFile = toml::from_str(&settings_str)?;
-    Ok(settings_file)
-}
-
-/// Read settings from a TOML file and update paths.
-///
-/// # Arguments
-///
-/// * `settings_file_path`: The path to the settings TOML file (which includes paths to other
-///                         configuration files)
-fn read_settings_file(settings_file_path: &Path) -> Result<SettingsFile, Box<dyn Error>> {
-    let mut settings_file = read_settings_file_raw(settings_file_path)?;
-
-    // For paths to other files listed in the settings file, if they're relative, we treat them as
-    // relative to the folder the settings file is in.
-    let settings_dir = settings_file_path.parent().unwrap(); // will never fail
-
-    // Update the file paths in settings to be absolute paths
-    macro_rules! update_path {
-        ($path:expr) => {
-            $path = settings_dir.join(&$path);
-        };
+impl SettingsReader {
+    /// Read the contents of a settings file from the given path.
+    fn from_path_raw(path: &Path) -> Result<SettingsReader, Box<dyn Error>> {
+        let settings_str = fs::read_to_string(path)?;
+        let reader: SettingsReader = toml::from_str(&settings_str)?;
+        Ok(reader)
     }
 
-    update_path!(settings_file.input_files.agents_file_path);
-    update_path!(settings_file.input_files.agent_objectives_file_path);
-    update_path!(settings_file.input_files.agent_regions_file_path);
-    update_path!(settings_file.input_files.assets_file_path);
-    update_path!(settings_file.input_files.commodities_file_path);
-    update_path!(settings_file.input_files.commodity_constraints_file_path);
-    update_path!(settings_file.input_files.commodity_costs_file_path);
-    update_path!(settings_file.input_files.demand_file_path);
-    update_path!(settings_file.input_files.demand_slicing_file_path);
-    update_path!(settings_file.input_files.processes_file_path);
-    update_path!(settings_file.input_files.process_availabilities_file_path);
-    update_path!(
-        settings_file
-            .input_files
-            .process_flow_share_constraints_file_path
-    );
-    update_path!(settings_file.input_files.process_flows_file_path);
-    update_path!(
-        settings_file
-            .input_files
-            .process_investment_constraints_file_path
-    );
-    update_path!(settings_file.input_files.process_pacs_file_path);
-    update_path!(settings_file.input_files.process_parameters_file_path);
-    update_path!(settings_file.input_files.process_regions_file_path);
-    update_path!(settings_file.input_files.regions_file_path);
-    if let Some(mut time_slices_path) = settings_file.input_files.time_slices_path {
-        update_path!(time_slices_path);
-        settings_file.input_files.time_slices_path = Some(time_slices_path);
-    }
+    /// Read the contents of a settings file from the given path.
+    /// # Arguments
+    ///
+    /// * `path`: The path to the settings TOML file (which includes paths to other configuration
+    ///           files)
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<SettingsReader, Box<dyn Error>> {
+        // let path: &Path = path;
+        let mut reader = Self::from_path_raw(path.as_ref())?;
 
-    Ok(settings_file)
+        // For paths to other files listed in the settings file, if they're relative, we treat them as
+        // relative to the folder the settings file is in.
+        let settings_dir = path.as_ref().parent().unwrap(); // will never fail
+
+        // Update the file paths in settings to be absolute paths
+        macro_rules! update_path {
+            ($path:expr) => {
+                $path = settings_dir.join(&$path);
+            };
+        }
+
+        update_path!(reader.input_files.agents_file_path);
+        update_path!(reader.input_files.agent_objectives_file_path);
+        update_path!(reader.input_files.agent_regions_file_path);
+        update_path!(reader.input_files.assets_file_path);
+        update_path!(reader.input_files.commodities_file_path);
+        update_path!(reader.input_files.commodity_constraints_file_path);
+        update_path!(reader.input_files.commodity_costs_file_path);
+        update_path!(reader.input_files.demand_file_path);
+        update_path!(reader.input_files.demand_slicing_file_path);
+        update_path!(reader.input_files.processes_file_path);
+        update_path!(reader.input_files.process_availabilities_file_path);
+        update_path!(reader.input_files.process_flow_share_constraints_file_path);
+        update_path!(reader.input_files.process_flows_file_path);
+        update_path!(reader.input_files.process_investment_constraints_file_path);
+        update_path!(reader.input_files.process_pacs_file_path);
+        update_path!(reader.input_files.process_parameters_file_path);
+        update_path!(reader.input_files.process_regions_file_path);
+        update_path!(reader.input_files.regions_file_path);
+        if let Some(mut time_slices_path) = reader.input_files.time_slices_path {
+            update_path!(time_slices_path);
+            reader.input_files.time_slices_path = Some(time_slices_path);
+        }
+
+        Ok(reader)
+    }
 }
 
 /// Read settings from disk.
@@ -129,12 +123,12 @@ fn read_settings_file(settings_file_path: &Path) -> Result<SettingsFile, Box<dyn
 /// * `settings_file_path`: The path to the settings TOML file (which includes paths to other
 ///                         configuration files)
 pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Error>> {
-    let settings_file = read_settings_file(settings_file_path)?;
+    let reader = SettingsReader::from_path(settings_file_path)?;
 
     // Initialise program logger
-    crate::log::init(&settings_file.global.log_level);
+    crate::log::init(&reader.global.log_level);
 
-    let time_slices = match settings_file.input_files.time_slices_path {
+    let time_slices = match reader.input_files.time_slices_path {
         None => {
             // If there is no time slice file provided, use a default time slice which covers the
             // whole year and the whole day
@@ -152,7 +146,7 @@ pub fn read_settings(settings_file_path: &Path) -> Result<Settings, Box<dyn Erro
 
     Ok(Settings {
         time_slices,
-        milestone_years: settings_file.milestone_years.years,
+        milestone_years: reader.milestone_years.years,
     })
 }
 
@@ -174,13 +168,13 @@ mod tests {
     }
 
     #[test]
-    fn test_read_settings_file_raw() {
-        let settings_file = read_settings_file_raw(&get_settings_file_path())
+    fn test_settings_reader_from_path_raw() {
+        let reader = SettingsReader::from_path_raw(&get_settings_file_path())
             .expect("Failed to read read example settings file");
 
         assert_eq!(
-            settings_file,
-            SettingsFile {
+            reader,
+            SettingsReader {
                 global: Global {
                     log_level: "info".to_string()
                 },
@@ -222,8 +216,8 @@ mod tests {
     }
 
     #[test]
-    fn test_read_settings_file() {
-        let settings_file = read_settings_file(&get_settings_file_path())
+    fn test_settings_reader_from_path() {
+        let settings_file = SettingsReader::from_path(get_settings_file_path())
             .expect("Failed to read example settings file");
 
         assert_eq!(settings_file.milestone_years.years, vec![2020]);
