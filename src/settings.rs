@@ -1,4 +1,4 @@
-use crate::demand::{read_demand_from_csv, Demand};
+use crate::demand::{read_demand_data, Demand};
 use crate::log::DEFAULT_LOG_LEVEL;
 use crate::time_slices::{read_time_slices, TimeSlice};
 use log::warn;
@@ -156,7 +156,7 @@ impl SettingsReader {
         Ok(Settings {
             time_slices,
             milestone_years: self.milestone_years.years,
-            demand_data: read_demand_from_csv(&self.input_files.demand_file_path)?,
+            demand_data: read_demand_data(&self.input_files.demand_file_path)?,
         })
     }
 }

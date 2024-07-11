@@ -24,14 +24,14 @@ pub struct Demand {
 ///
 /// # Returns
 ///
-/// This function returns a `Result` containing either a `Vec<Demand>` with the
-/// parsed demand data or a `Box<dyn Error>` if an error occurred.
+/// This function returns a `Result` containing either a `Vec<Demand>` with the parsed demand data
+/// or a `Box<dyn Error>` if an error occurred.
 ///
 /// # Errors
 ///
-/// This function will return an error if the file cannot be opened or read, or if
-/// the CSV data cannot be parsed.
-pub fn read_demand_from_csv(file_path: &Path) -> Result<Vec<Demand>, Box<dyn Error>> {
+/// This function will return an error if the file cannot be opened or read, or if the CSV data
+/// cannot be parsed.
+pub fn read_demand_data(file_path: &Path) -> Result<Vec<Demand>, Box<dyn Error>> {
     let demand_data = read_vec_from_csv(file_path)?;
 
     if demand_data.is_empty() {
@@ -70,9 +70,9 @@ COM1,West,2023,13"
     fn test_read_demand_from_csv() {
         let dir = tempdir().unwrap();
         let file_path = create_demand_file(dir.path());
-        let demands = read_demand_from_csv(&file_path).unwrap();
+        let demand_data = read_demand_data(&file_path).unwrap();
         assert_eq!(
-            demands,
+            demand_data,
             vec![
                 Demand {
                     year: 2023,
