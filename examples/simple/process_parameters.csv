@@ -1,4 +1,4 @@
-process_name,start_year,end_year,capital_cost,fixed_operating_cost,variable_operating_cost,lifetime,discount_rate,cap2act
+process_id,start_year,end_year,capital_cost,fixed_operating_cost,variable_operating_cost,lifetime,discount_rate,cap2act
 GASDRV,2020,2100,10.0,0.3,2.0,25,0.1,1.0
 GASPRC,2020,2100,7.0,0.21,0.5,25,0.1,1.0
 WNDFRM,2020,2100,1000.0,30.0,0.4,25,0.1,31.54

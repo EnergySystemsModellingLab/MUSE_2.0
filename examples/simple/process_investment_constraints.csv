@@ -1,1 +1,1 @@
-constraint_name,process_name,region,limit_type,constraint_type,year,growth_seed_value,value
+process_investment_constraint,process_id,region_id,limit_type,constraint_type,year,growth_seed_value,value

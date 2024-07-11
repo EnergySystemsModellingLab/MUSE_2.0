@@ -9,6 +9,7 @@ use crate::settings::Settings;
 pub fn run(settings: &Settings) {
     // Print the contents of settings
     // TODO: Remove this once we're actually doing something with the settings
+    println!("Demand data: {:?}", settings.demand_data);
     println!("Time slices: {:?}", settings.time_slices);
     println!("Milestone years: {:?}", settings.milestone_years);
 }

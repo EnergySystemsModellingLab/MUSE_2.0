@@ -1,3 +1,4 @@
+use crate::demand::{read_demand_from_csv, Demand};
 use crate::log::DEFAULT_LOG_LEVEL;
 use crate::time_slices::{read_time_slices, TimeSlice};
 use log::warn;
@@ -11,6 +12,7 @@ use std::path::{Path, PathBuf};
 pub struct Settings {
     pub time_slices: Vec<TimeSlice>,
     pub milestone_years: Vec<u32>,
+    pub demand_data: Vec<Demand>,
 }
 
 /// Represents the contents of the entire settings file.
@@ -154,6 +156,7 @@ impl SettingsReader {
         Ok(Settings {
             time_slices,
             milestone_years: self.milestone_years.years,
+            demand_data: read_demand_from_csv(&self.input_files.demand_file_path)?,
         })
     }
 }
@@ -177,13 +180,13 @@ mod tests {
 
     fn get_settings_reader() -> SettingsReader {
         SettingsReader::from_path(get_settings_file_path())
-            .expect("Failed to read read example settings file")
+            .expect("Failed to read example settings file")
     }
 
     #[test]
     fn test_settings_reader_from_path_raw() {
         let reader = SettingsReader::from_path_raw(&get_settings_file_path())
-            .expect("Failed to read read example settings file");
+            .expect("Failed to read example settings file");
 
         assert_eq!(
             reader,
