@@ -1,6 +1,5 @@
-use crate::input::read_vec_from_csv;
+use crate::input::{read_vec_from_csv, InputError};
 use serde::Deserialize;
-use std::error::Error;
 use std::path::Path;
 
 /// Represents a single demand entry in the dataset.
@@ -31,14 +30,18 @@ pub struct Demand {
 ///
 /// This function will return an error if the file cannot be opened or read, or if the CSV data
 /// cannot be parsed.
-pub fn read_demand_data(file_path: &Path) -> Result<Vec<Demand>, Box<dyn Error>> {
+pub fn read_demand_data(file_path: &Path) -> Result<Vec<Demand>, InputError> {
     let demand_data = read_vec_from_csv(file_path)?;
 
     if demand_data.is_empty() {
-        Err("Demand data file cannot be empty")?;
+        Err(InputError::new(
+            file_path,
+            "Demand data file cannot be empty",
+        ))?;
     }
 
-    // TBD add validation checks here? e.g. check not negative, apply interpolation and extrapolation rules?
+    // **TODO**: add validation checks here? e.g. check not negative, apply interpolation and
+    // extrapolation rules?
     Ok(demand_data)
 }
 

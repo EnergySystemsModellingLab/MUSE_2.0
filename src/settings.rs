@@ -1,10 +1,10 @@
 use crate::demand::{read_demand_data, Demand};
+use crate::input::InputError;
 use crate::log::DEFAULT_LOG_LEVEL;
 use crate::time_slices::{read_time_slices, TimeSlice};
 use log::warn;
 use serde::Deserialize;
 use std::error::Error;
-use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -22,19 +22,6 @@ pub struct SettingsReader {
     input_files: InputFiles,
     milestone_years: MilestoneYears,
 }
-
-/// Indicates that an error occurred while loading model settings.
-#[derive(Debug, Clone)]
-pub struct SettingsError {
-    msg: String,
-}
-
-impl fmt::Display for SettingsError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
 #[derive(Debug, Deserialize, PartialEq)]
 struct Global {
     #[serde(default = "default_log_level")]
@@ -94,10 +81,9 @@ impl SettingsReader {
     ///
     /// * `path`: The path to the settings TOML file (which includes paths to other configuration
     ///           files)
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<SettingsReader, SettingsError> {
-        let mut reader = Self::from_path_raw(path.as_ref()).map_err(|err| SettingsError {
-            msg: err.to_string(),
-        })?;
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<SettingsReader, InputError> {
+        let mut reader = Self::from_path_raw(path.as_ref())
+            .map_err(|err| InputError::new(path.as_ref(), &err.to_string()))?;
 
         // For paths to other files listed in the settings file, if they're relative, we treat them as
         // relative to the folder the settings file is in.
@@ -136,7 +122,7 @@ impl SettingsReader {
         Ok(reader)
     }
 
-    pub fn into_settings(self) -> Result<Settings, Box<dyn Error>> {
+    pub fn into_settings(self) -> Result<Settings, InputError> {
         let time_slices = match self.input_files.time_slices_path {
             None => {
                 // If there is no time slice file provided, use a default time slice which covers the
