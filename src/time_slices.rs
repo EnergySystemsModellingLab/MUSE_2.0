@@ -2,10 +2,9 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
-use crate::input::read_vec_from_csv;
+use crate::input::{read_vec_from_csv, InputError};
 use float_cmp::approx_eq;
 use serde::Deserialize;
-use std::error::Error;
 use std::path::Path;
 
 /// Represents a single time slice in the simulation
@@ -20,41 +19,56 @@ pub struct TimeSlice {
 }
 
 /// Read time slices from a CSV file
-pub fn read_time_slices(csv_file_path: &Path) -> Result<Vec<TimeSlice>, Box<dyn Error>> {
-    let time_slices = read_vec_from_csv(csv_file_path)?;
+pub fn read_time_slices(file_path: &Path) -> Result<Vec<TimeSlice>, InputError> {
+    let time_slices = read_vec_from_csv(file_path)?;
 
     if time_slices.is_empty() {
-        Err("Time slices file cannot be empty")?;
+        Err(InputError::new(
+            file_path,
+            "Time slices file cannot be empty",
+        ))?;
     }
 
-    check_time_slice_fractions_in_range(&time_slices)?;
-    check_time_slice_fractions_sum_to_one(&time_slices)?;
+    check_time_slice_fractions_in_range(file_path, &time_slices)?;
+    check_time_slice_fractions_sum_to_one(file_path, &time_slices)?;
     Ok(time_slices)
 }
 
 /// Check that time slice fractions are all in the range 0 to 1
-fn check_time_slice_fractions_in_range(time_slices: &[TimeSlice]) -> Result<(), &'static str> {
-    if !time_slices
+fn check_time_slice_fractions_in_range(
+    file_path: &Path,
+    time_slices: &[TimeSlice],
+) -> Result<(), InputError> {
+    if time_slices
         .iter()
         .all(|ts| ts.fraction >= 0.0 && ts.fraction <= 1.0)
     {
-        Err("All time slice fractions must be between 0 and 1")?
+        Ok(())
+    } else {
+        Err(InputError::new(
+            file_path,
+            "All time slice fractions must be between 0 and 1",
+        ))
     }
-
-    Ok(())
 }
 
 /// Check that time slice fractions sum to (approximately) one
-fn check_time_slice_fractions_sum_to_one(time_slices: &[TimeSlice]) -> Result<(), String> {
+fn check_time_slice_fractions_sum_to_one(
+    file_path: &Path,
+    time_slices: &[TimeSlice],
+) -> Result<(), InputError> {
     let sum = time_slices.iter().map(|ts| ts.fraction).sum();
-    if !approx_eq!(f64, sum, 1.0, epsilon = 1e-5) {
-        Err(format!(
-            "Sum of time slice fractions does not equal one (actual: {})",
-            sum
-        ))?;
+    if approx_eq!(f64, sum, 1.0, epsilon = 1e-5) {
+        Ok(())
+    } else {
+        Err(InputError::new(
+            file_path,
+            &format!(
+                "Sum of time slice fractions does not equal one (actual: {})",
+                sum
+            ),
+        ))
     }
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -138,50 +152,54 @@ autumn,evening,0.25"
 
     #[test]
     fn test_check_time_slice_fractions_in_range() {
+        let p = PathBuf::new();
+
         // Check that it passes when no time slices are passed in
-        assert!(check_time_slice_fractions_in_range(&[]).is_ok());
+        assert!(check_time_slice_fractions_in_range(&p, &[]).is_ok());
 
         // Single inputs, valid
-        assert!(check_time_slice_fractions_in_range(&[ts!(0.0)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&[ts!(0.5)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&[ts!(1.0)]).is_ok());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(0.0)]).is_ok());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(0.5)]).is_ok());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(1.0)]).is_ok());
 
         // Single inputs, invalid
-        assert!(check_time_slice_fractions_in_range(&[ts!(-1.0)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&[ts!(1.5)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&[ts!(2.0)]).is_err());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(-1.0)]).is_err());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(1.5)]).is_err());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(2.0)]).is_err());
 
         // Multiple inputs, valid
-        assert!(check_time_slice_fractions_in_range(&[ts!(0.0), ts!(0.5)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&[ts!(0.5), ts!(1.0)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&[ts!(1.0), ts!(0.25)]).is_ok());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(0.0), ts!(0.5)]).is_ok());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(0.5), ts!(1.0)]).is_ok());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(1.0), ts!(0.25)]).is_ok());
 
         // Multiple inputs, invalid
-        assert!(check_time_slice_fractions_in_range(&[ts!(-1.0), ts!(0.5)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&[ts!(1.5), ts!(-1.0)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&[ts!(2.0), ts!(1.0)]).is_err());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(-1.0), ts!(0.5)]).is_err());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(1.5), ts!(-1.0)]).is_err());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(2.0), ts!(1.0)]).is_err());
 
         // Edge cases
-        assert!(check_time_slice_fractions_in_range(&[ts!(f64::INFINITY)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&[ts!(f64::NAN)]).is_err());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(f64::INFINITY)]).is_err());
+        assert!(check_time_slice_fractions_in_range(&p, &[ts!(f64::NAN)]).is_err());
     }
 
     #[test]
     fn test_check_time_slice_fractions_sum_to_one() {
+        let p = PathBuf::new();
+
         // Single input, valid
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(1.0)]).is_ok());
+        assert!(check_time_slice_fractions_sum_to_one(&p, &[ts!(1.0)]).is_ok());
 
         // Single input, invalid
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.5)]).is_err());
+        assert!(check_time_slice_fractions_sum_to_one(&p, &[ts!(0.5)]).is_err());
 
         // Multiple inputs, valid
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.4), ts!(0.6)]).is_ok());
+        assert!(check_time_slice_fractions_sum_to_one(&p, &[ts!(0.4), ts!(0.6)]).is_ok());
 
         // Multiple inputs, invalid
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.4), ts!(0.3)]).is_err());
+        assert!(check_time_slice_fractions_sum_to_one(&p, &[ts!(0.4), ts!(0.3)]).is_err());
 
         // Edge cases
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(f64::INFINITY)]).is_err());
-        assert!(check_time_slice_fractions_sum_to_one(&[ts!(f64::NAN)]).is_err());
+        assert!(check_time_slice_fractions_sum_to_one(&p, &[ts!(f64::INFINITY)]).is_err());
+        assert!(check_time_slice_fractions_sum_to_one(&p, &[ts!(f64::NAN)]).is_err());
     }
 }
