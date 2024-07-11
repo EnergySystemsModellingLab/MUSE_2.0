@@ -1,5 +1,6 @@
 //! Provides the main entry point to the program.
 
+mod demand;
 mod input;
 mod settings;
 mod simulation;
