@@ -22,15 +22,9 @@ pub struct TimeSlice {
 pub fn read_time_slices(file_path: &Path) -> Result<Vec<TimeSlice>, InputError> {
     let time_slices = read_vec_from_csv(file_path)?;
 
-    if time_slices.is_empty() {
-        Err(InputError::new(
-            file_path,
-            "Time slices file cannot be empty",
-        ))?;
-    }
-
     check_time_slice_fractions_in_range(file_path, &time_slices)?;
     check_time_slice_fractions_sum_to_one(file_path, &time_slices)?;
+
     Ok(time_slices)
 }
 
