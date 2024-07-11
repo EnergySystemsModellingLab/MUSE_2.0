@@ -134,7 +134,7 @@ impl SettingsReader {
         Ok(reader)
     }
 
-    fn to_settings_raw(self) -> Result<Settings, Box<dyn Error>> {
+    pub fn into_settings(self) -> Result<Settings, Box<dyn Error>> {
         let time_slices = match self.input_files.time_slices_path {
             None => {
                 // If there is no time slice file provided, use a default time slice which covers the
@@ -155,20 +155,6 @@ impl SettingsReader {
             time_slices,
             milestone_years: self.milestone_years.years,
         })
-    }
-}
-
-impl TryInto<Settings> for SettingsReader {
-    type Error = SettingsError;
-
-    /// Convert into a Settings struct.
-    fn try_into(self) -> Result<Settings, Self::Error> {
-        match self.to_settings_raw() {
-            Ok(settings) => Ok(settings),
-            Err(err) => Err(Self::Error {
-                msg: err.to_string(),
-            }),
-        }
     }
 }
 
@@ -250,9 +236,8 @@ mod tests {
 
     #[test]
     fn test_read_settings() {
-        let reader = get_settings_reader();
-        let _: Settings = reader
-            .try_into()
+        get_settings_reader()
+            .into_settings()
             .unwrap_or_else(|err| panic!("Failed to read example settings file: {:?}", err));
     }
 }

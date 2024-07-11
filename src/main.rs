@@ -28,7 +28,7 @@ fn main() {
 
     // Load settings from CSV files and verify
     let settings = reader
-        .try_into()
+        .into_settings()
         .unwrap_or_else(|err| panic!("Failed to load settings: {}", err));
 
     info!("Settings loaded successfully.");
