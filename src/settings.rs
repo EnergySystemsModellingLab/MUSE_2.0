@@ -1,6 +1,7 @@
 use crate::demand::{read_demand_data, Demand};
 use crate::input::InputError;
 use crate::log::DEFAULT_LOG_LEVEL;
+use crate::regions::{read_regions_data, Region};
 use crate::time_slices::{read_time_slices, TimeSlice};
 use log::warn;
 use serde::Deserialize;
@@ -13,6 +14,7 @@ pub struct Settings {
     pub time_slices: Vec<TimeSlice>,
     pub milestone_years: Vec<u32>,
     pub demand_data: Vec<Demand>,
+    pub regions: Vec<Region>,
 }
 
 /// Represents the contents of the entire settings file.
@@ -22,6 +24,7 @@ pub struct SettingsReader {
     input_files: InputFiles,
     milestone_years: MilestoneYears,
 }
+
 #[derive(Debug, Deserialize, PartialEq)]
 struct Global {
     #[serde(default = "default_log_level")]
@@ -57,7 +60,6 @@ struct InputFiles {
     time_slices_path: Option<PathBuf>,
 }
 
-/// Represents the "milestone_years" section of the settings file.
 #[derive(Debug, Deserialize, PartialEq)]
 struct MilestoneYears {
     pub years: Vec<u32>,
@@ -143,6 +145,7 @@ impl SettingsReader {
             time_slices,
             milestone_years: self.milestone_years.years,
             demand_data: read_demand_data(&self.input_files.demand_file_path)?,
+            regions: read_regions_data(&self.input_files.regions_file_path)?,
         })
     }
 }
