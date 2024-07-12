@@ -33,13 +33,6 @@ pub struct Demand {
 pub fn read_demand_data(file_path: &Path) -> Result<Vec<Demand>, InputError> {
     let demand_data = read_vec_from_csv(file_path)?;
 
-    if demand_data.is_empty() {
-        Err(InputError::new(
-            file_path,
-            "Demand data file cannot be empty",
-        ))?;
-    }
-
     // **TODO**: add validation checks here? e.g. check not negative, apply interpolation and
     // extrapolation rules?
     Ok(demand_data)
