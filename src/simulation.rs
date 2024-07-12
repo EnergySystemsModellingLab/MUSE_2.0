@@ -4,7 +4,7 @@ use std::path::Path;
 use crate::csv_reader::read_agents_from_csv;
 
 pub fn run(config_file_path: &Path, csv_file_path: &Path) -> Result<(), Box<dyn Error>> {
-    // Read and print agents
+    // Now accepting csv_file_path as a parameter
     let agents = read_agents_from_csv(csv_file_path)?;
 
     for agent in agents {
@@ -16,4 +16,3 @@ pub fn run(config_file_path: &Path, csv_file_path: &Path) -> Result<(), Box<dyn 
 
     Ok(())
 }
-
