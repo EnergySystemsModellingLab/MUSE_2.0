@@ -1,4 +1,4 @@
-process_name,commodity_name,flow,flow_type,flow_cost
+process_id,commodity_id,flow,flow_type,flow_cost
 GASDRV,GASPRD,1.0,fixed,
 GASPRC,GASPRD,-1.05,fixed,
 GASPRC,GASNAT,1.0,fixed,
