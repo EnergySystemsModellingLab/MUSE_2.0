@@ -1,16 +1,19 @@
 //! Provides the main entry point to the program.
 
+use std::env;
 use std::error::Error;
 use std::path::Path;
-mod csv;
-use csv::read_agents_from_csv;
+
+mod simulation;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let file_path = Path::new("agents.csv");
-    let agents = read_agents_from_csv(file_path)?;
-
-    for agent in agents {
-        println!("{:?}", agent);
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 3 {
+        panic!("Usage: muse2 <config_file_path> <csv_file_path>");
     }
 
-    Ok(())
+    let config_file_path = Path::new(&args[1]);
+    let csv_file_path = Path::new(&args[2]);
+
+    simulation::run(config_file_path, csv_file_path)
+}
