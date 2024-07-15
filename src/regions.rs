@@ -2,10 +2,10 @@ use crate::input::{read_vec_from_csv, InputError};
 use serde::Deserialize;
 use std::path::Path;
 
-/// Represents a region with a short name and a longer description.
+/// Represents a region with an ID and a longer description.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Region {
-    pub short_name: String,
+    pub id: String,
     pub description: String,
 }
 
@@ -18,7 +18,7 @@ pub struct Region {
 /// # Returns
 ///
 /// This function returns a `Result` containing either a `Vec<Region>` with the parsed regions data
-/// or a `Box<dyn Error>` if an error occurred.
+/// or an `InputError` if an error occurred.
 ///
 /// # Errors
 ///
@@ -28,10 +28,10 @@ pub fn read_regions_data(file_path: &Path) -> Result<Vec<Region>, InputError> {
     let regions_data = read_vec_from_csv(file_path)?;
 
     if regions_data.is_empty() {
-        Err(InputError::new(
+        return Err(InputError::new(
             file_path,
             "Regions data file cannot be empty",
-        ))?;
+        ));
     }
 
     Ok(regions_data)
@@ -51,7 +51,7 @@ mod tests {
         let mut file = File::create(&file_path).unwrap();
         writeln!(
             file,
-            "short_name,description
+            "id,description
 NA,North America
 EU,Europe
 AP,Asia Pacific"
@@ -69,15 +69,15 @@ AP,Asia Pacific"
             regions_data,
             vec![
                 Region {
-                    short_name: "NA".to_string(),
+                    id: "NA".to_string(),
                     description: "North America".to_string(),
                 },
                 Region {
-                    short_name: "EU".to_string(),
+                    id: "EU".to_string(),
                     description: "Europe".to_string(),
                 },
                 Region {
-                    short_name: "AP".to_string(),
+                    id: "AP".to_string(),
                     description: "Asia Pacific".to_string(),
                 },
             ]
