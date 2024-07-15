@@ -19,6 +19,10 @@ pub fn read_vec_from_csv<T: DeserializeOwned>(csv_file_path: &Path) -> Result<Ve
         vec.push(d)
     }
 
+    if vec.is_empty() {
+        Err(InputError::new(csv_file_path, "CSV file cannot be empty"))?;
+    }
+
     Ok(vec)
 }
 
