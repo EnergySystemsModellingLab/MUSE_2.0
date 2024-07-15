@@ -11,7 +11,6 @@ use std::path::{Path, PathBuf};
 
 /// Model settings
 
-#[allow(dead_code)]
 pub struct Settings {
     pub time_slices: Vec<TimeSlice>,
     pub milestone_years: Vec<u32>,
