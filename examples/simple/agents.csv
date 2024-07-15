@@ -1,4 +1,4 @@
-agent,description,commodity_name,commodity_portion,search_space,decision_rule,capex_limit,annual_cost_limit
+id,description,commodity_id,commodity_portion,search_space,decision_rule,capex_limit,annual_cost_limit
 A0_GEX,Gas extractors,GASPRD,1,,single,,
 A0_GPR,Gas processors,GASNAT,1,,single,,
 A0_ELC,Electricity generators,ELCTRI,1,,single,,

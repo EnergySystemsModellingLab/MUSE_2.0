@@ -1,18 +1,15 @@
 //! High level functionality for launching a simulation.
-use std::error::Error;
-use std::path::Path;
-use crate::csv_reader::read_agents_from_csv;
+use crate::settings::Settings;
 
-pub fn run(config_file_path: &Path, csv_file_path: &Path) -> Result<(), Box<dyn Error>> {
-    // Now accepting csv_file_path as a parameter
-    let agents = read_agents_from_csv(csv_file_path)?;
-
-    for agent in agents {
-        println!("{:?}", agent);
-    }
-
-    // Additional simulation code using `config_file_path`
-    // ...
-
-    Ok(())
+/// Run the simulation
+///
+/// # Arguments:
+///
+/// * `settings`: The model settings
+pub fn run(settings: &Settings) {
+    // Print the contents of settings
+    // TODO: Remove this once we're actually doing something with the settings
+    println!("Demand data: {:?}", settings.demand_data);
+    println!("Time slices: {:?}", settings.time_slices);
+    println!("Milestone years: {:?}", settings.milestone_years);
 }

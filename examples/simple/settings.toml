@@ -1,3 +1,6 @@
+[global]
+log_level = "info"
+
 [input_files]
 agents_file_path = "agents.csv"
 agent_objectives_file_path = "agent_objectives.csv"
@@ -10,7 +13,7 @@ demand_file_path = "demand.csv"
 demand_slicing_file_path = "demand_slicing.csv"
 processes_file_path = "processes.csv"
 process_availabilities_file_path = "process_availabilities.csv"
-process_flow_share_constraints_file_path = "processes_flow_share_constraints.csv"
+process_flow_share_constraints_file_path = "process_flow_share_constraints.csv"
 process_flows_file_path = "process_flows.csv"
 process_investment_constraints_file_path = "process_investment_constraints.csv"
 process_pacs_file_path = "process_pacs.csv"
