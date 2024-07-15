@@ -18,11 +18,7 @@ pub struct Region {
 /// # Returns
 ///
 /// This function returns a `Result` containing either a `Vec<Region>` with the parsed regions data
-<<<<<<< HEAD
 /// or an `InputError` if an error occurred.
-=======
-/// or a `Box<dyn Error>` if an error occurred.
->>>>>>> 2f1a8e35e7f4e7fe63d1b8dd035bfb40551754d8
 ///
 /// # Errors
 ///
@@ -32,17 +28,10 @@ pub fn read_regions_data(file_path: &Path) -> Result<Vec<Region>, InputError> {
     let regions_data = read_vec_from_csv(file_path)?;
 
     if regions_data.is_empty() {
-<<<<<<< HEAD
         return Err(InputError::new(
             file_path,
             "Regions data file cannot be empty",
         ));
-=======
-        Err(InputError::new(
-            file_path,
-            "Regions data file cannot be empty",
-        ))?;
->>>>>>> 2f1a8e35e7f4e7fe63d1b8dd035bfb40551754d8
     }
 
     Ok(regions_data)
@@ -62,11 +51,7 @@ mod tests {
         let mut file = File::create(&file_path).unwrap();
         writeln!(
             file,
-<<<<<<< HEAD
             "id,description
-=======
-            "short_name,description
->>>>>>> 2f1a8e35e7f4e7fe63d1b8dd035bfb40551754d8
 NA,North America
 EU,Europe
 AP,Asia Pacific"
@@ -84,7 +69,6 @@ AP,Asia Pacific"
             regions_data,
             vec![
                 Region {
-<<<<<<< HEAD
                     id: "NA".to_string(),
                     description: "North America".to_string(),
                 },
@@ -94,17 +78,6 @@ AP,Asia Pacific"
                 },
                 Region {
                     id: "AP".to_string(),
-=======
-                    short_name: "NA".to_string(),
-                    description: "North America".to_string(),
-                },
-                Region {
-                    short_name: "EU".to_string(),
-                    description: "Europe".to_string(),
-                },
-                Region {
-                    short_name: "AP".to_string(),
->>>>>>> 2f1a8e35e7f4e7fe63d1b8dd035bfb40551754d8
                     description: "Asia Pacific".to_string(),
                 },
             ]
