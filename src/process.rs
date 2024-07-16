@@ -3,6 +3,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
+use std::ops::RangeInclusive;
 use std::path::Path;
 
 trait HasProcessID {
@@ -74,7 +75,7 @@ struct ProcessPAC {
 define_id_getter! {ProcessPAC}
 
 #[derive(PartialEq, Debug, Deserialize)]
-pub struct ProcessParameter {
+struct ProcessParameterRaw {
     pub process_id: String,
     pub start_year: Option<u32>,
     pub end_year: Option<u32>,
@@ -84,6 +85,59 @@ pub struct ProcessParameter {
     pub lifetime: u32,
     pub discount_rate: Option<f64>,
     pub cap2act: Option<f64>,
+}
+define_id_getter! {ProcessParameterRaw}
+
+impl ProcessParameterRaw {
+    fn into_parameter(
+        self,
+        file_path: &Path,
+        year_range: &RangeInclusive<u32>,
+    ) -> Result<ProcessParameter, InputError> {
+        let start_year = match self.start_year {
+            None => *year_range.start(),
+            Some(year) => {
+                if !year_range.contains(&year) {
+                    Err(InputError::new(file_path, "start_year is out of range"))?
+                }
+
+                year
+            }
+        };
+        let end_year = match self.end_year {
+            None => *year_range.end(),
+            Some(year) => {
+                if !year_range.contains(&year) {
+                    Err(InputError::new(file_path, "end_year is out of range"))?
+                }
+
+                year
+            }
+        };
+
+        Ok(ProcessParameter {
+            process_id: self.process_id,
+            years: start_year..=end_year,
+            capital_cost: self.capital_cost,
+            fixed_operating_cost: self.fixed_operating_cost,
+            variable_operating_cost: self.variable_operating_cost,
+            lifetime: self.lifetime,
+            discount_rate: self.discount_rate.unwrap_or(0.0),
+            cap2act: self.cap2act.unwrap_or(1.0),
+        })
+    }
+}
+
+#[derive(PartialEq, Debug, Deserialize)]
+pub struct ProcessParameter {
+    pub process_id: String,
+    pub years: RangeInclusive<u32>,
+    pub capital_cost: f64,
+    pub fixed_operating_cost: f64,
+    pub variable_operating_cost: f64,
+    pub lifetime: u32,
+    pub discount_rate: f64,
+    pub cap2act: f64,
 }
 define_id_getter! {ProcessParameter}
 
@@ -111,15 +165,17 @@ pub struct Process {
     pub regions: Vec<String>,
 }
 
-/// Read a CSV file, grouping the entries by process ID
-fn read_csv_grouped_by_id<'a, T>(
+/// Read a CSV file, grouping the entries by process ID, applying a filter to each element
+fn read_csv_grouped_by_id_with_filter<'a, T, U, F>(
     file_path: &Path,
     process_ids: &'a HashSet<String>,
+    filter: F,
 ) -> Result<HashMap<&'a str, Vec<T>>, InputError>
 where
-    T: HasProcessID + DeserializeOwned,
+    U: HasProcessID + DeserializeOwned,
+    F: Fn(&Path, U) -> Result<T, InputError>,
 {
-    let vec: Vec<T> = read_vec_from_csv(file_path)?;
+    let vec: Vec<U> = read_vec_from_csv(file_path)?;
     let mut map = HashMap::new();
     for elem in vec.into_iter() {
         let elem_id = elem.get_process_id();
@@ -131,6 +187,7 @@ where
             Some(id) => id.as_str(),
         };
 
+        let elem: T = filter(file_path, elem)?;
         match map.get_mut(&id) {
             None => {
                 map.insert(id, vec![elem]);
@@ -140,6 +197,17 @@ where
     }
 
     Ok(map)
+}
+
+/// Read a CSV file, grouping the entries by process ID
+fn read_csv_grouped_by_id<'a, T>(
+    file_path: &Path,
+    process_ids: &'a HashSet<String>,
+) -> Result<HashMap<&'a str, Vec<T>>, InputError>
+where
+    T: HasProcessID + DeserializeOwned,
+{
+    read_csv_grouped_by_id_with_filter(file_path, process_ids, |_, x| Ok(x))
 }
 
 /// Read processes CSV file, which contains IDs and descriptions.
@@ -174,6 +242,7 @@ pub fn read_processes(
     process_pacs_file_path: &Path,
     process_parameters_file_path: &Path,
     process_regions_file_path: &Path,
+    year_range: RangeInclusive<u32>,
 ) -> Result<Vec<Process>, InputError> {
     let mut descriptions = read_processes_file(processes_file_path)?;
 
@@ -185,7 +254,11 @@ pub fn read_processes(
         read_csv_grouped_by_id(process_availabilities_file_path, &process_ids)?;
     let mut flows = read_csv_grouped_by_id(process_flows_file_path, &process_ids)?;
     let mut pacs = read_csv_grouped_by_id(process_pacs_file_path, &process_ids)?;
-    let mut parameters = read_csv_grouped_by_id(process_parameters_file_path, &process_ids)?;
+    let mut parameters = read_csv_grouped_by_id_with_filter(
+        process_parameters_file_path,
+        &process_ids,
+        |file_path, param: ProcessParameterRaw| param.into_parameter(file_path, &year_range),
+    )?;
     let mut regions = read_csv_grouped_by_id(process_regions_file_path, &process_ids)?;
 
     let processes = process_ids

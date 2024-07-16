@@ -145,6 +145,8 @@ impl SettingsReader {
 
             Some(ref path) => read_time_slices(path)?,
         };
+
+        let years = &self.milestone_years.years;
         let processes = read_processes(
             &paths.processes_file_path,
             &paths.process_availabilities_file_path,
@@ -152,6 +154,7 @@ impl SettingsReader {
             &paths.process_pacs_file_path,
             &paths.process_parameters_file_path,
             &paths.process_regions_file_path,
+            *years.first().unwrap()..=*years.last().unwrap(),
         )?;
         let demand_data = read_demand_data(&paths.demand_file_path)?;
 
