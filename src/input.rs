@@ -1,5 +1,6 @@
 //! Common routines for handling input data.
 use serde::de::DeserializeOwned;
+use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::error::Error;
 use std::fmt;
 use std::path::Path;
@@ -24,6 +25,16 @@ pub fn read_vec_from_csv<T: DeserializeOwned>(csv_file_path: &Path) -> Result<Ve
     }
 
     Ok(vec)
+}
+
+#[derive(PartialEq, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
+pub enum LimitType {
+    #[string = "lo"]
+    LowerBound,
+    #[string = "up"]
+    UpperBound,
+    #[string = "fx"]
+    Equality,
 }
 
 /// Indicates that an error occurred while loading a settings file.

@@ -1,4 +1,4 @@
-use crate::input::{read_vec_from_csv, InputError};
+use crate::input::{read_vec_from_csv, InputError, LimitType};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -22,7 +22,7 @@ macro_rules! define_id_getter {
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct ProcessAvailability {
     pub process_id: String,
-    pub limit_type: String,
+    pub limit_type: LimitType,
     pub time_slice: Option<String>,
     pub value: f64,
 }
