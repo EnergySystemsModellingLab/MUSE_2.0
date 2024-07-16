@@ -1,6 +1,7 @@
 use crate::input::{read_vec_from_csv, InputError};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
+use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -27,16 +28,29 @@ pub struct ProcessAvailability {
 }
 define_id_getter! {ProcessAvailability}
 
+#[derive(PartialEq, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
+pub enum FlowType {
+    #[string = "fixed"]
+    Fixed,
+    #[string = "flexible"]
+    Flexible,
+}
+
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct ProcessFlow {
     pub process_id: String,
     pub commodity_id: String,
     pub flow: f64,
-    pub flow_type: String,
+    #[serde(default = "default_flow_type")]
+    pub flow_type: FlowType,
     #[serde(deserialize_with = "deserialise_flow_cost")]
     pub flow_cost: f64,
 }
 define_id_getter! {ProcessFlow}
+
+fn default_flow_type() -> FlowType {
+    FlowType::Fixed
+}
 
 /// Custom deserialiser for flow cost - treat empty fields as 0.0
 fn deserialise_flow_cost<'de, D>(deserialiser: D) -> Result<f64, D::Error>
