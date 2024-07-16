@@ -58,13 +58,11 @@ fn deserialise_flow_cost<'de, D>(deserialiser: D) -> Result<f64, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let s: &str = Deserialize::deserialize(deserialiser)?;
-    if s.is_empty() {
-        return Ok(0.0);
+    let value: Option<f64> = Deserialize::deserialize(deserialiser)?;
+    match value {
+        None => Ok(0.0),
+        Some(value) => Ok(value),
     }
-
-    let value: f64 = s.parse().map_err(serde::de::Error::custom)?;
-    Ok(value)
 }
 
 /// Primary Activity Commodity
