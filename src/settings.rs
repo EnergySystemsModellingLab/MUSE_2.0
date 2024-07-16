@@ -87,6 +87,10 @@ impl SettingsReader {
         let mut reader = Self::from_path_raw(path.as_ref())
             .map_err(|err| InputError::new(path.as_ref(), &err.to_string()))?;
 
+        if reader.milestone_years.years.is_empty() {
+            Err(InputError::new(path.as_ref(), "milestone_years is empty"))?;
+        }
+
         // For paths to other files listed in the settings file, if they're relative, we treat them as
         // relative to the folder the settings file is in.
         let settings_dir = path.as_ref().parent().unwrap(); // will never fail
