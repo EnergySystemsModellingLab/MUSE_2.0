@@ -229,7 +229,9 @@ mod tests {
                     regions_file_path: PathBuf::from_str("regions.csv").unwrap(),
                     time_slices_path: Some(PathBuf::from_str("time_slices.csv").unwrap()),
                 },
-                milestone_years: MilestoneYears { years: vec![2020] }
+                milestone_years: MilestoneYears {
+                    years: vec![2020, 2100]
+                }
             }
         )
     }
@@ -237,7 +239,7 @@ mod tests {
     #[test]
     fn test_settings_reader_from_path() {
         let reader = get_settings_reader();
-        assert_eq!(reader.milestone_years.years, vec![2020]);
+        assert_eq!(reader.milestone_years.years, vec![2020, 2100]);
     }
 
     #[test]

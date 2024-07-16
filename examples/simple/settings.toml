@@ -23,4 +23,4 @@ regions_file_path = "regions.csv"
 time_slices_path = "time_slices.csv"
 
 [milestone_years]
-years = [2020]
+years = [2020, 2100]
