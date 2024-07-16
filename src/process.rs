@@ -1,4 +1,4 @@
-use crate::input::{read_vec_from_csv, InputError, LimitType};
+use crate::input::{deserialise_proportion, read_vec_from_csv, InputError, LimitType};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -24,6 +24,7 @@ pub struct ProcessAvailability {
     pub process_id: String,
     pub limit_type: LimitType,
     pub time_slice: Option<String>,
+    #[serde(deserialize_with = "deserialise_proportion")]
     pub value: f64,
 }
 define_id_getter! {ProcessAvailability}

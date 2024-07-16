@@ -2,7 +2,7 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
-use crate::input::{read_vec_from_csv, InputError};
+use crate::input::{deserialise_proportion, read_vec_from_csv, InputError};
 use float_cmp::approx_eq;
 use serde::Deserialize;
 use std::path::Path;
@@ -15,6 +15,7 @@ pub struct TimeSlice {
     /// Time of day, as a category (e.g. night, day etc.)
     pub time_of_day: String,
     /// The fraction of the year that this combination of season and time of day occupies
+    #[serde(deserialize_with = "deserialise_proportion")]
     pub fraction: f64,
 }
 
@@ -22,28 +23,9 @@ pub struct TimeSlice {
 pub fn read_time_slices(file_path: &Path) -> Result<Vec<TimeSlice>, InputError> {
     let time_slices = read_vec_from_csv(file_path)?;
 
-    check_time_slice_fractions_in_range(file_path, &time_slices)?;
     check_time_slice_fractions_sum_to_one(file_path, &time_slices)?;
 
     Ok(time_slices)
-}
-
-/// Check that time slice fractions are all in the range 0 to 1
-fn check_time_slice_fractions_in_range(
-    file_path: &Path,
-    time_slices: &[TimeSlice],
-) -> Result<(), InputError> {
-    if time_slices
-        .iter()
-        .all(|ts| ts.fraction >= 0.0 && ts.fraction <= 1.0)
-    {
-        Ok(())
-    } else {
-        Err(InputError::new(
-            file_path,
-            "All time slice fractions must be between 0 and 1",
-        ))
-    }
 }
 
 /// Check that time slice fractions sum to (approximately) one
@@ -142,38 +124,6 @@ autumn,evening,0.25"
         }
 
         assert!(read_time_slices(&file_path).is_err());
-    }
-
-    #[test]
-    fn test_check_time_slice_fractions_in_range() {
-        let p = PathBuf::new();
-
-        // Check that it passes when no time slices are passed in
-        assert!(check_time_slice_fractions_in_range(&p, &[]).is_ok());
-
-        // Single inputs, valid
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(0.0)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(0.5)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(1.0)]).is_ok());
-
-        // Single inputs, invalid
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(-1.0)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(1.5)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(2.0)]).is_err());
-
-        // Multiple inputs, valid
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(0.0), ts!(0.5)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(0.5), ts!(1.0)]).is_ok());
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(1.0), ts!(0.25)]).is_ok());
-
-        // Multiple inputs, invalid
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(-1.0), ts!(0.5)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(1.5), ts!(-1.0)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(2.0), ts!(1.0)]).is_err());
-
-        // Edge cases
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(f64::INFINITY)]).is_err());
-        assert!(check_time_slice_fractions_in_range(&p, &[ts!(f64::NAN)]).is_err());
     }
 
     #[test]
