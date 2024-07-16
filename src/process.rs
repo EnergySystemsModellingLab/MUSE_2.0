@@ -129,6 +129,30 @@ where
     Ok(map)
 }
 
+/// Read processes CSV file, which contains IDs and descriptions.
+///
+/// Returns a map of IDs to descriptions.
+fn read_processes_file(file_path: &Path) -> Result<HashMap<String, String>, InputError> {
+    let mut reader = csv::Reader::from_path(file_path)
+        .map_err(|err| InputError::new(file_path, &err.to_string()))?;
+
+    let mut descriptions = HashMap::new();
+    for result in reader.deserialize() {
+        let desc: ProcessDescription =
+            result.map_err(|err| InputError::new(file_path, &err.to_string()))?;
+        if descriptions.contains_key(&desc.id) {
+            Err(InputError::new(
+                file_path,
+                &format!("Duplicate process ID: {}", &desc.id),
+            ))?;
+        }
+
+        descriptions.insert(desc.id, desc.description);
+    }
+
+    Ok(descriptions)
+}
+
 /// Read process information from the specified CSV files
 pub fn read_processes(
     processes_file_path: &Path,
@@ -138,9 +162,12 @@ pub fn read_processes(
     process_parameters_file_path: &Path,
     process_regions_file_path: &Path,
 ) -> Result<Vec<Process>, InputError> {
-    let descriptions: Vec<ProcessDescription> = read_vec_from_csv(processes_file_path)?;
-    let process_ids: HashSet<String> =
-        HashSet::from_iter(descriptions.iter().map(|desc| desc.id.clone()));
+    let mut descriptions = read_processes_file(processes_file_path)?;
+
+    // Clone the IDs into a separate set. We need to copy them as the other maps will contain
+    // references to the IDs and we want to consume descriptions.
+    let process_ids = HashSet::from_iter(descriptions.keys().cloned());
+
     let mut availabilities =
         read_csv_grouped_by_id(process_availabilities_file_path, &process_ids)?;
     let mut flows = read_csv_grouped_by_id(process_flows_file_path, &process_ids)?;
@@ -148,26 +175,29 @@ pub fn read_processes(
     let mut parameters = read_csv_grouped_by_id(process_parameters_file_path, &process_ids)?;
     let mut regions = read_csv_grouped_by_id(process_regions_file_path, &process_ids)?;
 
-    let processes = descriptions
-        .into_iter()
-        .map(|desc| Process {
-            id: desc.id.clone(),
-            description: desc.description,
-            availabilities: availabilities.remove(desc.id.as_str()).unwrap_or_default(),
-            flows: flows.remove(desc.id.as_str()).unwrap_or_default(),
-            pacs: pacs
-                .remove(desc.id.as_str())
-                .unwrap_or_default()
-                .into_iter()
-                .map(|pacs: ProcessPAC| pacs.pac)
-                .collect(),
-            parameters: parameters.remove(desc.id.as_str()).unwrap_or_default(),
-            regions: regions
-                .remove(desc.id.as_str())
-                .unwrap_or_default()
-                .into_iter()
-                .map(|region: ProcessRegion| region.region_id)
-                .collect(),
+    let processes = process_ids
+        .iter()
+        .map(|id| {
+            let desc = descriptions.remove_entry(id).unwrap(); // we know entry is present
+            Process {
+                id: desc.0,
+                description: desc.1,
+                availabilities: availabilities.remove(id.as_str()).unwrap_or_default(),
+                flows: flows.remove(id.as_str()).unwrap_or_default(),
+                pacs: pacs
+                    .remove(id.as_str())
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|pacs: ProcessPAC| pacs.pac)
+                    .collect(),
+                parameters: parameters.remove(id.as_str()).unwrap_or_default(),
+                regions: regions
+                    .remove(id.as_str())
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|region: ProcessRegion| region.region_id)
+                    .collect(),
+            }
         })
         .collect();
 
