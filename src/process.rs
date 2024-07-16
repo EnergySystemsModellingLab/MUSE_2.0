@@ -76,14 +76,14 @@ define_id_getter! {ProcessPAC}
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct ProcessParameter {
     pub process_id: String,
-    pub start_year: u32,
-    pub end_year: u32,
+    pub start_year: Option<u32>,
+    pub end_year: Option<u32>,
     pub capital_cost: f64,
     pub fixed_operating_cost: f64,
     pub variable_operating_cost: f64,
     pub lifetime: u32,
-    pub discount_rate: f64,
-    pub cap2act: f64,
+    pub discount_rate: Option<f64>,
+    pub cap2act: Option<f64>,
 }
 define_id_getter! {ProcessParameter}
 
