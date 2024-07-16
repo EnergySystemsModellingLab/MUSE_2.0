@@ -22,7 +22,7 @@ macro_rules! define_id_getter {
 pub struct ProcessAvailability {
     pub process_id: String,
     pub limit_type: String,
-    pub timeslice: Option<String>,
+    pub time_slice: Option<String>,
     pub value: f64,
 }
 define_id_getter! {ProcessAvailability}

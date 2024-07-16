@@ -1,4 +1,4 @@
-id,description,type,timeslice_level
+id,description,type,time_slice_level
 GASPRD,Gas produced,SED,SEASON
 GASNAT,Natural gas,SED,SEASON
 ELCTRI,Electricity,SED,DAYNIGHT
