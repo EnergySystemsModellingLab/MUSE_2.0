@@ -10,7 +10,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Model settings
-
 pub struct Settings {
     pub time_slices: Vec<TimeSlice>,
     pub milestone_years: Vec<u32>,
