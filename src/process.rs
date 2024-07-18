@@ -166,6 +166,19 @@ pub struct Process {
 }
 
 /// Read a CSV file, grouping the entries by process ID, applying a filter to each element
+///
+/// # Arguments
+///
+/// * `file_path`: Path to CSV file
+/// * `process_ids`: All possible process IDs
+/// * `filter`: Function to convert the deserialised CSV row into another data structure
+///
+/// `filter` must be a function which takes a file path and a deserialised CSV row as arguments,
+/// returning either another data structure or an error.
+///
+/// # Returns
+///
+/// A HashMap with process ID as a key and a vector of filtered CSV data as a value.
 fn read_csv_grouped_by_id_with_filter<'a, T, U, F>(
     file_path: &Path,
     process_ids: &'a HashSet<String>,
@@ -200,6 +213,15 @@ where
 }
 
 /// Read a CSV file, grouping the entries by process ID
+///
+/// # Arguments
+///
+/// * `file_path`: Path to CSV file
+/// * `process_ids`: All possible process IDs
+///
+/// # Returns
+///
+/// A HashMap with process ID as a key and a vector of CSV data as a value.
 fn read_csv_grouped_by_id<'a, T>(
     file_path: &Path,
     process_ids: &'a HashSet<String>,
