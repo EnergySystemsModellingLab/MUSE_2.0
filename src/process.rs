@@ -274,7 +274,7 @@ pub fn read_processes(
                     .remove(id.as_str())
                     .unwrap_or_default()
                     .into_iter()
-                    .map(|pacs: ProcessPAC| pacs.pac)
+                    .map(|p: ProcessPAC| p.pac)
                     .collect(),
                 parameters: parameters.remove(id.as_str()).unwrap_or_default(),
                 regions: regions
