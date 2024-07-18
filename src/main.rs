@@ -6,7 +6,7 @@ mod log;
 mod process;
 mod settings;
 mod simulation;
-mod time_slices;
+mod time_slice;
 
 use crate::settings::SettingsReader;
 use ::log::info;

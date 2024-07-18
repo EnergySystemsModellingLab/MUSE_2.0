@@ -2,7 +2,7 @@ use crate::demand::{read_demand_data, Demand};
 use crate::input::InputError;
 use crate::log::DEFAULT_LOG_LEVEL;
 use crate::process::{read_processes, Process};
-use crate::time_slices::{read_time_slices, TimeSlice};
+use crate::time_slice::{read_time_slices, TimeSlice};
 use log::warn;
 use serde::Deserialize;
 use std::error::Error;
