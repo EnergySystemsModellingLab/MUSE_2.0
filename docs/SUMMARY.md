@@ -2,4 +2,4 @@
 
 [Introduction](./introduction.md)
 
-- [Chapter 1](./chapter_1.md)
+- [User Guide](./user_guide.md)
