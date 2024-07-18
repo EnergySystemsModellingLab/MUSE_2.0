@@ -56,7 +56,7 @@ struct InputFiles {
     process_parameters_file_path: PathBuf,
     process_regions_file_path: PathBuf,
     regions_file_path: PathBuf,
-    time_slices_path: Option<PathBuf>,
+    time_slices_file_path: Option<PathBuf>,
 }
 
 /// Represents the "milestone_years" section of the settings file.
@@ -120,9 +120,9 @@ impl SettingsReader {
         update_path!(reader.input_files.process_parameters_file_path);
         update_path!(reader.input_files.process_regions_file_path);
         update_path!(reader.input_files.regions_file_path);
-        if let Some(mut time_slices_path) = reader.input_files.time_slices_path {
+        if let Some(mut time_slices_path) = reader.input_files.time_slices_file_path {
             update_path!(time_slices_path);
-            reader.input_files.time_slices_path = Some(time_slices_path);
+            reader.input_files.time_slices_file_path = Some(time_slices_path);
         }
 
         Ok(reader)
@@ -130,7 +130,7 @@ impl SettingsReader {
 
     pub fn into_settings(self) -> Result<Settings, Box<dyn Error>> {
         let paths = &self.input_files;
-        let time_slices = match paths.time_slices_path {
+        let time_slices = match paths.time_slices_file_path {
             None => {
                 // If there is no time slice file provided, use a default time slice which covers the
                 // whole year and the whole day
@@ -230,7 +230,7 @@ mod tests {
                         .unwrap(),
                     process_regions_file_path: PathBuf::from_str("process_regions.csv").unwrap(),
                     regions_file_path: PathBuf::from_str("regions.csv").unwrap(),
-                    time_slices_path: Some(PathBuf::from_str("time_slices.csv").unwrap()),
+                    time_slices_file_path: Some(PathBuf::from_str("time_slices.csv").unwrap()),
                 },
                 milestone_years: MilestoneYears {
                     years: vec![2020, 2100]
