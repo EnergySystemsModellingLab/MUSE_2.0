@@ -1,5 +1,6 @@
 //! Common routines for handling input data.
-use serde::de::DeserializeOwned;
+use serde::de::{Deserialize, DeserializeOwned, Deserializer};
+use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::error::Error;
 use std::fmt;
 use std::path::Path;
@@ -24,6 +25,29 @@ pub fn read_vec_from_csv<T: DeserializeOwned>(csv_file_path: &Path) -> Result<Ve
     }
 
     Ok(vec)
+}
+
+/// Read an f64, checking that it is between 0 and 1
+pub fn deserialise_proportion<'de, D>(deserialiser: D) -> Result<f64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Deserialize::deserialize(deserialiser)?;
+    if !(0.0..=1.0).contains(&value) {
+        Err(serde::de::Error::custom("Value is not between 0 and 1"))?
+    }
+
+    Ok(value)
+}
+
+#[derive(PartialEq, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
+pub enum LimitType {
+    #[string = "lo"]
+    LowerBound,
+    #[string = "up"]
+    UpperBound,
+    #[string = "fx"]
+    Equality,
 }
 
 /// Indicates that an error occurred while loading a settings file.
