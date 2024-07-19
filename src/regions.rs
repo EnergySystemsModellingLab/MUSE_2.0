@@ -26,14 +26,6 @@ pub struct Region {
 /// cannot be parsed.
 pub fn read_regions_data(file_path: &Path) -> Result<Vec<Region>, InputError> {
     let regions_data = read_vec_from_csv(file_path)?;
-
-    if regions_data.is_empty() {
-        return Err(InputError::new(
-            file_path,
-            "Regions data file cannot be empty",
-        ));
-    }
-
     Ok(regions_data)
 }
 
