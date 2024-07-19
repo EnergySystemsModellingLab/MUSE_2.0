@@ -30,8 +30,9 @@ pub struct ProcessAvailability {
 }
 define_id_getter! {ProcessAvailability}
 
-#[derive(PartialEq, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
+#[derive(PartialEq, Default, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
 pub enum FlowType {
+    #[default]
     #[string = "fixed"]
     Fixed,
     #[string = "flexible"]
@@ -43,16 +44,12 @@ pub struct ProcessFlow {
     pub process_id: String,
     pub commodity_id: String,
     pub flow: f64,
-    #[serde(default = "default_flow_type")]
+    #[serde(default)]
     pub flow_type: FlowType,
     #[serde(deserialize_with = "deserialise_flow_cost")]
     pub flow_cost: f64,
 }
 define_id_getter! {ProcessFlow}
-
-fn default_flow_type() -> FlowType {
-    FlowType::Fixed
-}
 
 /// Custom deserialiser for flow cost - treat empty fields as 0.0
 fn deserialise_flow_cost<'de, D>(deserialiser: D) -> Result<f64, D::Error>
