@@ -2,6 +2,8 @@ use crate::input::{read_vec_from_csv, InputError};
 use serde::Deserialize;
 use std::path::Path;
 
+const DEMAND_FILE_NAME: &str = "demand.csv";
+
 /// Represents a single demand entry in the dataset.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Demand {
@@ -19,19 +21,19 @@ pub struct Demand {
 ///
 /// # Arguments
 ///
-/// * `file_path` - A reference to the path of the CSV file to read from.
+/// * `model_dir` - Folder containing model configuration files
 ///
 /// # Returns
 ///
 /// This function returns a `Result` containing either a `Vec<Demand>` with the parsed demand data
-/// or a `Box<dyn Error>` if an error occurred.
+/// or an `InputError` if an error occurred.
 ///
 /// # Errors
 ///
 /// This function will return an error if the file cannot be opened or read, or if the CSV data
 /// cannot be parsed.
-pub fn read_demand_data(file_path: &Path) -> Result<Vec<Demand>, InputError> {
-    let demand_data = read_vec_from_csv(file_path)?;
+pub fn read_demand_data(model_dir: &Path) -> Result<Vec<Demand>, InputError> {
+    let demand_data = read_vec_from_csv(&model_dir.join(DEMAND_FILE_NAME))?;
 
     // **TODO**: add validation checks here? e.g. check not negative, apply interpolation and
     // extrapolation rules?
@@ -43,13 +45,13 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use tempfile::tempdir;
 
     /// Create an example demand file in dir_path
-    fn create_demand_file(dir_path: &Path) -> PathBuf {
-        let file_path = dir_path.join("demand.csv");
-        let mut file = File::create(&file_path).unwrap();
+    fn create_demand_file(dir_path: &Path) {
+        let file_path = dir_path.join(DEMAND_FILE_NAME);
+        let mut file = File::create(file_path).unwrap();
         writeln!(
             file,
             "commodity_id,region_id,year,demand
@@ -59,14 +61,13 @@ COM1,East,2023,12
 COM1,West,2023,13"
         )
         .unwrap();
-        file_path
     }
 
     #[test]
     fn test_read_demand_from_csv() {
         let dir = tempdir().unwrap();
-        let file_path = create_demand_file(dir.path());
-        let demand_data = read_demand_data(&file_path).unwrap();
+        create_demand_file(dir.path());
+        let demand_data = read_demand_data(dir.path()).unwrap();
         assert_eq!(
             demand_data,
             vec![

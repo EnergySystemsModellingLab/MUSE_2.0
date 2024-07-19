@@ -2,6 +2,8 @@ use crate::input::{read_vec_from_csv, InputError};
 use serde::Deserialize;
 use std::path::Path;
 
+const REGIONS_FILE_NAME: &str = "regions.csv";
+
 /// Represents a region with an ID and a longer description.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Region {
@@ -13,7 +15,7 @@ pub struct Region {
 ///
 /// # Arguments
 ///
-/// * `file_path` - A reference to the path of the CSV file to read from.
+/// * `model_dir` - Folder containing model configuration files
 ///
 /// # Returns
 ///
@@ -24,8 +26,9 @@ pub struct Region {
 ///
 /// This function will return an error if the file cannot be opened or read, or if the CSV data
 /// cannot be parsed.
-pub fn read_regions_data(file_path: &Path) -> Result<Vec<Region>, InputError> {
-    let regions_data = read_vec_from_csv(file_path)?;
+pub fn read_regions_data(model_dir: &Path) -> Result<Vec<Region>, InputError> {
+    let file_path = model_dir.join(REGIONS_FILE_NAME);
+    let regions_data = read_vec_from_csv(&file_path)?;
     Ok(regions_data)
 }
 
@@ -34,13 +37,13 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use tempfile::tempdir;
 
     /// Create an example regions file in dir_path
-    fn create_regions_file(dir_path: &Path) -> PathBuf {
-        let file_path = dir_path.join("regions.csv");
-        let mut file = File::create(&file_path).unwrap();
+    fn create_regions_file(dir_path: &Path) {
+        let file_path = dir_path.join(REGIONS_FILE_NAME);
+        let mut file = File::create(file_path).unwrap();
         writeln!(
             file,
             "id,description
@@ -49,14 +52,13 @@ EU,Europe
 AP,Asia Pacific"
         )
         .unwrap();
-        file_path
     }
 
     #[test]
     fn test_read_regions_from_csv() {
         let dir = tempdir().unwrap();
-        let file_path = create_regions_file(dir.path());
-        let regions_data = read_regions_data(&file_path).unwrap();
+        create_regions_file(dir.path());
+        let regions_data = read_regions_data(dir.path()).unwrap();
         assert_eq!(
             regions_data,
             vec![
