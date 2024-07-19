@@ -131,7 +131,7 @@ impl SettingsReader {
         Ok(reader)
     }
 
-    pub fn into_settings(self) -> Result<Settings, Box<dyn Error>> {
+    pub fn into_settings(self) -> Result<Settings, InputError> {
         let paths = &self.input_files;
         let time_slices = match paths.time_slices_file_path {
             None => {
