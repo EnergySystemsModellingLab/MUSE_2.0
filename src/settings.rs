@@ -84,8 +84,8 @@ impl SettingsReader {
     /// Read the contents of a settings file from the given path.
     /// # Arguments
     ///
-    /// * `path`: The path to the settings TOML file (which includes paths to other configuration
-    ///           files)
+    /// * `path` - The path to the settings TOML file (which includes paths to other configuration
+    ///            files)
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<SettingsReader, InputError> {
         let mut reader = Self::from_path_raw(path.as_ref())
             .map_err(|err| InputError::new(path.as_ref(), &err.to_string()))?;

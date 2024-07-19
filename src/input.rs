@@ -9,7 +9,7 @@ use std::path::Path;
 ///
 /// # Arguments
 ///
-/// * `csv_file_path`: Path to the CSV file
+/// * `csv_file_path` - Path to the CSV file
 pub fn read_vec_from_csv<T: DeserializeOwned>(csv_file_path: &Path) -> Result<Vec<T>, InputError> {
     let mut reader = csv::Reader::from_path(csv_file_path)
         .map_err(|err| InputError::new(csv_file_path, &err.to_string()))?;

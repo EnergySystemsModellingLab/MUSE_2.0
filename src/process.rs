@@ -166,9 +166,9 @@ pub struct Process {
 ///
 /// # Arguments
 ///
-/// * `file_path`: Path to CSV file
-/// * `process_ids`: All possible process IDs
-/// * `filter`: Function to convert the deserialised CSV row into another data structure
+/// * `file_path` - Path to CSV file
+/// * `process_ids` - All possible process IDs
+/// * `filter` - Function to convert the deserialised CSV row into another data structure
 ///
 /// `filter` must be a function which takes a file path and a deserialised CSV row as arguments,
 /// returning either another data structure or an error.
@@ -213,8 +213,8 @@ where
 ///
 /// # Arguments
 ///
-/// * `file_path`: Path to CSV file
-/// * `process_ids`: All possible process IDs
+/// * `file_path` - Path to CSV file
+/// * `process_ids` - All possible process IDs
 ///
 /// # Returns
 ///
