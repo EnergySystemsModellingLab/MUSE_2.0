@@ -60,6 +60,8 @@ struct InputFiles {
     time_slices_path: Option<PathBuf>,
 }
 
+/// Represents the "milestone_years" section of the settings file.
+
 #[derive(Debug, Deserialize, PartialEq)]
 struct MilestoneYears {
     pub years: Vec<u32>,
