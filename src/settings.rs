@@ -1,6 +1,5 @@
 use crate::demand::{read_demand_data, Demand};
 use crate::input::InputError;
-use crate::log::DEFAULT_LOG_LEVEL;
 use crate::process::{read_processes, Process};
 use crate::time_slice::{read_time_slices, TimeSlice};
 use log::warn;
@@ -26,13 +25,7 @@ pub struct SettingsReader {
 }
 #[derive(Debug, Deserialize, PartialEq)]
 struct Global {
-    #[serde(default = "default_log_level")]
-    log_level: String,
-}
-
-/// Helper function to get default log level
-fn default_log_level() -> String {
-    DEFAULT_LOG_LEVEL.to_string()
+    log_level: Option<String>,
 }
 
 /// Represents the "input_files" section of the settings file.
@@ -67,8 +60,8 @@ struct MilestoneYears {
 
 impl SettingsReader {
     /// The user's preferred log level
-    pub fn log_level(&self) -> &str {
-        &self.global.log_level
+    pub fn log_level(&self) -> Option<&str> {
+        self.global.log_level.as_deref()
     }
 
     /// Read the contents of a settings file from the given path.
@@ -198,7 +191,7 @@ mod tests {
             reader,
             SettingsReader {
                 global: Global {
-                    log_level: "info".to_string()
+                    log_level: Some("info".to_string())
                 },
                 input_files: InputFiles {
                     agents_file_path: PathBuf::from_str("agents.csv").unwrap(),

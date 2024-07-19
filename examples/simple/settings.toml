@@ -1,5 +1,6 @@
 [global]
 log_level = "info"
+logs_folder = "logs"
 
 [input_files]
 agents_file_path = "agents.csv"

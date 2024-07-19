@@ -1,7 +1,12 @@
-use env_logger::Env;
+use log::LevelFilter;
+use log4rs::append::console::{ConsoleAppender, Target};
+use log4rs::config::{Appender, Root};
+use log4rs::Config;
+use std::env;
+use std::error::Error;
+use std::str::FromStr;
 
-pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
-
+/// TODO - FIX THIS UP
 /// Initialise the program logger.
 ///
 /// The user can specify their preferred logging level via the `settings.toml` file (defaulting to
@@ -24,11 +29,22 @@ pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
 /// # Arguments
 ///
 /// * `log_level_from_settings`: The log level specified in `settings.toml`
-pub fn init(log_level_from_settings: &str) {
-    let env = Env::new()
-        .filter_or("MUSE2_LOG_LEVEL", log_level_from_settings)
-        .write_style("MUSE2_LOG_STYLE");
+pub fn init(log_level_from_settings: Option<&str>) -> Result<(), Box<dyn Error>> {
+    let level = match env::var("MUSE2_LOG_LEVEL") {
+        Err(_) => match log_level_from_settings {
+            None => LevelFilter::Info,
+            Some(level_str) => LevelFilter::from_str(level_str)?,
+        },
+        Ok(ref level_str) => LevelFilter::from_str(level_str)?,
+    };
 
-    // Initialise logger
-    env_logger::init_from_env(env);
+    let stdout = ConsoleAppender::builder().target(Target::Stdout).build();
+    let config = Config::builder()
+        .appender(Appender::builder().build("stdout", Box::new(stdout)))
+        .build(Root::builder().appender("stdout").build(level))
+        .unwrap();
+
+    let _handle = log4rs::init_config(config).unwrap();
+
+    Ok(())
 }
