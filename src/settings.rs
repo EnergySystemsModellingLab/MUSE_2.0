@@ -252,6 +252,6 @@ mod tests {
     fn test_read_settings() {
         get_settings_reader()
             .into_settings()
-            .unwrap_or_else(|err| panic!("Failed to read example settings file: {:?}", err));
+            .unwrap_or_else(|err| panic!("Failed to read example settings file: {}", err));
     }
 }
