@@ -61,7 +61,6 @@ struct InputFiles {
 }
 
 /// Represents the "milestone_years" section of the settings file.
-
 #[derive(Debug, Deserialize, PartialEq)]
 struct MilestoneYears {
     pub years: Vec<u32>,
