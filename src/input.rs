@@ -5,7 +5,7 @@ use std::error::Error;
 use std::fmt;
 use std::path::Path;
 
-/// Read a series of type Ts from a CSV file into a Vec<T>.
+/// Read a series of type `T`s from a CSV file into a `Vec<T>`.
 ///
 /// # Arguments
 ///
