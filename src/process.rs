@@ -30,8 +30,9 @@ pub struct ProcessAvailability {
 }
 define_id_getter! {ProcessAvailability}
 
-#[derive(PartialEq, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
+#[derive(PartialEq, Default, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
 pub enum FlowType {
+    #[default]
     #[string = "fixed"]
     Fixed,
     #[string = "flexible"]
@@ -43,16 +44,12 @@ pub struct ProcessFlow {
     pub process_id: String,
     pub commodity_id: String,
     pub flow: f64,
-    #[serde(default = "default_flow_type")]
+    #[serde(default)]
     pub flow_type: FlowType,
     #[serde(deserialize_with = "deserialise_flow_cost")]
     pub flow_cost: f64,
 }
 define_id_getter! {ProcessFlow}
-
-fn default_flow_type() -> FlowType {
-    FlowType::Fixed
-}
 
 /// Custom deserialiser for flow cost - treat empty fields as 0.0
 fn deserialise_flow_cost<'de, D>(deserialiser: D) -> Result<f64, D::Error>
@@ -310,4 +307,215 @@ pub fn read_processes(
         .collect();
 
     Ok(processes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+    use std::path::PathBuf;
+    use tempfile::tempdir;
+
+    fn create_param_raw(
+        start_year: Option<u32>,
+        end_year: Option<u32>,
+        discount_rate: Option<f64>,
+        cap2act: Option<f64>,
+    ) -> ProcessParameterRaw {
+        ProcessParameterRaw {
+            process_id: "id".to_string(),
+            start_year,
+            end_year,
+            capital_cost: 0.0,
+            fixed_operating_cost: 0.0,
+            variable_operating_cost: 0.0,
+            lifetime: 1,
+            discount_rate,
+            cap2act,
+        }
+    }
+
+    fn create_param(
+        years: RangeInclusive<u32>,
+        discount_rate: f64,
+        cap2act: f64,
+    ) -> ProcessParameter {
+        ProcessParameter {
+            process_id: "id".to_string(),
+            years,
+            capital_cost: 0.0,
+            fixed_operating_cost: 0.0,
+            variable_operating_cost: 0.0,
+            lifetime: 1,
+            discount_rate,
+            cap2act,
+        }
+    }
+
+    #[test]
+    fn test_param_raw_into_param() {
+        let p = PathBuf::new();
+        let year_range = 2000..=2100;
+
+        // No missing values
+        let raw = create_param_raw(Some(2010), Some(2020), Some(1.0), Some(0.0));
+        assert_eq!(
+            raw.into_parameter(&p, &year_range).unwrap(),
+            create_param(2010..=2020, 1.0, 0.0)
+        );
+
+        // Missing years
+        let raw = create_param_raw(None, None, Some(1.0), Some(0.0));
+        assert_eq!(
+            raw.into_parameter(&p, &year_range).unwrap(),
+            create_param(2000..=2100, 1.0, 0.0)
+        );
+
+        // Missing discount_rate
+        let raw = create_param_raw(Some(2010), Some(2020), None, Some(0.0));
+        assert_eq!(
+            raw.into_parameter(&p, &year_range).unwrap(),
+            create_param(2010..=2020, 0.0, 0.0)
+        );
+
+        // Missing cap2act
+        let raw = create_param_raw(Some(2010), Some(2020), Some(1.0), None);
+        assert_eq!(
+            raw.into_parameter(&p, &year_range).unwrap(),
+            create_param(2010..=2020, 1.0, 1.0)
+        );
+
+        // start_year out of range
+        let raw = create_param_raw(Some(1999), Some(2020), Some(1.0), Some(0.0));
+        assert!(raw.into_parameter(&p, &year_range).is_err());
+
+        // end_year out of range
+        let raw = create_param_raw(Some(2000), Some(2101), Some(1.0), Some(0.0));
+        assert!(raw.into_parameter(&p, &year_range).is_err());
+    }
+
+    #[test]
+    fn test_read_processes_file() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("processes.csv");
+        {
+            let file_path: &Path = &file_path; // cast
+            let mut file = File::create(file_path).unwrap();
+            writeln!(file, "id,description\nA,Process A\nB,Process B\n").unwrap();
+        }
+
+        let expected = HashMap::from([
+            ("A".to_string(), "Process A".to_string()),
+            ("B".to_string(), "Process B".to_string()),
+        ]);
+        assert_eq!(read_processes_file(&file_path).unwrap(), expected);
+    }
+
+    #[test]
+    fn test_read_processes_file_duplicate_process() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("processes.csv");
+        {
+            let file_path: &Path = &file_path; // cast
+            let mut file = File::create(file_path).unwrap();
+
+            // NB: Reuse process ID "A" on purpose
+            writeln!(
+                file,
+                "id,description\nA,Process A\nB,Process B\nA,Process C"
+            )
+            .unwrap();
+        }
+
+        // Duplicate process IDs are not permitted
+        assert!(read_processes_file(&file_path).is_err());
+    }
+
+    fn create_process_ids() -> HashSet<String> {
+        HashSet::from(["A".to_string(), "B".to_string()])
+    }
+
+    #[derive(PartialEq, Debug, Deserialize)]
+    struct ProcessData {
+        process_id: String,
+        value: i32,
+    }
+    define_id_getter! {ProcessData}
+
+    #[test]
+    fn test_read_csv_grouped_by_id() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("data.csv");
+        {
+            let file_path: &Path = &file_path; // cast
+            let mut file = File::create(file_path).unwrap();
+            writeln!(file, "process_id,value\nA,1\nB,2\nA,3").unwrap();
+        }
+
+        let expected = HashMap::from([
+            (
+                "A",
+                vec![
+                    ProcessData {
+                        process_id: "A".to_string(),
+                        value: 1,
+                    },
+                    ProcessData {
+                        process_id: "A".to_string(),
+                        value: 3,
+                    },
+                ],
+            ),
+            (
+                "B",
+                vec![ProcessData {
+                    process_id: "B".to_string(),
+                    value: 2,
+                }],
+            ),
+        ]);
+        let process_ids = create_process_ids();
+        let map: HashMap<&str, Vec<ProcessData>> =
+            read_csv_grouped_by_id(&file_path, &process_ids).unwrap();
+        assert_eq!(expected, map);
+    }
+
+    #[test]
+    fn test_read_csv_grouped_by_id_duplicate() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("data.csv");
+        {
+            let file_path: &Path = &file_path; // cast
+            let mut file = File::create(file_path).unwrap();
+
+            // NB: Process ID "C" isn't valid
+            writeln!(file, "process_id,value\nA,1\nB,2\nC,3").unwrap();
+        }
+
+        // Check that it fails if a non-existent process ID is provided
+        let process_ids = create_process_ids();
+        assert!(read_csv_grouped_by_id::<ProcessData>(&file_path, &process_ids).is_err());
+    }
+
+    #[test]
+    fn test_read_csv_grouped_by_id_with_filter() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("data.csv");
+        {
+            let file_path: &Path = &file_path; // cast
+            let mut file = File::create(file_path).unwrap();
+            writeln!(file, "process_id,value\nA,1\nB,2\nA,3").unwrap();
+        }
+
+        // Test using filter which multiplies the value in ProcessData by 2
+        let expected = HashMap::from([("A", vec![2, 6]), ("B", vec![4])]);
+        let process_ids = create_process_ids();
+        let map: HashMap<&str, Vec<i32>> =
+            read_csv_grouped_by_id_with_filter(&file_path, &process_ids, |_, data: ProcessData| {
+                Ok(data.value * 2)
+            })
+            .unwrap();
+        assert_eq!(expected, map);
+    }
 }
