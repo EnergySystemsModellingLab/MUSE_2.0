@@ -1,8 +1,9 @@
 use crate::demand::{read_demand_data, Demand};
 use crate::input::InputError;
 use crate::log::DEFAULT_LOG_LEVEL;
+use crate::process::{read_processes, Process};
 use crate::regions::{read_regions_data, Region};
-use crate::time_slices::{read_time_slices, TimeSlice};
+use crate::time_slice::{read_time_slices, TimeSlice};
 use log::warn;
 use serde::Deserialize;
 use std::error::Error;
@@ -11,6 +12,7 @@ use std::path::{Path, PathBuf};
 
 /// Model settings
 pub struct Settings {
+    pub processes: Vec<Process>,
     pub time_slices: Vec<TimeSlice>,
     pub milestone_years: Vec<u32>,
     pub demand_data: Vec<Demand>,
@@ -57,7 +59,7 @@ struct InputFiles {
     process_parameters_file_path: PathBuf,
     process_regions_file_path: PathBuf,
     regions_file_path: PathBuf,
-    time_slices_path: Option<PathBuf>,
+    time_slices_file_path: Option<PathBuf>,
 }
 
 /// Represents the "milestone_years" section of the settings file.
@@ -88,6 +90,10 @@ impl SettingsReader {
         let mut reader = Self::from_path_raw(path.as_ref())
             .map_err(|err| InputError::new(path.as_ref(), &err.to_string()))?;
 
+        if reader.milestone_years.years.is_empty() {
+            Err(InputError::new(path.as_ref(), "milestone_years is empty"))?;
+        }
+
         // For paths to other files listed in the settings file, if they're relative, we treat them as
         // relative to the folder the settings file is in.
         let settings_dir = path.as_ref().parent().unwrap(); // will never fail
@@ -117,16 +123,17 @@ impl SettingsReader {
         update_path!(reader.input_files.process_parameters_file_path);
         update_path!(reader.input_files.process_regions_file_path);
         update_path!(reader.input_files.regions_file_path);
-        if let Some(mut time_slices_path) = reader.input_files.time_slices_path {
+        if let Some(mut time_slices_path) = reader.input_files.time_slices_file_path {
             update_path!(time_slices_path);
-            reader.input_files.time_slices_path = Some(time_slices_path);
+            reader.input_files.time_slices_file_path = Some(time_slices_path);
         }
 
         Ok(reader)
     }
 
-    pub fn into_settings(self) -> Result<Settings, InputError> {
-        let time_slices = match self.input_files.time_slices_path {
+    pub fn into_settings(self) -> Result<Settings, Box<dyn Error>> {
+        let paths = &self.input_files;
+        let time_slices = match paths.time_slices_file_path {
             None => {
                 // If there is no time slice file provided, use a default time slice which covers the
                 // whole year and the whole day
@@ -142,7 +149,19 @@ impl SettingsReader {
             Some(ref path) => read_time_slices(path)?,
         };
 
+        let years = &self.milestone_years.years;
+        let processes = read_processes(
+            &paths.processes_file_path,
+            &paths.process_availabilities_file_path,
+            &paths.process_flows_file_path,
+            &paths.process_pacs_file_path,
+            &paths.process_parameters_file_path,
+            &paths.process_regions_file_path,
+            *years.first().unwrap()..=*years.last().unwrap(),
+        )?;
+
         Ok(Settings {
+            processes,
             time_slices,
             milestone_years: self.milestone_years.years,
             demand_data: read_demand_data(&self.input_files.demand_file_path)?,
@@ -214,9 +233,11 @@ mod tests {
                         .unwrap(),
                     process_regions_file_path: PathBuf::from_str("process_regions.csv").unwrap(),
                     regions_file_path: PathBuf::from_str("regions.csv").unwrap(),
-                    time_slices_path: Some(PathBuf::from_str("time_slices.csv").unwrap()),
+                    time_slices_file_path: Some(PathBuf::from_str("time_slices.csv").unwrap()),
                 },
-                milestone_years: MilestoneYears { years: vec![2020] }
+                milestone_years: MilestoneYears {
+                    years: vec![2020, 2100]
+                }
             }
         )
     }
@@ -224,7 +245,7 @@ mod tests {
     #[test]
     fn test_settings_reader_from_path() {
         let reader = get_settings_reader();
-        assert_eq!(reader.milestone_years.years, vec![2020]);
+        assert_eq!(reader.milestone_years.years, vec![2020, 2100]);
     }
 
     #[test]
