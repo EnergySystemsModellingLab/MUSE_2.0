@@ -4,6 +4,7 @@ mod demand;
 mod input;
 mod log;
 mod process;
+mod regions;
 mod settings;
 mod simulation;
 mod time_slice;
