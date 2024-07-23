@@ -39,6 +39,9 @@ jobs:
           apt update
           apt install -y cmake libclang-dev
 
+      - name: Check docs
+        run: cargo doc --no-deps
+
       - run: cargo build --verbose
 
       - name: Generate code coverage
