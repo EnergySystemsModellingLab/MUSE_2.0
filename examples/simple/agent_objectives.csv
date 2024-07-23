@@ -1,5 +1,5 @@
 agent_id,objective,decision_weight,decision_lexico_tolerance
-A0_GEX,LCOX,,
-A0_GPR,LCOX,,
-A0_ELC,LCOX,,
-A0_RES,EAC,,
+A0_GEX,lcox,,
+A0_GPR,lcox,,
+A0_ELC,lcox,,
+A0_RES,eac,,
