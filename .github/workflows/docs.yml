@@ -30,7 +30,7 @@ jobs:
           mdbook build
       - name: Build API docs
         run: |
-          cargo doc --no-deps
+          cargo doc --no-deps --document-private-items
 
           # Put API documentation in with book
           rm -r book/api/*

@@ -40,7 +40,7 @@ jobs:
           apt install -y cmake libclang-dev
 
       - name: Check docs
-        run: cargo doc --no-deps
+        run: cargo doc --no-deps --document-private-items
 
       - run: cargo build --verbose
 
