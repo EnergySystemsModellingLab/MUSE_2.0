@@ -5,7 +5,7 @@ use crate::settings::Settings;
 ///
 /// # Arguments:
 ///
-/// * `settings`: The model settings
+/// * `settings` - The model settings
 pub fn run(settings: &Settings) {
     // Print the contents of settings
     // TODO: Remove this once we're actually doing something with the settings

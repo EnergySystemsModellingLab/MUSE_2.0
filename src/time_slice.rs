@@ -7,6 +7,8 @@ use float_cmp::approx_eq;
 use serde::Deserialize;
 use std::path::Path;
 
+const TIME_SLICES_FILE_NAME: &str = "time_slices.csv";
+
 /// Represents a single time slice in the simulation
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct TimeSlice {
@@ -19,13 +21,32 @@ pub struct TimeSlice {
     pub fraction: f64,
 }
 
-/// Read time slices from a CSV file
-pub fn read_time_slices(file_path: &Path) -> Result<Vec<TimeSlice>, InputError> {
-    let time_slices = read_vec_from_csv(file_path)?;
+/// Read time slices from a CSV file.
+///
+/// # Arguments
+///
+/// * `model_dir` - Folder containing model configuration files
+///
+/// # Returns
+///
+/// This function returns a `Result` containing either `Some(Vec<TimeSlice>)` with the parsed time
+/// slices or an `InputError` if an error occurred. If the time slice CSV file does not exist,
+/// `None` will be returned.
+///
+/// # Errors
+///
+/// This function will return an error if the file cannot be opened or read, or if the CSV data
+/// cannot be parsed.
+pub fn read_time_slices(model_dir: &Path) -> Result<Option<Vec<TimeSlice>>, InputError> {
+    let file_path = model_dir.join(TIME_SLICES_FILE_NAME);
+    if !file_path.exists() {
+        return Ok(None);
+    }
+    let time_slices = read_vec_from_csv(&file_path)?;
 
-    check_time_slice_fractions_sum_to_one(file_path, &time_slices)?;
+    check_time_slice_fractions_sum_to_one(&file_path, &time_slices)?;
 
-    Ok(time_slices)
+    Ok(Some(time_slices))
 }
 
 /// Check that time slice fractions sum to (approximately) one
@@ -67,9 +88,9 @@ mod tests {
     }
 
     /// Create an example time slices file in dir_path
-    fn create_time_slices_file(dir_path: &Path) -> PathBuf {
-        let file_path = dir_path.join("time_slices.csv");
-        let mut file = File::create(&file_path).unwrap();
+    fn create_time_slices_file(dir_path: &Path) {
+        let file_path = dir_path.join(TIME_SLICES_FILE_NAME);
+        let mut file = File::create(file_path).unwrap();
         writeln!(
             file,
             "season,time_of_day,fraction
@@ -79,14 +100,13 @@ summer,peak,0.25
 autumn,evening,0.25"
         )
         .unwrap();
-        file_path
     }
 
     #[test]
     fn test_read_time_slices() {
         let dir = tempdir().unwrap();
-        let file_path = create_time_slices_file(dir.path());
-        let time_slices = read_time_slices(&file_path).unwrap();
+        create_time_slices_file(dir.path());
+        let time_slices = read_time_slices(dir.path()).unwrap().unwrap();
         assert_eq!(
             time_slices,
             &[
@@ -119,11 +139,11 @@ autumn,evening,0.25"
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("time_slices.csv");
         {
-            let mut file = File::create(&file_path).unwrap();
+            let mut file = File::create(file_path).unwrap();
             writeln!(file, "season,time_of_day,fraction").unwrap();
         }
 
-        assert!(read_time_slices(&file_path).is_err());
+        assert!(read_time_slices(dir.path()).is_err());
     }
 
     #[test]

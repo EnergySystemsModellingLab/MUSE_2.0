@@ -15,7 +15,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["${workspaceFolder}/examples/simple/settings.toml"],
+            "args": ["${workspaceFolder}/examples/simple"],
             "cwd": "${workspaceFolder}"
         },
         {
@@ -29,7 +29,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["${workspaceFolder}/examples/simple/settings.toml"],
+            "args": ["${workspaceFolder}/examples/simple"],
             "cwd": "${workspaceFolder}"
         }
     ]

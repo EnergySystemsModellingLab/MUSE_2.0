@@ -4,7 +4,7 @@ mod demand;
 mod input;
 mod log;
 mod process;
-mod regions;
+mod region;
 mod settings;
 mod simulation;
 mod time_slice;
@@ -18,7 +18,7 @@ fn main() {
     // Parse command-line arguments
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
-        panic!("Must provide path to model configuration TOML file.");
+        panic!("Must provide path to model folder.");
     }
 
     // Read settings TOML file
