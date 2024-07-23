@@ -1,17 +1,16 @@
 //! High level functionality for launching a simulation.
-use crate::settings::Settings;
+use crate::model::Model;
 
 /// Run the simulation
 ///
 /// # Arguments:
 ///
-/// * `settings` - The model settings
-pub fn run(settings: &Settings) {
-    // Print the contents of settings
-    // TODO: Remove this once we're actually doing something with the settings
-    println!("Regions: {:?}", settings.regions);
-    println!("Demand data: {:?}", settings.demand_data);
-    println!("Processes: {:?}", settings.processes);
-    println!("Time slices: {:?}", settings.time_slices);
-    println!("Milestone years: {:?}", settings.milestone_years);
+/// * `model` - The model to run
+pub fn run(model: &Model) {
+    // TODO: Remove this once we're actually doing something with these values
+    println!("Regions: {:?}", model.regions);
+    println!("Demand data: {:?}", model.demand_data);
+    println!("Processes: {:?}", model.processes);
+    println!("Time slices: {:?}", model.time_slices);
+    println!("Milestone years: {:?}", model.milestone_years);
 }

@@ -24,9 +24,12 @@ pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
 /// # Arguments
 ///
 /// * `log_level_from_settings`: The log level specified in `settings.toml`
-pub fn init(log_level_from_settings: &str) {
+pub fn init(log_level_from_settings: Option<&str>) {
     let env = Env::new()
-        .filter_or("MUSE2_LOG_LEVEL", log_level_from_settings)
+        .filter_or(
+            "MUSE2_LOG_LEVEL",
+            log_level_from_settings.unwrap_or(DEFAULT_LOG_LEVEL),
+        )
         .write_style("MUSE2_LOG_STYLE");
 
     // Initialise logger

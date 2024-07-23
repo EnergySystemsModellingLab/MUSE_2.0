@@ -1,185 +1,62 @@
-use crate::demand::{read_demand_data, Demand};
-use crate::input::InputError;
-use crate::log::DEFAULT_LOG_LEVEL;
-use crate::process::{read_processes, Process};
-use crate::region::{read_regions_data, Region};
-use crate::time_slice::{read_time_slices, TimeSlice};
-use log::warn;
+//! Code for loading program settings.
+use crate::input::{read_toml, InputError};
 use serde::Deserialize;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 const SETTINGS_FILE_NAME: &str = "settings.toml";
 
-/// Model settings
+/// Program settings
+#[derive(Debug, Default, Deserialize, PartialEq)]
 pub struct Settings {
-    pub processes: Vec<Process>,
-    pub time_slices: Vec<TimeSlice>,
-    pub milestone_years: Vec<u32>,
-    pub demand_data: Vec<Demand>,
-    pub regions: Vec<Region>,
+    pub log_level: Option<String>,
 }
 
-/// Represents the contents of the entire settings file.
-#[derive(Debug, Deserialize, PartialEq)]
-pub struct SettingsReader {
-    #[serde(skip)]
-    model_dir: PathBuf,
-    global: Global,
-    milestone_years: MilestoneYears,
-}
-
-#[derive(Debug, Deserialize, PartialEq)]
-struct Global {
-    #[serde(default = "default_log_level")]
-    log_level: String,
-}
-
-/// Helper function to get default log level
-fn default_log_level() -> String {
-    DEFAULT_LOG_LEVEL.to_string()
-}
-
-/// Represents the "milestone_years" section of the settings file.
-#[derive(Debug, Deserialize, PartialEq)]
-struct MilestoneYears {
-    pub years: Vec<u32>,
-}
-
-/// Check that the milestone years parameter is valid
-fn check_milestone_years(file_path: &Path, years: &[u32]) -> Result<(), InputError> {
-    if years.is_empty() {
-        Err(InputError::new(file_path, "milestone_years is empty"))?;
-    }
-
-    if !years[..years.len() - 1]
-        .iter()
-        .zip(years[1..].iter())
-        .all(|(y1, y2)| y1 < y2)
-    {
-        Err(InputError::new(
-            file_path,
-            "milestone_years must be composed of unique values in order",
-        ))?
-    }
-
-    Ok(())
-}
-
-impl SettingsReader {
-    /// The user's preferred log level
-    pub fn log_level(&self) -> &str {
-        &self.global.log_level
-    }
-
-    /// Read the contents of a settings file from the given path.
+impl Settings {
+    /// Read the contents of a settings file from the model directory.
+    ///
+    /// If the file is not present, default values for settings will be used
     ///
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<SettingsReader, InputError> {
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<Settings, InputError> {
         let file_path = model_dir.as_ref().join(SETTINGS_FILE_NAME);
-        let settings_str = fs::read_to_string(&file_path)
-            .map_err(|err| InputError::new(file_path.as_ref(), &err.to_string()))?;
-        let mut reader: SettingsReader = toml::from_str(&settings_str)
-            .map_err(|err| InputError::new(file_path.as_ref(), &err.to_string()))?;
-        reader.model_dir = model_dir.as_ref().to_path_buf();
-        check_milestone_years(&file_path, &reader.milestone_years.years)?;
+        if !file_path.is_file() {
+            return Ok(Settings::default());
+        }
 
-        Ok(reader)
-    }
-
-    pub fn into_settings(self) -> Result<Settings, InputError> {
-        let time_slices = match read_time_slices(&self.model_dir)? {
-            None => {
-                // If there is no time slice file provided, use a default time slice which covers the
-                // whole year and the whole day
-                warn!("No time slices CSV file provided; using a single time slice");
-
-                vec![TimeSlice {
-                    season: "all-year".to_string(),
-                    time_of_day: "all-day".to_string(),
-                    fraction: 1.0,
-                }]
-            }
-
-            Some(time_slices) => time_slices,
-        };
-
-        let years = &self.milestone_years.years;
-        let processes = read_processes(
-            &self.model_dir,
-            *years.first().unwrap()..=*years.last().unwrap(),
-        )?;
-
-        Ok(Settings {
-            processes,
-            time_slices,
-            milestone_years: self.milestone_years.years,
-            demand_data: read_demand_data(&self.model_dir)?,
-            regions: read_regions_data(&self.model_dir)?,
-        })
+        read_toml(&file_path)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// Get the path to the example settings file in the examples/simple folder.
-    fn get_model_dir() -> PathBuf {
-        Path::new(file!())
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("examples")
-            .join("simple")
-    }
-
-    fn get_settings_reader() -> SettingsReader {
-        SettingsReader::from_path(get_model_dir()).expect("Failed to read example settings file")
-    }
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::tempdir;
 
     #[test]
-    fn test_settings_reader_from_path_raw() {
-        let reader = SettingsReader::from_path(get_model_dir())
-            .expect("Failed to read example settings file");
-
+    fn test_settings_from_path_no_file() {
+        let dir = tempdir().unwrap();
         assert_eq!(
-            reader,
-            SettingsReader {
-                model_dir: get_model_dir().to_owned(),
-                global: Global {
-                    log_level: "info".to_string()
-                },
-                milestone_years: MilestoneYears {
-                    years: vec![2020, 2100]
-                }
+            Settings::from_path(dir.path()).unwrap(),
+            Settings::default()
+        );
+    }
+
+    #[test]
+    fn test_settings_from_path() {
+        let dir = tempdir().unwrap();
+        {
+            let mut file = File::create(dir.path().join(SETTINGS_FILE_NAME)).unwrap();
+            writeln!(file, "log_level = \"warn\"").unwrap();
+        }
+        assert_eq!(
+            Settings::from_path(dir.path()).unwrap(),
+            Settings {
+                log_level: Some("warn".to_string())
             }
-        )
-    }
-
-    #[test]
-    fn test_settings_reader_from_path() {
-        let reader = get_settings_reader();
-        assert_eq!(reader.milestone_years.years, vec![2020, 2100]);
-    }
-
-    #[test]
-    fn test_read_settings() {
-        get_settings_reader()
-            .into_settings()
-            .unwrap_or_else(|err| panic!("Failed to read example settings file: {}", err));
-    }
-
-    #[test]
-    fn test_check_milestone_years() {
-        let p = PathBuf::new();
-        assert!(check_milestone_years(&p, &[]).is_err());
-        assert!(check_milestone_years(&p, &[1]).is_ok());
-        assert!(check_milestone_years(&p, &[1, 2]).is_ok());
-        assert!(check_milestone_years(&p, &[1, 1]).is_err());
-        assert!(check_milestone_years(&p, &[2, 1]).is_err());
+        );
     }
 }

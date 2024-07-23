@@ -1,5 +1,2 @@
-[global]
-log_level = "info"
-
-[milestone_years]
-years = [2020, 2100]
+# Modify this file if you want to change your program settings
+# log_level = "info"
