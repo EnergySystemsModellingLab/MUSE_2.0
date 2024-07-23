@@ -1,18 +1,8 @@
 //! Provides the main entry point to the program.
-
-mod demand;
-mod input;
-mod log;
-mod model;
-mod process;
-mod region;
-mod settings;
-mod simulation;
-mod time_slice;
-
 use ::log::info;
-use model::Model;
-use settings::Settings;
+use muse2::log;
+use muse2::model::Model;
+use muse2::settings::Settings;
 use std::env;
 use std::path::PathBuf;
 
@@ -39,5 +29,5 @@ fn main() {
     info!("Model loaded successfully.");
 
     // Run simulation
-    simulation::run(&model)
+    muse2::run(&model)
 }

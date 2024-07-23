@@ -1,7 +1,16 @@
-//! High level functionality for launching a simulation.
+//! High level functionality for launching the simulation.
+pub mod demand;
+pub mod input;
+pub mod log;
+pub mod model;
+pub mod process;
+pub mod region;
+pub mod settings;
+pub mod time_slice;
+
 use crate::model::Model;
 
-/// Run the simulation
+/// Run the simulation.
 ///
 /// # Arguments:
 ///
