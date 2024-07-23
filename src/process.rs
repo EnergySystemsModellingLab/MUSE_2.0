@@ -1,4 +1,6 @@
-use crate::input::{deserialise_proportion, read_vec_from_csv, InputError, LimitType};
+use crate::input::{
+    deserialise_proportion, read_vec_from_csv, InputError, LimitType, MapInputError,
+};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -241,13 +243,11 @@ where
 /// Returns a map of IDs to descriptions.
 fn read_processes_file(model_dir: &Path) -> Result<HashMap<String, String>, InputError> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let mut reader = csv::Reader::from_path(&file_path)
-        .map_err(|err| InputError::new(&file_path, &err.to_string()))?;
+    let mut reader = csv::Reader::from_path(&file_path).map_input_err(&file_path)?;
 
     let mut descriptions = HashMap::new();
     for result in reader.deserialize() {
-        let desc: ProcessDescription =
-            result.map_err(|err| InputError::new(&file_path, &err.to_string()))?;
+        let desc: ProcessDescription = result.map_input_err(&file_path)?;
         if descriptions.contains_key(&desc.id) {
             Err(InputError::new(
                 &file_path,
