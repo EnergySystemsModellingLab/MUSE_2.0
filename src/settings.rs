@@ -46,6 +46,26 @@ struct MilestoneYears {
     pub years: Vec<u32>,
 }
 
+/// Check that the milestone years parameter is valid
+fn check_milestone_years(file_path: &Path, years: &[u32]) -> Result<(), InputError> {
+    if years.is_empty() {
+        Err(InputError::new(file_path, "milestone_years is empty"))?;
+    }
+
+    if !years[..years.len() - 1]
+        .iter()
+        .zip(years[1..].iter())
+        .all(|(y1, y2)| y1 < y2)
+    {
+        Err(InputError::new(
+            file_path,
+            "milestone_years must be composed of unique values in order",
+        ))?
+    }
+
+    Ok(())
+}
+
 impl SettingsReader {
     /// The user's preferred log level
     pub fn log_level(&self) -> &str {
@@ -64,13 +84,7 @@ impl SettingsReader {
         let mut reader: SettingsReader = toml::from_str(&settings_str)
             .map_err(|err| InputError::new(file_path.as_ref(), &err.to_string()))?;
         reader.model_dir = model_dir.as_ref().to_path_buf();
-
-        if reader.milestone_years.years.is_empty() {
-            Err(InputError::new(
-                file_path.as_ref(),
-                "milestone_years is empty",
-            ))?;
-        }
+        check_milestone_years(&file_path, &reader.milestone_years.years)?;
 
         Ok(reader)
     }
@@ -157,5 +171,15 @@ mod tests {
         get_settings_reader()
             .into_settings()
             .unwrap_or_else(|err| panic!("Failed to read example settings file: {}", err));
+    }
+
+    #[test]
+    fn test_check_milestone_years() {
+        let p = PathBuf::new();
+        assert!(check_milestone_years(&p, &[]).is_err());
+        assert!(check_milestone_years(&p, &[1]).is_ok());
+        assert!(check_milestone_years(&p, &[1, 2]).is_ok());
+        assert!(check_milestone_years(&p, &[1, 1]).is_err());
+        assert!(check_milestone_years(&p, &[2, 1]).is_err());
     }
 }
