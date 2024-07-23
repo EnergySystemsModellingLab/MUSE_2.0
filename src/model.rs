@@ -1,6 +1,6 @@
 //! Code for simulation models.
 use crate::demand::{read_demand_data, Demand};
-use crate::input::{read_toml, InputError};
+use crate::input::{read_toml, InputError, InputResult};
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions_data, Region};
 use crate::time_slice::{read_time_slices, TimeSlice};
@@ -32,7 +32,7 @@ struct MilestoneYears {
 }
 
 /// Check that the milestone years parameter is valid
-fn check_milestone_years(file_path: &Path, years: &[u32]) -> Result<(), InputError> {
+fn check_milestone_years(file_path: &Path, years: &[u32]) -> InputResult<()> {
     if years.is_empty() {
         Err(InputError::new(file_path, "milestone_years is empty"))?;
     }
@@ -57,7 +57,7 @@ impl ModelFile {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelFile, InputError> {
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> InputResult<ModelFile> {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path)?;
         check_milestone_years(&file_path, &model_file.milestone_years.years)?;
@@ -72,7 +72,7 @@ impl Model {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<Model, InputError> {
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> InputResult<Model> {
         let model_file = ModelFile::from_path(&model_dir)?;
 
         let time_slices = match read_time_slices(model_dir.as_ref())? {

@@ -1,5 +1,5 @@
 //! Code for loading program settings.
-use crate::input::{read_toml, InputError};
+use crate::input::{read_toml, InputResult};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -19,7 +19,7 @@ impl Settings {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<Settings, InputError> {
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> InputResult<Settings> {
         let file_path = model_dir.as_ref().join(SETTINGS_FILE_NAME);
         if !file_path.is_file() {
             return Ok(Settings::default());

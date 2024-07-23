@@ -11,7 +11,7 @@ use std::path::Path;
 /// # Arguments
 ///
 /// * `file_path` - Path to the CSV file
-pub fn read_vec_from_csv<T: DeserializeOwned>(file_path: &Path) -> Result<Vec<T>, InputError> {
+pub fn read_vec_from_csv<T: DeserializeOwned>(file_path: &Path) -> InputResult<Vec<T>> {
     let mut reader = csv::Reader::from_path(file_path).map_input_err(file_path)?;
 
     let mut vec = Vec::new();
@@ -32,7 +32,7 @@ pub fn read_vec_from_csv<T: DeserializeOwned>(file_path: &Path) -> Result<Vec<T>
 /// # Arguments
 ///
 /// * `file_path` - Path to the TOML file
-pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T, InputError> {
+pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> InputResult<T> {
     let toml_str = fs::read_to_string(file_path).map_input_err(file_path)?;
     toml::from_str(&toml_str).map_input_err(file_path)
 }
@@ -83,14 +83,17 @@ impl fmt::Display for InputError {
 /// This is needed so that InputError can be treated like standard errors are.
 impl Error for InputError {}
 
+/// Type alias for the result of input-related functions
+pub type InputResult<T> = Result<T, InputError>;
+
 /// A trait allowing us to add the map_input_err method to `Result`s
 pub trait MapInputError<T> {
-    /// Maps a `Result` with an arbitrary `Error` type to a `Result<T, InputError>`
-    fn map_input_err(self, file_path: &Path) -> Result<T, InputError>;
+    /// Maps a `Result` with an arbitrary `Error` type to an `InputResult<T>`
+    fn map_input_err(self, file_path: &Path) -> InputResult<T>;
 }
 
 impl<T, E: Error> MapInputError<T> for Result<T, E> {
-    fn map_input_err(self, file_path: &Path) -> Result<T, InputError> {
+    fn map_input_err(self, file_path: &Path) -> InputResult<T> {
         self.map_err(|err| InputError::new(file_path, &err.to_string()))
     }
 }

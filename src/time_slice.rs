@@ -2,7 +2,7 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
-use crate::input::{deserialise_proportion, read_vec_from_csv, InputError};
+use crate::input::{deserialise_proportion, read_vec_from_csv, InputError, InputResult};
 use float_cmp::approx_eq;
 use serde::Deserialize;
 use std::path::Path;
@@ -37,7 +37,7 @@ pub struct TimeSlice {
 ///
 /// This function will return an error if the file cannot be opened or read, or if the CSV data
 /// cannot be parsed.
-pub fn read_time_slices(model_dir: &Path) -> Result<Option<Vec<TimeSlice>>, InputError> {
+pub fn read_time_slices(model_dir: &Path) -> InputResult<Option<Vec<TimeSlice>>> {
     let file_path = model_dir.join(TIME_SLICES_FILE_NAME);
     if !file_path.exists() {
         return Ok(None);
@@ -53,7 +53,7 @@ pub fn read_time_slices(model_dir: &Path) -> Result<Option<Vec<TimeSlice>>, Inpu
 fn check_time_slice_fractions_sum_to_one(
     file_path: &Path,
     time_slices: &[TimeSlice],
-) -> Result<(), InputError> {
+) -> InputResult<()> {
     let sum = time_slices.iter().map(|ts| ts.fraction).sum();
     if approx_eq!(f64, sum, 1.0, epsilon = 1e-5) {
         Ok(())

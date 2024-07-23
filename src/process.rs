@@ -1,5 +1,5 @@
 use crate::input::{
-    deserialise_proportion, read_vec_from_csv, InputError, LimitType, MapInputError,
+    deserialise_proportion, read_vec_from_csv, InputError, InputResult, LimitType, MapInputError,
 };
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
@@ -99,7 +99,7 @@ impl ProcessParameterRaw {
         self,
         file_path: &Path,
         year_range: &RangeInclusive<u32>,
-    ) -> Result<ProcessParameter, InputError> {
+    ) -> InputResult<ProcessParameter> {
         let start_year = match self.start_year {
             None => *year_range.start(),
             Some(year) => {
@@ -189,10 +189,10 @@ fn read_csv_grouped_by_id_with_filter<'a, T, U, F>(
     file_path: &Path,
     process_ids: &'a HashSet<String>,
     filter: F,
-) -> Result<HashMap<&'a str, Vec<T>>, InputError>
+) -> InputResult<HashMap<&'a str, Vec<T>>>
 where
     U: HasProcessID + DeserializeOwned,
-    F: Fn(&Path, U) -> Result<T, InputError>,
+    F: Fn(&Path, U) -> InputResult<T>,
 {
     let vec: Vec<U> = read_vec_from_csv(file_path)?;
     let mut map = HashMap::new();
@@ -231,7 +231,7 @@ where
 fn read_csv_grouped_by_id<'a, T>(
     file_path: &Path,
     process_ids: &'a HashSet<String>,
-) -> Result<HashMap<&'a str, Vec<T>>, InputError>
+) -> InputResult<HashMap<&'a str, Vec<T>>>
 where
     T: HasProcessID + DeserializeOwned,
 {
@@ -241,7 +241,7 @@ where
 /// Read processes CSV file, which contains IDs and descriptions.
 ///
 /// Returns a map of IDs to descriptions.
-fn read_processes_file(model_dir: &Path) -> Result<HashMap<String, String>, InputError> {
+fn read_processes_file(model_dir: &Path) -> InputResult<HashMap<String, String>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let mut reader = csv::Reader::from_path(&file_path).map_input_err(&file_path)?;
 
@@ -280,7 +280,7 @@ fn read_processes_file(model_dir: &Path) -> Result<HashMap<String, String>, Inpu
 pub fn read_processes(
     model_dir: &Path,
     year_range: RangeInclusive<u32>,
-) -> Result<Vec<Process>, InputError> {
+) -> InputResult<Vec<Process>> {
     let mut descriptions = read_processes_file(model_dir)?;
 
     // Clone the IDs into a separate set. We need to copy them as the other maps will contain
