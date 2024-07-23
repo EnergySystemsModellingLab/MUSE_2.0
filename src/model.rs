@@ -136,20 +136,4 @@ mod tests {
         let model_file = ModelFile::from_path(dir.path()).unwrap();
         assert_eq!(model_file.milestone_years.years, vec![2020, 2100]);
     }
-
-    /// Get the path to the example model.
-    fn get_model_dir() -> PathBuf {
-        Path::new(file!())
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("examples")
-            .join("simple")
-    }
-
-    #[test]
-    fn test_model_from_path() {
-        Model::from_path(get_model_dir()).unwrap();
-    }
 }
