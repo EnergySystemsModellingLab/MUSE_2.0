@@ -1,6 +1,4 @@
-use crate::input::{
-    deserialise_proportion, read_csv_as_vec, InputError, InputResult, LimitType, MapInputError,
-};
+use crate::input::*;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -194,9 +192,9 @@ where
     U: HasProcessID + DeserializeOwned,
     F: Fn(&Path, U) -> InputResult<T>,
 {
-    let vec: Vec<U> = read_csv_as_vec(file_path)?;
     let mut map = HashMap::new();
-    for elem in vec.into_iter() {
+    for elem in read_csv(file_path)? {
+        let elem: U = elem?;
         let elem_id = elem.get_process_id();
         let id = match process_ids.get(elem_id) {
             None => Err(InputError::new(
@@ -213,6 +211,9 @@ where
             }
             Some(vec) => vec.push(elem),
         }
+    }
+    if map.is_empty() {
+        Err(InputError::new(file_path, "CSV file is empty"))?;
     }
 
     Ok(map)
@@ -243,11 +244,9 @@ where
 /// Returns a map of IDs to descriptions.
 fn read_processes_file(model_dir: &Path) -> InputResult<HashMap<String, String>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let mut reader = csv::Reader::from_path(&file_path).map_input_err(&file_path)?;
-
     let mut descriptions = HashMap::new();
-    for result in reader.deserialize() {
-        let desc: ProcessDescription = result.map_input_err(&file_path)?;
+    for result in read_csv(&file_path)? {
+        let desc: ProcessDescription = result?;
         if descriptions.contains_key(&desc.id) {
             Err(InputError::new(
                 &file_path,
@@ -256,6 +255,9 @@ fn read_processes_file(model_dir: &Path) -> InputResult<HashMap<String, String>>
         }
 
         descriptions.insert(desc.id, desc.description);
+    }
+    if descriptions.is_empty() {
+        Err(InputError::new(&file_path, "CSV file is empty"))?;
     }
 
     Ok(descriptions)
