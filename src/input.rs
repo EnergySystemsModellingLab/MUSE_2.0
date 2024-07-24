@@ -5,19 +5,25 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 
+/// Read a series of type `T`s from a CSV file.
+///
+/// # Arguments
+///
+/// * `file_path` - Path to the CSV file
+pub fn read_csv<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> impl Iterator<Item = T> + 'a {
+    csv::Reader::from_path(file_path)
+        .unwrap_input_err(file_path)
+        .into_deserialize()
+        .map(|record| record.unwrap_input_err(file_path))
+}
+
 /// Read a series of type `T`s from a CSV file into a `Vec<T>`.
 ///
 /// # Arguments
 ///
 /// * `file_path` - Path to the CSV file
 pub fn read_csv_as_vec<T: DeserializeOwned>(file_path: &Path) -> Vec<T> {
-    let mut reader = csv::Reader::from_path(file_path).unwrap_input_err(file_path);
-
-    let mut vec = Vec::new();
-    for result in reader.deserialize() {
-        let d: T = result.unwrap_input_err(file_path);
-        vec.push(d)
-    }
+    let vec: Vec<T> = read_csv(file_path).collect();
 
     if vec.is_empty() {
         input_panic(file_path, "CSV file cannot be empty");
