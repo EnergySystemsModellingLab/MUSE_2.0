@@ -1,4 +1,4 @@
-use crate::input::{read_vec_from_csv, InputResult};
+use crate::input::{read_csv_as_vec, InputResult};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -33,7 +33,7 @@ pub struct Demand {
 /// This function will return an error if the file cannot be opened or read, or if the CSV data
 /// cannot be parsed.
 pub fn read_demand_data(model_dir: &Path) -> InputResult<Vec<Demand>> {
-    let demand_data = read_vec_from_csv(&model_dir.join(DEMAND_FILE_NAME))?;
+    let demand_data = read_csv_as_vec(&model_dir.join(DEMAND_FILE_NAME))?;
 
     // **TODO**: add validation checks here? e.g. check not negative, apply interpolation and
     // extrapolation rules?

@@ -11,7 +11,7 @@ use std::path::Path;
 /// # Arguments
 ///
 /// * `file_path` - Path to the CSV file
-pub fn read_vec_from_csv<T: DeserializeOwned>(file_path: &Path) -> InputResult<Vec<T>> {
+pub fn read_csv_as_vec<T: DeserializeOwned>(file_path: &Path) -> InputResult<Vec<T>> {
     let mut reader = csv::Reader::from_path(file_path).map_input_err(file_path)?;
 
     let mut vec = Vec::new();
@@ -125,10 +125,10 @@ mod tests {
 
     /// Test a normal read
     #[test]
-    fn test_read_vec_from_csv() {
+    fn test_read_csv_as_vec() {
         let dir = tempdir().unwrap();
         let file_path = create_csv_file(dir.path(), "a,b\n1,hello\n2,world\n");
-        let records: Vec<Record> = read_vec_from_csv(&file_path).unwrap();
+        let records: Vec<Record> = read_csv_as_vec(&file_path).unwrap();
         assert_eq!(
             records,
             &[
@@ -146,10 +146,10 @@ mod tests {
 
     /// Empty CSV files should yield an error
     #[test]
-    fn test_read_vec_from_csv_empty() {
+    fn test_read_csv_as_vec_empty() {
         let dir = tempdir().unwrap();
         let file_path = create_csv_file(dir.path(), "a,b\n");
-        assert!(read_vec_from_csv::<Record>(&file_path).is_err());
+        assert!(read_csv_as_vec::<Record>(&file_path).is_err());
     }
 
     #[test]
