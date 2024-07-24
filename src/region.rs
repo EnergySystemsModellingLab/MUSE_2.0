@@ -1,4 +1,4 @@
-use crate::input::{read_vec_from_csv, InputResult};
+use crate::input::{read_csv_as_vec, InputResult};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -28,7 +28,7 @@ pub struct Region {
 /// cannot be parsed.
 pub fn read_regions_data(model_dir: &Path) -> InputResult<Vec<Region>> {
     let file_path = model_dir.join(REGIONS_FILE_NAME);
-    let regions_data = read_vec_from_csv(&file_path)?;
+    let regions_data = read_csv_as_vec(&file_path)?;
     Ok(regions_data)
 }
 
