@@ -1,4 +1,5 @@
 //! Common routines for handling input data.
+use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::error::Error;
@@ -12,13 +13,11 @@ use std::path::Path;
 ///
 /// * `file_path` - Path to the CSV file
 pub fn read_csv_as_vec<T: DeserializeOwned>(file_path: &Path) -> InputResult<Vec<T>> {
-    let mut reader = csv::Reader::from_path(file_path).map_input_err(file_path)?;
-
-    let mut vec = Vec::new();
-    for result in reader.deserialize() {
-        let d: T = result.map_input_err(file_path)?;
-        vec.push(d)
-    }
+    let vec: Vec<T> = csv::Reader::from_path(file_path)
+        .map_input_err(file_path)?
+        .into_deserialize()
+        .map(|record| record.map_input_err(file_path))
+        .try_collect()?;
 
     if vec.is_empty() {
         Err(InputError::new(file_path, "CSV file cannot be empty"))?;
