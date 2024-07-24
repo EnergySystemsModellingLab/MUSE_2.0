@@ -2,7 +2,7 @@ use crate::input::{read_csv_as_vec, InputResult};
 use serde::Deserialize;
 use std::path::Path;
 
-const REGIONS_FILE_NAME: &str = "regions.csv";
+const REGIONS_PATH_PREFIX: &str = "regions";
 
 /// Represents a region with an ID and a longer description.
 #[derive(Debug, Deserialize, PartialEq)]
@@ -27,9 +27,7 @@ pub struct Region {
 /// This function will return an error if the file cannot be opened or read, or if the CSV data
 /// cannot be parsed.
 pub fn read_regions_data(model_dir: &Path) -> InputResult<Vec<Region>> {
-    let file_path = model_dir.join(REGIONS_FILE_NAME);
-    let regions_data = read_csv_as_vec(&file_path)?;
-    Ok(regions_data)
+    read_csv_as_vec(&model_dir.join(REGIONS_PATH_PREFIX))
 }
 
 #[cfg(test)]
@@ -42,7 +40,7 @@ mod tests {
 
     /// Create an example regions file in dir_path
     fn create_regions_file(dir_path: &Path) {
-        let file_path = dir_path.join(REGIONS_FILE_NAME);
+        let file_path = dir_path.join(REGIONS_PATH_PREFIX);
         let mut file = File::create(file_path).unwrap();
         writeln!(
             file,

@@ -2,12 +2,12 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
-use crate::input::{deserialise_proportion, read_csv_as_vec, InputError, InputResult};
+use crate::input::{deserialise_proportion, read_csv_as_vec_optional, InputError, InputResult};
 use float_cmp::approx_eq;
 use serde::Deserialize;
 use std::path::Path;
 
-const TIME_SLICES_FILE_NAME: &str = "time_slices.csv";
+const TIME_SLICES_PATH_PREFIX: &str = "time_slices";
 
 /// Represents a single time slice in the simulation
 #[derive(PartialEq, Debug, Deserialize)]
@@ -38,15 +38,14 @@ pub struct TimeSlice {
 /// This function will return an error if the file cannot be opened or read, or if the CSV data
 /// cannot be parsed.
 pub fn read_time_slices(model_dir: &Path) -> InputResult<Option<Vec<TimeSlice>>> {
-    let file_path = model_dir.join(TIME_SLICES_FILE_NAME);
-    if !file_path.exists() {
-        return Ok(None);
+    let file_path = model_dir.join(TIME_SLICES_PATH_PREFIX);
+    match read_csv_as_vec_optional(&file_path)? {
+        None => Ok(None),
+        Some(time_slices) => {
+            check_time_slice_fractions_sum_to_one(&file_path, &time_slices)?;
+            Ok(Some(time_slices))
+        }
     }
-    let time_slices = read_csv_as_vec(&file_path)?;
-
-    check_time_slice_fractions_sum_to_one(&file_path, &time_slices)?;
-
-    Ok(Some(time_slices))
 }
 
 /// Check that time slice fractions sum to (approximately) one
@@ -89,7 +88,7 @@ mod tests {
 
     /// Create an example time slices file in dir_path
     fn create_time_slices_file(dir_path: &Path) {
-        let file_path = dir_path.join(TIME_SLICES_FILE_NAME);
+        let file_path = dir_path.join(TIME_SLICES_PATH_PREFIX);
         let mut file = File::create(file_path).unwrap();
         writeln!(
             file,

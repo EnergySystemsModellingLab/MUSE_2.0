@@ -2,7 +2,7 @@ use crate::input::{read_csv_as_vec, InputResult};
 use serde::Deserialize;
 use std::path::Path;
 
-const DEMAND_FILE_NAME: &str = "demand.csv";
+const DEMAND_PATH_PREFIX: &str = "demand";
 
 /// Represents a single demand entry in the dataset.
 #[derive(Debug, Deserialize, PartialEq)]
@@ -33,11 +33,9 @@ pub struct Demand {
 /// This function will return an error if the file cannot be opened or read, or if the CSV data
 /// cannot be parsed.
 pub fn read_demand_data(model_dir: &Path) -> InputResult<Vec<Demand>> {
-    let demand_data = read_csv_as_vec(&model_dir.join(DEMAND_FILE_NAME))?;
-
     // **TODO**: add validation checks here? e.g. check not negative, apply interpolation and
     // extrapolation rules?
-    Ok(demand_data)
+    read_csv_as_vec(&model_dir.join(DEMAND_PATH_PREFIX))
 }
 
 #[cfg(test)]
@@ -50,7 +48,7 @@ mod tests {
 
     /// Create an example demand file in dir_path
     fn create_demand_file(dir_path: &Path) {
-        let file_path = dir_path.join(DEMAND_FILE_NAME);
+        let file_path = dir_path.join(DEMAND_PATH_PREFIX);
         let mut file = File::create(file_path).unwrap();
         writeln!(
             file,

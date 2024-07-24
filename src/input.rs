@@ -1,29 +1,105 @@
 //! Common routines for handling input data.
-use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::error::Error;
+use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 
-/// Read a series of type `T`s from a CSV file into a `Vec<T>`.
-///
-/// # Arguments
-///
-/// * `file_path` - Path to the CSV file
-pub fn read_csv_as_vec<T: DeserializeOwned>(file_path: &Path) -> InputResult<Vec<T>> {
-    let vec: Vec<T> = csv::Reader::from_path(file_path)
-        .map_input_err(file_path)?
-        .into_deserialize()
-        .map(|record| record.map_input_err(file_path))
-        .try_collect()?;
+/// Read the contents of a single CSV file into `vec`.
+fn read_csv_as_vec_file<T: DeserializeOwned>(
+    file_path: &Path,
+    vec: &mut Vec<T>,
+) -> InputResult<()> {
+    let reader = csv::Reader::from_path(file_path).map_input_err(file_path)?;
+
+    for record in reader.into_deserialize() {
+        let record = record.map_input_err(file_path)?;
+        vec.push(record);
+    }
 
     if vec.is_empty() {
         Err(InputError::new(file_path, "CSV file cannot be empty"))?;
     }
 
-    Ok(vec)
+    Ok(())
+}
+
+/// Read the contents of multiple CSV files in `dir_path` into `vec`.
+fn read_csv_as_vec_dir<T: DeserializeOwned>(dir_path: &Path, vec: &mut Vec<T>) -> InputResult<()> {
+    let dir = fs::read_dir(dir_path).map_input_err(dir_path)?;
+    for entry in dir {
+        let entry = entry.map_err(|err| InputError::new(dir_path, &err.to_string()))?;
+        let path = entry.path();
+        if path.extension() == Some(OsStr::new(".csv")) && path.is_file() {
+            read_csv_as_vec_file(&path, vec)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Read a series of type `T`s from one or more CSV files into a `Vec<T>`.
+///
+/// # Arguments
+///
+/// * `path_prefix` - Path to the CSV file
+pub fn read_csv_as_vec<T: DeserializeOwned>(path_prefix: &Path) -> InputResult<Vec<T>> {
+    match read_csv_as_vec_optional(path_prefix)? {
+        None => {
+            let name = path_prefix
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy();
+            Err(InputError::new(
+                path_prefix,
+                &format!("Could not find a file {name}.csv or a folder {name}"),
+            ))
+        }
+        Some(vec) => Ok(vec),
+    }
+}
+
+/// Read a series of type `T`s from one or more CSV files into a `Vec<T>`.
+///
+/// If no CSV files are found, Ok(None) is returned.
+///
+/// # Arguments
+///
+/// * `path_prefix` - Path to the CSV file
+pub fn read_csv_as_vec_optional<T: DeserializeOwned>(
+    path_prefix: &Path,
+) -> InputResult<Option<Vec<T>>> {
+    let dir_path = path_prefix;
+    let file_path = {
+        // Append extension
+        let mut file_path_str: OsString = path_prefix.into();
+        file_path_str.push(".csv");
+        PathBuf::from(file_path_str)
+    };
+
+    let file_exists = file_path.is_file();
+    let dir_exists = dir_path.is_dir();
+    if file_exists && dir_exists {
+        Err(InputError::new(
+            path_prefix,
+            "Cannot provide a CSV file and directory",
+        ))?;
+    }
+    if !file_exists && !dir_exists {
+        return Ok(None);
+    }
+
+    let mut vec = Vec::new();
+    if file_exists {
+        read_csv_as_vec_file(&file_path, &mut vec)?;
+    } else {
+        read_csv_as_vec_dir(dir_path, &mut vec)?;
+    }
+
+    Ok(Some(vec))
 }
 
 /// Parse a TOML file at the specified path.
@@ -124,7 +200,7 @@ mod tests {
 
     /// Test a normal read
     #[test]
-    fn test_read_vec_from_csv() {
+    fn test_read_csv_as_vec() {
         let dir = tempdir().unwrap();
         let file_path = create_csv_file(dir.path(), "a,b\n1,hello\n2,world\n");
         let records: Vec<Record> = read_csv_as_vec(&file_path).unwrap();
@@ -145,7 +221,7 @@ mod tests {
 
     /// Empty CSV files should yield an error
     #[test]
-    fn test_read_vec_from_csv_empty() {
+    fn test_read_csv_as_vec_empty() {
         let dir = tempdir().unwrap();
         let file_path = create_csv_file(dir.path(), "a,b\n");
         assert!(read_csv_as_vec::<Record>(&file_path).is_err());

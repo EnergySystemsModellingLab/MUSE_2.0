@@ -1,6 +1,4 @@
-use crate::input::{
-    deserialise_proportion, read_csv_as_vec, InputError, InputResult, LimitType, MapInputError,
-};
+use crate::input::{deserialise_proportion, read_csv_as_vec, InputError, InputResult, LimitType};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -8,12 +6,12 @@ use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
 use std::path::Path;
 
-const PROCESSES_FILE_NAME: &str = "processes.csv";
-const PROCESS_AVAILABILITIES_FILE_NAME: &str = "process_availabilities.csv";
-const PROCESS_FLOWS_FILE_NAME: &str = "process_flows.csv";
-const PROCESS_PACS_FILE_NAME: &str = "process_pacs.csv";
-const PROCESS_PARAMETERS_FILE_NAME: &str = "process_parameters.csv";
-const PROCESS_REGIONS_FILE_NAME: &str = "process_regions.csv";
+const PROCESSES_PATH_PREFIX: &str = "processes";
+const PROCESS_AVAILABILITIES_PATH_PREFIX: &str = "process_availabilities";
+const PROCESS_FLOWS_PATH_PREFIX: &str = "process_flows";
+const PROCESS_PACS_PATH_PREFIX: &str = "process_pacs";
+const PROCESS_PARAMETERS_PATH_PREFIX: &str = "process_parameters";
+const PROCESS_REGIONS_PATH_PREFIX: &str = "process_regions";
 
 trait HasProcessID {
     fn get_process_id(&self) -> &str;
@@ -242,15 +240,12 @@ where
 ///
 /// Returns a map of IDs to descriptions.
 fn read_processes_file(model_dir: &Path) -> InputResult<HashMap<String, String>> {
-    let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let mut reader = csv::Reader::from_path(&file_path).map_input_err(&file_path)?;
-
+    let path_prefix = model_dir.join(PROCESSES_PATH_PREFIX);
     let mut descriptions = HashMap::new();
-    for result in reader.deserialize() {
-        let desc: ProcessDescription = result.map_input_err(&file_path)?;
+    for desc in read_csv_as_vec::<ProcessDescription>(&path_prefix)?.into_iter() {
         if descriptions.contains_key(&desc.id) {
             Err(InputError::new(
-                &file_path,
+                &path_prefix,
                 &format!("Duplicate process ID: {}", &desc.id),
             ))?;
         }
@@ -288,18 +283,19 @@ pub fn read_processes(
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
     let mut availabilities = read_csv_grouped_by_id(
-        &model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME),
+        &model_dir.join(PROCESS_AVAILABILITIES_PATH_PREFIX),
         &process_ids,
     )?;
-    let mut flows = read_csv_grouped_by_id(&model_dir.join(PROCESS_FLOWS_FILE_NAME), &process_ids)?;
-    let mut pacs = read_csv_grouped_by_id(&model_dir.join(PROCESS_PACS_FILE_NAME), &process_ids)?;
+    let mut flows =
+        read_csv_grouped_by_id(&model_dir.join(PROCESS_FLOWS_PATH_PREFIX), &process_ids)?;
+    let mut pacs = read_csv_grouped_by_id(&model_dir.join(PROCESS_PACS_PATH_PREFIX), &process_ids)?;
     let mut parameters = read_csv_grouped_by_id_with_filter(
-        &model_dir.join(PROCESS_PARAMETERS_FILE_NAME),
+        &model_dir.join(PROCESS_PARAMETERS_PATH_PREFIX),
         &process_ids,
         |file_path, param: ProcessParameterRaw| param.into_parameter(file_path, &year_range),
     )?;
     let mut regions =
-        read_csv_grouped_by_id(&model_dir.join(PROCESS_REGIONS_FILE_NAME), &process_ids)?;
+        read_csv_grouped_by_id(&model_dir.join(PROCESS_REGIONS_PATH_PREFIX), &process_ids)?;
 
     let processes = process_ids
         .iter()
@@ -419,7 +415,7 @@ mod tests {
     #[test]
     fn test_read_processes_file() {
         let dir = tempdir().unwrap();
-        let file_path = dir.path().join(PROCESSES_FILE_NAME);
+        let file_path = dir.path().join(PROCESSES_PATH_PREFIX);
         {
             let file_path: &Path = &file_path; // cast
             let mut file = File::create(file_path).unwrap();
@@ -436,7 +432,7 @@ mod tests {
     #[test]
     fn test_read_processes_file_duplicate_process() {
         let dir = tempdir().unwrap();
-        let file_path = dir.path().join("processes.csv");
+        let file_path = dir.path().join(format!("{PROCESSES_PATH_PREFIX}.csv"));
         {
             let file_path: &Path = &file_path; // cast
             let mut file = File::create(file_path).unwrap();
