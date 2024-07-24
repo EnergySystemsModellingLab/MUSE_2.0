@@ -7,17 +7,27 @@ use std::fmt;
 use std::fs;
 use std::path::Path;
 
+/// Read a series of type `T`s from a CSV file.
+///
+/// # Arguments
+///
+/// * `file_path` - Path to the CSV file
+pub fn read_csv<'a, T: DeserializeOwned + 'a>(
+    file_path: &'a Path,
+) -> InputResult<impl Iterator<Item = InputResult<T>> + 'a> {
+    Ok(csv::Reader::from_path(file_path)
+        .map_input_err(file_path)?
+        .into_deserialize()
+        .map(|record| record.map_input_err(file_path)))
+}
+
 /// Read a series of type `T`s from a CSV file into a `Vec<T>`.
 ///
 /// # Arguments
 ///
 /// * `file_path` - Path to the CSV file
 pub fn read_csv_as_vec<T: DeserializeOwned>(file_path: &Path) -> InputResult<Vec<T>> {
-    let vec: Vec<T> = csv::Reader::from_path(file_path)
-        .map_input_err(file_path)?
-        .into_deserialize()
-        .map(|record| record.map_input_err(file_path))
-        .try_collect()?;
+    let vec: Vec<T> = read_csv(file_path)?.try_collect()?;
 
     if vec.is_empty() {
         Err(InputError::new(file_path, "CSV file cannot be empty"))?;
