@@ -11,7 +11,7 @@ pub struct Region {
     pub description: String,
 }
 
-/// Reads regions data from a CSV file.
+/// Reads regions from a CSV file.
 ///
 /// # Arguments
 ///
@@ -26,10 +26,10 @@ pub struct Region {
 ///
 /// This function will return an error if the file cannot be opened or read, or if the CSV data
 /// cannot be parsed.
-pub fn read_regions_data(model_dir: &Path) -> InputResult<Vec<Region>> {
+pub fn read_regions(model_dir: &Path) -> InputResult<Vec<Region>> {
     let file_path = model_dir.join(REGIONS_FILE_NAME);
-    let regions_data = read_csv_as_vec(&file_path)?;
-    Ok(regions_data)
+    let regions = read_csv_as_vec(&file_path)?;
+    Ok(regions)
 }
 
 #[cfg(test)]
@@ -58,7 +58,7 @@ AP,Asia Pacific"
     fn test_read_regions_from_csv() {
         let dir = tempdir().unwrap();
         create_regions_file(dir.path());
-        let regions_data = read_regions_data(dir.path()).unwrap();
+        let regions_data = read_regions(dir.path()).unwrap();
         assert_eq!(
             regions_data,
             vec![
