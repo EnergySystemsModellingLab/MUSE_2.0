@@ -1,5 +1,5 @@
 //! Common routines for handling input data.
-use itertools::Itertools;
+use nonempty_collections::*;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::error::Error;
@@ -14,11 +14,16 @@ use std::path::Path;
 /// * `file_path` - Path to the CSV file
 pub fn read_csv<'a, T: DeserializeOwned + 'a>(
     file_path: &'a Path,
-) -> InputResult<impl Iterator<Item = InputResult<T>> + 'a> {
-    Ok(csv::Reader::from_path(file_path)
+) -> InputResult<impl NonEmptyIterator<Item = InputResult<T>> + 'a> {
+    let iter = csv::Reader::from_path(file_path)
         .map_input_err(file_path)?
         .into_deserialize()
-        .map(|record| record.map_input_err(file_path)))
+        .map(|record| record.map_input_err(file_path));
+
+    match iter.try_into_nonempty_iter() {
+        None => Err(InputError::new(file_path, "CSV file cannot be empty")),
+        Some(iter) => Ok(iter),
+    }
 }
 
 /// Read a series of type `T`s from a CSV file into a `Vec<T>`.
@@ -27,13 +32,7 @@ pub fn read_csv<'a, T: DeserializeOwned + 'a>(
 ///
 /// * `file_path` - Path to the CSV file
 pub fn read_csv_as_vec<T: DeserializeOwned>(file_path: &Path) -> InputResult<Vec<T>> {
-    let vec: Vec<T> = read_csv(file_path)?.try_collect()?;
-
-    if vec.is_empty() {
-        Err(InputError::new(file_path, "CSV file cannot be empty"))?;
-    }
-
-    Ok(vec)
+    read_csv(file_path)?.collect()
 }
 
 /// Parse a TOML file at the specified path.
