@@ -86,13 +86,13 @@ impl Error for InputError {}
 pub type InputResult<T> = Result<T, InputError>;
 
 /// A trait allowing us to add the map_input_err method to `Result`s
-pub trait MapInputError<T> {
+pub trait MapInputError<'a, T> {
     /// Maps a `Result` with an arbitrary `Error` type to an `InputResult<T>`
-    fn map_input_err(self, file_path: &Path) -> InputResult<T>;
+    fn map_input_err(self, file_path: &'a Path) -> InputResult<T>;
 }
 
-impl<T, E: Error> MapInputError<T> for Result<T, E> {
-    fn map_input_err(self, file_path: &Path) -> InputResult<T> {
+impl<'a, T, E: Error> MapInputError<'a, T> for Result<T, E> {
+    fn map_input_err(self, file_path: &'a Path) -> InputResult<T> {
         self.map_err(|err| InputError::new(file_path, &err.to_string()))
     }
 }
