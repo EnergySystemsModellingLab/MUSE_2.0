@@ -1,4 +1,5 @@
 use crate::input::*;
+use itertools::Itertools;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -169,31 +170,17 @@ pub struct Process {
     pub regions: Vec<String>,
 }
 
-/// Read a CSV file, grouping the entries by process ID, applying a filter to each element
-///
-/// # Arguments
-///
-/// * `file_path` - Path to CSV file
-/// * `process_ids` - All possible process IDs
-/// * `filter` - Function to convert the deserialised CSV row into another data structure
-///
-/// `filter` must be a function which takes a file path and a deserialised CSV row as arguments,
-/// returning either another data structure or an error.
-///
-/// # Returns
-///
-/// A HashMap with process ID as a key and a vector of filtered CSV data as a value.
-fn read_csv_grouped_by_id_with_filter<'a, T, U, F>(
-    file_path: &Path,
+/// Convert the specified iterator into an iterator of pairs containing an ID + item.
+fn into_id_pair<'a, T, U>(
+    iter: T,
+    file_path: &'a Path,
     process_ids: &'a HashSet<String>,
-    filter: F,
-) -> InputResult<HashMap<&'a str, Vec<T>>>
+) -> impl Iterator<Item = InputResult<(&'a str, U)>>
 where
-    U: HasProcessID + DeserializeOwned,
-    F: Fn(&Path, U) -> InputResult<T>,
+    T: Iterator<Item = InputResult<U>>,
+    U: HasProcessID + DeserializeOwned + 'a,
 {
-    let mut map = HashMap::new();
-    for elem in read_csv(file_path)? {
+    iter.map(|elem| {
         let elem: U = elem?;
         let elem_id = elem.get_process_id();
         let id = match process_ids.get(elem_id) {
@@ -204,19 +191,8 @@ where
             Some(id) => id.as_str(),
         };
 
-        let elem: T = filter(file_path, elem)?;
-        match map.get_mut(&id) {
-            None => {
-                map.insert(id, vec![elem]);
-            }
-            Some(vec) => vec.push(elem),
-        }
-    }
-    if map.is_empty() {
-        Err(InputError::new(file_path, "CSV file is empty"))?;
-    }
-
-    Ok(map)
+        Ok((id, elem))
+    })
 }
 
 /// Read a CSV file, grouping the entries by process ID
@@ -230,13 +206,20 @@ where
 ///
 /// A HashMap with process ID as a key and a vector of CSV data as a value.
 fn read_csv_grouped_by_id<'a, T>(
-    file_path: &Path,
+    file_path: &'a Path,
     process_ids: &'a HashSet<String>,
 ) -> InputResult<HashMap<&'a str, Vec<T>>>
 where
-    T: HasProcessID + DeserializeOwned,
+    T: HasProcessID + DeserializeOwned + 'a,
 {
-    read_csv_grouped_by_id_with_filter(file_path, process_ids, |_, x| Ok(x))
+    // process_results checks for errors across the iterator
+    let map = into_id_pair(read_csv(file_path)?, file_path, process_ids)
+        .process_results(|iter| iter.into_group_map())?;
+    if map.is_empty() {
+        Err(InputError::new(file_path, "CSV file is empty"))?;
+    }
+
+    Ok(map)
 }
 
 /// Read processes CSV file, which contains IDs and descriptions.
@@ -261,6 +244,22 @@ fn read_processes_file(model_dir: &Path) -> InputResult<HashMap<String, String>>
     }
 
     Ok(descriptions)
+}
+
+/// Read process parameters from the specified CSV file
+fn read_parameters<'a>(
+    file_path: &'a Path,
+    process_ids: &'a HashSet<String>,
+    year_range: &'a RangeInclusive<u32>,
+) -> InputResult<HashMap<&'a str, Vec<ProcessParameter>>> {
+    let param_iter = read_csv::<ProcessParameterRaw>(file_path)?
+        .map(|p| p?.into_parameter(file_path, year_range));
+    let params = into_id_pair(param_iter, file_path, process_ids)
+        .process_results(|iter| iter.into_group_map())?;
+    if params.is_empty() {
+        Err(InputError::new(file_path, "CSV file is empty"))?;
+    }
+    Ok(params)
 }
 
 /// Read process information from the specified CSV files.
@@ -289,19 +288,16 @@ pub fn read_processes(
     // references to the IDs and we want to consume descriptions.
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
-    let mut availabilities = read_csv_grouped_by_id(
-        &model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME),
-        &process_ids,
-    )?;
-    let mut flows = read_csv_grouped_by_id(&model_dir.join(PROCESS_FLOWS_FILE_NAME), &process_ids)?;
-    let mut pacs = read_csv_grouped_by_id(&model_dir.join(PROCESS_PACS_FILE_NAME), &process_ids)?;
-    let mut parameters = read_csv_grouped_by_id_with_filter(
-        &model_dir.join(PROCESS_PARAMETERS_FILE_NAME),
-        &process_ids,
-        |file_path, param: ProcessParameterRaw| param.into_parameter(file_path, &year_range),
-    )?;
-    let mut regions =
-        read_csv_grouped_by_id(&model_dir.join(PROCESS_REGIONS_FILE_NAME), &process_ids)?;
+    let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
+    let mut availabilities = read_csv_grouped_by_id(&file_path, &process_ids)?;
+    let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
+    let mut flows = read_csv_grouped_by_id(&file_path, &process_ids)?;
+    let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
+    let mut pacs = read_csv_grouped_by_id(&file_path, &process_ids)?;
+    let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
+    let mut parameters = read_parameters(&file_path, &process_ids, &year_range)?;
+    let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
+    let mut regions = read_csv_grouped_by_id(&file_path, &process_ids)?;
 
     let processes = process_ids
         .iter()
@@ -499,8 +495,9 @@ mod tests {
             ),
         ]);
         let process_ids = create_process_ids();
+        let file_path = dir.path().join("data.csv");
         let map: HashMap<&str, Vec<ProcessData>> =
-            read_csv_grouped_by_id(&dir.path().join("data.csv"), &process_ids).unwrap();
+            read_csv_grouped_by_id(&file_path, &process_ids).unwrap();
         assert_eq!(expected, map);
     }
 
@@ -518,31 +515,6 @@ mod tests {
 
         // Check that it fails if a non-existent process ID is provided
         let process_ids = create_process_ids();
-        assert!(
-            read_csv_grouped_by_id::<ProcessData>(&dir.path().join("data.csv"), &process_ids)
-                .is_err()
-        );
-    }
-
-    #[test]
-    fn test_read_csv_grouped_by_id_with_filter() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("data.csv");
-        {
-            let file_path: &Path = &file_path; // cast
-            let mut file = File::create(file_path).unwrap();
-            writeln!(file, "process_id,value\nA,1\nB,2\nA,3").unwrap();
-        }
-
-        // Test using filter which multiplies the value in ProcessData by 2
-        let expected = HashMap::from([("A", vec![2, 6]), ("B", vec![4])]);
-        let process_ids = create_process_ids();
-        let map: HashMap<&str, Vec<i32>> = read_csv_grouped_by_id_with_filter(
-            &dir.path().join("data.csv"),
-            &process_ids,
-            |_, data: ProcessData| Ok(data.value * 2),
-        )
-        .unwrap();
-        assert_eq!(expected, map);
+        assert!(read_csv_grouped_by_id::<ProcessData>(&file_path, &process_ids).is_err());
     }
 }
