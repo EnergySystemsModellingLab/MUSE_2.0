@@ -1,6 +1,4 @@
-use crate::input::{
-    deserialise_proportion, input_panic, read_csv_as_vec, LimitType, UnwrapInputError,
-};
+use crate::input::*;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -194,9 +192,8 @@ where
     U: HasProcessID + DeserializeOwned,
     F: Fn(U) -> T,
 {
-    let vec: Vec<U> = read_csv_as_vec(file_path);
     let mut map = HashMap::new();
-    for elem in vec.into_iter() {
+    for elem in read_csv::<U>(file_path) {
         let elem_id = elem.get_process_id();
         let id = match process_ids.get(elem_id) {
             None => input_panic(
@@ -213,6 +210,9 @@ where
             }
             Some(vec) => vec.push(elem),
         }
+    }
+    if map.is_empty() {
+        input_panic(file_path, "CSV file is empty");
     }
 
     map
@@ -243,16 +243,16 @@ where
 /// Returns a map of IDs to descriptions.
 fn read_processes_file(model_dir: &Path) -> HashMap<String, String> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let mut reader = csv::Reader::from_path(&file_path).unwrap_input_err(&file_path);
-
     let mut descriptions = HashMap::new();
-    for result in reader.deserialize() {
-        let desc: ProcessDescription = result.unwrap_input_err(&file_path);
+    for desc in read_csv::<ProcessDescription>(&file_path) {
         if descriptions.contains_key(&desc.id) {
             input_panic(&file_path, &format!("Duplicate process ID: {}", &desc.id));
         }
 
         descriptions.insert(desc.id, desc.description);
+    }
+    if descriptions.is_empty() {
+        input_panic(&file_path, "CSV file is empty");
     }
 
     descriptions
