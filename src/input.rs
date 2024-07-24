@@ -2,6 +2,8 @@
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::error::Error;
 use std::fmt;
 use std::fs;
@@ -107,6 +109,64 @@ impl<'a, T, E: Error> MapInputError<'a, T> for Result<T, E> {
     }
 }
 
+/// Indicates that the struct has an ID field
+pub trait HasID {
+    /// Get a string representation of the struct's ID
+    fn get_id(&self) -> &str;
+}
+
+/// Convert the specified iterator into an iterator of pairs containing an ID + item.
+pub fn into_id_pair<'a, T, U>(
+    iter: T,
+    file_path: &'a Path,
+    ids: &'a HashSet<String>,
+) -> impl Iterator<Item = InputResult<(&'a str, U)>>
+where
+    T: Iterator<Item = InputResult<U>>,
+    U: HasID + DeserializeOwned + 'a,
+{
+    iter.map(|elem| {
+        let elem: U = elem?;
+        let elem_id = elem.get_id();
+        let id = match ids.get(elem_id) {
+            None => Err(InputError::new(
+                file_path,
+                &format!("Unknown ID {elem_id} found"),
+            ))?,
+            Some(id) => id.as_str(),
+        };
+
+        Ok((id, elem))
+    })
+}
+
+/// Read a CSV file, grouping the entries by ID
+///
+/// # Arguments
+///
+/// * `file_path` - Path to CSV file
+/// * `ids` - All possible IDs that will be encountered
+///
+/// # Returns
+///
+/// A HashMap with ID as a key and a vector of CSV data as a value.
+pub fn read_csv_grouped_by_id<'a, T>(
+    file_path: &'a Path,
+    ids: &'a HashSet<String>,
+) -> InputResult<HashMap<&'a str, Vec<T>>>
+where
+    T: HasID + DeserializeOwned + 'a,
+{
+    // process_results checks for errors across the iterator
+    let map = into_id_pair(read_csv(file_path)?, file_path, ids)
+        .process_results(|iter| iter.into_group_map())?;
+    if map.is_empty() {
+        Err(InputError::new(file_path, "CSV file is empty"))?;
+    }
+
+    Ok(map)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -120,8 +180,14 @@ mod tests {
 
     #[derive(Debug, PartialEq, Deserialize)]
     struct Record {
-        a: u32,
-        b: String,
+        id: String,
+        value: u32,
+    }
+
+    impl HasID for Record {
+        fn get_id(&self) -> &str {
+            &self.id
+        }
     }
 
     /// Create an example CSV file in dir_path
@@ -136,18 +202,18 @@ mod tests {
     #[test]
     fn test_read_csv_as_vec() {
         let dir = tempdir().unwrap();
-        let file_path = create_csv_file(dir.path(), "a,b\n1,hello\n2,world\n");
+        let file_path = create_csv_file(dir.path(), "id,value\nhello,1\nworld,2\n");
         let records: Vec<Record> = read_csv_as_vec(&file_path).unwrap();
         assert_eq!(
             records,
             &[
                 Record {
-                    a: 1,
-                    b: "hello".to_string()
+                    id: "hello".to_string(),
+                    value: 1,
                 },
                 Record {
-                    a: 2,
-                    b: "world".to_string()
+                    id: "world".to_string(),
+                    value: 2,
                 }
             ]
         );
@@ -157,7 +223,7 @@ mod tests {
     #[test]
     fn test_read_csv_as_vec_empty() {
         let dir = tempdir().unwrap();
-        let file_path = create_csv_file(dir.path(), "a,b\n");
+        let file_path = create_csv_file(dir.path(), "id,value\n");
         assert!(read_csv_as_vec::<Record>(&file_path).is_err());
     }
 
@@ -167,14 +233,14 @@ mod tests {
         let file_path = dir.path().join("test.toml");
         {
             let mut file = File::create(&file_path).unwrap();
-            writeln!(file, "a = 1\nb = \"hello\"").unwrap();
+            writeln!(file, "id = \"hello\"\nvalue = 1").unwrap();
         }
 
         assert_eq!(
             read_toml::<Record>(&file_path).unwrap(),
             Record {
-                a: 1,
-                b: "hello".to_string()
+                id: "hello".to_string(),
+                value: 1,
             }
         );
     }
@@ -197,5 +263,65 @@ mod tests {
         assert!(deserialise_f64(2.0).is_err());
         assert!(deserialise_f64(f64::NAN).is_err());
         assert!(deserialise_f64(f64::INFINITY).is_err());
+    }
+
+    fn create_ids() -> HashSet<String> {
+        HashSet::from(["A".to_string(), "B".to_string()])
+    }
+
+    #[test]
+    fn test_read_csv_grouped_by_id() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("data.csv");
+        {
+            let file_path: &Path = &file_path; // cast
+            let mut file = File::create(file_path).unwrap();
+            writeln!(file, "id,value\nA,1\nB,2\nA,3").unwrap();
+        }
+
+        let expected = HashMap::from([
+            (
+                "A",
+                vec![
+                    Record {
+                        id: "A".to_string(),
+                        value: 1,
+                    },
+                    Record {
+                        id: "A".to_string(),
+                        value: 3,
+                    },
+                ],
+            ),
+            (
+                "B",
+                vec![Record {
+                    id: "B".to_string(),
+                    value: 2,
+                }],
+            ),
+        ]);
+        let process_ids = create_ids();
+        let file_path = dir.path().join("data.csv");
+        let map: HashMap<&str, Vec<Record>> =
+            read_csv_grouped_by_id(&file_path, &process_ids).unwrap();
+        assert_eq!(expected, map);
+    }
+
+    #[test]
+    fn test_read_csv_grouped_by_id_duplicate() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("data.csv");
+        {
+            let file_path: &Path = &file_path; // cast
+            let mut file = File::create(file_path).unwrap();
+
+            // NB: Process ID "C" isn't valid
+            writeln!(file, "process_id,value\nA,1\nB,2\nC,3").unwrap();
+        }
+
+        // Check that it fails if a non-existent process ID is provided
+        let process_ids = create_ids();
+        assert!(read_csv_grouped_by_id::<Record>(&file_path, &process_ids).is_err());
     }
 }
