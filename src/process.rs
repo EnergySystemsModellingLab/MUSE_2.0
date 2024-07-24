@@ -1,5 +1,5 @@
 use crate::input::{
-    deserialise_proportion, read_vec_from_csv, InputError, InputResult, LimitType, MapInputError,
+    deserialise_proportion, read_csv_as_vec, InputError, InputResult, LimitType, MapInputError,
 };
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
@@ -194,7 +194,7 @@ where
     U: HasProcessID + DeserializeOwned,
     F: Fn(&Path, U) -> InputResult<T>,
 {
-    let vec: Vec<U> = read_vec_from_csv(file_path)?;
+    let vec: Vec<U> = read_csv_as_vec(file_path)?;
     let mut map = HashMap::new();
     for elem in vec.into_iter() {
         let elem_id = elem.get_process_id();
