@@ -1,5 +1,5 @@
 use crate::input::{
-    deserialise_proportion, read_csv_as_vec, InputError, InputResult, LimitType, MapInputError,
+    deserialise_proportion, input_panic, read_csv_as_vec, LimitType, UnwrapInputError,
 };
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
@@ -99,12 +99,12 @@ impl ProcessParameterRaw {
         self,
         file_path: &Path,
         year_range: &RangeInclusive<u32>,
-    ) -> InputResult<ProcessParameter> {
+    ) -> ProcessParameter {
         let start_year = match self.start_year {
             None => *year_range.start(),
             Some(year) => {
                 if !year_range.contains(&year) {
-                    Err(InputError::new(file_path, "start_year is out of range"))?
+                    input_panic(file_path, "start_year is out of range");
                 }
 
                 year
@@ -114,14 +114,14 @@ impl ProcessParameterRaw {
             None => *year_range.end(),
             Some(year) => {
                 if !year_range.contains(&year) {
-                    Err(InputError::new(file_path, "end_year is out of range"))?
+                    input_panic(file_path, "end_year is out of range");
                 }
 
                 year
             }
         };
 
-        Ok(ProcessParameter {
+        ProcessParameter {
             process_id: self.process_id,
             years: start_year..=end_year,
             capital_cost: self.capital_cost,
@@ -130,7 +130,7 @@ impl ProcessParameterRaw {
             lifetime: self.lifetime,
             discount_rate: self.discount_rate.unwrap_or(0.0),
             cap2act: self.cap2act.unwrap_or(1.0),
-        })
+        }
     }
 }
 
@@ -189,24 +189,24 @@ fn read_csv_grouped_by_id_with_filter<'a, T, U, F>(
     file_path: &Path,
     process_ids: &'a HashSet<String>,
     filter: F,
-) -> InputResult<HashMap<&'a str, Vec<T>>>
+) -> HashMap<&'a str, Vec<T>>
 where
     U: HasProcessID + DeserializeOwned,
-    F: Fn(&Path, U) -> InputResult<T>,
+    F: Fn(U) -> T,
 {
-    let vec: Vec<U> = read_csv_as_vec(file_path)?;
+    let vec: Vec<U> = read_csv_as_vec(file_path);
     let mut map = HashMap::new();
     for elem in vec.into_iter() {
         let elem_id = elem.get_process_id();
         let id = match process_ids.get(elem_id) {
-            None => Err(InputError::new(
+            None => input_panic(
                 file_path,
                 &format!("Process ID {} not present in processes CSV file", elem_id),
-            ))?,
+            ),
             Some(id) => id.as_str(),
         };
 
-        let elem: T = filter(file_path, elem)?;
+        let elem: T = filter(elem);
         match map.get_mut(&id) {
             None => {
                 map.insert(id, vec![elem]);
@@ -215,7 +215,7 @@ where
         }
     }
 
-    Ok(map)
+    map
 }
 
 /// Read a CSV file, grouping the entries by process ID
@@ -231,34 +231,31 @@ where
 fn read_csv_grouped_by_id<'a, T>(
     file_path: &Path,
     process_ids: &'a HashSet<String>,
-) -> InputResult<HashMap<&'a str, Vec<T>>>
+) -> HashMap<&'a str, Vec<T>>
 where
     T: HasProcessID + DeserializeOwned,
 {
-    read_csv_grouped_by_id_with_filter(file_path, process_ids, |_, x| Ok(x))
+    read_csv_grouped_by_id_with_filter(file_path, process_ids, |x| x)
 }
 
 /// Read processes CSV file, which contains IDs and descriptions.
 ///
 /// Returns a map of IDs to descriptions.
-fn read_processes_file(model_dir: &Path) -> InputResult<HashMap<String, String>> {
+fn read_processes_file(model_dir: &Path) -> HashMap<String, String> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let mut reader = csv::Reader::from_path(&file_path).map_input_err(&file_path)?;
+    let mut reader = csv::Reader::from_path(&file_path).unwrap_input_err(&file_path);
 
     let mut descriptions = HashMap::new();
     for result in reader.deserialize() {
-        let desc: ProcessDescription = result.map_input_err(&file_path)?;
+        let desc: ProcessDescription = result.unwrap_input_err(&file_path);
         if descriptions.contains_key(&desc.id) {
-            Err(InputError::new(
-                &file_path,
-                &format!("Duplicate process ID: {}", &desc.id),
-            ))?;
+            input_panic(&file_path, &format!("Duplicate process ID: {}", &desc.id));
         }
 
         descriptions.insert(desc.id, desc.description);
     }
 
-    Ok(descriptions)
+    descriptions
 }
 
 /// Read process information from the specified CSV files.
@@ -270,18 +267,9 @@ fn read_processes_file(model_dir: &Path) -> InputResult<HashMap<String, String>>
 ///
 /// # Returns
 ///
-/// This function returns a `Result` containing either a `Vec<Process>` with the parsed process data
-/// or an `InputError` if an error occurred.
-///
-/// # Errors
-///
-/// This function will return an error if the file cannot be opened or read, or if the CSV data
-/// cannot be parsed.
-pub fn read_processes(
-    model_dir: &Path,
-    year_range: RangeInclusive<u32>,
-) -> InputResult<Vec<Process>> {
-    let mut descriptions = read_processes_file(model_dir)?;
+/// This function returns a `Vec<Process>` with the parsed process data.
+pub fn read_processes(model_dir: &Path, year_range: RangeInclusive<u32>) -> Vec<Process> {
+    let mut descriptions = read_processes_file(model_dir);
 
     // Clone the IDs into a separate set. We need to copy them as the other maps will contain
     // references to the IDs and we want to consume descriptions.
@@ -290,18 +278,19 @@ pub fn read_processes(
     let mut availabilities = read_csv_grouped_by_id(
         &model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME),
         &process_ids,
-    )?;
-    let mut flows = read_csv_grouped_by_id(&model_dir.join(PROCESS_FLOWS_FILE_NAME), &process_ids)?;
-    let mut pacs = read_csv_grouped_by_id(&model_dir.join(PROCESS_PACS_FILE_NAME), &process_ids)?;
+    );
+    let mut flows = read_csv_grouped_by_id(&model_dir.join(PROCESS_FLOWS_FILE_NAME), &process_ids);
+    let mut pacs = read_csv_grouped_by_id(&model_dir.join(PROCESS_PACS_FILE_NAME), &process_ids);
+    let param_file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let mut parameters = read_csv_grouped_by_id_with_filter(
-        &model_dir.join(PROCESS_PARAMETERS_FILE_NAME),
+        &param_file_path,
         &process_ids,
-        |file_path, param: ProcessParameterRaw| param.into_parameter(file_path, &year_range),
-    )?;
+        |param: ProcessParameterRaw| param.into_parameter(&param_file_path, &year_range),
+    );
     let mut regions =
-        read_csv_grouped_by_id(&model_dir.join(PROCESS_REGIONS_FILE_NAME), &process_ids)?;
+        read_csv_grouped_by_id(&model_dir.join(PROCESS_REGIONS_FILE_NAME), &process_ids);
 
-    let processes = process_ids
+    process_ids
         .iter()
         .map(|id| {
             let desc = descriptions.remove_entry(id).unwrap(); // we know entry is present
@@ -325,9 +314,7 @@ pub fn read_processes(
                     .collect(),
             }
         })
-        .collect();
-
-    Ok(processes)
+        .collect()
 }
 
 #[cfg(test)]
@@ -335,6 +322,7 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
+    use std::panic::catch_unwind;
     use std::path::PathBuf;
     use tempfile::tempdir;
 
@@ -375,45 +363,64 @@ mod tests {
     }
 
     #[test]
-    fn test_param_raw_into_param() {
+    fn test_param_raw_into_param_ok() {
         let p = PathBuf::new();
         let year_range = 2000..=2100;
 
         // No missing values
         let raw = create_param_raw(Some(2010), Some(2020), Some(1.0), Some(0.0));
         assert_eq!(
-            raw.into_parameter(&p, &year_range).unwrap(),
+            raw.into_parameter(&p, &year_range),
             create_param(2010..=2020, 1.0, 0.0)
         );
 
         // Missing years
         let raw = create_param_raw(None, None, Some(1.0), Some(0.0));
         assert_eq!(
-            raw.into_parameter(&p, &year_range).unwrap(),
+            raw.into_parameter(&p, &year_range),
             create_param(2000..=2100, 1.0, 0.0)
         );
 
         // Missing discount_rate
         let raw = create_param_raw(Some(2010), Some(2020), None, Some(0.0));
         assert_eq!(
-            raw.into_parameter(&p, &year_range).unwrap(),
+            raw.into_parameter(&p, &year_range),
             create_param(2010..=2020, 0.0, 0.0)
         );
 
         // Missing cap2act
         let raw = create_param_raw(Some(2010), Some(2020), Some(1.0), None);
         assert_eq!(
-            raw.into_parameter(&p, &year_range).unwrap(),
+            raw.into_parameter(&p, &year_range),
             create_param(2010..=2020, 1.0, 1.0)
         );
+    }
+
+    #[test]
+    fn test_param_raw_into_param_year_out_of_range() {
+        let p = PathBuf::new();
+        let year_range = 2000..=2100;
+        macro_rules! check_panic {
+            ($raw:expr) => {
+                assert!(catch_unwind(|| $raw.into_parameter(&p, &year_range)).is_err())
+            };
+        }
 
         // start_year out of range
-        let raw = create_param_raw(Some(1999), Some(2020), Some(1.0), Some(0.0));
-        assert!(raw.into_parameter(&p, &year_range).is_err());
+        check_panic!(create_param_raw(
+            Some(1999),
+            Some(2020),
+            Some(1.0),
+            Some(0.0)
+        ));
 
         // end_year out of range
-        let raw = create_param_raw(Some(2000), Some(2101), Some(1.0), Some(0.0));
-        assert!(raw.into_parameter(&p, &year_range).is_err());
+        check_panic!(create_param_raw(
+            Some(2000),
+            Some(2101),
+            Some(1.0),
+            Some(0.0)
+        ));
     }
 
     #[test]
@@ -430,10 +437,11 @@ mod tests {
             ("A".to_string(), "Process A".to_string()),
             ("B".to_string(), "Process B".to_string()),
         ]);
-        assert_eq!(read_processes_file(dir.path()).unwrap(), expected);
+        assert_eq!(read_processes_file(dir.path()), expected);
     }
 
     #[test]
+    #[should_panic]
     fn test_read_processes_file_duplicate_process() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("processes.csv");
@@ -450,7 +458,7 @@ mod tests {
         }
 
         // Duplicate process IDs are not permitted
-        assert!(read_processes_file(dir.path()).is_err());
+        read_processes_file(dir.path());
     }
 
     fn create_process_ids() -> HashSet<String> {
@@ -498,11 +506,12 @@ mod tests {
         ]);
         let process_ids = create_process_ids();
         let map: HashMap<&str, Vec<ProcessData>> =
-            read_csv_grouped_by_id(&dir.path().join("data.csv"), &process_ids).unwrap();
+            read_csv_grouped_by_id(&dir.path().join("data.csv"), &process_ids);
         assert_eq!(expected, map);
     }
 
     #[test]
+    #[should_panic]
     fn test_read_csv_grouped_by_id_duplicate() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("data.csv");
@@ -516,10 +525,7 @@ mod tests {
 
         // Check that it fails if a non-existent process ID is provided
         let process_ids = create_process_ids();
-        assert!(
-            read_csv_grouped_by_id::<ProcessData>(&dir.path().join("data.csv"), &process_ids)
-                .is_err()
-        );
+        read_csv_grouped_by_id::<ProcessData>(&dir.path().join("data.csv"), &process_ids);
     }
 
     #[test]
@@ -538,9 +544,8 @@ mod tests {
         let map: HashMap<&str, Vec<i32>> = read_csv_grouped_by_id_with_filter(
             &dir.path().join("data.csv"),
             &process_ids,
-            |_, data: ProcessData| Ok(data.value * 2),
-        )
-        .unwrap();
+            |data: ProcessData| data.value * 2,
+        );
         assert_eq!(expected, map);
     }
 }

@@ -1,5 +1,5 @@
 //! Code for loading program settings.
-use crate::input::{read_toml, InputResult};
+use crate::input::read_toml;
 use serde::Deserialize;
 use std::path::Path;
 
@@ -19,10 +19,10 @@ impl Settings {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> InputResult<Settings> {
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Settings {
         let file_path = model_dir.as_ref().join(SETTINGS_FILE_NAME);
         if !file_path.is_file() {
-            return Ok(Settings::default());
+            return Settings::default();
         }
 
         read_toml(&file_path)
@@ -39,10 +39,7 @@ mod tests {
     #[test]
     fn test_settings_from_path_no_file() {
         let dir = tempdir().unwrap();
-        assert_eq!(
-            Settings::from_path(dir.path()).unwrap(),
-            Settings::default()
-        );
+        assert_eq!(Settings::from_path(dir.path()), Settings::default());
     }
 
     #[test]
@@ -53,7 +50,7 @@ mod tests {
             writeln!(file, "log_level = \"warn\"").unwrap();
         }
         assert_eq!(
-            Settings::from_path(dir.path()).unwrap(),
+            Settings::from_path(dir.path()),
             Settings {
                 log_level: Some("warn".to_string())
             }

@@ -1,6 +1,6 @@
 //! Code for simulation models.
 use crate::demand::{read_demand_data, Demand};
-use crate::input::{read_toml, InputError, InputResult};
+use crate::input::{input_panic, read_toml};
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slices, TimeSlice};
@@ -32,9 +32,9 @@ struct MilestoneYears {
 }
 
 /// Check that the milestone years parameter is valid
-fn check_milestone_years(file_path: &Path, years: &[u32]) -> InputResult<()> {
+fn check_milestone_years(file_path: &Path, years: &[u32]) {
     if years.is_empty() {
-        Err(InputError::new(file_path, "milestone_years is empty"))?;
+        input_panic(file_path, "milestone_years is empty");
     }
 
     if !years[..years.len() - 1]
@@ -42,13 +42,11 @@ fn check_milestone_years(file_path: &Path, years: &[u32]) -> InputResult<()> {
         .zip(years[1..].iter())
         .all(|(y1, y2)| y1 < y2)
     {
-        Err(InputError::new(
+        input_panic(
             file_path,
             "milestone_years must be composed of unique values in order",
-        ))?
+        );
     }
-
-    Ok(())
 }
 
 impl ModelFile {
@@ -57,12 +55,12 @@ impl ModelFile {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> InputResult<ModelFile> {
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> ModelFile {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
-        let model_file: ModelFile = read_toml(&file_path)?;
-        check_milestone_years(&file_path, &model_file.milestone_years.years)?;
+        let model_file: ModelFile = read_toml(&file_path);
+        check_milestone_years(&file_path, &model_file.milestone_years.years);
 
-        Ok(model_file)
+        model_file
     }
 }
 
@@ -72,10 +70,10 @@ impl Model {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> InputResult<Model> {
-        let model_file = ModelFile::from_path(&model_dir)?;
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Model {
+        let model_file = ModelFile::from_path(&model_dir);
 
-        let time_slices = match read_time_slices(model_dir.as_ref())? {
+        let time_slices = match read_time_slices(model_dir.as_ref()) {
             None => {
                 // If there is no time slice file provided, use a default time slice which covers the
                 // whole year and the whole day
@@ -95,15 +93,15 @@ impl Model {
         let processes = read_processes(
             model_dir.as_ref(),
             *years.first().unwrap()..=*years.last().unwrap(),
-        )?;
+        );
 
-        Ok(Model {
+        Model {
             milestone_years: model_file.milestone_years.years,
             processes,
             time_slices,
-            demand_data: read_demand_data(model_dir.as_ref())?,
-            regions: read_regions(model_dir.as_ref())?,
-        })
+            demand_data: read_demand_data(model_dir.as_ref()),
+            regions: read_regions(model_dir.as_ref()),
+        }
     }
 }
 
@@ -112,17 +110,29 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
+    use std::panic::catch_unwind;
     use std::path::PathBuf;
     use tempfile::tempdir;
 
     #[test]
     fn test_check_milestone_years() {
         let p = PathBuf::new();
-        assert!(check_milestone_years(&p, &[]).is_err());
-        assert!(check_milestone_years(&p, &[1]).is_ok());
-        assert!(check_milestone_years(&p, &[1, 2]).is_ok());
-        assert!(check_milestone_years(&p, &[1, 1]).is_err());
-        assert!(check_milestone_years(&p, &[2, 1]).is_err());
+        check_milestone_years(&p, &[1]);
+        check_milestone_years(&p, &[1, 2]);
+    }
+
+    #[test]
+    fn test_check_milestone_years_err() {
+        let p = PathBuf::new();
+        macro_rules! check_panic {
+            ($years:expr) => {
+                assert!(catch_unwind(|| check_milestone_years(&p, $years)).is_err())
+            };
+        }
+
+        check_panic!(&[]);
+        check_panic!(&[1, 1]);
+        check_panic!(&[2, 1]);
     }
 
     #[test]
@@ -133,7 +143,7 @@ mod tests {
             writeln!(file, "[milestone_years]\nyears = [2020, 2100]").unwrap();
         }
 
-        let model_file = ModelFile::from_path(dir.path()).unwrap();
+        let model_file = ModelFile::from_path(dir.path());
         assert_eq!(model_file.milestone_years.years, vec![2020, 2100]);
     }
 }
