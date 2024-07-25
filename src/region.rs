@@ -1,19 +1,35 @@
-use crate::define_id_getter;
-use crate::input::{read_csv_id_file, HasID};
+use crate::input::{input_panic, read_csv_id_file, HasID};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
 const REGIONS_FILE_NAME: &str = "regions.csv";
 
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct RegionID(Rc<str>);
+
+impl RegionID {
+    pub fn create_valid(id: &str, ids: &HashSet<Rc<str>>, file_path: &Path) -> Self {
+        match ids.get(id) {
+            None => input_panic(file_path, &format!("Unknown ID {id} found")),
+            Some(id) => Self(Rc::clone(id)),
+        }
+    }
+}
+
 /// Represents a region with an ID and a longer description.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Region {
-    pub id: Rc<str>,
+    pub id: RegionID,
     pub description: String,
 }
-define_id_getter! {Region}
+
+impl HasID for Region {
+    fn get_id(&self) -> &str {
+        &self.id.0
+    }
+}
 
 /// Reads regions from a CSV file.
 ///
@@ -34,7 +50,7 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use tempfile::tempdir;
 
     /// Create an example regions file in dir_path
@@ -53,30 +69,32 @@ AP,Asia Pacific"
 
     #[test]
     fn test_read_regions_from_csv() {
+        let p = PathBuf::new();
         let dir = tempdir().unwrap();
         create_regions_file(dir.path());
         let regions = read_regions(dir.path());
+        let ids = HashSet::from_iter(regions.keys().cloned());
         assert_eq!(
             regions,
             HashMap::from([
                 (
                     "NA".into(),
                     Region {
-                        id: "NA".into(),
+                        id: RegionID::create_valid("NA", &ids, &p),
                         description: "North America".to_string(),
                     }
                 ),
                 (
                     "EU".into(),
                     Region {
-                        id: "EU".into(),
+                        id: RegionID::create_valid("EU", &ids, &p),
                         description: "Europe".to_string(),
                     }
                 ),
                 (
                     "AP".into(),
                     Region {
-                        id: "AP".into(),
+                        id: RegionID::create_valid("AP", &ids, &p),
                         description: "Asia Pacific".to_string(),
                     }
                 ),

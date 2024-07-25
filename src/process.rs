@@ -1,5 +1,7 @@
 use crate::define_id_getter;
 use crate::input::*;
+use crate::region::RegionID;
+use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
@@ -156,7 +158,7 @@ struct ProcessDescription {
 }
 define_id_getter! {ProcessDescription}
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug)]
 pub struct Process {
     pub id: Rc<str>,
     pub description: String,
@@ -164,7 +166,7 @@ pub struct Process {
     pub flows: Vec<ProcessFlow>,
     pub pacs: Vec<String>,
     pub parameter: ProcessParameter,
-    pub regions: Vec<String>,
+    pub regions: Vec<RegionID>,
 }
 
 /// Read process parameter from the specified CSV file
@@ -193,6 +195,22 @@ fn read_parameter(
     params
 }
 
+/// Read process regions from the specified CSV file
+fn read_regions(
+    file_path: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<Rc<str>>,
+) -> HashMap<Rc<str>, Vec<RegionID>> {
+    read_csv(file_path)
+        .map(|region: ProcessRegion| {
+            let process_id = region.get_id_checked(file_path, process_ids);
+            let region_id = RegionID::create_valid(&region.region_id, region_ids, file_path);
+
+            (process_id, region_id)
+        })
+        .into_group_map()
+}
+
 /// Read process information from the specified CSV files.
 ///
 /// # Arguments
@@ -203,7 +221,11 @@ fn read_parameter(
 /// # Returns
 ///
 /// This function returns a `Vec<Process>` with the parsed process data.
-pub fn read_processes(model_dir: &Path, year_range: RangeInclusive<u32>) -> Vec<Process> {
+pub fn read_processes(
+    model_dir: &Path,
+    region_ids: &HashSet<Rc<str>>,
+    year_range: RangeInclusive<u32>,
+) -> Vec<Process> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path);
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
@@ -217,7 +239,7 @@ pub fn read_processes(model_dir: &Path, year_range: RangeInclusive<u32>) -> Vec<
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let mut parameters = read_parameter(&file_path, &process_ids, &year_range);
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
-    let mut regions = read_csv_grouped_by_id(&file_path, &process_ids);
+    let mut regions = read_regions(&file_path, &process_ids, region_ids);
 
     process_ids
         .into_iter()
@@ -239,6 +261,7 @@ pub fn read_processes(model_dir: &Path, year_range: RangeInclusive<u32>) -> Vec<
                     .into_iter()
                     .map(|p: ProcessPAC| p.pac)
                     .collect(),
+<<<<<<< HEAD
                 parameter,
                 regions: regions
                     .remove(&id)
@@ -246,6 +269,18 @@ pub fn read_processes(model_dir: &Path, year_range: RangeInclusive<u32>) -> Vec<
                     .into_iter()
                     .map(|region: ProcessRegion| region.region_id)
                     .collect(),
+||||||| parent of 6be3328 (process.rs: Use RegionID type to ensure regions are valid)
+                parameters: parameters.remove(&id).unwrap_or_default(),
+                regions: regions
+                    .remove(&id)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|region: ProcessRegion| region.region_id)
+                    .collect(),
+=======
+                parameters: parameters.remove(&id).unwrap_or_default(),
+                regions: regions.remove(&id).unwrap_or_default(),
+>>>>>>> 6be3328 (process.rs: Use RegionID type to ensure regions are valid)
             }
         })
         .collect()
