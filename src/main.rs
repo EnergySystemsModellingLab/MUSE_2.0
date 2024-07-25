@@ -1,17 +1,10 @@
 //! Provides the main entry point to the program.
-
-mod demand;
-mod input;
-mod log;
-mod process;
-mod region;
-mod settings;
-mod simulation;
-mod time_slice;
-
-use crate::settings::SettingsReader;
 use ::log::info;
+use muse2::log;
+use muse2::model::Model;
+use muse2::settings::Settings;
 use std::env;
+use std::path::PathBuf;
 
 /// The main entry point to the program
 fn main() {
@@ -20,22 +13,21 @@ fn main() {
     if args.len() != 2 {
         panic!("Must provide path to model folder.");
     }
+    let model_dir = PathBuf::from(args[1].as_str());
 
-    // Read settings TOML file
-    let reader = SettingsReader::from_path(&args[1])
-        .unwrap_or_else(|err| panic!("Failed to parse TOML file: {}", err));
+    // Read program settings
+    let settings = Settings::from_path(&model_dir)
+        .unwrap_or_else(|err| panic!("Failed to load program settings: {}", err));
 
     // Set the program log level
-    log::init(reader.log_level());
+    log::init(settings.log_level.as_deref());
     log_panics::init(); // Write panic info to logger rather than stderr
 
-    // Load settings from CSV files and verify
-    let settings = reader
-        .into_settings()
-        .unwrap_or_else(|err| panic!("Failed to load settings: {}", err));
+    let model =
+        Model::from_path(&model_dir).unwrap_or_else(|err| panic!("Failed to load model: {}", err));
 
-    info!("Settings loaded successfully.");
+    info!("Model loaded successfully.");
 
     // Run simulation
-    simulation::run(&settings)
+    muse2::run(&model)
 }

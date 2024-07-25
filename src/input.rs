@@ -3,28 +3,38 @@ use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::error::Error;
 use std::fmt;
+use std::fs;
 use std::path::Path;
 
 /// Read a series of type `T`s from a CSV file into a `Vec<T>`.
 ///
 /// # Arguments
 ///
-/// * `csv_file_path` - Path to the CSV file
-pub fn read_vec_from_csv<T: DeserializeOwned>(csv_file_path: &Path) -> Result<Vec<T>, InputError> {
-    let mut reader = csv::Reader::from_path(csv_file_path)
-        .map_err(|err| InputError::new(csv_file_path, &err.to_string()))?;
+/// * `file_path` - Path to the CSV file
+pub fn read_vec_from_csv<T: DeserializeOwned>(file_path: &Path) -> InputResult<Vec<T>> {
+    let mut reader = csv::Reader::from_path(file_path).map_input_err(file_path)?;
 
     let mut vec = Vec::new();
     for result in reader.deserialize() {
-        let d: T = result.map_err(|err| InputError::new(csv_file_path, &err.to_string()))?;
+        let d: T = result.map_input_err(file_path)?;
         vec.push(d)
     }
 
     if vec.is_empty() {
-        Err(InputError::new(csv_file_path, "CSV file cannot be empty"))?;
+        Err(InputError::new(file_path, "CSV file cannot be empty"))?;
     }
 
     Ok(vec)
+}
+
+/// Parse a TOML file at the specified path.
+///
+/// # Arguments
+///
+/// * `file_path` - Path to the TOML file
+pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> InputResult<T> {
+    let toml_str = fs::read_to_string(file_path).map_input_err(file_path)?;
+    toml::from_str(&toml_str).map_input_err(file_path)
 }
 
 /// Read an f64, checking that it is between 0 and 1
@@ -72,6 +82,21 @@ impl fmt::Display for InputError {
 
 /// This is needed so that InputError can be treated like standard errors are.
 impl Error for InputError {}
+
+/// Type alias for the result of input-related functions
+pub type InputResult<T> = Result<T, InputError>;
+
+/// A trait allowing us to add the map_input_err method to `Result`s
+pub trait MapInputError<T> {
+    /// Maps a `Result` with an arbitrary `Error` type to an `InputResult<T>`
+    fn map_input_err(self, file_path: &Path) -> InputResult<T>;
+}
+
+impl<T, E: Error> MapInputError<T> for Result<T, E> {
+    fn map_input_err(self, file_path: &Path) -> InputResult<T> {
+        self.map_err(|err| InputError::new(file_path, &err.to_string()))
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -125,6 +150,24 @@ mod tests {
         let dir = tempdir().unwrap();
         let file_path = create_csv_file(dir.path(), "a,b\n");
         assert!(read_vec_from_csv::<Record>(&file_path).is_err());
+    }
+
+    #[test]
+    fn test_read_toml() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.toml");
+        {
+            let mut file = File::create(&file_path).unwrap();
+            writeln!(file, "a = 1\nb = \"hello\"").unwrap();
+        }
+
+        assert_eq!(
+            read_toml::<Record>(&file_path).unwrap(),
+            Record {
+                a: 1,
+                b: "hello".to_string()
+            }
+        );
     }
 
     /// Deserialise value with deserialise_proportion()
