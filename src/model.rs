@@ -18,7 +18,7 @@ pub struct Model {
     pub processes: HashMap<Rc<str>, Process>,
     pub time_slices: Vec<TimeSlice>,
     pub demand_data: Vec<Demand>,
-    pub regions: Vec<Region>,
+    pub regions: HashMap<Rc<str>, Region>,
 }
 
 /// Represents the contents of the entire model file.
