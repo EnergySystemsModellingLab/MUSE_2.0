@@ -6,7 +6,9 @@ use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slices, TimeSlice};
 use log::warn;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::Path;
+use std::rc::Rc;
 
 const MODEL_FILE_NAME: &str = "model.toml";
 
@@ -16,7 +18,7 @@ pub struct Model {
     pub processes: Vec<Process>,
     pub time_slices: Vec<TimeSlice>,
     pub demand_data: Vec<Demand>,
-    pub regions: Vec<Region>,
+    pub regions: HashMap<Rc<str>, Region>,
 }
 
 /// Represents the contents of the entire model file.
