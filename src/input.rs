@@ -14,7 +14,7 @@ pub fn read_csv<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> impl Itera
     csv::Reader::from_path(file_path)
         .unwrap_input_err(file_path)
         .into_deserialize()
-        .map(|record| record.unwrap_input_err(file_path))
+        .unwrap_input_err(file_path)
 }
 
 /// Read a series of type `T`s from a CSV file into a `Vec<T>`.
@@ -82,6 +82,21 @@ impl<T, E: Error> UnwrapInputError<T> for Result<T, E> {
             Ok(value) => value,
             Err(err) => input_panic(file_path, &err.to_string()),
         }
+    }
+}
+
+pub trait UnwrapInputErrorIter<T> {
+    /// Maps an `Iterator` of `Result`s with an arbitrary `Error` type to an `Iterator<Item = T>`
+    fn unwrap_input_err(self, file_path: &Path) -> impl Iterator<Item = T>;
+}
+
+impl<T, E, I> UnwrapInputErrorIter<T> for I
+where
+    E: Error,
+    I: Iterator<Item = Result<T, E>>,
+{
+    fn unwrap_input_err(self, file_path: &Path) -> impl Iterator<Item = T> {
+        self.map(|x| x.unwrap_input_err(file_path))
     }
 }
 
