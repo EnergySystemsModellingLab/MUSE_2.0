@@ -5,6 +5,7 @@
 use crate::input::{deserialise_proportion, input_panic, read_csv_as_vec};
 use float_cmp::approx_eq;
 use serde::Deserialize;
+use serde_string_enum::DeserializeLabeledStringEnum;
 use std::path::Path;
 
 const TIME_SLICES_FILE_NAME: &str = "time_slices.csv";
@@ -19,6 +20,17 @@ pub struct TimeSlice {
     /// The fraction of the year that this combination of season and time of day occupies
     #[serde(deserialize_with = "deserialise_proportion")]
     pub fraction: f64,
+}
+
+/// Refers to a particular aspect of a time slice
+#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
+pub enum TimeSliceLevel {
+    #[string = "annual"]
+    Annual,
+    #[string = "season"]
+    Season,
+    #[string = "daynight"]
+    DayNight,
 }
 
 /// Read time slices from a CSV file.

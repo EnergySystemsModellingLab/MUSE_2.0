@@ -1,4 +1,5 @@
 //! Code for simulation models.
+use crate::commodity::{read_commodities, Commodity};
 use crate::demand::{read_demand_data, Demand};
 use crate::input::{input_panic, read_toml};
 use crate::process::{read_processes, Process};
@@ -15,6 +16,7 @@ const MODEL_FILE_NAME: &str = "model.toml";
 /// Model definition
 pub struct Model {
     pub milestone_years: Vec<u32>,
+    pub commodities: Vec<Commodity>,
     pub processes: HashMap<Rc<str>, Process>,
     pub time_slices: Vec<TimeSlice>,
     pub demand_data: Vec<Demand>,
@@ -102,6 +104,7 @@ impl Model {
 
         Model {
             milestone_years: model_file.milestone_years.years,
+            commodities: read_commodities(model_dir.as_ref()),
             processes,
             time_slices,
             demand_data: read_demand_data(model_dir.as_ref()),

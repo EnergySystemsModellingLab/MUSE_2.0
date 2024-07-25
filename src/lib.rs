@@ -3,6 +3,7 @@ pub mod log;
 pub mod model;
 pub mod settings;
 
+mod commodity;
 mod demand;
 mod input;
 mod process;
