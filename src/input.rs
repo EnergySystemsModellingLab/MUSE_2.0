@@ -115,6 +115,47 @@ pub trait HasID {
     fn get_id(&self) -> &str;
 }
 
+/// Implement the `HasID` trait for the given type, assuming it has a field called `id`
+#[macro_export]
+macro_rules! define_id_getter {
+    ($t:ty) => {
+        impl HasID for $t {
+            fn get_id(&self) -> &str {
+                &self.id
+            }
+        }
+    };
+}
+
+/// Read a CSV file of items with an ID.
+///
+/// This is like `read_csv_grouped_by_id`, with the difference that it is to be used on the "main"
+/// CSV file for a record type, so it assumes that all IDs encountered are valid.
+pub fn read_csv_grouped_by_id_owned<T>(file_path: &Path) -> InputResult<HashMap<String, T>>
+where
+    T: HasID + DeserializeOwned,
+{
+    let mut map = HashMap::new();
+    for record in read_csv(file_path)? {
+        let record: T = record?;
+        let id = record.get_id();
+
+        if map.contains_key(id) {
+            Err(InputError::new(
+                file_path,
+                &format!("Duplicate ID found: {id}"),
+            ))?;
+        }
+
+        map.insert(id.to_string(), record);
+    }
+    if map.is_empty() {
+        Err(InputError::new(file_path, "CSV file is empty"))?;
+    }
+
+    Ok(map)
+}
+
 /// Convert the specified iterator into an iterator of pairs containing an ID + item.
 pub fn into_id_pair<'a, T, U>(
     iter: T,

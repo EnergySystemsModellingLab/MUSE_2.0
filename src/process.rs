@@ -1,3 +1,4 @@
+use crate::define_id_getter;
 use crate::input::*;
 use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
@@ -153,6 +154,7 @@ struct ProcessDescription {
     id: String,
     description: String,
 }
+define_id_getter! {ProcessDescription}
 
 #[derive(PartialEq, Debug)]
 pub struct Process {
@@ -163,30 +165,6 @@ pub struct Process {
     pub pacs: Vec<String>,
     pub parameters: Vec<ProcessParameter>,
     pub regions: Vec<String>,
-}
-
-/// Read processes CSV file, which contains IDs and descriptions.
-///
-/// Returns a map of IDs to descriptions.
-fn read_processes_file(model_dir: &Path) -> InputResult<HashMap<String, String>> {
-    let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let mut descriptions = HashMap::new();
-    for result in read_csv(&file_path)? {
-        let desc: ProcessDescription = result?;
-        if descriptions.contains_key(&desc.id) {
-            Err(InputError::new(
-                &file_path,
-                &format!("Duplicate process ID: {}", &desc.id),
-            ))?;
-        }
-
-        descriptions.insert(desc.id, desc.description);
-    }
-    if descriptions.is_empty() {
-        Err(InputError::new(&file_path, "CSV file is empty"))?;
-    }
-
-    Ok(descriptions)
 }
 
 /// Read process parameters from the specified CSV file
@@ -225,7 +203,8 @@ pub fn read_processes(
     model_dir: &Path,
     year_range: RangeInclusive<u32>,
 ) -> InputResult<Vec<Process>> {
-    let mut descriptions = read_processes_file(model_dir)?;
+    let file_path = model_dir.join(PROCESSES_FILE_NAME);
+    let mut descriptions = read_csv_grouped_by_id_owned::<ProcessDescription>(&file_path)?;
 
     // Clone the IDs into a separate set. We need to copy them as the other maps will contain
     // references to the IDs and we want to consume descriptions.
@@ -245,10 +224,10 @@ pub fn read_processes(
     let processes = process_ids
         .iter()
         .map(|id| {
-            let desc = descriptions.remove_entry(id).unwrap(); // we know entry is present
+            let desc = descriptions.remove(id).unwrap(); // we know entry is present
             Process {
-                id: desc.0,
-                description: desc.1,
+                id: desc.id,
+                description: desc.description,
                 availabilities: availabilities.remove(id.as_str()).unwrap_or_default(),
                 flows: flows.remove(id.as_str()).unwrap_or_default(),
                 pacs: pacs
@@ -274,10 +253,8 @@ pub fn read_processes(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::File;
-    use std::io::Write;
+
     use std::path::PathBuf;
-    use tempfile::tempdir;
 
     fn create_param_raw(
         start_year: Option<u32>,
@@ -355,42 +332,5 @@ mod tests {
         // end_year out of range
         let raw = create_param_raw(Some(2000), Some(2101), Some(1.0), Some(0.0));
         assert!(raw.into_parameter(&p, &year_range).is_err());
-    }
-
-    #[test]
-    fn test_read_processes_file() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join(PROCESSES_FILE_NAME);
-        {
-            let file_path: &Path = &file_path; // cast
-            let mut file = File::create(file_path).unwrap();
-            writeln!(file, "id,description\nA,Process A\nB,Process B\n").unwrap();
-        }
-
-        let expected = HashMap::from([
-            ("A".to_string(), "Process A".to_string()),
-            ("B".to_string(), "Process B".to_string()),
-        ]);
-        assert_eq!(read_processes_file(dir.path()).unwrap(), expected);
-    }
-
-    #[test]
-    fn test_read_processes_file_duplicate_process() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("processes.csv");
-        {
-            let file_path: &Path = &file_path; // cast
-            let mut file = File::create(file_path).unwrap();
-
-            // NB: Reuse process ID "A" on purpose
-            writeln!(
-                file,
-                "id,description\nA,Process A\nB,Process B\nA,Process C"
-            )
-            .unwrap();
-        }
-
-        // Duplicate process IDs are not permitted
-        assert!(read_processes_file(dir.path()).is_err());
     }
 }
