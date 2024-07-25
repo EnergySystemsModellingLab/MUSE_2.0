@@ -6,6 +6,7 @@ use crate::input::*;
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::Deserialize;
+use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt::Display;
@@ -143,6 +144,17 @@ where
         times_of_day,
         fractions,
     })
+}
+
+/// Refers to a particular aspect of a time slice
+#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
+pub enum TimeSliceLevel {
+    #[string = "annual"]
+    Annual,
+    #[string = "season"]
+    Season,
+    #[string = "daynight"]
+    DayNight,
 }
 
 /// Read time slices from a CSV file.
