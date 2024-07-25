@@ -1,22 +1,56 @@
 use crate::input::{input_panic, read_csv_id_file, HasID};
 use serde::Deserialize;
+use std::cmp::Eq;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
 const REGIONS_FILE_NAME: &str = "regions.csv";
 
-#[derive(Debug, Deserialize, PartialEq)]
-pub struct RegionID(Rc<str>);
+macro_rules! define_id_type {
+    ($t:ident) => {
+        #[derive(Debug, Deserialize, Eq, PartialEq, Hash)]
+        pub struct $t(Rc<str>);
 
-impl RegionID {
-    pub fn create_valid(id: &str, ids: &HashSet<Rc<str>>, file_path: &Path) -> Self {
-        match ids.get(id) {
-            None => input_panic(file_path, &format!("Unknown ID {id} found")),
-            Some(id) => Self(Rc::clone(id)),
+        impl $t {
+            pub fn create_valid(id: &str, ids: &HashSet<Rc<str>>, file_path: &Path) -> Self {
+                match ids.get(id) {
+                    None => input_panic(file_path, &format!("Unknown ID {id} found")),
+                    Some(id) => Self(Rc::clone(&id)),
+                }
+            }
         }
-    }
+
+        impl IDType for $t {
+            fn as_str(&self) -> &str {
+                &self.0
+            }
+        }
+    };
 }
+
+pub trait IDType {
+    fn as_str(&self) -> &str;
+}
+
+// #[derive(Debug, Deserialize, PartialEq)]
+// pub struct RegionID(Rc<str>);
+define_id_type! {RegionID}
+
+// impl RegionID {
+//     pub fn create_valid(id: &str, ids: &HashSet<Rc<str>>, file_path: &Path) -> Self {
+//         match ids.get(id) {
+//             None => input_panic(file_path, &format!("Unknown ID {id} found")),
+//             Some(id) => Self(Rc::clone(id)),
+//         }
+//     }
+// }
+
+// impl IDType for RegionID {
+//     fn as_str(&self) -> &str {
+//         &self.0
+//     }
+// }
 
 /// Represents a region with an ID and a longer description.
 #[derive(Debug, Deserialize, PartialEq)]
@@ -27,6 +61,7 @@ pub struct Region {
 
 impl HasID for Region {
     fn get_id(&self) -> &str {
+        RegionID("hello".into());
         &self.id.0
     }
 }
@@ -39,9 +74,9 @@ impl HasID for Region {
 ///
 /// # Returns
 ///
-/// This function returns a `HashMap<Rc<str>, Region>` with the parsed regions data. The keys are
+/// This function returns a `HashMap<RegionID, Region>` with the parsed regions data. The keys are
 /// region IDs.
-pub fn read_regions(model_dir: &Path) -> HashMap<Rc<str>, Region> {
+pub fn read_regions(model_dir: &Path) -> HashMap<RegionID, Region> {
     read_csv_id_file(&model_dir.join(REGIONS_FILE_NAME))
 }
 
