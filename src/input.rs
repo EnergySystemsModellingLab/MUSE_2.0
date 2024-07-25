@@ -122,6 +122,21 @@ macro_rules! define_id_getter {
     };
 }
 
+pub trait IDCollection {
+    /// Get the ID after checking that it exists this collection. Returns a copy of the `Rc<str>` in
+    /// `self` or panics on error.
+    fn get_id_checked(&self, file_path: &Path, id: &str) -> Rc<str>;
+}
+
+impl IDCollection for HashSet<Rc<str>> {
+    fn get_id_checked(&self, file_path: &Path, id: &str) -> Rc<str> {
+        match self.get(id) {
+            None => input_panic(file_path, &format!("Unknown ID {id} found")),
+            Some(id) => Rc::clone(id),
+        }
+    }
+}
+
 /// Read a CSV file of items with IDs.
 ///
 /// This is like `read_csv_grouped_by_id`, with the difference that it is to be used on the "main"
@@ -163,15 +178,7 @@ where
     /// `file_path` - The path to the CSV file this relates to
     /// `ids` - The set of valid IDs to check against.
     fn into_id_map(self, file_path: &Path, ids: &HashSet<Rc<str>>) -> HashMap<Rc<str>, Vec<T>> {
-        let map = self.into_group_map_by(|elem| {
-            let elem_id = elem.get_id();
-            let id = match ids.get(elem_id) {
-                None => input_panic(file_path, &format!("Unknown ID {elem_id} found")),
-                Some(id) => id,
-            };
-
-            Rc::clone(id)
-        });
+        let map = self.into_group_map_by(|item| ids.get_id_checked(file_path, item.get_id()));
         if map.is_empty() {
             input_panic(file_path, "CSV file is empty");
         }
