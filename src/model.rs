@@ -2,7 +2,7 @@
 use crate::demand::{read_demand_data, Demand};
 use crate::input::{read_toml, InputError, InputResult};
 use crate::process::{read_processes, Process};
-use crate::region::{read_regions_data, Region};
+use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slices, TimeSlice};
 use log::warn;
 use serde::Deserialize;
@@ -102,7 +102,7 @@ impl Model {
             processes,
             time_slices,
             demand_data: read_demand_data(model_dir.as_ref())?,
-            regions: read_regions_data(model_dir.as_ref())?,
+            regions: read_regions(model_dir.as_ref())?,
         })
     }
 }
