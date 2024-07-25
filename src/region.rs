@@ -1,17 +1,20 @@
-use crate::input::read_csv_as_vec;
+use crate::input::{define_id_getter, read_csv_id_file, HasID};
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::Path;
+use std::rc::Rc;
 
 const REGIONS_FILE_NAME: &str = "regions.csv";
 
 /// Represents a region with an ID and a longer description.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Region {
-    pub id: String,
+    pub id: Rc<str>,
     pub description: String,
 }
+define_id_getter! {Region}
 
-/// Reads regions data from a CSV file.
+/// Reads regions from a CSV file.
 ///
 /// # Arguments
 ///
@@ -19,9 +22,10 @@ pub struct Region {
 ///
 /// # Returns
 ///
-/// This function returns a `Vec<Region>` with the parsed regions data
-pub fn read_regions(model_dir: &Path) -> Vec<Region> {
-    read_csv_as_vec(&model_dir.join(REGIONS_FILE_NAME))
+/// This function returns a `HashMap<Rc<str>, Region>` with the parsed regions data. The keys are
+/// region IDs.
+pub fn read_regions(model_dir: &Path) -> HashMap<Rc<str>, Region> {
+    read_csv_id_file(&model_dir.join(REGIONS_FILE_NAME))
 }
 
 #[cfg(test)]
@@ -53,20 +57,29 @@ AP,Asia Pacific"
         let regions = read_regions(dir.path());
         assert_eq!(
             regions,
-            vec![
-                Region {
-                    id: "NA".to_string(),
-                    description: "North America".to_string(),
-                },
-                Region {
-                    id: "EU".to_string(),
-                    description: "Europe".to_string(),
-                },
-                Region {
-                    id: "AP".to_string(),
-                    description: "Asia Pacific".to_string(),
-                },
-            ]
+            HashMap::from([
+                (
+                    "NA".into(),
+                    Region {
+                        id: "NA".into(),
+                        description: "North America".to_string(),
+                    }
+                ),
+                (
+                    "EU".into(),
+                    Region {
+                        id: "EU".into(),
+                        description: "Europe".to_string(),
+                    }
+                ),
+                (
+                    "AP".into(),
+                    Region {
+                        id: "AP".into(),
+                        description: "Asia Pacific".to_string(),
+                    }
+                ),
+            ])
         )
     }
 }
