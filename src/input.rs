@@ -128,18 +128,15 @@ macro_rules! define_id_getter {
     };
 }
 
-/// Read a CSV file of items with IDs also returned as a separate `HashSet`.
+/// Read a CSV file of items with IDs.
 ///
 /// This is like `read_csv_grouped_by_id`, with the difference that it is to be used on the "main"
-/// CSV file for a record type, so it assumes that all IDs encountered are valid. It returns a
-/// `HashSet` of IDs along with the `HashMap`, so that it can be used to validate the IDs in other
-/// files.
-pub fn read_csv_id_file<T>(file_path: &Path) -> InputResult<(HashSet<Rc<str>>, HashMap<Rc<str>, T>)>
+/// CSV file for a record type, so it assumes that all IDs encountered are valid.
+pub fn read_csv_id_file<T>(file_path: &Path) -> InputResult<HashMap<Rc<str>, T>>
 where
     T: HasID + DeserializeOwned,
 {
     let mut map = HashMap::new();
-    let mut ids = HashSet::new();
     for record in read_csv(file_path)? {
         let record: T = record?;
         let id = record.get_id();
@@ -151,15 +148,13 @@ where
             ))?;
         }
 
-        let id = Rc::from(id);
-        ids.insert(Rc::clone(&id));
-        map.insert(id, record);
+        map.insert(id.into(), record);
     }
-    if ids.is_empty() {
+    if map.is_empty() {
         Err(InputError::new(file_path, "CSV file is empty"))?;
     }
 
-    Ok((ids, map))
+    Ok(map)
 }
 
 /// Convert the specified iterator into an iterator of pairs containing an ID + item.

@@ -205,7 +205,8 @@ pub fn read_processes(
     year_range: RangeInclusive<u32>,
 ) -> InputResult<Vec<Process>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let (process_ids, mut descriptions) = read_csv_id_file::<ProcessDescription>(&file_path)?;
+    let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path)?;
+    let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let mut availabilities = read_csv_grouped_by_id(&file_path, &process_ids)?;
