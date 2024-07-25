@@ -8,6 +8,7 @@ use std::error::Error;
 use std::fmt;
 use std::fs;
 use std::path::Path;
+use std::rc::Rc;
 
 /// Read a series of type `T`s from a CSV file.
 ///
@@ -127,15 +128,18 @@ macro_rules! define_id_getter {
     };
 }
 
-/// Read a CSV file of items with an ID.
+/// Read a CSV file of items with IDs also returned as a separate `HashSet`.
 ///
 /// This is like `read_csv_grouped_by_id`, with the difference that it is to be used on the "main"
-/// CSV file for a record type, so it assumes that all IDs encountered are valid.
-pub fn read_csv_grouped_by_id_owned<T>(file_path: &Path) -> InputResult<HashMap<String, T>>
+/// CSV file for a record type, so it assumes that all IDs encountered are valid. It returns a
+/// `HashSet` of IDs along with the `HashMap`, so that it can be used to validate the IDs in other
+/// files.
+pub fn read_csv_id_file<T>(file_path: &Path) -> InputResult<(HashSet<Rc<str>>, HashMap<Rc<str>, T>)>
 where
     T: HasID + DeserializeOwned,
 {
     let mut map = HashMap::new();
+    let mut ids = HashSet::new();
     for record in read_csv(file_path)? {
         let record: T = record?;
         let id = record.get_id();
@@ -147,24 +151,26 @@ where
             ))?;
         }
 
-        map.insert(id.to_string(), record);
+        let id = Rc::from(id);
+        ids.insert(Rc::clone(&id));
+        map.insert(id, record);
     }
-    if map.is_empty() {
+    if ids.is_empty() {
         Err(InputError::new(file_path, "CSV file is empty"))?;
     }
 
-    Ok(map)
+    Ok((ids, map))
 }
 
 /// Convert the specified iterator into an iterator of pairs containing an ID + item.
 pub fn into_id_pair<'a, T, U>(
     iter: T,
     file_path: &'a Path,
-    ids: &'a HashSet<String>,
-) -> impl Iterator<Item = InputResult<(&'a str, U)>>
+    ids: &'a HashSet<Rc<str>>,
+) -> impl Iterator<Item = InputResult<(Rc<str>, U)>> + 'a
 where
-    T: Iterator<Item = InputResult<U>>,
-    U: HasID + DeserializeOwned + 'a,
+    T: Iterator<Item = InputResult<U>> + 'a,
+    U: HasID + DeserializeOwned,
 {
     iter.map(|elem| {
         let elem: U = elem?;
@@ -174,7 +180,7 @@ where
                 file_path,
                 &format!("Unknown ID {elem_id} found"),
             ))?,
-            Some(id) => id.as_str(),
+            Some(id) => Rc::clone(id),
         };
 
         Ok((id, elem))
@@ -191,12 +197,12 @@ where
 /// # Returns
 ///
 /// A HashMap with ID as a key and a vector of CSV data as a value.
-pub fn read_csv_grouped_by_id<'a, T>(
-    file_path: &'a Path,
-    ids: &'a HashSet<String>,
-) -> InputResult<HashMap<&'a str, Vec<T>>>
+pub fn read_csv_grouped_by_id<T>(
+    file_path: &Path,
+    ids: &HashSet<Rc<str>>,
+) -> InputResult<HashMap<Rc<str>, Vec<T>>>
 where
-    T: HasID + DeserializeOwned + 'a,
+    T: HasID + DeserializeOwned,
 {
     // process_results checks for errors across the iterator
     let map = into_id_pair(read_csv(file_path)?, file_path, ids)
@@ -306,8 +312,8 @@ mod tests {
         assert!(deserialise_f64(f64::INFINITY).is_err());
     }
 
-    fn create_ids() -> HashSet<String> {
-        HashSet::from(["A".to_string(), "B".to_string()])
+    fn create_ids() -> HashSet<Rc<str>> {
+        HashSet::from(["A".into(), "B".into()])
     }
 
     #[test]
@@ -322,7 +328,7 @@ mod tests {
 
         let expected = HashMap::from([
             (
-                "A",
+                "A".into(),
                 vec![
                     Record {
                         id: "A".to_string(),
@@ -335,7 +341,7 @@ mod tests {
                 ],
             ),
             (
-                "B",
+                "B".into(),
                 vec![Record {
                     id: "B".to_string(),
                     value: 2,
@@ -344,8 +350,7 @@ mod tests {
         ]);
         let process_ids = create_ids();
         let file_path = dir.path().join("data.csv");
-        let map: HashMap<&str, Vec<Record>> =
-            read_csv_grouped_by_id(&file_path, &process_ids).unwrap();
+        let map = read_csv_grouped_by_id::<Record>(&file_path, &process_ids).unwrap();
         assert_eq!(expected, map);
     }
 

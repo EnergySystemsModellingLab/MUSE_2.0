@@ -6,6 +6,7 @@ use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
 use std::path::Path;
+use std::rc::Rc;
 
 const PROCESSES_FILE_NAME: &str = "processes.csv";
 const PROCESS_AVAILABILITIES_FILE_NAME: &str = "process_availabilities.csv";
@@ -151,14 +152,14 @@ define_process_id_getter! {ProcessRegion}
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessDescription {
-    id: String,
+    id: Rc<str>,
     description: String,
 }
 define_id_getter! {ProcessDescription}
 
 #[derive(PartialEq, Debug)]
 pub struct Process {
-    pub id: String,
+    pub id: Rc<str>,
     pub description: String,
     pub availabilities: Vec<ProcessAvailability>,
     pub flows: Vec<ProcessFlow>,
@@ -168,11 +169,11 @@ pub struct Process {
 }
 
 /// Read process parameters from the specified CSV file
-fn read_parameters<'a>(
-    file_path: &'a Path,
-    process_ids: &'a HashSet<String>,
-    year_range: &'a RangeInclusive<u32>,
-) -> InputResult<HashMap<&'a str, Vec<ProcessParameter>>> {
+fn read_parameters(
+    file_path: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    year_range: &RangeInclusive<u32>,
+) -> InputResult<HashMap<Rc<str>, Vec<ProcessParameter>>> {
     let param_iter = read_csv::<ProcessParameterRaw>(file_path)?
         .map(|p| p?.into_parameter(file_path, year_range));
     let params = into_id_pair(param_iter, file_path, process_ids)
@@ -204,11 +205,7 @@ pub fn read_processes(
     year_range: RangeInclusive<u32>,
 ) -> InputResult<Vec<Process>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let mut descriptions = read_csv_grouped_by_id_owned::<ProcessDescription>(&file_path)?;
-
-    // Clone the IDs into a separate set. We need to copy them as the other maps will contain
-    // references to the IDs and we want to consume descriptions.
-    let process_ids = HashSet::from_iter(descriptions.keys().cloned());
+    let (process_ids, mut descriptions) = read_csv_id_file::<ProcessDescription>(&file_path)?;
 
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let mut availabilities = read_csv_grouped_by_id(&file_path, &process_ids)?;
@@ -222,23 +219,23 @@ pub fn read_processes(
     let mut regions = read_csv_grouped_by_id(&file_path, &process_ids)?;
 
     let processes = process_ids
-        .iter()
+        .into_iter()
         .map(|id| {
-            let desc = descriptions.remove(id).unwrap(); // we know entry is present
+            let desc = descriptions.remove(&id).unwrap(); // we know entry is present
             Process {
                 id: desc.id,
                 description: desc.description,
-                availabilities: availabilities.remove(id.as_str()).unwrap_or_default(),
-                flows: flows.remove(id.as_str()).unwrap_or_default(),
+                availabilities: availabilities.remove(&id).unwrap_or_default(),
+                flows: flows.remove(&id).unwrap_or_default(),
                 pacs: pacs
-                    .remove(id.as_str())
+                    .remove(&id)
                     .unwrap_or_default()
                     .into_iter()
                     .map(|p: ProcessPAC| p.pac)
                     .collect(),
-                parameters: parameters.remove(id.as_str()).unwrap_or_default(),
+                parameters: parameters.remove(&id).unwrap_or_default(),
                 regions: regions
-                    .remove(id.as_str())
+                    .remove(&id)
                     .unwrap_or_default()
                     .into_iter()
                     .map(|region: ProcessRegion| region.region_id)
