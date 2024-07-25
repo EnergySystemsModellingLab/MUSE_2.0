@@ -108,6 +108,16 @@ where
 pub trait HasID {
     /// Get a string representation of the struct's ID
     fn get_id(&self) -> &str;
+
+    /// Get the ID after checking that it exists in `ids`. Returns a copy of the `Rc<str>` in `ids`
+    /// or panics on error.
+    fn get_id_checked(&self, file_path: &Path, ids: &HashSet<Rc<str>>) -> Rc<str> {
+        let id = self.get_id();
+        match ids.get(id) {
+            None => input_panic(file_path, &format!("Unknown ID {id} found")),
+            Some(id) => Rc::clone(id),
+        }
+    }
 }
 
 /// Implement the `HasID` trait for the given type, assuming it has a field called `id`
@@ -163,15 +173,7 @@ where
     /// `file_path` - The path to the CSV file this relates to
     /// `ids` - The set of valid IDs to check against.
     fn into_id_map(self, file_path: &Path, ids: &HashSet<Rc<str>>) -> HashMap<Rc<str>, Vec<T>> {
-        let map = self.into_group_map_by(|elem| {
-            let elem_id = elem.get_id();
-            let id = match ids.get(elem_id) {
-                None => input_panic(file_path, &format!("Unknown ID {elem_id} found")),
-                Some(id) => id,
-            };
-
-            Rc::clone(id)
-        });
+        let map = self.into_group_map_by(|item| item.get_id_checked(file_path, ids));
         if map.is_empty() {
             input_panic(file_path, "CSV file is empty");
         }
