@@ -1,4 +1,5 @@
 use crate::input::*;
+use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
@@ -156,7 +157,7 @@ pub struct Process {
     pub flows: Vec<ProcessFlow>,
     pub pacs: Vec<String>,
     pub parameter: ProcessParameter,
-    pub regions: Vec<String>,
+    pub regions: Vec<Rc<str>>,
 }
 define_id_getter! {Process}
 
@@ -200,11 +201,27 @@ fn read_process_parameters(
     read_process_parameters_from_iter(iter, &file_path, process_ids, year_range)
 }
 
+/// Read process regions from the specified CSV file
+fn read_process_regions(
+    file_path: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<Rc<str>>,
+) -> HashMap<Rc<str>, Vec<Rc<str>>> {
+    read_csv(file_path)
+        .map(|item: ProcessRegion| {
+            let process_id = process_ids.get_id_checked(file_path, &item.process_id);
+            let region_id = region_ids.get_id_checked(file_path, &item.region_id);
+            (process_id, region_id)
+        })
+        .into_group_map()
+}
+
 /// Read process information from the specified CSV files.
 ///
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
+/// * `region_ids` - All possible region IDs
 /// * `year_range` - The possible range of milestone years
 ///
 /// # Returns
@@ -212,6 +229,7 @@ fn read_process_parameters(
 /// This function returns a map of processes, with the IDs as keys.
 pub fn read_processes(
     model_dir: &Path,
+    region_ids: &HashSet<Rc<str>>,
     year_range: RangeInclusive<u32>,
 ) -> HashMap<Rc<str>, Process> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
@@ -226,7 +244,7 @@ pub fn read_processes(
     let mut pacs = read_csv_grouped_by_id(&file_path, &process_ids);
     let mut parameters = read_process_parameters(model_dir, &process_ids, &year_range);
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
-    let mut regions = read_csv_grouped_by_id(&file_path, &process_ids);
+    let mut regions = read_process_regions(&file_path, &process_ids, region_ids);
 
     process_ids
         .into_iter()
@@ -249,12 +267,7 @@ pub fn read_processes(
                     .map(|p: ProcessPAC| p.pac)
                     .collect(),
                 parameter,
-                regions: regions
-                    .remove(&id)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|region: ProcessRegion| region.region_id)
-                    .collect(),
+                regions: regions.remove(&id).unwrap_or_default(),
             };
 
             (id, process)
