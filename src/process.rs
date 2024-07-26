@@ -163,19 +163,34 @@ pub struct Process {
     pub availabilities: Vec<ProcessAvailability>,
     pub flows: Vec<ProcessFlow>,
     pub pacs: Vec<String>,
-    pub parameters: Vec<ProcessParameter>,
+    pub parameter: ProcessParameter,
     pub regions: Vec<String>,
 }
 
-/// Read process parameters from the specified CSV file
-fn read_parameters(
+/// Read process parameter from the specified CSV file
+fn read_process_parameter(
     file_path: &Path,
     process_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, Vec<ProcessParameter>> {
-    read_csv::<ProcessParameterRaw>(file_path)
-        .map(|p| p.into_parameter(file_path, year_range))
-        .into_id_map(file_path, process_ids)
+) -> HashMap<Rc<str>, ProcessParameter> {
+    let mut params = HashMap::new();
+    for param in read_csv::<ProcessParameterRaw>(file_path) {
+        let param = param.into_parameter(file_path, year_range);
+        let id = process_ids.get_id_checked(file_path, &param.process_id);
+
+        if params.insert(Rc::clone(&id), param).is_some() {
+            input_panic(
+                file_path,
+                &format!("More than one parameter provided for process {id}"),
+            );
+        }
+    }
+
+    if params.len() < process_ids.len() {
+        input_panic(file_path, "Each process must have an associated parameter");
+    }
+
+    params
 }
 
 /// Read process information from the specified CSV files.
@@ -200,14 +215,19 @@ pub fn read_processes(model_dir: &Path, year_range: RangeInclusive<u32>) -> Vec<
     let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
     let mut pacs = read_csv_grouped_by_id(&file_path, &process_ids);
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
-    let mut parameters = read_parameters(&file_path, &process_ids, &year_range);
+    let mut parameters = read_process_parameter(&file_path, &process_ids, &year_range);
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions = read_csv_grouped_by_id(&file_path, &process_ids);
 
     process_ids
         .into_iter()
         .map(|id| {
-            let desc = descriptions.remove(&id).unwrap(); // we know entry is present
+            // We know entry is present
+            let desc = descriptions.remove(&id).unwrap();
+
+            // We've already checked that every process has an associated parameter
+            let parameter = parameters.remove(&id).unwrap();
+
             Process {
                 id: desc.id,
                 description: desc.description,
@@ -219,7 +239,7 @@ pub fn read_processes(model_dir: &Path, year_range: RangeInclusive<u32>) -> Vec<
                     .into_iter()
                     .map(|p: ProcessPAC| p.pac)
                     .collect(),
-                parameters: parameters.remove(&id).unwrap_or_default(),
+                parameter,
                 regions: regions
                     .remove(&id)
                     .unwrap_or_default()
