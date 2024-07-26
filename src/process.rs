@@ -1,5 +1,4 @@
 use crate::input::*;
-use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
@@ -157,7 +156,7 @@ pub struct Process {
     pub flows: Vec<ProcessFlow>,
     pub pacs: Vec<String>,
     pub parameter: ProcessParameter,
-    pub regions: Vec<Rc<str>>,
+    pub regions: HashSet<Rc<str>>,
 }
 define_id_getter! {Process}
 
@@ -206,14 +205,20 @@ fn read_process_regions(
     file_path: &Path,
     process_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, Vec<Rc<str>>> {
-    read_csv(file_path)
-        .map(|item: ProcessRegion| {
-            let process_id = process_ids.get_id_checked(file_path, &item.process_id);
-            let region_id = region_ids.get_id_checked(file_path, &item.region_id);
-            (process_id, region_id)
-        })
-        .into_group_map()
+) -> HashMap<Rc<str>, HashSet<Rc<str>>> {
+    let mut process_regions = HashMap::new();
+    for item in read_csv::<ProcessRegion>(file_path) {
+        let process_id = process_ids.get_id_checked(file_path, &item.process_id);
+        let region_id = region_ids.get_id_checked(file_path, &item.region_id);
+
+        // Add or create entry in process_regions
+        process_regions
+            .entry(process_id)
+            .or_insert_with(|| HashSet::with_capacity(1))
+            .insert(region_id);
+    }
+
+    process_regions
 }
 
 /// Read process information from the specified CSV files.
