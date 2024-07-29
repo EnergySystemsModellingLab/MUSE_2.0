@@ -1,4 +1,4 @@
-use crate::input::{read_vec_from_csv, InputResult};
+use crate::input::read_csv_as_vec;
 use serde::Deserialize;
 use std::path::Path;
 
@@ -19,17 +19,9 @@ pub struct Region {
 ///
 /// # Returns
 ///
-/// This function returns a `Result` containing either a `Vec<Region>` with the parsed regions data
-/// or an `InputError` if an error occurred.
-///
-/// # Errors
-///
-/// This function will return an error if the file cannot be opened or read, or if the CSV data
-/// cannot be parsed.
-pub fn read_regions_data(model_dir: &Path) -> InputResult<Vec<Region>> {
-    let file_path = model_dir.join(REGIONS_FILE_NAME);
-    let regions_data = read_vec_from_csv(&file_path)?;
-    Ok(regions_data)
+/// This function returns a `Vec<Region>` with the parsed regions data
+pub fn read_regions(model_dir: &Path) -> Vec<Region> {
+    read_csv_as_vec(&model_dir.join(REGIONS_FILE_NAME))
 }
 
 #[cfg(test)]
@@ -58,9 +50,9 @@ AP,Asia Pacific"
     fn test_read_regions_from_csv() {
         let dir = tempdir().unwrap();
         create_regions_file(dir.path());
-        let regions_data = read_regions_data(dir.path()).unwrap();
+        let regions = read_regions(dir.path());
         assert_eq!(
-            regions_data,
+            regions,
             vec![
                 Region {
                     id: "NA".to_string(),
