@@ -111,7 +111,6 @@ pub trait HasID {
 }
 
 /// Implement the `HasID` trait for the given type, assuming it has a field called `id`
-#[macro_export]
 macro_rules! define_id_getter {
     ($t:ty) => {
         impl HasID for $t {
@@ -121,6 +120,8 @@ macro_rules! define_id_getter {
         }
     };
 }
+
+pub(crate) use define_id_getter;
 
 pub trait IDCollection {
     /// Get the ID after checking that it exists this collection. Returns a copy of the `Rc<str>` in
