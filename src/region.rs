@@ -1,6 +1,6 @@
 use crate::input::{define_id_getter, read_csv_id_file, HasID};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
@@ -13,6 +13,21 @@ pub struct Region {
     pub description: String,
 }
 define_id_getter! {Region}
+
+#[derive(PartialEq, Debug)]
+pub enum RegionSelection {
+    All,
+    Some(HashSet<Rc<str>>),
+}
+
+impl RegionSelection {
+    pub fn contains(&self, region_id: &str) -> bool {
+        match self {
+            Self::All => true,
+            Self::Some(regions) => regions.contains(region_id),
+        }
+    }
+}
 
 /// Reads regions from a CSV file.
 ///

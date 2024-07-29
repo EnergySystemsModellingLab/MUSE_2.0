@@ -1,4 +1,5 @@
 use crate::input::*;
+use crate::region::RegionSelection;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
@@ -156,7 +157,7 @@ pub struct Process {
     pub flows: Vec<ProcessFlow>,
     pub pacs: Vec<String>,
     pub parameter: ProcessParameter,
-    pub regions: HashSet<Rc<str>>,
+    pub regions: RegionSelection,
 }
 define_id_getter! {Process}
 
@@ -191,17 +192,44 @@ fn read_process_regions(
     file_path: &Path,
     process_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, HashSet<Rc<str>>> {
+) -> HashMap<Rc<str>, RegionSelection> {
     let mut process_regions = HashMap::new();
     for item in read_csv::<ProcessRegion>(file_path) {
         let process_id = process_ids.get_id_checked(file_path, &item.process_id);
         let region_id = region_ids.get_id_checked(file_path, &item.region_id);
 
-        // Add or create entry in process_regions
-        process_regions
-            .entry(process_id)
-            .or_insert_with(|| HashSet::with_capacity(1))
-            .insert(region_id);
+        let already_has_all = if item.process_id.eq_ignore_ascii_case("all") {
+            // This process operates in all regions
+            process_regions
+                .insert(process_id, RegionSelection::All)
+                .is_some()
+        } else {
+            // Add or create entry in process_regions
+            let selection = process_regions
+                .entry(process_id)
+                .or_insert_with(|| RegionSelection::Some(HashSet::with_capacity(1)));
+
+            if let RegionSelection::Some(set) = selection {
+                set.insert(region_id);
+                false
+            } else {
+                true
+            }
+        };
+
+        if already_has_all {
+            input_panic(
+                file_path,
+                "Cannot specify multiple process regions in addition to \"all\"",
+            );
+        }
+    }
+
+    if process_regions.len() < process_ids.len() {
+        input_panic(
+            file_path,
+            "Each process must operate in at least one region",
+        );
     }
 
     process_regions
@@ -244,8 +272,9 @@ pub fn read_processes(
             // We know entry is present
             let desc = descriptions.remove(&id).unwrap();
 
-            // We've already checked that every process has an associated parameter
+            // We've already checked that these exist for each process
             let parameter = parameters.remove(&id).unwrap();
+            let regions = regions.remove(&id).unwrap();
 
             let process = Process {
                 id: desc.id,
@@ -259,7 +288,7 @@ pub fn read_processes(
                     .map(|p: ProcessPAC| p.pac)
                     .collect(),
                 parameter,
-                regions: regions.remove(&id).unwrap_or_default(),
+                regions,
             };
 
             (id, process)
