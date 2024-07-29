@@ -100,26 +100,19 @@ impl ProcessParameterRaw {
         file_path: &Path,
         year_range: &RangeInclusive<u32>,
     ) -> ProcessParameter {
-        let start_year = match self.start_year {
-            None => *year_range.start(),
-            Some(year) => {
-                if !year_range.contains(&year) {
-                    input_panic(file_path, "start_year is out of range");
-                }
+        let start_year = self.start_year.unwrap_or(*year_range.start());
+        let end_year = self.end_year.unwrap_or(*year_range.end());
 
-                year
-            }
-        };
-        let end_year = match self.end_year {
-            None => *year_range.end(),
-            Some(year) => {
-                if !year_range.contains(&year) {
-                    input_panic(file_path, "end_year is out of range");
-                }
-
-                year
-            }
-        };
+        // Check year range is valid
+        if start_year > end_year {
+            input_panic(
+                file_path,
+                &format!(
+                    "Error in parameter for process {}: start_year > end_year",
+                    self.process_id
+                ),
+            )
+        }
 
         ProcessParameter {
             process_id: self.process_id,
@@ -322,7 +315,7 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
-    use std::panic::catch_unwind;
+
     use std::path::PathBuf;
     use tempfile::tempdir;
 
@@ -397,30 +390,32 @@ mod tests {
     }
 
     #[test]
-    fn test_param_raw_into_param_year_out_of_range() {
+    fn test_param_raw_into_param_good_years() {
         let p = PathBuf::new();
         let year_range = 2000..=2100;
-        macro_rules! check_panic {
-            ($raw:expr) => {
-                assert!(catch_unwind(|| $raw.into_parameter(&p, &year_range)).is_err())
-            };
-        }
 
-        // start_year out of range
-        check_panic!(create_param_raw(
-            Some(1999),
-            Some(2020),
-            Some(1.0),
-            Some(0.0)
-        ));
+        // Normal case
+        create_param_raw(Some(2000), Some(2100), Some(1.0), Some(0.0))
+            .into_parameter(&p, &year_range);
 
-        // end_year out of range
-        check_panic!(create_param_raw(
-            Some(2000),
-            Some(2101),
-            Some(1.0),
-            Some(0.0)
-        ));
+        // start_year out of range - this is permitted
+        create_param_raw(Some(1999), Some(2100), Some(1.0), Some(0.0))
+            .into_parameter(&p, &year_range);
+
+        // end_year out of range - this is permitted
+        create_param_raw(Some(2000), Some(2101), Some(1.0), Some(0.0))
+            .into_parameter(&p, &year_range);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_param_raw_into_param_bad_years() {
+        let p = PathBuf::new();
+        let year_range = 2000..=2100;
+
+        // start_year after end_year
+        create_param_raw(Some(2001), Some(2000), Some(1.0), Some(0.0))
+            .into_parameter(&p, &year_range);
     }
 
     #[test]
