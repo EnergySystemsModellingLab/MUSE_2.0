@@ -1,4 +1,5 @@
 use crate::input::*;
+use crate::region::*;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
@@ -140,6 +141,7 @@ struct ProcessRegion {
     region_id: String,
 }
 define_process_id_getter! {ProcessRegion}
+define_region_id_getter! { ProcessRegion}
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessDescription {
@@ -156,7 +158,7 @@ pub struct Process {
     pub flows: Vec<ProcessFlow>,
     pub pacs: Vec<String>,
     pub parameter: ProcessParameter,
-    pub regions: HashSet<Rc<str>>,
+    pub regions: RegionSelection,
 }
 define_id_getter! {Process}
 
@@ -200,27 +202,6 @@ fn read_process_parameters(
     read_process_parameters_from_iter(iter, &file_path, process_ids, year_range)
 }
 
-/// Read process regions from the specified CSV file
-fn read_process_regions(
-    file_path: &Path,
-    process_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, HashSet<Rc<str>>> {
-    let mut process_regions = HashMap::new();
-    for item in read_csv::<ProcessRegion>(file_path) {
-        let process_id = process_ids.get_id_checked(file_path, &item.process_id);
-        let region_id = region_ids.get_id_checked(file_path, &item.region_id);
-
-        // Add or create entry in process_regions
-        process_regions
-            .entry(process_id)
-            .or_insert_with(|| HashSet::with_capacity(1))
-            .insert(region_id);
-    }
-
-    process_regions
-}
-
 /// Read process information from the specified CSV files.
 ///
 /// # Arguments
@@ -249,7 +230,8 @@ pub fn read_processes(
     let mut pacs = read_csv_grouped_by_id(&file_path, &process_ids);
     let mut parameters = read_process_parameters(model_dir, &process_ids, &year_range);
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
-    let mut regions = read_process_regions(&file_path, &process_ids, region_ids);
+    let mut regions =
+        read_regions_for_entity::<ProcessRegion>(&file_path, &process_ids, region_ids);
 
     process_ids
         .into_iter()
@@ -257,8 +239,9 @@ pub fn read_processes(
             // We know entry is present
             let desc = descriptions.remove(&id).unwrap();
 
-            // We've already checked that every process has an associated parameter
+            // We've already checked that these exist for each process
             let parameter = parameters.remove(&id).unwrap();
+            let regions = regions.remove(&id).unwrap();
 
             let process = Process {
                 id: desc.id,
@@ -272,7 +255,7 @@ pub fn read_processes(
                     .map(|p: ProcessPAC| p.pac)
                     .collect(),
                 parameter,
-                regions: regions.remove(&id).unwrap_or_default(),
+                regions,
             };
 
             (id, process)
