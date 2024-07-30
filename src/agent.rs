@@ -1,4 +1,5 @@
-use crate::input::{deserialise_proportion_nonzero, input_panic, read_csv};
+use crate::input::*;
+use crate::region::*;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
@@ -6,6 +7,7 @@ use std::path::Path;
 use std::rc::Rc;
 
 const AGENT_FILE_NAME: &str = "agents.csv";
+const AGENT_REGIONS_FILE_NAME: &str = "agent_regions.csv";
 
 #[derive(Debug, PartialEq)]
 pub enum SearchSpace {
@@ -50,10 +52,34 @@ pub struct Agent {
     pub decision_rule: DecisionRule,
     pub capex_limit: Option<f64>,
     pub annual_cost_limit: Option<f64>,
+
+    #[serde(skip)]
+    pub regions: RegionSelection,
 }
 
+macro_rules! define_agent_id_getter {
+    ($t:ty) => {
+        impl HasID for $t {
+            fn get_id(&self) -> &str {
+                &self.agent_id
+            }
+        }
+    };
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+struct AgentRegion {
+    agent_id: String,
+    region_id: String,
+}
+define_agent_id_getter! {AgentRegion}
+define_region_id_getter! {AgentRegion}
+
 /// Read agents info from a CSV file.
-pub fn read_agents(model_dir: &Path, process_ids: &HashSet<Rc<str>>) -> HashMap<Rc<str>, Agent> {
+pub fn read_agents_file(
+    model_dir: &Path,
+    process_ids: &HashSet<Rc<str>>,
+) -> HashMap<Rc<str>, Agent> {
     let file_path = model_dir.join(AGENT_FILE_NAME);
     let mut agents = HashMap::new();
     for agent in read_csv::<Agent>(&file_path) {
@@ -70,6 +96,26 @@ pub fn read_agents(model_dir: &Path, process_ids: &HashSet<Rc<str>>) -> HashMap<
         if agents.insert(Rc::clone(&agent.id), agent).is_some() {
             input_panic(&file_path, "Duplicate agent ID");
         }
+    }
+
+    agents
+}
+
+/// Read agents info from CSV files.
+pub fn read_agents(
+    model_dir: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<Rc<str>>,
+) -> HashMap<Rc<str>, Agent> {
+    let mut agents = read_agents_file(model_dir, process_ids);
+    let agent_ids = agents.keys().cloned().collect();
+
+    let file_path = model_dir.join(AGENT_REGIONS_FILE_NAME);
+    let mut agent_regions =
+        read_regions_for_entity::<AgentRegion>(&file_path, &agent_ids, region_ids);
+
+    for (id, agent) in agents.iter_mut() {
+        agent.regions = agent_regions.remove(id).unwrap();
     }
 
     agents

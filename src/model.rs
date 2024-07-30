@@ -86,7 +86,7 @@ impl Model {
             *years.first().unwrap()..=*years.last().unwrap(),
         );
         let process_ids = processes.keys().cloned().collect();
-        let agents = read_agents(model_dir.as_ref(), &process_ids);
+        let agents = read_agents(model_dir.as_ref(), &process_ids, &region_ids);
 
         Model {
             milestone_years: model_file.milestone_years.years,

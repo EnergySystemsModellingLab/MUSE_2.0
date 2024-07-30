@@ -22,6 +22,12 @@ pub enum RegionSelection {
     Some(HashSet<Rc<str>>),
 }
 
+impl Default for RegionSelection {
+    fn default() -> Self {
+        Self::All
+    }
+}
+
 impl RegionSelection {
     pub fn contains(&self, region_id: &str) -> bool {
         match self {
