@@ -3,8 +3,7 @@ use crate::demand::{read_demand_data, Demand};
 use crate::input::{input_panic, read_toml};
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
-use crate::time_slice::{read_time_slices, TimeSlice};
-use log::warn;
+use crate::time_slice::{read_time_slices, TimeSliceInfo};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -16,7 +15,7 @@ const MODEL_FILE_NAME: &str = "model.toml";
 pub struct Model {
     pub milestone_years: Vec<u32>,
     pub processes: HashMap<Rc<str>, Process>,
-    pub time_slices: Vec<TimeSlice>,
+    pub time_slice_info: TimeSliceInfo,
     pub demand_data: Vec<Demand>,
     pub regions: HashMap<Rc<str>, Region>,
 }
@@ -75,22 +74,7 @@ impl Model {
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Model {
         let model_file = ModelFile::from_path(&model_dir);
 
-        let time_slices = match read_time_slices(model_dir.as_ref()) {
-            None => {
-                // If there is no time slice file provided, use a default time slice which covers the
-                // whole year and the whole day
-                warn!("No time slices CSV file provided; using a single time slice");
-
-                vec![TimeSlice {
-                    season: "all-year".to_string(),
-                    time_of_day: "all-day".to_string(),
-                    fraction: 1.0,
-                }]
-            }
-
-            Some(time_slices) => time_slices,
-        };
-
+        let time_slices = read_time_slices(model_dir.as_ref());
         let regions = read_regions(model_dir.as_ref());
         let region_ids = HashSet::from_iter(regions.keys().cloned());
         let years = &model_file.milestone_years.years;
@@ -103,7 +87,7 @@ impl Model {
         Model {
             milestone_years: model_file.milestone_years.years,
             processes,
-            time_slices,
+            time_slice_info: time_slices,
             demand_data: read_demand_data(model_dir.as_ref()),
             regions,
         }
