@@ -15,7 +15,7 @@ const MODEL_FILE_NAME: &str = "model.toml";
 /// Model definition
 pub struct Model {
     pub milestone_years: Vec<u32>,
-    pub commodities: Vec<Commodity>,
+    pub commodities: HashMap<Rc<str>, Commodity>,
     pub processes: HashMap<Rc<str>, Process>,
     pub time_slice_info: TimeSliceInfo,
     pub demand_data: Vec<Demand>,
