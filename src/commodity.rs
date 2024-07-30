@@ -3,6 +3,7 @@ use crate::time_slice::TimeSliceLevel;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
+use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -71,13 +72,25 @@ fn read_commodity_costs(
     model_dir: &Path,
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
+    year_range: &RangeInclusive<u32>,
 ) -> HashMap<Rc<str>, Vec<CommodityCost>> {
     let file_path = model_dir.join(COMMODITY_COSTS_FILE_NAME);
     let mut costs = read_csv_grouped_by_id::<CommodityCost>(&file_path, commodity_ids);
 
-    // Check region IDs
     for cost in costs.values_mut().flatten() {
+        // Check region ID is valid
         cost.region_id = region_ids.get_id_checked(&file_path, &cost.region_id);
+
+        // Check year is in range
+        if !year_range.contains(&cost.year) {
+            input_panic(
+                &file_path,
+                &format!(
+                    "Commodity {}: year {} is out of range",
+                    cost.commodity_id, cost.year
+                ),
+            );
+        }
     }
 
     costs
@@ -87,10 +100,11 @@ fn read_commodity_costs(
 pub fn read_commodities(
     model_dir: &Path,
     region_ids: &HashSet<Rc<str>>,
+    year_range: &RangeInclusive<u32>,
 ) -> HashMap<Rc<str>, Commodity> {
     let mut commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME));
     let commodity_ids = commodities.keys().cloned().collect();
-    let mut costs = read_commodity_costs(model_dir, &commodity_ids, region_ids);
+    let mut costs = read_commodity_costs(model_dir, &commodity_ids, region_ids, year_range);
 
     // Populate Vecs for each Commodity
     for (id, commodity) in commodities.iter_mut() {

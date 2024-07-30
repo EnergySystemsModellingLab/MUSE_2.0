@@ -96,13 +96,10 @@ impl Model {
         let regions = read_regions(model_dir.as_ref());
         let region_ids = HashSet::from_iter(regions.keys().cloned());
         let years = &model_file.milestone_years.years;
+        let year_range = *years.first().unwrap()..=*years.last().unwrap();
 
-        let commodities = read_commodities(model_dir.as_ref(), &region_ids);
-        let processes = read_processes(
-            model_dir.as_ref(),
-            &region_ids,
-            *years.first().unwrap()..=*years.last().unwrap(),
-        );
+        let commodities = read_commodities(model_dir.as_ref(), &region_ids, &year_range);
+        let processes = read_processes(model_dir.as_ref(), &region_ids, &year_range);
 
         Model {
             milestone_years: model_file.milestone_years.years,
