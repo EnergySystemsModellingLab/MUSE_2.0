@@ -79,6 +79,8 @@ impl Model {
         let regions = read_regions(model_dir.as_ref());
         let region_ids = HashSet::from_iter(regions.keys().cloned());
         let years = &model_file.milestone_years.years;
+
+        let commodities = read_commodities(model_dir.as_ref(), &region_ids);
         let processes = read_processes(
             model_dir.as_ref(),
             &region_ids,
@@ -88,7 +90,7 @@ impl Model {
 
         Model {
             milestone_years: model_file.milestone_years.years,
-            commodities: read_commodities(model_dir.as_ref()),
+            commodities,
             processes,
             time_slice_info,
             demand_data: read_demand_data(model_dir.as_ref()),
