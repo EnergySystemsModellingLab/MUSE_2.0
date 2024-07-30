@@ -1,11 +1,12 @@
 //! Code for simulation models.
+use crate::agent::{read_agents, Agent};
 use crate::demand::{read_demand_data, Demand};
 use crate::input::{read_toml, UnwrapInputError};
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slice_info, TimeSliceInfo};
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -14,6 +15,7 @@ const MODEL_FILE_NAME: &str = "model.toml";
 /// Model definition
 pub struct Model {
     pub milestone_years: Vec<u32>,
+    pub agents: HashMap<Rc<str>, Agent>,
     pub processes: HashMap<Rc<str>, Process>,
     pub time_slice_info: TimeSliceInfo,
     pub demand_data: Vec<Demand>,
@@ -75,7 +77,7 @@ impl Model {
 
         let time_slice_info = read_time_slice_info(model_dir.as_ref());
         let regions = read_regions(model_dir.as_ref());
-        let region_ids = HashSet::from_iter(regions.keys().cloned());
+        let region_ids = regions.keys().cloned().collect();
         let years = &model_file.milestone_years.years;
         let processes = read_processes(
             model_dir.as_ref(),
@@ -83,9 +85,12 @@ impl Model {
             &time_slice_info,
             *years.first().unwrap()..=*years.last().unwrap(),
         );
+        let process_ids = processes.keys().cloned().collect();
+        let agents = read_agents(model_dir.as_ref(), &process_ids);
 
         Model {
             milestone_years: model_file.milestone_years.years,
+            agents,
             processes,
             time_slice_info,
             demand_data: read_demand_data(model_dir.as_ref()),
