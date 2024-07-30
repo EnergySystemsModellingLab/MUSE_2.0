@@ -13,6 +13,20 @@ use std::rc::Rc;
 
 const TIME_SLICES_FILE_NAME: &str = "time_slices.csv";
 
+pub enum TimeSliceSelection {
+    AllYear,
+    Some(TimeSliceID),
+}
+
+impl TimeSliceSelection {
+    pub fn contains(&self, time_slice: &TimeSliceID) -> bool {
+        match self {
+            Self::AllYear => true,
+            Self::Some(id) => id == time_slice,
+        }
+    }
+}
+
 #[derive(PartialEq, Debug, Deserialize)]
 struct TimeSliceRaw {
     /// Which season (in the year)
