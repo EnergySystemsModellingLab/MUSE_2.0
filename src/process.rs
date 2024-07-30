@@ -158,6 +158,7 @@ pub struct Process {
     pub parameter: ProcessParameter,
     pub regions: Vec<String>,
 }
+define_id_getter! {Process}
 
 /// Read process parameter from the specified CSV file
 fn read_process_parameter(
@@ -194,8 +195,11 @@ fn read_process_parameter(
 ///
 /// # Returns
 ///
-/// This function returns a `Vec<Process>` with the parsed process data.
-pub fn read_processes(model_dir: &Path, year_range: RangeInclusive<u32>) -> Vec<Process> {
+/// This function returns a map of processes, with the IDs as keys.
+pub fn read_processes(
+    model_dir: &Path,
+    year_range: RangeInclusive<u32>,
+) -> HashMap<Rc<str>, Process> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path);
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
@@ -220,7 +224,7 @@ pub fn read_processes(model_dir: &Path, year_range: RangeInclusive<u32>) -> Vec<
             // We've already checked that every process has an associated parameter
             let parameter = parameters.remove(&id).unwrap();
 
-            Process {
+            let process = Process {
                 id: desc.id,
                 description: desc.description,
                 availabilities: availabilities.remove(&id).unwrap_or_default(),
@@ -238,7 +242,9 @@ pub fn read_processes(model_dir: &Path, year_range: RangeInclusive<u32>) -> Vec<
                     .into_iter()
                     .map(|region: ProcessRegion| region.region_id)
                     .collect(),
-            }
+            };
+
+            (id, process)
         })
         .collect()
 }

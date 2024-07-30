@@ -6,14 +6,16 @@ use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slices, TimeSlice};
 use log::warn;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::Path;
+use std::rc::Rc;
 
 const MODEL_FILE_NAME: &str = "model.toml";
 
 /// Model definition
 pub struct Model {
     pub milestone_years: Vec<u32>,
-    pub processes: Vec<Process>,
+    pub processes: HashMap<Rc<str>, Process>,
     pub time_slices: Vec<TimeSlice>,
     pub demand_data: Vec<Demand>,
     pub regions: Vec<Region>,
