@@ -88,23 +88,18 @@ fn try_insert_region(
     }
 }
 
-/// Read region IDs associated with a particular entity.
-///
-/// # Arguments
-///
-/// `file_path` - Path to CSV file
-/// `entity_ids` - All possible valid IDs for the entity type
-/// `region_ids` - All possible valid region IDs
-pub fn read_regions_for_entity<T>(
+fn read_regions_for_entity_from_iter<I, T>(
+    iter: I,
     file_path: &Path,
     entity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
 ) -> HashMap<Rc<str>, RegionSelection>
 where
+    I: Iterator<Item = T>,
     T: HasID + HasRegionID + DeserializeOwned,
 {
     let mut entity_regions = HashMap::new();
-    for record in read_csv::<T>(file_path) {
+    for record in iter {
         let key = entity_ids.get_id_checked(file_path, record.get_id());
         let region_id = record.get_region_id();
 
@@ -126,12 +121,31 @@ where
     entity_regions
 }
 
+/// Read region IDs associated with a particular entity.
+///
+/// # Arguments
+///
+/// `file_path` - Path to CSV file
+/// `entity_ids` - All possible valid IDs for the entity type
+/// `region_ids` - All possible valid region IDs
+pub fn read_regions_for_entity<T>(
+    file_path: &Path,
+    entity_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<Rc<str>>,
+) -> HashMap<Rc<str>, RegionSelection>
+where
+    T: HasID + HasRegionID + DeserializeOwned,
+{
+    read_regions_for_entity_from_iter(read_csv::<T>(file_path), file_path, entity_ids, region_ids)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
-    use std::path::Path;
+    use std::panic::catch_unwind;
+    use std::path::{Path, PathBuf};
     use tempfile::tempdir;
 
     /// Create an example regions file in dir_path
@@ -149,7 +163,7 @@ AP,Asia Pacific"
     }
 
     #[test]
-    fn test_read_regions_from_csv() {
+    fn test_read_regions() {
         let dir = tempdir().unwrap();
         create_regions_file(dir.path());
         let regions = read_regions(dir.path());
@@ -179,5 +193,173 @@ AP,Asia Pacific"
                 ),
             ])
         )
+    }
+
+    #[test]
+    fn test_try_insert_region() {
+        let p = PathBuf::new();
+        let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
+
+        // Insert new
+        let mut entity_regions = HashMap::new();
+        assert!(try_insert_region(
+            &p,
+            "key".into(),
+            "GBR",
+            &region_ids,
+            &mut entity_regions
+        ));
+        let selected: HashSet<_> = ["GBR".into()].into_iter().collect();
+        assert_eq!(
+            *entity_regions.get("key").unwrap(),
+            RegionSelection::Some(selected)
+        );
+
+        // Insert "all"
+        let mut entity_regions = HashMap::new();
+        assert!(try_insert_region(
+            &p,
+            "key".into(),
+            "all",
+            &region_ids,
+            &mut entity_regions
+        ));
+        assert_eq!(*entity_regions.get("key").unwrap(), RegionSelection::All);
+
+        // Append to existing
+        let selected: HashSet<_> = ["FRA".into()].into_iter().collect();
+        let mut entity_regions = [("key".into(), RegionSelection::Some(selected.clone()))]
+            .into_iter()
+            .collect();
+        assert!(try_insert_region(
+            &p,
+            "key".into(),
+            "GBR",
+            &region_ids,
+            &mut entity_regions
+        ));
+        let selected: HashSet<_> = ["FRA".into(), "GBR".into()].into_iter().collect();
+        assert_eq!(
+            *entity_regions.get("key").unwrap(),
+            RegionSelection::Some(selected)
+        );
+
+        // "All" already specified
+        let mut entity_regions = [("key".into(), RegionSelection::All)].into_iter().collect();
+        assert!(!try_insert_region(
+            &p,
+            "key".into(),
+            "GBR",
+            &region_ids,
+            &mut entity_regions
+        ));
+
+        // "GBR" specified twice
+        let selected: HashSet<_> = ["GBR".into()].into_iter().collect();
+        let mut entity_regions = [("key".into(), RegionSelection::Some(selected))]
+            .into_iter()
+            .collect();
+        assert!(!try_insert_region(
+            &p,
+            "key".into(),
+            "GBR",
+            &region_ids,
+            &mut entity_regions
+        ));
+
+        // Try appending "all" to existing
+        let selected: HashSet<_> = ["FRA".into()].into_iter().collect();
+        let mut entity_regions = [("key".into(), RegionSelection::Some(selected.clone()))]
+            .into_iter()
+            .collect();
+        assert!(!try_insert_region(
+            &p,
+            "key".into(),
+            "all",
+            &region_ids,
+            &mut entity_regions
+        ));
+    }
+
+    #[derive(Deserialize, PartialEq)]
+    struct Record {
+        id: String,
+        region_id: String,
+    }
+    define_id_getter! {Record}
+    define_region_id_getter! {Record}
+
+    #[test]
+    fn test_read_regions_for_entity_from_iter() {
+        let p = PathBuf::new();
+        let entity_ids = ["A".into(), "B".into()].into_iter().collect();
+        let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
+
+        macro_rules! assert_panics {
+            ($e:expr) => {
+                assert!(catch_unwind(|| $e).is_err())
+            };
+        }
+
+        // Valid case
+        let iter = [
+            Record {
+                id: "A".into(),
+                region_id: "GBR".into(),
+            },
+            Record {
+                id: "B".into(),
+                region_id: "FRA".into(),
+            },
+        ]
+        .into_iter();
+        let expected = HashMap::from_iter([
+            (
+                "A".into(),
+                RegionSelection::Some(HashSet::from_iter(["GBR".into()])),
+            ),
+            (
+                "B".into(),
+                RegionSelection::Some(HashSet::from_iter(["FRA".into()])),
+            ),
+        ]);
+        let actual = read_regions_for_entity_from_iter(iter, &p, &entity_ids, &region_ids);
+        assert_eq!(expected, actual);
+
+        // No region(s) specified for "B"
+        let iter = [Record {
+            id: "A".into(),
+            region_id: "GBR".into(),
+        }]
+        .into_iter();
+        assert_panics!(read_regions_for_entity_from_iter(
+            iter,
+            &p,
+            &entity_ids,
+            &region_ids
+        ));
+
+        // Make try_insert_region fail
+        let iter = [
+            Record {
+                id: "A".into(),
+                region_id: "GBR".into(),
+            },
+            Record {
+                id: "B".into(),
+                region_id: "FRA".into(),
+            },
+            Record {
+                id: "A".into(),
+                region_id: "all".into(),
+            },
+        ]
+        .into_iter();
+        assert_panics!(read_regions_for_entity_from_iter(
+            iter,
+            &p,
+            &entity_ids,
+            &region_ids
+        ));
     }
 }
