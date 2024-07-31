@@ -2,7 +2,6 @@ use crate::input::*;
 use crate::region::*;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
-
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::path::Path;
@@ -173,30 +172,40 @@ fn read_agent_objectives(
         .unwrap_input_err(&file_path)
 }
 
-/// Read agents info from a CSV file.
-pub fn read_agents_file(
-    model_dir: &Path,
+pub fn read_agents_file_from_iter<I>(
+    iter: I,
     process_ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, Agent> {
-    let file_path = model_dir.join(AGENT_FILE_NAME);
+) -> Result<HashMap<Rc<str>, Agent>, &'static str>
+where
+    I: Iterator<Item = Agent>,
+{
     let mut agents = HashMap::new();
-    for agent in read_csv::<Agent>(&file_path) {
+    for agent in iter {
         if let SearchSpace::Some(ref search_space) = agent.search_space {
             // Check process IDs are all valid
             if !search_space
                 .iter()
                 .all(|id| process_ids.contains(id.as_str()))
             {
-                input_panic(&file_path, "Invalid process ID");
+                Err("Invalid process ID")?;
             }
         }
 
         if agents.insert(Rc::clone(&agent.id), agent).is_some() {
-            input_panic(&file_path, "Duplicate agent ID");
+            Err("Duplicate agent ID")?;
         }
     }
 
-    agents
+    Ok(agents)
+}
+
+/// Read agents info from a CSV file.
+pub fn read_agents_file(
+    model_dir: &Path,
+    process_ids: &HashSet<Rc<str>>,
+) -> HashMap<Rc<str>, Agent> {
+    let file_path = model_dir.join(AGENT_FILE_NAME);
+    read_agents_file_from_iter(read_csv(&file_path), process_ids).unwrap_input_err(&file_path)
 }
 
 /// Read agents info from CSV files.
