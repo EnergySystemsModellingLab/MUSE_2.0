@@ -162,25 +162,26 @@ define_id_getter! {Process}
 
 /// Read process parameters from the specified CSV file
 fn read_process_parameters(
-    file_path: &Path,
+    model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
 ) -> HashMap<Rc<str>, ProcessParameter> {
+    let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let mut params = HashMap::new();
-    for param in read_csv::<ProcessParameterRaw>(file_path) {
-        let param = param.into_parameter(file_path, year_range);
-        let id = process_ids.get_id_checked(file_path, &param.process_id);
+    for param in read_csv::<ProcessParameterRaw>(&file_path) {
+        let param = param.into_parameter(&file_path, year_range);
+        let id = process_ids.get_id_checked(&file_path, &param.process_id);
 
         if params.insert(Rc::clone(&id), param).is_some() {
             input_panic(
-                file_path,
+                &file_path,
                 &format!("More than one parameter provided for process {id}"),
             );
         }
     }
 
     if params.len() < process_ids.len() {
-        input_panic(file_path, "Each process must have an associated parameter");
+        input_panic(&file_path, "Each process must have an associated parameter");
     }
 
     params
@@ -210,8 +211,7 @@ pub fn read_processes(
     let mut flows = read_csv_grouped_by_id(&file_path, &process_ids);
     let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
     let mut pacs = read_csv_grouped_by_id(&file_path, &process_ids);
-    let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
-    let mut parameters = read_process_parameters(&file_path, &process_ids, &year_range);
+    let mut parameters = read_process_parameters(model_dir, &process_ids, &year_range);
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions = read_csv_grouped_by_id(&file_path, &process_ids);
 
