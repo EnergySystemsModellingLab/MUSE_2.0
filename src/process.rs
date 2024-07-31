@@ -160,6 +160,35 @@ pub struct Process {
 }
 define_id_getter! {Process}
 
+fn read_process_parameters_from_iter<I>(
+    iter: I,
+    file_path: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    year_range: &RangeInclusive<u32>,
+) -> HashMap<Rc<str>, ProcessParameter>
+where
+    I: Iterator<Item = ProcessParameterRaw>,
+{
+    let mut params = HashMap::new();
+    for param in iter {
+        let param = param.into_parameter(file_path, year_range);
+        let id = process_ids.get_id_checked(file_path, &param.process_id);
+
+        if params.insert(Rc::clone(&id), param).is_some() {
+            input_panic(
+                file_path,
+                &format!("More than one parameter provided for process {id}"),
+            );
+        }
+    }
+
+    if params.len() < process_ids.len() {
+        input_panic(file_path, "Each process must have an associated parameter");
+    }
+
+    params
+}
+
 /// Read process parameters from the specified CSV file
 fn read_process_parameters(
     model_dir: &Path,
@@ -167,24 +196,8 @@ fn read_process_parameters(
     year_range: &RangeInclusive<u32>,
 ) -> HashMap<Rc<str>, ProcessParameter> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
-    let mut params = HashMap::new();
-    for param in read_csv::<ProcessParameterRaw>(&file_path) {
-        let param = param.into_parameter(&file_path, year_range);
-        let id = process_ids.get_id_checked(&file_path, &param.process_id);
-
-        if params.insert(Rc::clone(&id), param).is_some() {
-            input_panic(
-                &file_path,
-                &format!("More than one parameter provided for process {id}"),
-            );
-        }
-    }
-
-    if params.len() < process_ids.len() {
-        input_panic(&file_path, "Each process must have an associated parameter");
-    }
-
-    params
+    let iter = read_csv::<ProcessParameterRaw>(&file_path);
+    read_process_parameters_from_iter(iter, &file_path, process_ids, year_range)
 }
 
 /// Read process information from the specified CSV files.
@@ -351,5 +364,143 @@ mod tests {
         // start_year after end_year
         create_param_raw(Some(2001), Some(2000), Some(1.0), Some(0.0))
             .into_parameter(&p, &year_range);
+    }
+
+    #[test]
+    fn test_read_process_parameters_from_iter_good() {
+        let p = PathBuf::new();
+        let year_range = 2000..=2100;
+        let process_ids = ["A".into(), "B".into()].into_iter().collect();
+
+        let params_raw = [
+            ProcessParameterRaw {
+                process_id: "A".into(),
+                start_year: Some(2010),
+                end_year: Some(2020),
+                capital_cost: 1.0,
+                fixed_operating_cost: 1.0,
+                variable_operating_cost: 1.0,
+                lifetime: 10,
+                discount_rate: Some(1.0),
+                cap2act: Some(1.0),
+            },
+            ProcessParameterRaw {
+                process_id: "B".into(),
+                start_year: Some(2015),
+                end_year: Some(2020),
+                capital_cost: 1.0,
+                fixed_operating_cost: 1.0,
+                variable_operating_cost: 1.0,
+                lifetime: 10,
+                discount_rate: Some(1.0),
+                cap2act: Some(1.0),
+            },
+        ];
+
+        let expected: HashMap<Rc<str>, _> = [
+            (
+                "A".into(),
+                ProcessParameter {
+                    process_id: "A".into(),
+                    years: 2010..=2020,
+                    capital_cost: 1.0,
+                    fixed_operating_cost: 1.0,
+                    variable_operating_cost: 1.0,
+                    lifetime: 10,
+                    discount_rate: 1.0,
+                    cap2act: 1.0,
+                },
+            ),
+            (
+                "B".into(),
+                ProcessParameter {
+                    process_id: "B".into(),
+                    years: 2015..=2020,
+                    capital_cost: 1.0,
+                    fixed_operating_cost: 1.0,
+                    variable_operating_cost: 1.0,
+                    lifetime: 10,
+                    discount_rate: 1.0,
+                    cap2act: 1.0,
+                },
+            ),
+        ]
+        .into_iter()
+        .collect();
+        let actual = read_process_parameters_from_iter(
+            params_raw.into_iter(),
+            &p,
+            &process_ids,
+            &year_range,
+        );
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_read_process_parameters_from_iter_bad_multiple_params() {
+        let p = PathBuf::new();
+        let year_range = 2000..=2100;
+        let process_ids = ["A".into(), "B".into()].into_iter().collect();
+
+        let params_raw = [
+            ProcessParameterRaw {
+                process_id: "A".into(),
+                start_year: Some(2010),
+                end_year: Some(2020),
+                capital_cost: 1.0,
+                fixed_operating_cost: 1.0,
+                variable_operating_cost: 1.0,
+                lifetime: 10,
+                discount_rate: Some(1.0),
+                cap2act: Some(1.0),
+            },
+            ProcessParameterRaw {
+                process_id: "B".into(),
+                start_year: Some(2015),
+                end_year: Some(2020),
+                capital_cost: 1.0,
+                fixed_operating_cost: 1.0,
+                variable_operating_cost: 1.0,
+                lifetime: 10,
+                discount_rate: Some(1.0),
+                cap2act: Some(1.0),
+            },
+            ProcessParameterRaw {
+                process_id: "A".into(),
+                start_year: Some(2015),
+                end_year: Some(2020),
+                capital_cost: 1.0,
+                fixed_operating_cost: 1.0,
+                variable_operating_cost: 1.0,
+                lifetime: 10,
+                discount_rate: Some(1.0),
+                cap2act: Some(1.0),
+            },
+        ];
+
+        read_process_parameters_from_iter(params_raw.into_iter(), &p, &process_ids, &year_range);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_read_process_parameters_from_iter_bad_process_missing_param() {
+        let p = PathBuf::new();
+        let year_range = 2000..=2100;
+        let process_ids = ["A".into(), "B".into()].into_iter().collect();
+
+        let params_raw = [ProcessParameterRaw {
+            process_id: "A".into(),
+            start_year: Some(2010),
+            end_year: Some(2020),
+            capital_cost: 1.0,
+            fixed_operating_cost: 1.0,
+            variable_operating_cost: 1.0,
+            lifetime: 10,
+            discount_rate: Some(1.0),
+            cap2act: Some(1.0),
+        }];
+
+        read_process_parameters_from_iter(params_raw.into_iter(), &p, &process_ids, &year_range);
     }
 }
