@@ -160,8 +160,8 @@ pub struct Process {
 }
 define_id_getter! {Process}
 
-/// Read process parameter from the specified CSV file
-fn read_process_parameter(
+/// Read process parameters from the specified CSV file
+fn read_process_parameters(
     file_path: &Path,
     process_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
@@ -211,7 +211,7 @@ pub fn read_processes(
     let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
     let mut pacs = read_csv_grouped_by_id(&file_path, &process_ids);
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
-    let mut parameters = read_process_parameter(&file_path, &process_ids, &year_range);
+    let mut parameters = read_process_parameters(&file_path, &process_ids, &year_range);
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions = read_csv_grouped_by_id(&file_path, &process_ids);
 
