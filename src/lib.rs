@@ -4,6 +4,7 @@ pub mod model;
 pub mod settings;
 
 mod agent;
+mod asset;
 mod commodity;
 mod demand;
 mod input;
@@ -25,5 +26,6 @@ pub fn run(model: &Model) {
     println!("Demand data: {:?}", model.demand_data);
     println!("Processes: {:?}", model.processes);
     println!("Time slices: {:?}", model.time_slice_info);
+    println!("Assets: {:?}", model.assets);
     println!("Milestone years: {:?}", model.milestone_years);
 }
