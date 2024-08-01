@@ -1,4 +1,4 @@
-use crate::demand::{read_demand_data, Demand};
+use crate::demand::{read_demand, Demand};
 use crate::input::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
 use itertools::Itertools;
@@ -192,7 +192,7 @@ pub fn read_commodities(
         time_slice_info,
         year_range,
     );
-    let mut demand = read_demand_data(model_dir, &commodity_ids, region_ids);
+    let mut demand = read_demand(model_dir, &commodity_ids, region_ids);
 
     // Populate Vecs for each Commodity
     for (id, commodity) in commodities.iter_mut() {
