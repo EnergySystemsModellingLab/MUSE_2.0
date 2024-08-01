@@ -25,7 +25,7 @@ pub struct Commodity {
     #[serde(skip)]
     pub costs: Vec<CommodityCost>,
     #[serde(skip)]
-    pub demand: Vec<Demand>,
+    pub demand_by_region: HashMap<Rc<str>, Demand>,
 }
 define_id_getter! {Commodity}
 
@@ -192,7 +192,7 @@ pub fn read_commodities(
         time_slice_info,
         year_range,
     );
-    let mut demand = read_demand_data(model_dir, &commodity_ids);
+    let mut demand = read_demand_data(model_dir, &commodity_ids, region_ids);
 
     // Populate Vecs for each Commodity
     for (id, commodity) in commodities.iter_mut() {
@@ -200,7 +200,7 @@ pub fn read_commodities(
             commodity.costs = costs;
         }
         if let Some(demand) = demand.remove(id) {
-            commodity.demand = demand;
+            commodity.demand_by_region = demand;
         }
     }
 
