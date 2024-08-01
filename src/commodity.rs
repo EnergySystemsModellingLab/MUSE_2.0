@@ -33,6 +33,8 @@ macro_rules! define_commodity_id_getter {
     };
 }
 
+pub(crate) use define_commodity_id_getter;
+
 #[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
 pub enum BalanceType {
     #[string = "net"]
