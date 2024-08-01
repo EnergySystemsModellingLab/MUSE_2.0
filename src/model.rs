@@ -1,4 +1,5 @@
 //! Code for simulation models.
+use crate::asset::{read_assets, Asset};
 use crate::demand::{read_demand_data, Demand};
 use crate::input::{input_panic, read_toml};
 use crate::process::{read_processes, Process};
@@ -16,6 +17,7 @@ const MODEL_FILE_NAME: &str = "model.toml";
 pub struct Model {
     pub milestone_years: Vec<u32>,
     pub processes: HashMap<Rc<str>, Process>,
+    pub assets: Vec<Asset>,
     pub time_slices: Vec<TimeSlice>,
     pub demand_data: Vec<Demand>,
     pub regions: HashMap<Rc<str>, Region>,
@@ -99,10 +101,13 @@ impl Model {
             &region_ids,
             *years.first().unwrap()..=*years.last().unwrap(),
         );
+        let process_ids = processes.keys().cloned().collect();
+        let assets = read_assets(model_dir.as_ref(), &process_ids, &region_ids);
 
         Model {
             milestone_years: model_file.milestone_years.years,
             processes,
+            assets,
             time_slices,
             demand_data: read_demand_data(model_dir.as_ref()),
             regions,
