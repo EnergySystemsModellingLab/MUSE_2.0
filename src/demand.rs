@@ -26,6 +26,7 @@ define_commodity_id_getter! {Demand}
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
+/// * `commodity_ids` - All possible IDs of commodities
 ///
 /// # Returns
 ///
