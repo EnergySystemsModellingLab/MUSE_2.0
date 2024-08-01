@@ -1,3 +1,4 @@
+use crate::demand::{read_demand_data, Demand};
 use crate::input::*;
 use crate::time_slice::TimeSliceLevel;
 use serde::Deserialize;
@@ -20,6 +21,8 @@ pub struct Commodity {
 
     #[serde(skip)]
     pub costs: Vec<CommodityCost>,
+    #[serde(skip)]
+    pub demand: Vec<Demand>,
 }
 define_id_getter! {Commodity}
 
@@ -116,11 +119,15 @@ pub fn read_commodities(
     let mut commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME));
     let commodity_ids = commodities.keys().cloned().collect();
     let mut costs = read_commodity_costs(model_dir, &commodity_ids, region_ids, year_range);
+    let mut demand = read_demand_data(model_dir, &commodity_ids);
 
     // Populate Vecs for each Commodity
     for (id, commodity) in commodities.iter_mut() {
         if let Some(costs) = costs.remove(id) {
             commodity.costs = costs;
+        }
+        if let Some(demand) = demand.remove(id) {
+            commodity.demand = demand;
         }
     }
 

@@ -21,7 +21,6 @@ pub fn run(model: &Model) {
     // TODO: Remove this once we're actually doing something with these values
     println!("Commodities: {:?}", model.commodities);
     println!("Regions: {:?}", model.regions);
-    println!("Demand data: {:?}", model.demand_data);
     println!("Processes: {:?}", model.processes);
     println!("Time slices: {:?}", model.time_slices);
     println!("Milestone years: {:?}", model.milestone_years);

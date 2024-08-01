@@ -1,6 +1,5 @@
 //! Code for simulation models.
 use crate::commodity::{read_commodities, Commodity};
-use crate::demand::{read_demand_data, Demand};
 use crate::input::{input_panic, read_toml};
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
@@ -19,7 +18,6 @@ pub struct Model {
     pub commodities: HashMap<Rc<str>, Commodity>,
     pub processes: HashMap<Rc<str>, Process>,
     pub time_slices: Vec<TimeSlice>,
-    pub demand_data: HashMap<Rc<str>, Vec<Demand>>,
     pub regions: HashMap<Rc<str>, Region>,
 }
 
@@ -99,7 +97,6 @@ impl Model {
         let year_range = *years.first().unwrap()..=*years.last().unwrap();
 
         let commodities = read_commodities(model_dir.as_ref(), &region_ids, &year_range);
-        let commodity_ids = commodities.keys().cloned().collect();
         let processes = read_processes(model_dir.as_ref(), &region_ids, &year_range);
 
         Model {
@@ -107,7 +104,6 @@ impl Model {
             commodities,
             processes,
             time_slices,
-            demand_data: read_demand_data(model_dir.as_ref(), &commodity_ids),
             regions,
         }
     }
