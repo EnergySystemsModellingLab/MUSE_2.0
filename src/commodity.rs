@@ -47,7 +47,7 @@ pub enum BalanceType {
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct CommodityCost {
     pub commodity_id: String,
-    pub region_id: Rc<str>,
+    pub region_id: String,
     pub balance_type: BalanceType,
     pub year: u32,
     pub time_slice: String,
@@ -68,6 +68,30 @@ pub enum CommodityType {
     OutputCommodity,
 }
 
+fn check_commodity_costs<'a, I>(
+    costs: I,
+    file_path: &Path,
+    region_ids: &HashSet<Rc<str>>,
+    year_range: &RangeInclusive<u32>,
+) where
+    I: Iterator<Item = &'a CommodityCost>,
+{
+    for cost in costs {
+        // Check region ID is valid
+        if !region_ids.contains(cost.region_id.as_str()) {
+            input_panic(
+                file_path,
+                &format!("Region ID {} is invalid", cost.region_id),
+            )
+        }
+
+        // Check year is in range
+        if !year_range.contains(&cost.year) {
+            input_panic(file_path, &format!("Year {} is out of range", cost.year));
+        }
+    }
+}
+
 fn read_commodity_costs(
     model_dir: &Path,
     commodity_ids: &HashSet<Rc<str>>,
@@ -75,23 +99,8 @@ fn read_commodity_costs(
     year_range: &RangeInclusive<u32>,
 ) -> HashMap<Rc<str>, Vec<CommodityCost>> {
     let file_path = model_dir.join(COMMODITY_COSTS_FILE_NAME);
-    let mut costs = read_csv_grouped_by_id::<CommodityCost>(&file_path, commodity_ids);
-
-    for cost in costs.values_mut().flatten() {
-        // Check region ID is valid
-        cost.region_id = region_ids.get_id_checked(&file_path, &cost.region_id);
-
-        // Check year is in range
-        if !year_range.contains(&cost.year) {
-            input_panic(
-                &file_path,
-                &format!(
-                    "Commodity {}: year {} is out of range",
-                    cost.commodity_id, cost.year
-                ),
-            );
-        }
-    }
+    let costs = read_csv_grouped_by_id::<CommodityCost>(&file_path, commodity_ids);
+    check_commodity_costs(costs.values().flatten(), &file_path, region_ids, year_range);
 
     costs
 }
@@ -114,4 +123,67 @@ pub fn read_commodities(
     }
 
     commodities
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::*;
+
+    macro_rules! assert_panics {
+        ($e:expr) => {
+            assert!(std::panic::catch_unwind(|| $e).is_err())
+        };
+    }
+
+    #[test]
+    fn test_check_commodity_costs() {
+        let p = PathBuf::new();
+        let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
+        let year_range = 2010..=2020;
+
+        // Valid
+        let cost = CommodityCost {
+            commodity_id: "commodity".into(),
+            region_id: "GBR".into(),
+            balance_type: BalanceType::Consumption,
+            year: 2010,
+            time_slice: "winter.day".into(),
+            value: 5.0,
+        };
+        check_commodity_costs([cost].iter(), &p, &region_ids, &year_range);
+
+        // Bad region
+        let cost = CommodityCost {
+            commodity_id: "commodity".into(),
+            region_id: "USA".into(),
+            balance_type: BalanceType::Consumption,
+            year: 2010,
+            time_slice: "winter.day".into(),
+            value: 5.0,
+        };
+        assert_panics!(check_commodity_costs(
+            [cost].iter(),
+            &p,
+            &region_ids,
+            &year_range
+        ));
+
+        // Bad year
+        let cost = CommodityCost {
+            commodity_id: "commodity".into(),
+            region_id: "GBR".into(),
+            balance_type: BalanceType::Consumption,
+            year: 1999,
+            time_slice: "winter.day".into(),
+            value: 5.0,
+        };
+        assert_panics!(check_commodity_costs(
+            [cost].iter(),
+            &p,
+            &region_ids,
+            &year_range
+        ));
+    }
 }
