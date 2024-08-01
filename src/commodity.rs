@@ -119,7 +119,7 @@ pub fn read_commodities(
     let mut commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME));
     let commodity_ids = commodities.keys().cloned().collect();
     let mut costs = read_commodity_costs(model_dir, &commodity_ids, region_ids, year_range);
-    let mut demand = read_demand(model_dir, &commodity_ids, region_ids);
+    let mut demand = read_demand(model_dir, &commodity_ids, region_ids, year_range);
 
     // Populate Vecs for each Commodity
     for (id, commodity) in commodities.iter_mut() {
