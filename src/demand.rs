@@ -20,7 +20,7 @@ pub struct Demand {
     pub demand: f64,
 }
 
-fn read_demand_data_iter<I>(
+fn read_demand_iter<I>(
     iter: I,
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
@@ -59,15 +59,14 @@ where
 ///
 /// # Returns
 ///
-/// This function returns a `Vec<Demand>` with the parsed demand data.
-pub fn read_demand_data(
+/// This function returns demand data grouped by commodity and then region.
+pub fn read_demand(
     model_dir: &Path,
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
 ) -> HashMap<Rc<str>, HashMap<Rc<str>, Demand>> {
     let file_path = model_dir.join(DEMAND_FILE_NAME);
-    read_demand_data_iter(read_csv(&file_path), commodity_ids, region_ids)
-        .unwrap_input_err(&file_path)
+    read_demand_iter(read_csv(&file_path), commodity_ids, region_ids).unwrap_input_err(&file_path)
 }
 
 #[cfg(test)]
@@ -101,9 +100,9 @@ COM1,West,2023,13"
         let region_ids = ["North".into(), "South".into(), "East".into(), "West".into()]
             .into_iter()
             .collect();
-        let demand_data = read_demand_data(dir.path(), &commodity_ids, &region_ids);
+        let demand = read_demand(dir.path(), &commodity_ids, &region_ids);
         assert_eq!(
-            demand_data,
+            demand,
             HashMap::from_iter(
                 [(
                     "COM1".into(),
