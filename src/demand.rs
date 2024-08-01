@@ -6,6 +6,7 @@ use std::path::Path;
 use std::rc::Rc;
 
 const DEMAND_FILE_NAME: &str = "demand.csv";
+const DEMAND_SLICES_FILE_NAME: &str = "demand_slicing.csv";
 
 /// Represents a single demand entry in the dataset.
 #[derive(Debug, Deserialize, PartialEq)]
@@ -18,9 +19,21 @@ pub struct Demand {
     pub year: u32,
     /// Annual demand quantity
     pub demand: f64,
+
+    /// How demand varies by time slice
+    #[serde(skip)]
+    pub demand_slices: Vec<DemandSlice>,
 }
 
-fn read_demand_iter<I>(
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct DemandSlice {
+    pub commodity_id: String,
+    pub region_id: String,
+    pub time_slice: String,
+    pub fraction: f64,
+}
+
+fn read_demand_file_iter<I>(
     iter: I,
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
@@ -49,6 +62,52 @@ where
     Ok(map_by_commodity)
 }
 
+fn read_demand_file(
+    model_dir: &Path,
+    commodity_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<Rc<str>>,
+) -> HashMap<Rc<str>, HashMap<Rc<str>, Demand>> {
+    let file_path = model_dir.join(DEMAND_FILE_NAME);
+    read_demand_file_iter(read_csv(&file_path), commodity_ids, region_ids)
+        .unwrap_input_err(&file_path)
+}
+
+fn try_get_demand<'a>(
+    commodity_id: &str,
+    region_id: &str,
+    demand: &'a mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>,
+) -> Option<&'a mut Demand> {
+    demand.get_mut(commodity_id)?.get_mut(region_id)
+}
+
+fn read_demand_slices_from_iter<I>(
+    iter: I,
+    file_path: &Path,
+    demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>,
+) where
+    I: Iterator<Item = DemandSlice>,
+{
+    for slice in iter {
+        let demand =
+            try_get_demand(&slice.commodity_id, &slice.region_id, demand).unwrap_or_else(|| {
+                input_panic(
+                    file_path,
+                    &format!(
+                        "No demand specified for commodity {} in region {}",
+                        &slice.commodity_id, &slice.region_id
+                    ),
+                )
+            });
+
+        demand.demand_slices.push(slice);
+    }
+}
+
+fn read_demand_slices(model_dir: &Path, demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>) {
+    let file_path = model_dir.join(DEMAND_SLICES_FILE_NAME);
+    read_demand_slices_from_iter(read_csv(&file_path), &file_path, demand)
+}
+
 /// Reads demand data from a CSV file.
 ///
 /// # Arguments
@@ -65,8 +124,12 @@ pub fn read_demand(
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
 ) -> HashMap<Rc<str>, HashMap<Rc<str>, Demand>> {
-    let file_path = model_dir.join(DEMAND_FILE_NAME);
-    read_demand_iter(read_csv(&file_path), commodity_ids, region_ids).unwrap_input_err(&file_path)
+    let mut demand = read_demand_file(model_dir, commodity_ids, region_ids);
+
+    // Read in demand slices
+    read_demand_slices(model_dir, &mut demand);
+
+    demand
 }
 
 #[cfg(test)]
@@ -93,14 +156,14 @@ COM1,West,2023,13"
     }
 
     #[test]
-    fn test_read_demand_from_csv() {
+    fn test_read_demand_file() {
         let dir = tempdir().unwrap();
         create_demand_file(dir.path());
         let commodity_ids = ["COM1".into()].into_iter().collect();
         let region_ids = ["North".into(), "South".into(), "East".into(), "West".into()]
             .into_iter()
             .collect();
-        let demand = read_demand(dir.path(), &commodity_ids, &region_ids);
+        let demand = read_demand_file(dir.path(), &commodity_ids, &region_ids);
         assert_eq!(
             demand,
             HashMap::from_iter(
@@ -114,6 +177,7 @@ COM1,West,2023,13"
                                 region_id: "North".to_string(),
                                 commodity_id: "COM1".to_string(),
                                 demand: 10.0,
+                                demand_slices: Vec::new()
                             }
                         ),
                         (
@@ -123,6 +187,7 @@ COM1,West,2023,13"
                                 region_id: "South".to_string(),
                                 commodity_id: "COM1".to_string(),
                                 demand: 11.0,
+                                demand_slices: Vec::new()
                             }
                         ),
                         (
@@ -132,6 +197,7 @@ COM1,West,2023,13"
                                 region_id: "East".to_string(),
                                 commodity_id: "COM1".to_string(),
                                 demand: 12.0,
+                                demand_slices: Vec::new()
                             }
                         ),
                         (
@@ -141,6 +207,7 @@ COM1,West,2023,13"
                                 region_id: "West".to_string(),
                                 commodity_id: "COM1".to_string(),
                                 demand: 13.0,
+                                demand_slices: Vec::new()
                             }
                         )
                     ])
