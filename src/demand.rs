@@ -13,7 +13,7 @@ pub struct Demand {
     pub region_id: String,
     /// The year of the demand entry
     pub year: u32,
-    /// The year of the demand entry
+    /// Annual demand quantity
     pub demand: f64,
 }
 
