@@ -11,7 +11,7 @@ const AGENT_FILE_NAME: &str = "agents.csv";
 const AGENT_REGIONS_FILE_NAME: &str = "agent_regions.csv";
 const AGENT_OBJECTIVES_FILE_NAME: &str = "agent_objectives.csv";
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SearchSpace {
     AllProcesses,
     Some(HashSet<String>),
@@ -33,7 +33,7 @@ impl<'de> Deserialize<'de> for SearchSpace {
     }
 }
 
-#[derive(Debug, PartialEq, DeserializeLabeledStringEnum)]
+#[derive(Debug, Clone, PartialEq, DeserializeLabeledStringEnum)]
 pub enum DecisionRule {
     #[string = "single"]
     Single,
@@ -43,7 +43,7 @@ pub enum DecisionRule {
     Lexicographical,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 pub struct Agent {
     pub id: Rc<str>,
     pub description: String,
@@ -60,6 +60,7 @@ pub struct Agent {
     #[serde(skip)]
     pub objectives: Vec<AgentObjective>,
 }
+define_id_getter! {Agent}
 
 macro_rules! define_agent_id_getter {
     ($t:ty) => {
@@ -80,7 +81,7 @@ define_agent_id_getter! {AgentRegion}
 define_region_id_getter! {AgentRegion}
 
 /// **TODO** Add more objective types
-#[derive(Debug, PartialEq, DeserializeLabeledStringEnum)]
+#[derive(Debug, Clone, PartialEq, DeserializeLabeledStringEnum)]
 pub enum ObjectiveType {
     #[string = "lcox"]
     LevellisedCostOfX,
@@ -88,7 +89,7 @@ pub enum ObjectiveType {
     EquivalentAnnualCost,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct AgentObjective {
     agent_id: String,
     objective_type: ObjectiveType,
@@ -222,10 +223,84 @@ pub fn read_agents(
         read_regions_for_entity::<AgentRegion>(&file_path, &agent_ids, region_ids);
     let mut objectives = read_agent_objectives(model_dir, &agents, &agent_ids);
 
+    // Populate each Agent's Vecs
     for (id, agent) in agents.iter_mut() {
         agent.regions = agent_regions.remove(id).unwrap();
         agent.objectives = objectives.remove(id).unwrap();
     }
 
     agents
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_agents_file_from_iter() {
+        let process_ids = ["A".into(), "B".into()].into_iter().collect();
+
+        // Valid case
+        let search_space = ["A".into()].into_iter().collect();
+        let agents = [Agent {
+            id: "agent".into(),
+            description: "".into(),
+            commodity_id: "".into(),
+            commodity_portion: 1.0,
+            search_space: SearchSpace::Some(search_space),
+            decision_rule: DecisionRule::Single,
+            capex_limit: None,
+            annual_cost_limit: None,
+            regions: RegionSelection::All,
+            objectives: Vec::new(),
+        }];
+        let expected = HashMap::from_iter([("agent".into(), agents[0].clone())]);
+        let actual = read_agents_file_from_iter(agents.into_iter(), &process_ids).unwrap();
+        assert_eq!(actual, expected);
+
+        // Invalid process ID
+        let search_space = ["C".into()].into_iter().collect();
+        let agents = [Agent {
+            id: "agent".into(),
+            description: "".into(),
+            commodity_id: "".into(),
+            commodity_portion: 1.0,
+            search_space: SearchSpace::Some(search_space),
+            decision_rule: DecisionRule::Single,
+            capex_limit: None,
+            annual_cost_limit: None,
+            regions: RegionSelection::All,
+            objectives: Vec::new(),
+        }];
+        assert!(read_agents_file_from_iter(agents.into_iter(), &process_ids).is_err());
+
+        // Duplicate agent ID
+        let agents = [
+            Agent {
+                id: "agent".into(),
+                description: "".into(),
+                commodity_id: "".into(),
+                commodity_portion: 1.0,
+                search_space: SearchSpace::AllProcesses,
+                decision_rule: DecisionRule::Single,
+                capex_limit: None,
+                annual_cost_limit: None,
+                regions: RegionSelection::All,
+                objectives: Vec::new(),
+            },
+            Agent {
+                id: "agent".into(),
+                description: "".into(),
+                commodity_id: "".into(),
+                commodity_portion: 1.0,
+                search_space: SearchSpace::AllProcesses,
+                decision_rule: DecisionRule::Single,
+                capex_limit: None,
+                annual_cost_limit: None,
+                regions: RegionSelection::All,
+                objectives: Vec::new(),
+            },
+        ];
+        assert!(read_agents_file_from_iter(agents.into_iter(), &process_ids).is_err());
+    }
 }

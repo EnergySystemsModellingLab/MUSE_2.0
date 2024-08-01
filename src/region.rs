@@ -16,7 +16,7 @@ pub struct Region {
 }
 define_id_getter! {Region}
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum RegionSelection {
     All,
     Some(HashSet<Rc<str>>),
