@@ -99,7 +99,10 @@ pub struct AgentObjective {
 define_agent_id_getter! {AgentObjective}
 
 /// Check that required parameters are present and others are absent
-fn check_objective_parameter(objective: &AgentObjective, agent: &Agent) -> Result<(), String> {
+fn check_objective_parameter(
+    objective: &AgentObjective,
+    decision_rule: &DecisionRule,
+) -> Result<(), String> {
     // Check that the user hasn't supplied a value for a field we're not using
     macro_rules! check_field_none {
         ($field:ident) => {
@@ -121,7 +124,7 @@ fn check_objective_parameter(objective: &AgentObjective, agent: &Agent) -> Resul
         };
     }
 
-    match &agent.decision_rule {
+    match decision_rule {
         DecisionRule::Single => {
             check_field_none!(decision_weight);
             check_field_none!(decision_lexico_tolerance);
@@ -153,7 +156,7 @@ where
         let agent = agents.get(objective.agent_id.as_str()).unwrap();
 
         // Check that required parameters are present and others are absent
-        check_objective_parameter(objective, agent)?;
+        check_objective_parameter(objective, &agent.decision_rule)?;
     }
 
     if objectives.len() < agent_ids.len() {
@@ -302,5 +305,96 @@ mod tests {
             },
         ];
         assert!(read_agents_file_from_iter(agents.into_iter(), &process_ids).is_err());
+    }
+
+    #[test]
+    fn test_check_objective_parameter() {
+        macro_rules! objective {
+            ($decision_weight:expr, $decision_lexico_tolerance:expr) => {
+                AgentObjective {
+                    agent_id: "agent".into(),
+                    objective_type: ObjectiveType::EquivalentAnnualCost,
+                    decision_weight: $decision_weight,
+                    decision_lexico_tolerance: $decision_lexico_tolerance,
+                }
+            };
+        }
+
+        // DecisionRule::Single
+        let decision_rule = DecisionRule::Single;
+        let objective = objective!(None, None);
+        assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
+        let objective = objective!(Some(1.0), None);
+        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
+        let objective = objective!(None, Some(1.0));
+        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
+
+        // DecisionRule::Weighted
+        let decision_rule = DecisionRule::Weighted;
+        let objective = objective!(Some(1.0), None);
+        assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
+        let objective = objective!(None, None);
+        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
+        let objective = objective!(None, Some(1.0));
+        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
+
+        // DecisionRule::Lexicographical
+        let decision_rule = DecisionRule::Lexicographical;
+        let objective = objective!(None, Some(1.0));
+        assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
+        let objective = objective!(None, None);
+        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
+        let objective = objective!(Some(1.0), None);
+        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
+    }
+
+    #[test]
+    fn test_read_agent_objectives_from_iter() {
+        let agents: HashMap<_, _> = [(
+            "agent".into(),
+            Agent {
+                id: "agent".into(),
+                description: "".into(),
+                commodity_id: "".into(),
+                commodity_portion: 1.0,
+                search_space: SearchSpace::AllProcesses,
+                decision_rule: DecisionRule::Single,
+                capex_limit: None,
+                annual_cost_limit: None,
+                regions: RegionSelection::All,
+                objectives: Vec::new(),
+            },
+        )]
+        .into_iter()
+        .collect();
+        let agent_ids = agents.keys().cloned().collect();
+
+        // Valid
+        let objective = AgentObjective {
+            agent_id: "agent".into(),
+            objective_type: ObjectiveType::EquivalentAnnualCost,
+            decision_weight: None,
+            decision_lexico_tolerance: None,
+        };
+        let expected = [("agent".into(), vec![objective.clone()])]
+            .into_iter()
+            .collect();
+        let actual =
+            read_agent_objectives_from_iter([objective].into_iter(), &agents, &agent_ids).unwrap();
+        assert_eq!(actual, expected);
+
+        // Missing objective for agent
+        assert!(read_agent_objectives_from_iter([].into_iter(), &agents, &agent_ids).is_err());
+
+        // Bad parameter
+        let objective = AgentObjective {
+            agent_id: "agent".into(),
+            objective_type: ObjectiveType::EquivalentAnnualCost,
+            decision_weight: Some(1.0),
+            decision_lexico_tolerance: None,
+        };
+        assert!(
+            read_agent_objectives_from_iter([objective].into_iter(), &agents, &agent_ids).is_err()
+        );
     }
 }
