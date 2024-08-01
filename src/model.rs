@@ -20,7 +20,7 @@ pub struct Model {
     pub commodities: HashMap<Rc<str>, Commodity>,
     pub processes: HashMap<Rc<str>, Process>,
     pub time_slice_info: TimeSliceInfo,
-    pub demand_data: Vec<Demand>,
+    pub demand_data: HashMap<Rc<str>, Vec<Demand>>,
     pub regions: HashMap<Rc<str>, Region>,
 }
 
@@ -89,6 +89,7 @@ impl Model {
             &time_slice_info,
             &year_range,
         );
+        let commodity_ids = commodities.keys().cloned().collect();
         let processes = read_processes(
             model_dir.as_ref(),
             &region_ids,
@@ -104,7 +105,7 @@ impl Model {
             commodities,
             processes,
             time_slice_info,
-            demand_data: read_demand_data(model_dir.as_ref()),
+            demand_data: read_demand_data(model_dir.as_ref(), &commodity_ids),
             regions,
         }
     }

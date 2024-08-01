@@ -36,6 +36,8 @@ macro_rules! define_commodity_id_getter {
     };
 }
 
+pub(crate) use define_commodity_id_getter;
+
 /// Type of balance for application of cost
 #[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
 pub enum BalanceType {
