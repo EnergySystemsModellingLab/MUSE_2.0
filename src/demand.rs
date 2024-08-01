@@ -1,6 +1,9 @@
-use crate::input::read_csv_as_vec;
+use crate::commodity::define_commodity_id_getter;
+use crate::input::{read_csv_grouped_by_id, HasID};
 use serde::Deserialize;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::rc::Rc;
 
 const DEMAND_FILE_NAME: &str = "demand.csv";
 
@@ -16,6 +19,7 @@ pub struct Demand {
     /// Annual demand quantity
     pub demand: f64,
 }
+define_commodity_id_getter! {Demand}
 
 /// Reads demand data from a CSV file.
 ///
@@ -26,10 +30,13 @@ pub struct Demand {
 /// # Returns
 ///
 /// This function returns a `Vec<Demand>` with the parsed demand data.
-pub fn read_demand_data(model_dir: &Path) -> Vec<Demand> {
+pub fn read_demand_data(
+    model_dir: &Path,
+    commodity_ids: &HashSet<Rc<str>>,
+) -> HashMap<Rc<str>, Vec<Demand>> {
     // **TODO**: add validation checks here? e.g. check not negative, apply interpolation and
     // extrapolation rules?
-    read_csv_as_vec(&model_dir.join(DEMAND_FILE_NAME))
+    read_csv_grouped_by_id(&model_dir.join(DEMAND_FILE_NAME), commodity_ids)
 }
 
 #[cfg(test)]
@@ -59,35 +66,42 @@ COM1,West,2023,13"
     fn test_read_demand_from_csv() {
         let dir = tempdir().unwrap();
         create_demand_file(dir.path());
-        let demand_data = read_demand_data(dir.path());
+        let commodity_ids = ["COM1".into()].into_iter().collect();
+        let demand_data = read_demand_data(dir.path(), &commodity_ids);
         assert_eq!(
             demand_data,
-            vec![
-                Demand {
-                    year: 2023,
-                    region_id: "North".to_string(),
-                    commodity_id: "COM1".to_string(),
-                    demand: 10.0,
-                },
-                Demand {
-                    year: 2023,
-                    region_id: "South".to_string(),
-                    commodity_id: "COM1".to_string(),
-                    demand: 11.0,
-                },
-                Demand {
-                    year: 2023,
-                    region_id: "East".to_string(),
-                    commodity_id: "COM1".to_string(),
-                    demand: 12.0,
-                },
-                Demand {
-                    year: 2023,
-                    region_id: "West".to_string(),
-                    commodity_id: "COM1".to_string(),
-                    demand: 13.0,
-                },
-            ]
-        )
+            HashMap::from_iter(
+                [(
+                    "COM1".into(),
+                    vec![
+                        Demand {
+                            year: 2023,
+                            region_id: "North".to_string(),
+                            commodity_id: "COM1".to_string(),
+                            demand: 10.0,
+                        },
+                        Demand {
+                            year: 2023,
+                            region_id: "South".to_string(),
+                            commodity_id: "COM1".to_string(),
+                            demand: 11.0,
+                        },
+                        Demand {
+                            year: 2023,
+                            region_id: "East".to_string(),
+                            commodity_id: "COM1".to_string(),
+                            demand: 12.0,
+                        },
+                        Demand {
+                            year: 2023,
+                            region_id: "West".to_string(),
+                            commodity_id: "COM1".to_string(),
+                            demand: 13.0,
+                        }
+                    ]
+                )]
+                .into_iter()
+            )
+        );
     }
 }
