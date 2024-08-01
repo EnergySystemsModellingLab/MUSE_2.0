@@ -192,7 +192,7 @@ pub fn read_commodities(
         time_slice_info,
         year_range,
     );
-    let mut demand = read_demand(model_dir, &commodity_ids, region_ids);
+    let mut demand = read_demand(model_dir, &commodity_ids, region_ids, year_range);
 
     // Populate Vecs for each Commodity
     for (id, commodity) in commodities.iter_mut() {
