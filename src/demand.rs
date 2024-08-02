@@ -26,7 +26,7 @@ pub struct Demand {
     pub demand_slices: Vec<DemandSlice>,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct DemandSlice {
     pub commodity_id: String,
     pub region_id: String,
@@ -108,6 +108,8 @@ fn read_demand_slices_from_iter<I>(
 
         demand.demand_slices.push(slice);
     }
+
+    // TODO: Check for demand entries without any demand slices specified?
 }
 
 fn read_demand_slices(model_dir: &Path, demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>) {
@@ -146,7 +148,7 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use tempfile::tempdir;
 
     /// Create an example demand file in dir_path
@@ -225,5 +227,71 @@ COM1,West,2023,13"
                 .into_iter()
             )
         );
+    }
+
+    fn create_demand() -> HashMap<Rc<str>, HashMap<Rc<str>, Demand>> {
+        let demand_by_region = [(
+            "GBR".into(),
+            Demand {
+                commodity_id: "COM1".into(),
+                region_id: "GBR".into(),
+                year: 2020,
+                demand: 1.0,
+                demand_slices: Vec::new(),
+            },
+        )];
+
+        [("COM1".into(), demand_by_region.into_iter().collect())]
+            .into_iter()
+            .collect()
+    }
+
+    #[test]
+    fn test_read_demand_slices_from_iter_good() {
+        let p = PathBuf::new();
+        let mut demand = create_demand();
+        let demand_slice = DemandSlice {
+            commodity_id: "COM1".into(),
+            region_id: "GBR".into(),
+            time_slice: "winter.day".into(),
+            fraction: 1.0,
+        };
+        read_demand_slices_from_iter([demand_slice.clone()].into_iter(), &p, &mut demand);
+        assert_eq!(
+            try_get_demand("COM1", "GBR", &mut demand)
+                .unwrap()
+                .demand_slices,
+            vec![demand_slice]
+        );
+    }
+
+    /// Demand slice with invalid commodity
+    #[test]
+    #[should_panic]
+    fn test_read_demand_slices_from_iter_bad_commodity() {
+        let p = PathBuf::new();
+        let mut demand = create_demand();
+        let demand_slice = DemandSlice {
+            commodity_id: "COM2".into(),
+            region_id: "GBR".into(),
+            time_slice: "winter.day".into(),
+            fraction: 1.0,
+        };
+        read_demand_slices_from_iter([demand_slice].into_iter(), &p, &mut demand);
+    }
+
+    /// Demand slice with invalid region
+    #[test]
+    #[should_panic]
+    fn test_read_demand_slices_from_iter_bad_region() {
+        let p = PathBuf::new();
+        let mut demand = create_demand();
+        let demand_slice = DemandSlice {
+            commodity_id: "COM1".into(),
+            region_id: "USA".into(),
+            time_slice: "winter.day".into(),
+            fraction: 1.0,
+        };
+        read_demand_slices_from_iter([demand_slice].into_iter(), &p, &mut demand);
     }
 }
