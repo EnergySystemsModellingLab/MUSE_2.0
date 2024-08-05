@@ -3,15 +3,14 @@ use crate::demand::{read_demand_data, Demand};
 use crate::input::{input_panic, read_toml};
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
-use crate::time_slice::{read_time_slices, TimeSlice};
+use crate::time_slice::{read_time_slices, TimeSlice, TimeSliceDefinitions};
 use itertools::Itertools;
-use log::warn;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
-const MODEL_FILE_NAME: &str = "model.toml";
+pub const MODEL_FILE_NAME: &str = "model.toml";
 
 /// Model definition
 pub struct Model {
@@ -27,13 +26,6 @@ pub struct Model {
 struct ModelFile {
     time_slices: TimeSliceDefinitions,
     milestone_years: MilestoneYears,
-}
-
-/// Ordered list of seasons and times of day for time slices
-#[derive(Debug, Deserialize, PartialEq)]
-pub struct TimeSliceDefinitions {
-    pub seasons: Vec<Rc<str>>,
-    pub times_of_day: Vec<Rc<str>>,
 }
 
 /// Represents the "milestone_years" section of the model file.
@@ -105,24 +97,9 @@ impl Model {
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Model {
         let model_file = ModelFile::from_path(&model_dir);
 
-        let time_slices = match read_time_slices(model_dir.as_ref()) {
-            None => {
-                // If there is no time slice file provided, use a default time slice which covers the
-                // whole year and the whole day
-                warn!("No time slices CSV file provided; using a single time slice");
-
-                vec![TimeSlice {
-                    season: "all-year".to_string(),
-                    time_of_day: "all-day".to_string(),
-                    fraction: 1.0,
-                }]
-            }
-
-            Some(time_slices) => time_slices,
-        };
-
         let regions = read_regions(model_dir.as_ref());
         let region_ids = HashSet::from_iter(regions.keys().cloned());
+        let time_slices = read_time_slices(model_dir.as_ref(), &model_file.time_slices);
         let years = &model_file.milestone_years.years;
         let processes = read_processes(
             model_dir.as_ref(),
