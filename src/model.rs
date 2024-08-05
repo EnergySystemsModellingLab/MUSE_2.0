@@ -99,7 +99,7 @@ impl Model {
         );
         let process_ids = processes.keys().cloned().collect();
         let agents = read_agents(model_dir.as_ref(), &process_ids, &region_ids);
-        let assets = read_assets(model_dir.as_ref(), &process_ids, &region_ids);
+        let assets = read_assets(model_dir.as_ref(), &processes, &region_ids);
 
         Model {
             milestone_years: model_file.milestone_years.years,
