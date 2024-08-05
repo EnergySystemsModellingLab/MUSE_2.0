@@ -10,6 +10,7 @@ use itertools::Itertools;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
+use std::fmt;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -19,6 +20,12 @@ const TIME_SLICES_FILE_NAME: &str = "time_slices.csv";
 pub struct TimeSliceID {
     pub season: Rc<str>,
     pub time_of_day: Rc<str>,
+}
+
+impl fmt::Display for TimeSliceID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}.{}", self.season, self.time_of_day)
+    }
 }
 
 #[derive(PartialEq, Debug)]
