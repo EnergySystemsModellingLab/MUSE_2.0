@@ -1,5 +1,6 @@
 //! Code for simulation models.
 use crate::asset::{read_assets_by_region, Asset};
+use crate::commodity::{read_commodities, Commodity};
 use crate::demand::{read_demand_data, Demand};
 use crate::input::{input_panic, read_toml};
 use crate::process::{read_processes, Process};
@@ -16,8 +17,9 @@ pub const MODEL_FILE_NAME: &str = "model.toml";
 /// Model definition
 pub struct Model {
     pub milestone_years: Vec<u32>,
-    pub processes: HashMap<Rc<str>, Rc<Process>>,
     pub assets_by_region: HashMap<Rc<str>, Vec<Asset>>,
+    pub commodities: HashMap<Rc<str>, Rc<Commodity>>,
+    pub processes: HashMap<Rc<str>, Rc<Process>>,
     pub time_slices: Vec<TimeSlice>,
     pub demand_data: Vec<Demand>,
     pub regions: HashMap<Rc<str>, Region>,
@@ -103,18 +105,23 @@ impl Model {
         let region_ids = HashSet::from_iter(regions.keys().cloned());
         let time_slices = read_time_slices(model_dir.as_ref(), &model_file.time_slices);
         let years = &model_file.milestone_years.years;
+        let year_range = *years.first().unwrap()..=*years.last().unwrap();
+
+        let commodities = read_commodities(model_dir.as_ref(), &region_ids, &year_range);
         let processes = read_processes(
             model_dir.as_ref(),
+            &commodities,
             &region_ids,
             &model_file.time_slices,
-            *years.first().unwrap()..=*years.last().unwrap(),
+            &year_range,
         );
         let assets_by_region = read_assets_by_region(model_dir.as_ref(), &processes, &region_ids);
 
         Model {
             milestone_years: model_file.milestone_years.years,
-            processes,
             assets_by_region,
+            commodities,
+            processes,
             time_slices,
             demand_data: read_demand_data(model_dir.as_ref()),
             regions,

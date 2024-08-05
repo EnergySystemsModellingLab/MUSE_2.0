@@ -8,6 +8,7 @@ use crate::model::MODEL_FILE_NAME;
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::Deserialize;
+use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
@@ -142,6 +143,17 @@ where
     })
     .sorted_by(|ts1, ts2| ts_to_tuple!(ts1).cmp(&ts_to_tuple!(ts2)))
     .collect()
+}
+
+/// Refers to a particular aspect of a time slice
+#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
+pub enum TimeSliceLevel {
+    #[string = "annual"]
+    Annual,
+    #[string = "season"]
+    Season,
+    #[string = "daynight"]
+    DayNight,
 }
 
 /// Read time slices from a CSV file.

@@ -14,7 +14,7 @@ pub fn run_dispatch_optimisation(model: &Model) {
             );
 
             let pac = asset.process.pacs.first().unwrap();
-            info!("First PAC: {pac}")
+            info!("First PAC: {} ({})", pac.id, pac.description);
         }
     }
 }
