@@ -18,7 +18,7 @@ pub struct Model {
     pub milestone_years: Vec<u32>,
     pub agents: HashMap<Rc<str>, Agent>,
     pub commodities: HashMap<Rc<str>, Rc<Commodity>>,
-    pub processes: HashMap<Rc<str>, Process>,
+    pub processes: HashMap<Rc<str>, Rc<Process>>,
     pub time_slice_info: TimeSliceInfo,
     pub demand_data: Vec<Demand>,
     pub regions: HashMap<Rc<str>, Region>,

@@ -388,7 +388,7 @@ pub fn read_processes(
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, Process> {
+) -> HashMap<Rc<str>, Rc<Process>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path);
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
@@ -422,7 +422,7 @@ pub fn read_processes(
                 regions,
             };
 
-            (id, process)
+            (id, process.into())
         })
         .collect()
 }
