@@ -17,6 +17,7 @@ pub const MODEL_FILE_NAME: &str = "model.toml";
 /// Model definition
 pub struct Model {
     pub milestone_years: Vec<u32>,
+    pub time_slice_definitions: TimeSliceDefinitions,
     pub assets_by_region: HashMap<Rc<str>, Vec<Asset>>,
     pub commodities: HashMap<Rc<str>, Rc<Commodity>>,
     pub processes: HashMap<Rc<str>, Rc<Process>>,
@@ -119,6 +120,7 @@ impl Model {
 
         Model {
             milestone_years: model_file.milestone_years.years,
+            time_slice_definitions: model_file.time_slices,
             assets_by_region,
             commodities,
             processes,
