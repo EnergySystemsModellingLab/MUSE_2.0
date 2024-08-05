@@ -91,6 +91,7 @@ impl Model {
         );
         let processes = read_processes(
             model_dir.as_ref(),
+            &commodities,
             &region_ids,
             &time_slice_info,
             &year_range,
