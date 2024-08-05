@@ -5,7 +5,7 @@ use crate::demand::{read_demand_data, Demand};
 use crate::input::{input_panic, read_toml};
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
-use crate::time_slice::{read_time_slices, TimeSlice, TimeSliceDefinitions};
+use crate::time_slice::{read_time_slices, TimeSlice, TimeSliceDefinitions, TimeSliceID};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -128,6 +128,18 @@ impl Model {
             demand_data: read_demand_data(model_dir.as_ref()),
             regions,
         }
+    }
+
+    /// Iterate over all possible time slices
+    pub fn iter_time_slices(&self) -> impl Iterator<Item = TimeSliceID> + '_ {
+        self.time_slice_definitions
+            .seasons
+            .iter()
+            .cartesian_product(self.time_slice_definitions.times_of_day.iter())
+            .map(|(season, time_of_day)| TimeSliceID {
+                season: Rc::clone(season),
+                time_of_day: Rc::clone(time_of_day),
+            })
     }
 }
 
