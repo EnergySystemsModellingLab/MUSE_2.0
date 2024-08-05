@@ -2,8 +2,9 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
-use crate::input::{deserialise_proportion, input_panic, read_csv_as_vec};
+use crate::input::{deserialise_proportion, input_panic, read_csv_optional};
 use float_cmp::approx_eq;
+use itertools::Itertools;
 use serde::Deserialize;
 use std::path::Path;
 
@@ -33,11 +34,7 @@ pub struct TimeSlice {
 /// slice CSV file does not exist, `None` will be returned.
 pub fn read_time_slices(model_dir: &Path) -> Option<Vec<TimeSlice>> {
     let file_path = model_dir.join(TIME_SLICES_FILE_NAME);
-    if !file_path.exists() {
-        return None;
-    }
-
-    let time_slices = read_csv_as_vec(&file_path);
+    let time_slices = read_csv_optional(&file_path)?.collect_vec();
     check_time_slice_fractions_sum_to_one(&file_path, &time_slices);
 
     Some(time_slices)

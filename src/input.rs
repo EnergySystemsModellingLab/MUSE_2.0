@@ -21,6 +21,28 @@ pub fn read_csv<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> impl Itera
         .unwrap_input_err(file_path)
 }
 
+/// Read a series of type `T`s from a CSV file, returning `None` if file doesn't exist.
+///
+/// # Arguments
+///
+/// * `file_path` - Path to the CSV file
+pub fn read_csv_optional<'a, T: DeserializeOwned + 'a>(
+    file_path: &'a Path,
+) -> Option<impl Iterator<Item = T> + 'a> {
+    match csv::Reader::from_path(file_path) {
+        // If successful, return iterator
+        Ok(reader) => {
+            let iter = reader.into_deserialize().unwrap_input_err(file_path);
+            Some(iter)
+        }
+        // If unsuccessful, return `None` if file doesn't exist, else panic
+        Err(err) => match err.kind() {
+            csv::ErrorKind::Io(ioerr) if ioerr.kind() == std::io::ErrorKind::NotFound => None,
+            _ => input_panic(file_path, &err.to_string()),
+        },
+    }
+}
+
 /// Read a series of type `T`s from a CSV file into a `Vec<T>`.
 ///
 /// # Arguments
