@@ -1,2 +1,6 @@
+[time_slices]
+seasons = ["winter", "peak", "summer", "autumn"]
+times_of_day = ["night", "day", "peak", "evening"]
+
 [milestone_years]
 years = [2020, 2100]
