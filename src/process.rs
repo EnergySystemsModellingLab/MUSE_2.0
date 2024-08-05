@@ -1,6 +1,8 @@
+use crate::commodity::Commodity;
 use crate::input::*;
 use crate::region::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
+use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
@@ -80,7 +82,7 @@ where
 }
 
 /// Primary Activity Commodity
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Clone, Eq, Hash, Debug, Deserialize)]
 struct ProcessPAC {
     process_id: String,
     pac: String,
@@ -164,7 +166,7 @@ pub struct Process {
     pub description: String,
     pub availabilities: Vec<ProcessAvailability>,
     pub flows: Vec<ProcessFlow>,
-    pub pacs: Vec<String>,
+    pub pacs: Vec<Rc<Commodity>>,
     pub parameter: ProcessParameter,
     pub regions: RegionSelection,
 }
@@ -256,11 +258,65 @@ fn read_process_parameters(
     read_process_parameters_from_iter(iter, process_ids, year_range).unwrap_input_err(&file_path)
 }
 
+/// Read process Primary Activity Commodities (PACs) from an iterator.
+///
+/// # Arguments
+///
+/// * `process_ids` - All possible process IDs
+/// * `commodities` - Commodities for the model
+///
+/// # Returns
+///
+/// A `HashMap` with process IDs as keys and `Vec`s of commodities as values or an error.
+fn read_process_pacs_from_iter<I>(
+    iter: I,
+    process_ids: &HashSet<Rc<str>>,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>, Box<dyn Error>>
+where
+    I: Iterator<Item = ProcessPAC>,
+{
+    let pacs = iter.collect_vec();
+    if !pacs.iter().all_unique() {
+        Err("Duplicate entries found")?;
+    }
+
+    pacs.into_iter()
+        .map(|pac| {
+            let process_id = process_ids.get_id(&pac.process_id)?;
+            let commodity = commodities.get(pac.pac.as_str());
+
+            match commodity {
+                None => Err(format!("{} is not a valid commodity ID", &pac.pac))?,
+                Some(commodity) => Ok((process_id, Rc::clone(commodity))),
+            }
+        })
+        .process_results(|iter| iter.into_group_map())
+}
+
+/// Read process Primary Activity Commodities (PACs) from the specified model directory.
+///
+/// # Arguments
+///
+/// * `model_dir` - Folder containing model configuration files
+/// * `process_ids` - All possible process IDs
+/// * `commodities` - Commodities for the model
+fn read_process_pacs(
+    model_dir: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+) -> HashMap<Rc<str>, Vec<Rc<Commodity>>> {
+    let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
+    read_process_pacs_from_iter(read_csv(&file_path), process_ids, commodities)
+        .unwrap_input_err(&file_path)
+}
+
 /// Read process information from the specified CSV files.
 ///
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
+/// * `commodities` - Commodities for the model
 /// * `region_ids` - All possible region IDs
 /// * `time_slice_info` - Information about seasons and times of day
 /// * `year_range` - The possible range of milestone years
@@ -270,6 +326,7 @@ fn read_process_parameters(
 /// This function returns a map of processes, with the IDs as keys.
 pub fn read_processes(
     model_dir: &Path,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
@@ -281,8 +338,7 @@ pub fn read_processes(
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info);
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let mut flows = read_csv_grouped_by_id(&file_path, &process_ids);
-    let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
-    let mut pacs = read_csv_grouped_by_id(&file_path, &process_ids);
+    let mut pacs = read_process_pacs(model_dir, &process_ids, commodities);
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range);
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions =
@@ -303,12 +359,7 @@ pub fn read_processes(
                 description: desc.description,
                 availabilities: availabilities.remove(&id).unwrap_or_default(),
                 flows: flows.remove(&id).unwrap_or_default(),
-                pacs: pacs
-                    .remove(&id)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|p: ProcessPAC| p.pac)
-                    .collect(),
+                pacs: pacs.remove(&id).unwrap_or_default(),
                 parameter,
                 regions,
             };
@@ -320,6 +371,9 @@ pub fn read_processes(
 
 #[cfg(test)]
 mod tests {
+    use crate::commodity::CommodityType;
+    use crate::time_slice::TimeSliceLevel;
+
     use super::*;
 
     fn create_param_raw(
@@ -568,5 +622,81 @@ mod tests {
             &year_range
         )
         .is_err());
+    }
+
+    #[test]
+    fn test_read_process_pacs_from_iter() {
+        let process_ids = ["id1".into(), "id2".into()].into_iter().collect();
+        let commodities = ["commodity1", "commodity2"]
+            .into_iter()
+            .map(|id| {
+                let commodity = Commodity {
+                    costs: vec![],
+                    id: id.into(),
+                    description: "Some description".into(),
+                    kind: CommodityType::InputCommodity,
+                    time_slice_level: TimeSliceLevel::Annual,
+                };
+
+                (Rc::clone(&commodity.id), commodity.into())
+            })
+            .collect();
+
+        // duplicate PAC
+        let pac = ProcessPAC {
+            process_id: "id1".into(),
+            pac: "commodity1".into(),
+        };
+        let pacs = [pac.clone(), pac];
+        assert!(read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities).is_err());
+
+        // invalid commodity ID
+        let bad_pac = ProcessPAC {
+            process_id: "id1".into(),
+            pac: "other_commodity".into(),
+        };
+        assert!(
+            read_process_pacs_from_iter([bad_pac].into_iter(), &process_ids, &commodities).is_err()
+        );
+
+        let pacs = [
+            ProcessPAC {
+                process_id: "id1".into(),
+                pac: "commodity1".into(),
+            },
+            ProcessPAC {
+                process_id: "id1".into(),
+                pac: "commodity2".into(),
+            },
+            ProcessPAC {
+                process_id: "id2".into(),
+                pac: "commodity1".into(),
+            },
+        ];
+        let expected = [
+            (
+                "id1".into(),
+                [
+                    commodities.get("commodity1").unwrap(),
+                    commodities.get("commodity2").unwrap(),
+                ]
+                .into_iter()
+                .cloned()
+                .collect(),
+            ),
+            (
+                "id2".into(),
+                [commodities.get("commodity1").unwrap()]
+                    .into_iter()
+                    .cloned()
+                    .collect(),
+            ),
+        ]
+        .into_iter()
+        .collect();
+        assert!(
+            read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities).unwrap()
+                == expected
+        );
     }
 }
