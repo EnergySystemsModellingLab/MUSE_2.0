@@ -3,6 +3,7 @@ pub mod log;
 pub mod model;
 pub mod settings;
 
+mod asset;
 mod demand;
 mod input;
 mod process;
@@ -21,6 +22,7 @@ pub fn run(model: &Model) {
     println!("Regions: {:?}", model.regions);
     println!("Demand data: {:?}", model.demand_data);
     println!("Processes: {:?}", model.processes);
+    println!("Assets: {:?}", model.assets_by_region);
     println!("Time slices: {:?}", model.time_slices);
     println!("Milestone years: {:?}", model.milestone_years);
 }
