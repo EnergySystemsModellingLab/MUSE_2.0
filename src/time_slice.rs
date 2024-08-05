@@ -20,6 +20,12 @@ pub struct TimeSliceID {
     pub time_of_day: Rc<str>,
 }
 
+#[derive(PartialEq, Debug)]
+pub enum TimeSliceSelection {
+    AllTimeSlices,
+    SingleTimeSlice(TimeSliceID),
+}
+
 /// Ordered list of seasons and times of day for time slices
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct TimeSliceDefinitions {
@@ -62,6 +68,17 @@ impl TimeSliceDefinitions {
             season: Rc::clone(season),
             time_of_day: Rc::clone(time_of_day),
         }
+    }
+
+    pub fn get_time_slice_id_from_str(&self, file_path: &Path, time_slice: &str) -> TimeSliceID {
+        let (season, time_of_day) = time_slice.split('.').collect_tuple().unwrap_or_else(|| {
+            input_panic(
+                file_path,
+                "time_slice must be in the form season.time_of_day",
+            )
+        });
+
+        self.get_time_slice_id(file_path, season, time_of_day)
     }
 }
 
