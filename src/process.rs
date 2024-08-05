@@ -1,5 +1,7 @@
+use crate::commodity::Commodity;
 use crate::input::*;
 use crate::region::*;
+use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
@@ -68,7 +70,7 @@ where
 }
 
 /// Primary Activity Commodity
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Eq, Hash, Debug, Deserialize)]
 struct ProcessPAC {
     process_id: String,
     pac: String,
@@ -156,7 +158,7 @@ pub struct Process {
     pub description: String,
     pub availabilities: Vec<ProcessAvailability>,
     pub flows: Vec<ProcessFlow>,
-    pub pacs: Vec<String>,
+    pub pacs: Vec<Rc<Commodity>>,
     pub parameter: ProcessParameter,
     pub regions: RegionSelection,
 }
@@ -202,12 +204,50 @@ fn read_process_parameters(
     read_process_parameters_from_iter(iter, &file_path, process_ids, year_range)
 }
 
+fn read_process_pacs_from_iter<I>(
+    iter: I,
+    file_path: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+) -> HashMap<Rc<str>, Vec<Rc<Commodity>>>
+where
+    I: Iterator<Item = ProcessPAC>,
+{
+    let pacs = iter.collect_vec();
+    if !pacs.iter().all_unique() {
+        input_panic(file_path, "Duplicate entries found");
+    }
+
+    pacs.into_iter()
+        .map(|pac| {
+            let process_id = process_ids.get_id_checked(file_path, &pac.process_id);
+            let commodity = commodities.get(pac.pac.as_str()).unwrap_or_else(|| {
+                input_panic(
+                    file_path,
+                    &format!("{} is not a valid commodity ID", &pac.pac),
+                )
+            });
+
+            (process_id, Rc::clone(commodity))
+        })
+        .into_group_map()
+}
+
+fn read_process_pacs(
+    model_dir: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+) -> HashMap<Rc<str>, Vec<Rc<Commodity>>> {
+    let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
+    read_process_pacs_from_iter(read_csv(&file_path), &file_path, process_ids, commodities)
+}
 /// Read process information from the specified CSV files.
 ///
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
 /// * `region_ids` - All possible region IDs
+/// * `commodities` - Commodities for the model
 /// * `year_range` - The possible range of milestone years
 ///
 /// # Returns
@@ -215,6 +255,7 @@ fn read_process_parameters(
 /// This function returns a map of processes, with the IDs as keys.
 pub fn read_processes(
     model_dir: &Path,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
     region_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
 ) -> HashMap<Rc<str>, Process> {
@@ -226,8 +267,7 @@ pub fn read_processes(
     let mut availabilities = read_csv_grouped_by_id(&file_path, &process_ids);
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let mut flows = read_csv_grouped_by_id(&file_path, &process_ids);
-    let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
-    let mut pacs = read_csv_grouped_by_id(&file_path, &process_ids);
+    let mut pacs = read_process_pacs(model_dir, &process_ids, commodities);
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range);
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions =
@@ -248,12 +288,7 @@ pub fn read_processes(
                 description: desc.description,
                 availabilities: availabilities.remove(&id).unwrap_or_default(),
                 flows: flows.remove(&id).unwrap_or_default(),
-                pacs: pacs
-                    .remove(&id)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|p: ProcessPAC| p.pac)
-                    .collect(),
+                pacs: pacs.remove(&id).unwrap_or_default(),
                 parameter,
                 regions,
             };
