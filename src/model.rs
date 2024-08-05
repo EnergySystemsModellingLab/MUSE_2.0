@@ -130,6 +130,11 @@ impl Model {
         }
     }
 
+    pub fn iter_years(&self) -> impl Iterator<Item = u32> {
+        let years = &self.milestone_years;
+        *years.first().unwrap()..=*years.last().unwrap()
+    }
+
     /// Iterate over all possible time slices
     pub fn iter_time_slices(&self) -> impl Iterator<Item = TimeSliceID> + '_ {
         self.time_slice_definitions
