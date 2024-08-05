@@ -1,10 +1,11 @@
+use crate::input::IntoIDMap;
 use crate::process::Process;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
-use crate::input::{input_panic, read_csv};
+use crate::input::{input_panic, read_csv, HasID};
 
 const ASSETS_FILE_NAME: &str = "assets.csv";
 
@@ -26,14 +27,20 @@ pub struct Asset {
     pub commission_year: u32,
 }
 
-fn read_assets_from_iter<I>(
+impl HasID for Asset {
+    fn get_id(&self) -> &str {
+        &self.region_id
+    }
+}
+
+fn read_assets_from_iter<'a, I>(
     iter: I,
-    file_path: &Path,
-    processes: &HashMap<Rc<str>, Rc<Process>>,
-    region_ids: &HashSet<Rc<str>>,
-) -> Vec<Asset>
+    file_path: &'a Path,
+    processes: &'a HashMap<Rc<str>, Rc<Process>>,
+    region_ids: &'a HashSet<Rc<str>>,
+) -> impl Iterator<Item = Asset> + 'a
 where
-    I: Iterator<Item = AssetRaw>,
+    I: Iterator<Item = AssetRaw> + 'a,
 {
     iter.map(|record| {
         let process = processes
@@ -59,14 +66,14 @@ where
             commission_year: record.commission_year,
         }
     })
-    .collect()
 }
 
-pub fn read_assets(
+pub fn read_assets_by_region(
     model_dir: &Path,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
-) -> Vec<Asset> {
+) -> HashMap<Rc<str>, Vec<Asset>> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
     read_assets_from_iter(read_csv(&file_path), &file_path, processes, region_ids)
+        .into_id_map(&file_path, region_ids)
 }
