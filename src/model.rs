@@ -4,6 +4,7 @@ use crate::input::{input_panic, read_toml};
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slices, TimeSlice};
+use itertools::Itertools;
 use log::warn;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -24,13 +25,36 @@ pub struct Model {
 /// Represents the contents of the entire model file.
 #[derive(Debug, Deserialize, PartialEq)]
 struct ModelFile {
+    time_slices: TimeSliceDefinitions,
     milestone_years: MilestoneYears,
+}
+
+/// Ordered list of seasons and times of day for time slices
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct TimeSliceDefinitions {
+    pub seasons: Vec<Rc<str>>,
+    pub times_of_day: Vec<Rc<str>>,
 }
 
 /// Represents the "milestone_years" section of the model file.
 #[derive(Debug, Deserialize, PartialEq)]
 struct MilestoneYears {
     pub years: Vec<u32>,
+}
+
+fn check_time_slice_part(file_path: &Path, field: &'static str, names: &[Rc<str>]) {
+    if names.is_empty() {
+        input_panic(file_path, &format!("Must provide {field}"));
+    }
+
+    if !names.iter().all_unique() {
+        input_panic(file_path, &format!("Duplicate values found in {field}"));
+    }
+
+    // We use "." for separating season and time of day
+    if !names.iter().all(|name| !name.contains('.')) {
+        input_panic(file_path, "Time slice names cannot contain dots");
+    }
 }
 
 /// Check that the milestone years parameter is valid
@@ -60,6 +84,12 @@ impl ModelFile {
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> ModelFile {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path);
+        check_time_slice_part(&file_path, "seasons", &model_file.time_slices.seasons);
+        check_time_slice_part(
+            &file_path,
+            "times_of_day",
+            &model_file.time_slices.times_of_day,
+        );
         check_milestone_years(&file_path, &model_file.milestone_years.years);
 
         model_file
@@ -119,6 +149,40 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::tempdir;
 
+    macro_rules! assert_panics {
+        ($e:expr) => {
+            assert!(catch_unwind(|| { $e }).is_err())
+        };
+    }
+
+    #[test]
+    fn test_check_time_slice_part() {
+        let p = PathBuf::new();
+
+        // Valid
+        check_time_slice_part(&p, "field", &["a".into(), "b".into()]);
+
+        // Valid: we currently don't check case
+        check_time_slice_part(&p, "field", &["a".into(), "A".into()]);
+
+        // Invalid: empty
+        assert_panics!(check_time_slice_part(&p, "field", &[]));
+
+        // Invalid: duplicate values
+        assert_panics!(check_time_slice_part(
+            &p,
+            "field",
+            &["a".into(), "b".into(), "a".into()]
+        ));
+
+        // Invalid name
+        assert_panics!(check_time_slice_part(
+            &p,
+            "field",
+            &["a".into(), "a.b".into()]
+        ));
+    }
+
     #[test]
     fn test_check_milestone_years() {
         let p = PathBuf::new();
@@ -129,15 +193,10 @@ mod tests {
     #[test]
     fn test_check_milestone_years_err() {
         let p = PathBuf::new();
-        macro_rules! check_panic {
-            ($years:expr) => {
-                assert!(catch_unwind(|| check_milestone_years(&p, $years)).is_err())
-            };
-        }
 
-        check_panic!(&[]);
-        check_panic!(&[1, 1]);
-        check_panic!(&[2, 1]);
+        assert_panics!(check_milestone_years(&p, &[]));
+        assert_panics!(check_milestone_years(&p, &[1, 1]));
+        assert_panics!(check_milestone_years(&p, &[2, 1]));
     }
 
     #[test]
@@ -145,10 +204,29 @@ mod tests {
         let dir = tempdir().unwrap();
         {
             let mut file = File::create(dir.path().join(MODEL_FILE_NAME)).unwrap();
-            writeln!(file, "[milestone_years]\nyears = [2020, 2100]").unwrap();
+            writeln!(
+                file,
+                r#"
+                [time_slices]
+                seasons = ["summer", "winter"]
+                times_of_day = ["day", "night"]
+
+                [milestone_years]
+                years = [2020, 2100]
+                "#
+            )
+            .unwrap();
         }
 
         let model_file = ModelFile::from_path(dir.path());
+        assert_eq!(
+            model_file.time_slices.seasons,
+            vec!["summer".into(), "winter".into()]
+        );
+        assert_eq!(
+            model_file.time_slices.times_of_day,
+            vec!["day".into(), "night".into()]
+        );
         assert_eq!(model_file.milestone_years.years, vec![2020, 2100]);
     }
 }
