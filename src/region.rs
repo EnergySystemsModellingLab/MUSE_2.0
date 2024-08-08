@@ -98,7 +98,7 @@ fn read_regions_for_entity_from_iter<I, T>(
 ) -> HashMap<Rc<str>, RegionSelection>
 where
     I: Iterator<Item = T>,
-    T: HasID + HasRegionID + DeserializeOwned,
+    T: HasID + HasRegionID,
 {
     let mut entity_regions = HashMap::new();
     for entity in entity_iter {
