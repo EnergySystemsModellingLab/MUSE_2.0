@@ -114,7 +114,11 @@ where
         );
 
         if !succeeded {
-            input_panic(file_path, "Invalid regions specified for entity. Must specify either unique region IDs or \"all\".")
+            input_panic(
+                file_path,
+                "Invalid regions specified for entity. \
+                 Must specify either unique region IDs or \"all\".",
+            )
         }
     }
 
