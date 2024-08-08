@@ -64,14 +64,16 @@ pub(crate) use define_region_id_getter;
 #[must_use]
 fn try_insert_region(
     file_path: &Path,
-    key: Rc<str>,
+    entity_id: Rc<str>,
     region_id: &str,
     region_ids: &HashSet<Rc<str>>,
     entity_regions: &mut HashMap<Rc<str>, RegionSelection>,
 ) -> bool {
     if region_id.eq_ignore_ascii_case("all") {
         // Valid for all regions
-        return entity_regions.insert(key, RegionSelection::All).is_none();
+        return entity_regions
+            .insert(entity_id, RegionSelection::All)
+            .is_none();
     }
 
     // Validate region_id
@@ -79,7 +81,7 @@ fn try_insert_region(
 
     // Add or create entry in entity_regions
     let selection = entity_regions
-        .entry(key)
+        .entry(entity_id)
         .or_insert_with(|| RegionSelection::Some(HashSet::with_capacity(1)));
 
     match selection {
@@ -89,7 +91,7 @@ fn try_insert_region(
 }
 
 fn read_regions_for_entity_from_iter<I, T>(
-    iter: I,
+    entity_iter: I,
     file_path: &Path,
     entity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
@@ -99,12 +101,17 @@ where
     T: HasID + HasRegionID + DeserializeOwned,
 {
     let mut entity_regions = HashMap::new();
-    for record in iter {
-        let key = entity_ids.get_id_checked(file_path, record.get_id());
-        let region_id = record.get_region_id();
+    for entity in entity_iter {
+        let entity_id = entity_ids.get_id_checked(file_path, entity.get_id());
+        let region_id = entity.get_region_id();
 
-        let succeeded =
-            try_insert_region(file_path, key, region_id, region_ids, &mut entity_regions);
+        let succeeded = try_insert_region(
+            file_path,
+            entity_id,
+            region_id,
+            region_ids,
+            &mut entity_regions,
+        );
 
         if !succeeded {
             input_panic(file_path, "Invalid regions specified for entity. Must specify either unique region IDs or \"all\".")
