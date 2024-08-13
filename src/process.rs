@@ -30,7 +30,7 @@ pub struct ProcessAvailability {
     pub process_id: String,
     pub limit_type: LimitType,
     pub time_slice: Option<String>,
-    #[serde(deserialize_with = "deserialise_proportion")]
+    #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     pub value: f64,
 }
 define_process_id_getter! {ProcessAvailability}

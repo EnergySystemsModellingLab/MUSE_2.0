@@ -47,13 +47,13 @@ pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> T {
 }
 
 /// Read an f64, checking that it is between 0 and 1
-pub fn deserialise_proportion<'de, D>(deserialiser: D) -> Result<f64, D::Error>
+pub fn deserialise_proportion_nonzero<'de, D>(deserialiser: D) -> Result<f64, D::Error>
 where
     D: Deserializer<'de>,
 {
     let value = Deserialize::deserialize(deserialiser)?;
-    if !(0.0..=1.0).contains(&value) {
-        Err(serde::de::Error::custom("Value is not between 0 and 1"))?
+    if !(value > 0.0 && value <= 1.0) {
+        Err(serde::de::Error::custom("Value must be > 0 and <= 1"))?
     }
 
     Ok(value)
@@ -307,20 +307,21 @@ mod tests {
         );
     }
 
-    /// Deserialise value with deserialise_proportion()
+    /// Deserialise value with deserialise_proportion_nonzero()
     fn deserialise_f64(value: f64) -> Result<f64, ValueError> {
         let deserialiser: F64Deserializer<ValueError> = value.into_deserializer();
-        deserialise_proportion(deserialiser)
+        deserialise_proportion_nonzero(deserialiser)
     }
 
     #[test]
-    fn test_deserialise_proportion() {
+    fn test_deserialise_proportion_nonzero() {
         // Valid inputs
-        assert_eq!(deserialise_f64(0.0), Ok(0.0));
+        assert_eq!(deserialise_f64(0.01), Ok(0.01));
         assert_eq!(deserialise_f64(0.5), Ok(0.5));
         assert_eq!(deserialise_f64(1.0), Ok(1.0));
 
         // Invalid inputs
+        assert!(deserialise_f64(0.0).is_err());
         assert!(deserialise_f64(-1.0).is_err());
         assert!(deserialise_f64(2.0).is_err());
         assert!(deserialise_f64(f64::NAN).is_err());
