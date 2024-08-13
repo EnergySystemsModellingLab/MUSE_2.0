@@ -6,7 +6,7 @@ use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slices, TimeSlice};
 use log::warn;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
@@ -18,7 +18,7 @@ pub struct Model {
     pub processes: HashMap<Rc<str>, Process>,
     pub time_slices: Vec<TimeSlice>,
     pub demand_data: Vec<Demand>,
-    pub regions: Vec<Region>,
+    pub regions: HashMap<Rc<str>, Region>,
 }
 
 /// Represents the contents of the entire model file.
@@ -91,9 +91,12 @@ impl Model {
             Some(time_slices) => time_slices,
         };
 
+        let regions = read_regions(model_dir.as_ref());
+        let region_ids = HashSet::from_iter(regions.keys().cloned());
         let years = &model_file.milestone_years.years;
         let processes = read_processes(
             model_dir.as_ref(),
+            &region_ids,
             *years.first().unwrap()..=*years.last().unwrap(),
         );
 
@@ -102,7 +105,7 @@ impl Model {
             processes,
             time_slices,
             demand_data: read_demand_data(model_dir.as_ref()),
-            regions: read_regions(model_dir.as_ref()),
+            regions,
         }
     }
 }
