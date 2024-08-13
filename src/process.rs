@@ -141,7 +141,7 @@ struct ProcessRegion {
     region_id: String,
 }
 define_process_id_getter! {ProcessRegion}
-define_region_id_getter! { ProcessRegion}
+define_region_id_getter! {ProcessRegion}
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessDescription {
