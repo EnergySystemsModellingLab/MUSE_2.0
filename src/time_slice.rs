@@ -2,7 +2,7 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
-use crate::input::{deserialise_proportion, input_panic, read_csv};
+use crate::input::{deserialise_proportion_nonzero, input_panic, read_csv};
 use crate::model::MODEL_FILE_NAME;
 
 use float_cmp::approx_eq;
@@ -89,7 +89,7 @@ struct TimeSliceRaw {
     /// Time of day, as a category (e.g. night, day etc.)
     time_of_day: String,
     /// The fraction of the year that this combination of season and time of day occupies
-    #[serde(deserialize_with = "deserialise_proportion")]
+    #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     fraction: f64,
 }
 

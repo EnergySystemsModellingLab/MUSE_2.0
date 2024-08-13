@@ -30,7 +30,7 @@ struct ProcessAvailabilityRaw {
     process_id: String,
     limit_type: LimitType,
     time_slice: Option<String>,
-    #[serde(deserialize_with = "deserialise_proportion")]
+    #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     value: f64,
 }
 
