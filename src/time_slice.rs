@@ -4,6 +4,7 @@
 //! day and time of year.
 use crate::input::*;
 use float_cmp::approx_eq;
+use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -24,6 +25,13 @@ impl Display for TimeSliceID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}.{}", self.season, self.time_of_day)
     }
+}
+
+/// Represents a time slice read from an input file, which can be all
+#[derive(PartialEq, Debug)]
+pub enum TimeSliceSelection {
+    All,
+    Some(TimeSliceID),
 }
 
 /// Information about the time slices in the simulation, including names and fractions
@@ -51,6 +59,36 @@ impl Default for TimeSliceInfo {
             times_of_day: [id.time_of_day].into_iter().collect(),
             fractions,
         }
+    }
+}
+
+impl TimeSliceInfo {
+    /// Get the `TimeSliceID` corresponding to the `time_slice`.
+    ///
+    /// `time_slice` must be in the form "season.time_of_day".
+    pub fn get_time_slice_id_from_str(
+        &self,
+        time_slice: &str,
+    ) -> Result<TimeSliceID, Box<dyn Error>> {
+        let (season, time_of_day) = time_slice
+            .split('.')
+            .collect_tuple()
+            .ok_or("Time slice must be in the form season.time_of_day")?;
+        let season = self
+            .seasons
+            .iter()
+            .find(|item| item.eq_ignore_ascii_case(season))
+            .ok_or(format!("{} is not a known season", season))?;
+        let time_of_day = self
+            .times_of_day
+            .iter()
+            .find(|item| item.eq_ignore_ascii_case(time_of_day))
+            .ok_or(format!("{} is not a known time of day", time_of_day))?;
+
+        Ok(TimeSliceID {
+            season: Rc::clone(season),
+            time_of_day: Rc::clone(time_of_day),
+        })
     }
 }
 

@@ -80,6 +80,7 @@ impl Model {
         let processes = read_processes(
             model_dir.as_ref(),
             &region_ids,
+            &time_slice_info,
             *years.first().unwrap()..=*years.last().unwrap(),
         );
 

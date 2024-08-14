@@ -1,5 +1,6 @@
 use crate::input::*;
 use crate::region::*;
+use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
@@ -25,12 +26,22 @@ macro_rules! define_process_id_getter {
     };
 }
 
+/// Represents a row of the process availabilities CSV file
 #[derive(PartialEq, Debug, Deserialize)]
-pub struct ProcessAvailability {
-    pub process_id: String,
-    pub limit_type: LimitType,
-    pub time_slice: Option<String>,
+struct ProcessAvailabilityRaw {
+    process_id: String,
+    limit_type: LimitType,
+    time_slice: Option<String>,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
+    value: f64,
+}
+
+/// The availabilities for a process over time slices
+#[derive(PartialEq, Debug)]
+pub struct ProcessAvailability {
+    process_id: String,
+    pub limit_type: LimitType,
+    pub time_slice: TimeSliceSelection,
     pub value: f64,
 }
 define_process_id_getter! {ProcessAvailability}
@@ -159,6 +170,63 @@ pub struct Process {
 }
 define_id_getter! {Process}
 
+fn read_process_availabilities_from_iter<I>(
+    iter: I,
+    file_path: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    time_slice_info: &TimeSliceInfo,
+) -> HashMap<Rc<str>, Vec<ProcessAvailability>>
+where
+    I: Iterator<Item = ProcessAvailabilityRaw>,
+{
+    let availabilities = iter
+        .map(|record| {
+            let time_slice = match record.time_slice {
+                // Defaults to all time slices
+                None => TimeSliceSelection::All,
+                // Get a TimeSliceID from a string of the form season.time_of_day
+                Some(time_slice) => TimeSliceSelection::Some(
+                    time_slice_info
+                        .get_time_slice_id_from_str(&time_slice)
+                        .unwrap_input_err(file_path),
+                ),
+            };
+
+            ProcessAvailability {
+                process_id: record.process_id,
+                limit_type: record.limit_type,
+                time_slice,
+                value: record.value,
+            }
+        })
+        .into_id_map(process_ids)
+        .unwrap_input_err(file_path);
+
+    if availabilities.len() < process_ids.len() {
+        input_panic(
+            file_path,
+            "Every process must have at least one availability period",
+        );
+    }
+
+    availabilities
+}
+
+/// Read the availability of each process over time slices
+fn read_process_availabilities(
+    model_dir: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    time_slice_info: &TimeSliceInfo,
+) -> HashMap<Rc<str>, Vec<ProcessAvailability>> {
+    let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
+    read_process_availabilities_from_iter(
+        read_csv(&file_path),
+        &file_path,
+        process_ids,
+        time_slice_info,
+    )
+}
+
 fn read_process_parameters_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
@@ -209,14 +277,14 @@ fn read_process_parameters(
 pub fn read_processes(
     model_dir: &Path,
     region_ids: &HashSet<Rc<str>>,
+    time_slice_info: &TimeSliceInfo,
     year_range: RangeInclusive<u32>,
 ) -> HashMap<Rc<str>, Process> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path);
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
-    let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
-    let mut availabilities = read_csv_grouped_by_id(&file_path, &process_ids);
+    let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info);
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let mut flows = read_csv_grouped_by_id(&file_path, &process_ids);
     let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
