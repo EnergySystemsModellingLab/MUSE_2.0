@@ -2,9 +2,8 @@
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::error::Error;
+use std::collections::{HashMap, HashSet};
+use std::fmt::Display;
 use std::fs;
 use std::path::Path;
 use std::rc::Rc;
@@ -80,7 +79,7 @@ pub trait UnwrapInputError<T> {
     fn unwrap_input_err(self, file_path: &Path) -> T;
 }
 
-impl<T, E: Error> UnwrapInputError<T> for Result<T, E> {
+impl<T, E: Display> UnwrapInputError<T> for Result<T, E> {
     fn unwrap_input_err(self, file_path: &Path) -> T {
         match self {
             Ok(value) => value,
@@ -96,7 +95,7 @@ pub trait UnwrapInputErrorIter<T> {
 
 impl<T, E, I> UnwrapInputErrorIter<T> for I
 where
-    E: Error,
+    E: Display,
     I: Iterator<Item = Result<T, E>>,
 {
     fn unwrap_input_err(self, file_path: &Path) -> impl Iterator<Item = T> {
