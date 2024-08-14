@@ -1,6 +1,6 @@
 //! Code for simulation models.
 use crate::demand::{read_demand_data, Demand};
-use crate::input::{input_panic, read_toml};
+use crate::input::{read_toml, UnwrapInputError};
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slices, TimeSlice};
@@ -34,9 +34,9 @@ struct MilestoneYears {
 }
 
 /// Check that the milestone years parameter is valid
-fn check_milestone_years(file_path: &Path, years: &[u32]) {
+fn check_milestone_years(years: &[u32]) -> Result<(), &'static str> {
     if years.is_empty() {
-        input_panic(file_path, "milestone_years is empty");
+        Err("milestone_years is empty")?;
     }
 
     if !years[..years.len() - 1]
@@ -44,11 +44,10 @@ fn check_milestone_years(file_path: &Path, years: &[u32]) {
         .zip(years[1..].iter())
         .all(|(y1, y2)| y1 < y2)
     {
-        input_panic(
-            file_path,
-            "milestone_years must be composed of unique values in order",
-        );
+        Err("milestone_years must be composed of unique values in order")?;
     }
+
+    Ok(())
 }
 
 impl ModelFile {
@@ -60,7 +59,7 @@ impl ModelFile {
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> ModelFile {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path);
-        check_milestone_years(&file_path, &model_file.milestone_years.years);
+        check_milestone_years(&model_file.milestone_years.years).unwrap_input_err(&file_path);
 
         model_file
     }
@@ -115,29 +114,18 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
-    use std::panic::catch_unwind;
-    use std::path::PathBuf;
     use tempfile::tempdir;
 
     #[test]
     fn test_check_milestone_years() {
-        let p = PathBuf::new();
-        check_milestone_years(&p, &[1]);
-        check_milestone_years(&p, &[1, 2]);
-    }
+        // Valid
+        assert!(check_milestone_years(&[1]).is_ok());
+        assert!(check_milestone_years(&[1, 2]).is_ok());
 
-    #[test]
-    fn test_check_milestone_years_err() {
-        let p = PathBuf::new();
-        macro_rules! check_panic {
-            ($years:expr) => {
-                assert!(catch_unwind(|| check_milestone_years(&p, $years)).is_err())
-            };
-        }
-
-        check_panic!(&[]);
-        check_panic!(&[1, 1]);
-        check_panic!(&[2, 1]);
+        // Invalid
+        assert!(check_milestone_years(&[]).is_err());
+        assert!(check_milestone_years(&[1, 1]).is_err());
+        assert!(check_milestone_years(&[2, 1]).is_err());
     }
 
     #[test]

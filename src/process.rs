@@ -3,6 +3,7 @@ use crate::region::*;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
+use std::error::Error;
 use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
@@ -92,24 +93,20 @@ define_process_id_getter! {ProcessParameterRaw}
 impl ProcessParameterRaw {
     fn into_parameter(
         self,
-        file_path: &Path,
         year_range: &RangeInclusive<u32>,
-    ) -> ProcessParameter {
+    ) -> Result<ProcessParameter, Box<dyn Error>> {
         let start_year = self.start_year.unwrap_or(*year_range.start());
         let end_year = self.end_year.unwrap_or(*year_range.end());
 
         // Check year range is valid
         if start_year > end_year {
-            input_panic(
-                file_path,
-                &format!(
-                    "Error in parameter for process {}: start_year > end_year",
-                    self.process_id
-                ),
-            )
+            Err(format!(
+                "Error in parameter for process {}: start_year > end_year",
+                self.process_id
+            ))?;
         }
 
-        ProcessParameter {
+        Ok(ProcessParameter {
             process_id: self.process_id,
             years: start_year..=end_year,
             capital_cost: self.capital_cost,
@@ -118,7 +115,7 @@ impl ProcessParameterRaw {
             lifetime: self.lifetime,
             discount_rate: self.discount_rate.unwrap_or(0.0),
             cap2act: self.cap2act.unwrap_or(1.0),
-        }
+        })
     }
 }
 
@@ -164,31 +161,27 @@ define_id_getter! {Process}
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
-    file_path: &Path,
     process_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, ProcessParameter>
+) -> Result<HashMap<Rc<str>, ProcessParameter>, Box<dyn Error>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
     let mut params = HashMap::new();
     for param in iter {
-        let param = param.into_parameter(file_path, year_range);
-        let id = process_ids.get_id_checked(file_path, &param.process_id);
+        let param = param.into_parameter(year_range)?;
+        let id = process_ids.get_id(&param.process_id)?;
 
         if params.insert(Rc::clone(&id), param).is_some() {
-            input_panic(
-                file_path,
-                &format!("More than one parameter provided for process {id}"),
-            );
+            Err(format!("More than one parameter provided for process {id}"))?;
         }
     }
 
     if params.len() < process_ids.len() {
-        input_panic(file_path, "Each process must have an associated parameter");
+        Err("Each process must have an associated parameter")?;
     }
 
-    params
+    Ok(params)
 }
 
 /// Read process parameters from the specified CSV file
@@ -199,7 +192,7 @@ fn read_process_parameters(
 ) -> HashMap<Rc<str>, ProcessParameter> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path);
-    read_process_parameters_from_iter(iter, &file_path, process_ids, year_range)
+    read_process_parameters_from_iter(iter, process_ids, year_range).unwrap_input_err(&file_path)
 }
 
 /// Read process information from the specified CSV files.
@@ -266,7 +259,6 @@ pub fn read_processes(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     fn create_param_raw(
         start_year: Option<u32>,
@@ -306,70 +298,78 @@ mod tests {
 
     #[test]
     fn test_param_raw_into_param_ok() {
-        let p = PathBuf::new();
         let year_range = 2000..=2100;
 
         // No missing values
         let raw = create_param_raw(Some(2010), Some(2020), Some(1.0), Some(0.0));
         assert_eq!(
-            raw.into_parameter(&p, &year_range),
+            raw.into_parameter(&year_range).unwrap(),
             create_param(2010..=2020, 1.0, 0.0)
         );
 
         // Missing years
         let raw = create_param_raw(None, None, Some(1.0), Some(0.0));
         assert_eq!(
-            raw.into_parameter(&p, &year_range),
+            raw.into_parameter(&year_range).unwrap(),
             create_param(2000..=2100, 1.0, 0.0)
         );
 
         // Missing discount_rate
         let raw = create_param_raw(Some(2010), Some(2020), None, Some(0.0));
         assert_eq!(
-            raw.into_parameter(&p, &year_range),
+            raw.into_parameter(&year_range).unwrap(),
             create_param(2010..=2020, 0.0, 0.0)
         );
 
         // Missing cap2act
         let raw = create_param_raw(Some(2010), Some(2020), Some(1.0), None);
         assert_eq!(
-            raw.into_parameter(&p, &year_range),
+            raw.into_parameter(&year_range).unwrap(),
             create_param(2010..=2020, 1.0, 1.0)
         );
     }
 
     #[test]
     fn test_param_raw_into_param_good_years() {
-        let p = PathBuf::new();
         let year_range = 2000..=2100;
 
         // Normal case
-        create_param_raw(Some(2000), Some(2100), Some(1.0), Some(0.0))
-            .into_parameter(&p, &year_range);
+        assert!(
+            create_param_raw(Some(2000), Some(2100), Some(1.0), Some(0.0))
+                .into_parameter(&year_range)
+                .is_ok()
+        );
 
         // start_year out of range - this is permitted
-        create_param_raw(Some(1999), Some(2100), Some(1.0), Some(0.0))
-            .into_parameter(&p, &year_range);
+        assert!(
+            create_param_raw(Some(1999), Some(2100), Some(1.0), Some(0.0))
+                .into_parameter(&year_range)
+                .is_ok()
+        );
 
         // end_year out of range - this is permitted
-        create_param_raw(Some(2000), Some(2101), Some(1.0), Some(0.0))
-            .into_parameter(&p, &year_range);
+        assert!(
+            create_param_raw(Some(2000), Some(2101), Some(1.0), Some(0.0))
+                .into_parameter(&year_range)
+                .is_ok()
+        );
     }
 
     #[test]
     #[should_panic]
     fn test_param_raw_into_param_bad_years() {
-        let p = PathBuf::new();
         let year_range = 2000..=2100;
 
         // start_year after end_year
-        create_param_raw(Some(2001), Some(2000), Some(1.0), Some(0.0))
-            .into_parameter(&p, &year_range);
+        assert!(
+            create_param_raw(Some(2001), Some(2000), Some(1.0), Some(0.0))
+                .into_parameter(&year_range)
+                .is_ok()
+        );
     }
 
     #[test]
     fn test_read_process_parameters_from_iter_good() {
-        let p = PathBuf::new();
         let year_range = 2000..=2100;
         let process_ids = ["A".into(), "B".into()].into_iter().collect();
 
@@ -428,19 +428,14 @@ mod tests {
         ]
         .into_iter()
         .collect();
-        let actual = read_process_parameters_from_iter(
-            params_raw.into_iter(),
-            &p,
-            &process_ids,
-            &year_range,
-        );
+        let actual =
+            read_process_parameters_from_iter(params_raw.into_iter(), &process_ids, &year_range)
+                .unwrap();
         assert_eq!(expected, actual);
     }
 
     #[test]
-    #[should_panic]
     fn test_read_process_parameters_from_iter_bad_multiple_params() {
-        let p = PathBuf::new();
         let year_range = 2000..=2100;
         let process_ids = ["A".into(), "B".into()].into_iter().collect();
 
@@ -480,13 +475,16 @@ mod tests {
             },
         ];
 
-        read_process_parameters_from_iter(params_raw.into_iter(), &p, &process_ids, &year_range);
+        assert!(read_process_parameters_from_iter(
+            params_raw.into_iter(),
+            &process_ids,
+            &year_range
+        )
+        .is_err());
     }
 
     #[test]
-    #[should_panic]
     fn test_read_process_parameters_from_iter_bad_process_missing_param() {
-        let p = PathBuf::new();
         let year_range = 2000..=2100;
         let process_ids = ["A".into(), "B".into()].into_iter().collect();
 
@@ -502,6 +500,11 @@ mod tests {
             cap2act: Some(1.0),
         }];
 
-        read_process_parameters_from_iter(params_raw.into_iter(), &p, &process_ids, &year_range);
+        assert!(read_process_parameters_from_iter(
+            params_raw.into_iter(),
+            &process_ids,
+            &year_range
+        )
+        .is_err());
     }
 }

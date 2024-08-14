@@ -2,6 +2,7 @@ use crate::input::*;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
+use std::error::Error;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -63,7 +64,6 @@ pub(crate) use define_region_id_getter;
 /// Try to insert a region ID into the specified map
 #[must_use]
 fn try_insert_region(
-    file_path: &Path,
     entity_id: Rc<str>,
     region_id: &str,
     region_ids: &HashSet<Rc<str>>,
@@ -77,7 +77,10 @@ fn try_insert_region(
     }
 
     // Validate region_id
-    let region_id = region_ids.get_id_checked(file_path, region_id);
+    let region_id = match region_ids.get_id(region_id) {
+        Ok(id) => id,
+        Err(_) => return false,
+    };
 
     // Add or create entry in entity_regions
     let selection = entity_regions
@@ -92,44 +95,31 @@ fn try_insert_region(
 
 fn read_regions_for_entity_from_iter<I, T>(
     entity_iter: I,
-    file_path: &Path,
     entity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, RegionSelection>
+) -> Result<HashMap<Rc<str>, RegionSelection>, Box<dyn Error>>
 where
     I: Iterator<Item = T>,
     T: HasID + HasRegionID,
 {
     let mut entity_regions = HashMap::new();
     for entity in entity_iter {
-        let entity_id = entity_ids.get_id_checked(file_path, entity.get_id());
+        let entity_id = entity_ids.get_id(entity.get_id())?;
         let region_id = entity.get_region_id();
 
-        let succeeded = try_insert_region(
-            file_path,
-            entity_id,
-            region_id,
-            region_ids,
-            &mut entity_regions,
-        );
+        let succeeded = try_insert_region(entity_id, region_id, region_ids, &mut entity_regions);
 
         if !succeeded {
-            input_panic(
-                file_path,
-                "Invalid regions specified for entity. \
-                 Must specify either unique region IDs or \"all\".",
-            )
+            Err("Invalid regions specified for entity. \
+                 Must specify either unique region IDs or \"all\".")?;
         }
     }
 
     if entity_regions.len() < entity_ids.len() {
-        input_panic(
-            file_path,
-            "At least one region must be specified per entity",
-        );
+        Err("At least one region must be specified per entity")?;
     }
 
-    entity_regions
+    Ok(entity_regions)
 }
 
 /// Read region IDs associated with a particular entity.
@@ -147,7 +137,8 @@ pub fn read_regions_for_entity<T>(
 where
     T: HasID + HasRegionID + DeserializeOwned,
 {
-    read_regions_for_entity_from_iter(read_csv::<T>(file_path), file_path, entity_ids, region_ids)
+    read_regions_for_entity_from_iter(read_csv::<T>(file_path), entity_ids, region_ids)
+        .unwrap_input_err(file_path)
 }
 
 #[cfg(test)]
@@ -155,8 +146,7 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
-    use std::panic::catch_unwind;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use tempfile::tempdir;
 
     /// Create an example regions file in dir_path
@@ -208,13 +198,11 @@ AP,Asia Pacific"
 
     #[test]
     fn test_try_insert_region() {
-        let p = PathBuf::new();
         let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
 
         // Insert new
         let mut entity_regions = HashMap::new();
         assert!(try_insert_region(
-            &p,
             "key".into(),
             "GBR",
             &region_ids,
@@ -229,7 +217,6 @@ AP,Asia Pacific"
         // Insert "all"
         let mut entity_regions = HashMap::new();
         assert!(try_insert_region(
-            &p,
             "key".into(),
             "all",
             &region_ids,
@@ -243,7 +230,6 @@ AP,Asia Pacific"
             .into_iter()
             .collect();
         assert!(try_insert_region(
-            &p,
             "key".into(),
             "GBR",
             &region_ids,
@@ -258,7 +244,6 @@ AP,Asia Pacific"
         // "All" already specified
         let mut entity_regions = [("key".into(), RegionSelection::All)].into_iter().collect();
         assert!(!try_insert_region(
-            &p,
             "key".into(),
             "GBR",
             &region_ids,
@@ -271,7 +256,6 @@ AP,Asia Pacific"
             .into_iter()
             .collect();
         assert!(!try_insert_region(
-            &p,
             "key".into(),
             "GBR",
             &region_ids,
@@ -284,7 +268,6 @@ AP,Asia Pacific"
             .into_iter()
             .collect();
         assert!(!try_insert_region(
-            &p,
             "key".into(),
             "all",
             &region_ids,
@@ -302,15 +285,8 @@ AP,Asia Pacific"
 
     #[test]
     fn test_read_regions_for_entity_from_iter() {
-        let p = PathBuf::new();
         let entity_ids = ["A".into(), "B".into()].into_iter().collect();
         let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
-
-        macro_rules! assert_panics {
-            ($e:expr) => {
-                assert!(catch_unwind(|| $e).is_err())
-            };
-        }
 
         // Valid case
         let iter = [
@@ -334,7 +310,7 @@ AP,Asia Pacific"
                 RegionSelection::Some(HashSet::from_iter(["FRA".into()])),
             ),
         ]);
-        let actual = read_regions_for_entity_from_iter(iter, &p, &entity_ids, &region_ids);
+        let actual = read_regions_for_entity_from_iter(iter, &entity_ids, &region_ids).unwrap();
         assert_eq!(expected, actual);
 
         // No region(s) specified for "B"
@@ -343,12 +319,7 @@ AP,Asia Pacific"
             region_id: "GBR".into(),
         }]
         .into_iter();
-        assert_panics!(read_regions_for_entity_from_iter(
-            iter,
-            &p,
-            &entity_ids,
-            &region_ids
-        ));
+        assert!(read_regions_for_entity_from_iter(iter, &entity_ids, &region_ids).is_err());
 
         // Make try_insert_region fail
         let iter = [
@@ -366,11 +337,6 @@ AP,Asia Pacific"
             },
         ]
         .into_iter();
-        assert_panics!(read_regions_for_entity_from_iter(
-            iter,
-            &p,
-            &entity_ids,
-            &region_ids
-        ));
+        assert!(read_regions_for_entity_from_iter(iter, &entity_ids, &region_ids).is_err());
     }
 }
