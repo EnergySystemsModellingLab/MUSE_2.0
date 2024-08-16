@@ -2,9 +2,9 @@
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
+use std::fmt::Display;
 use std::fs;
 use std::path::Path;
 use std::rc::Rc;
@@ -80,7 +80,7 @@ pub trait UnwrapInputError<T> {
     fn unwrap_input_err(self, file_path: &Path) -> T;
 }
 
-impl<T, E: Error> UnwrapInputError<T> for Result<T, E> {
+impl<T, E: Display> UnwrapInputError<T> for Result<T, E> {
     fn unwrap_input_err(self, file_path: &Path) -> T {
         match self {
             Ok(value) => value,
@@ -96,7 +96,7 @@ pub trait UnwrapInputErrorIter<T> {
 
 impl<T, E, I> UnwrapInputErrorIter<T> for I
 where
-    E: Error,
+    E: Display,
     I: Iterator<Item = Result<T, E>>,
 {
     fn unwrap_input_err(self, file_path: &Path) -> impl Iterator<Item = T> {
@@ -124,16 +124,23 @@ macro_rules! define_id_getter {
 pub(crate) use define_id_getter;
 
 pub trait IDCollection {
-    /// Get the ID after checking that it exists this collection. Returns a copy of the `Rc<str>` in
-    /// `self` or panics on error.
-    fn get_id_checked(&self, file_path: &Path, id: &str) -> Rc<str>;
+    /// Get the ID after checking that it exists this collection.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID to look up
+    ///
+    /// # Returns
+    ///
+    /// A copy of the `Rc<str>` in `self` or an error if not found.
+    fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>>;
 }
 
 impl IDCollection for HashSet<Rc<str>> {
-    fn get_id_checked(&self, file_path: &Path, id: &str) -> Rc<str> {
+    fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>> {
         match self.get(id) {
-            None => input_panic(file_path, &format!("Unknown ID {id} found")),
-            Some(id) => Rc::clone(id),
+            None => Err(format!("Unknown ID {id} found"))?,
+            Some(id) => Ok(Rc::clone(id)),
         }
     }
 }
@@ -164,7 +171,10 @@ where
 }
 
 pub trait IntoIDMap<T> {
-    fn into_id_map(self, file_path: &Path, ids: &HashSet<Rc<str>>) -> HashMap<Rc<str>, Vec<T>>;
+    fn into_id_map(
+        self,
+        ids: &HashSet<Rc<str>>,
+    ) -> Result<HashMap<Rc<str>, Vec<T>>, Box<dyn Error>>;
 }
 
 impl<T, I> IntoIDMap<T> for I
@@ -176,15 +186,23 @@ where
     ///
     /// # Arguments
     ///
-    /// `file_path` - The path to the CSV file this relates to
     /// `ids` - The set of valid IDs to check against.
-    fn into_id_map(self, file_path: &Path, ids: &HashSet<Rc<str>>) -> HashMap<Rc<str>, Vec<T>> {
-        let map = self.into_group_map_by(|item| ids.get_id_checked(file_path, item.get_id()));
+    fn into_id_map(
+        self,
+        ids: &HashSet<Rc<str>>,
+    ) -> Result<HashMap<Rc<str>, Vec<T>>, Box<dyn Error>> {
+        let map = self
+            .map(|item| match ids.get_id(item.get_id()) {
+                Err(err) => Err(err),
+                Ok(id) => Ok((id, item)),
+            })
+            .process_results(|iter| iter.into_group_map())?;
+
         if map.is_empty() {
-            input_panic(file_path, "CSV file is empty");
+            Err("CSV file is empty")?;
         }
 
-        map
+        Ok(map)
     }
 }
 
@@ -205,7 +223,9 @@ pub fn read_csv_grouped_by_id<T>(
 where
     T: HasID + DeserializeOwned,
 {
-    read_csv(file_path).into_id_map(file_path, ids)
+    read_csv(file_path)
+        .into_id_map(ids)
+        .unwrap_input_err(file_path)
 }
 
 #[cfg(test)]

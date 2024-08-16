@@ -2,9 +2,10 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
-use crate::input::{deserialise_proportion, input_panic, read_csv_as_vec};
+use crate::input::{deserialise_proportion, read_csv_as_vec, UnwrapInputError};
 use float_cmp::approx_eq;
 use serde::Deserialize;
+use std::error::Error;
 use std::path::Path;
 
 const TIME_SLICES_FILE_NAME: &str = "time_slices.csv";
@@ -38,23 +39,22 @@ pub fn read_time_slices(model_dir: &Path) -> Option<Vec<TimeSlice>> {
     }
 
     let time_slices = read_csv_as_vec(&file_path);
-    check_time_slice_fractions_sum_to_one(&file_path, &time_slices);
+    check_time_slice_fractions_sum_to_one(&time_slices).unwrap_input_err(&file_path);
 
     Some(time_slices)
 }
 
 /// Check that time slice fractions sum to (approximately) one
-fn check_time_slice_fractions_sum_to_one(file_path: &Path, time_slices: &[TimeSlice]) {
+fn check_time_slice_fractions_sum_to_one(time_slices: &[TimeSlice]) -> Result<(), Box<dyn Error>> {
     let sum = time_slices.iter().map(|ts| ts.fraction).sum();
     if !approx_eq!(f64, sum, 1.0, epsilon = 1e-5) {
-        input_panic(
-            file_path,
-            &format!(
-                "Sum of time slice fractions does not equal one (actual: {})",
-                sum
-            ),
-        )
+        Err(format!(
+            "Sum of time slice fractions does not equal one (actual: {})",
+            sum
+        ))?;
     }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -62,8 +62,7 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
-    use std::panic::catch_unwind;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use tempfile::tempdir;
 
     macro_rules! ts {
@@ -137,34 +136,21 @@ autumn,evening,0.25"
     }
 
     #[test]
-    fn test_check_time_slice_fractions_sum_to_one_ok() {
-        let p = PathBuf::new();
-
+    fn test_check_time_slice_fractions_sum_to_one() {
         // Single input, valid
-        check_time_slice_fractions_sum_to_one(&p, &[ts!(1.0)]);
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(1.0)]).is_ok());
 
         // Multiple inputs, valid
-        check_time_slice_fractions_sum_to_one(&p, &[ts!(0.4), ts!(0.6)]);
-    }
-
-    #[test]
-    fn test_check_time_slice_fractions_sum_to_one_err() {
-        let p = PathBuf::new();
-
-        macro_rules! check_panic {
-            ($ts:expr) => {
-                assert!(catch_unwind(|| check_time_slice_fractions_sum_to_one(&p, $ts)).is_err())
-            };
-        }
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.4), ts!(0.6)]).is_ok());
 
         // Single input, invalid
-        check_panic!(&[ts!(0.5)]);
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.5)]).is_err());
 
         // Multiple inputs, invalid
-        check_panic!(&[ts!(0.4), ts!(0.3)]);
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(0.4), ts!(0.3)]).is_err());
 
         // Edge cases
-        check_panic!(&[ts!(f64::INFINITY)]);
-        check_panic!(&[ts!(f64::NAN)]);
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(f64::INFINITY)]).is_err());
+        assert!(check_time_slice_fractions_sum_to_one(&[ts!(f64::NAN)]).is_err());
     }
 }
