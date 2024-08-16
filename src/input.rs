@@ -124,8 +124,15 @@ macro_rules! define_id_getter {
 pub(crate) use define_id_getter;
 
 pub trait IDCollection {
-    /// Get the ID after checking that it exists this collection. Returns a copy of the `Rc<str>` in
-    /// `self` or panics on error.
+    /// Get the ID after checking that it exists this collection.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID to look up
+    ///
+    /// # Returns
+    ///
+    /// A copy of the `Rc<str>` in `self` or an error if not found.
     fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>>;
 }
 
