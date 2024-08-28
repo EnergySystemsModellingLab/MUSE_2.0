@@ -145,6 +145,15 @@ impl IDCollection for HashSet<Rc<str>> {
     }
 }
 
+impl<T> IDCollection for HashMap<Rc<str>, T> {
+    fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>> {
+        match self.get_key_value(id) {
+            None => Err(format!("Unknown ID {id} found"))?,
+            Some((id, _)) => Ok(Rc::clone(id)),
+        }
+    }
+}
+
 /// Read a CSV file of items with IDs.
 ///
 /// This is like `read_csv_grouped_by_id`, with the difference that it is to be used on the "main"
@@ -170,16 +179,14 @@ where
     map
 }
 
-pub trait IntoIDMap<T> {
-    fn into_id_map(
-        self,
-        ids: &HashSet<Rc<str>>,
-    ) -> Result<HashMap<Rc<str>, Vec<T>>, Box<dyn Error>>;
+pub trait IntoIDMap<T, U: IDCollection> {
+    fn into_id_map(self, ids: &U) -> Result<HashMap<Rc<str>, Vec<T>>, Box<dyn Error>>;
 }
 
-impl<T, I> IntoIDMap<T> for I
+impl<T, U, I> IntoIDMap<T, U> for I
 where
     T: HasID,
+    U: IDCollection,
     I: Iterator<Item = T>,
 {
     /// Convert the specified iterator into a `HashMap` of the items grouped by ID.
@@ -187,10 +194,7 @@ where
     /// # Arguments
     ///
     /// `ids` - The set of valid IDs to check against.
-    fn into_id_map(
-        self,
-        ids: &HashSet<Rc<str>>,
-    ) -> Result<HashMap<Rc<str>, Vec<T>>, Box<dyn Error>> {
+    fn into_id_map(self, ids: &U) -> Result<HashMap<Rc<str>, Vec<T>>, Box<dyn Error>> {
         let map = self
             .map(|item| match ids.get_id(item.get_id()) {
                 Err(err) => Err(err),
