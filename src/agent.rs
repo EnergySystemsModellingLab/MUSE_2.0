@@ -145,21 +145,27 @@ fn check_objective_parameter(
 fn read_agent_objectives_from_iter<I>(
     iter: I,
     agents: &HashMap<Rc<str>, Agent>,
-    agent_ids: &HashSet<Rc<str>>,
 ) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>, Box<dyn Error>>
 where
     I: Iterator<Item = AgentObjective>,
 {
-    let objectives = iter.into_id_map(agent_ids)?;
-    for objective in objectives.values().flatten() {
-        // We've already checked that agent IDs are valid
-        let agent = agents.get(objective.agent_id.as_str()).unwrap();
+    let mut objectives = HashMap::new();
+    for objective in iter {
+        let (id, agent) = agents
+            .get_key_value(objective.agent_id.as_str())
+            .ok_or("Invalid agent ID")?;
 
         // Check that required parameters are present and others are absent
-        check_objective_parameter(objective, &agent.decision_rule)?;
+        check_objective_parameter(&objective, &agent.decision_rule)?;
+
+        // Append to Vec with the corresponding key or create
+        objectives
+            .entry(Rc::clone(id))
+            .or_insert_with(|| Vec::with_capacity(1))
+            .push(objective);
     }
 
-    if objectives.len() < agent_ids.len() {
+    if objectives.len() < agents.len() {
         Err("All agents must have at least one objective")?;
     }
 
@@ -169,11 +175,9 @@ where
 fn read_agent_objectives(
     model_dir: &Path,
     agents: &HashMap<Rc<str>, Agent>,
-    agent_ids: &HashSet<Rc<str>>,
 ) -> HashMap<Rc<str>, Vec<AgentObjective>> {
     let file_path = model_dir.join(AGENT_OBJECTIVES_FILE_NAME);
-    read_agent_objectives_from_iter(read_csv(&file_path), agents, agent_ids)
-        .unwrap_input_err(&file_path)
+    read_agent_objectives_from_iter(read_csv(&file_path), agents).unwrap_input_err(&file_path)
 }
 
 pub fn read_agents_file_from_iter<I>(
@@ -224,7 +228,7 @@ pub fn read_agents(
     let file_path = model_dir.join(AGENT_REGIONS_FILE_NAME);
     let mut agent_regions =
         read_regions_for_entity::<AgentRegion>(&file_path, &agent_ids, region_ids);
-    let mut objectives = read_agent_objectives(model_dir, &agents, &agent_ids);
+    let mut objectives = read_agent_objectives(model_dir, &agents);
 
     // Populate each Agent's Vecs
     for (id, agent) in agents.iter_mut() {
@@ -367,7 +371,6 @@ mod tests {
         )]
         .into_iter()
         .collect();
-        let agent_ids = agents.keys().cloned().collect();
 
         // Valid
         let objective = AgentObjective {
@@ -379,12 +382,11 @@ mod tests {
         let expected = [("agent".into(), vec![objective.clone()])]
             .into_iter()
             .collect();
-        let actual =
-            read_agent_objectives_from_iter([objective].into_iter(), &agents, &agent_ids).unwrap();
+        let actual = read_agent_objectives_from_iter([objective].into_iter(), &agents).unwrap();
         assert_eq!(actual, expected);
 
         // Missing objective for agent
-        assert!(read_agent_objectives_from_iter([].into_iter(), &agents, &agent_ids).is_err());
+        assert!(read_agent_objectives_from_iter([].into_iter(), &agents).is_err());
 
         // Bad parameter
         let objective = AgentObjective {
@@ -393,8 +395,6 @@ mod tests {
             decision_weight: Some(1.0),
             decision_lexico_tolerance: None,
         };
-        assert!(
-            read_agent_objectives_from_iter([objective].into_iter(), &agents, &agent_ids).is_err()
-        );
+        assert!(read_agent_objectives_from_iter([objective].into_iter(), &agents).is_err());
     }
 }
