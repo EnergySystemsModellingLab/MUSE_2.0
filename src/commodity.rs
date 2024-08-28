@@ -10,6 +10,7 @@ use std::rc::Rc;
 const COMMODITY_FILE_NAME: &str = "commodities.csv";
 const COMMODITY_COSTS_FILE_NAME: &str = "commodity_costs.csv";
 
+/// A commodity within the simulation
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct Commodity {
     pub id: Rc<str>,
@@ -33,6 +34,7 @@ macro_rules! define_commodity_id_getter {
     };
 }
 
+/// Type of balance for application of cost
 #[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
 pub enum BalanceType {
     #[string = "net"]
@@ -68,6 +70,7 @@ pub enum CommodityType {
     OutputCommodity,
 }
 
+/// Check that commodity costs are all valid
 fn check_commodity_costs<'a, I>(
     costs: I,
     region_ids: &HashSet<Rc<str>>,
@@ -91,6 +94,17 @@ where
     Ok(())
 }
 
+/// Read costs associated with each commodity from commodity costs CSV file.
+///
+/// # Arguments
+///
+/// * `model_dir` - Folder containing model configuration files
+/// * `region_ids` - All possible region IDs
+/// * `year_range` - The possible range of milestone years
+///
+/// # Returns
+///
+/// A map containing commodity costs, grouped by commodity ID.
 fn read_commodity_costs(
     model_dir: &Path,
     commodity_ids: &HashSet<Rc<str>>,
@@ -106,6 +120,16 @@ fn read_commodity_costs(
 }
 
 /// Read commodity data from the specified model directory.
+///
+/// # Arguments
+///
+/// * `model_dir` - Folder containing model configuration files
+/// * `region_ids` - All possible region IDs
+/// * `year_range` - The possible range of milestone years
+///
+/// # Returns
+///
+/// A map containing commodities, grouped by commodity ID.
 pub fn read_commodities(
     model_dir: &Path,
     region_ids: &HashSet<Rc<str>>,
