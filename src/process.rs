@@ -269,6 +269,7 @@ fn read_process_parameters(
 ///
 /// * `model_dir` - Folder containing model configuration files
 /// * `region_ids` - All possible region IDs
+/// * `time_slice_info` - Information about seasons and times of day
 /// * `year_range` - The possible range of milestone years
 ///
 /// # Returns
