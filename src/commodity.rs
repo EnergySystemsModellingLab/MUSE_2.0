@@ -16,7 +16,7 @@ pub struct Commodity {
     pub id: Rc<str>,
     pub description: String,
     #[serde(rename = "type")] // NB: we can't name a field type as it's a reserved keyword
-    pub commodity_type: CommodityType,
+    pub kind: CommodityType,
     pub time_slice_level: TimeSliceLevel,
 
     #[serde(skip)]
