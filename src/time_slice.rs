@@ -31,7 +31,11 @@ impl Display for TimeSliceID {
 /// Represents a time slice read from an input file, which can be all
 #[derive(PartialEq, Debug)]
 pub enum TimeSliceSelection {
+    /// All year and all day
     Annual,
+    /// Only applies to one season
+    Season(Rc<str>),
+    /// Only applies to a single time slice
     Single(TimeSliceID),
 }
 
@@ -98,9 +102,12 @@ impl TimeSliceInfo {
     pub fn get_selection(&self, time_slice: &str) -> Result<TimeSliceSelection, Box<dyn Error>> {
         if time_slice.is_empty() || time_slice.eq_ignore_ascii_case("annual") {
             Ok(TimeSliceSelection::Annual)
-        } else {
+        } else if time_slice.contains('.') {
             let time_slice = self.get_time_slice_id_from_str(time_slice)?;
             Ok(TimeSliceSelection::Single(time_slice))
+        } else {
+            let season = self.seasons.get_id(time_slice)?;
+            Ok(TimeSliceSelection::Season(season))
         }
     }
 }
