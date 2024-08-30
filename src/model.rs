@@ -81,7 +81,12 @@ impl Model {
         let years = &model_file.milestone_years.years;
         let year_range = *years.first().unwrap()..=*years.last().unwrap();
 
-        let commodities = read_commodities(model_dir.as_ref(), &region_ids, &year_range);
+        let commodities = read_commodities(
+            model_dir.as_ref(),
+            &region_ids,
+            &time_slice_info,
+            &year_range,
+        );
         let processes = read_processes(
             model_dir.as_ref(),
             &region_ids,
