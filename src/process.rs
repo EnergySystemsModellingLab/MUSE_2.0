@@ -183,9 +183,9 @@ where
         .map(|record| {
             let time_slice = match record.time_slice {
                 // Defaults to all time slices
-                None => TimeSliceSelection::All,
+                None => TimeSliceSelection::Annual,
                 // Get a TimeSliceID from a string of the form season.time_of_day
-                Some(time_slice) => TimeSliceSelection::Some(
+                Some(time_slice) => TimeSliceSelection::Single(
                     time_slice_info
                         .get_time_slice_id_from_str(&time_slice)
                         .unwrap_input_err(file_path),

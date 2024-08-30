@@ -31,8 +31,8 @@ impl Display for TimeSliceID {
 /// Represents a time slice read from an input file, which can be all
 #[derive(PartialEq, Debug)]
 pub enum TimeSliceSelection {
-    All,
-    Some(TimeSliceID),
+    Annual,
+    Single(TimeSliceID),
 }
 
 /// Information about the time slices in the simulation, including names and fractions
