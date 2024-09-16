@@ -1,4 +1,4 @@
-agent_id,objective,decision_weight,decision_lexico_tolerance
+agent_id,objective_type,decision_weight,decision_lexico_tolerance
 A0_GEX,lcox,,
 A0_GPR,lcox,,
 A0_ELC,lcox,,
