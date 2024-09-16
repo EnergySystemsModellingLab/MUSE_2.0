@@ -122,12 +122,11 @@ fn read_commodity_costs_iter<I>(
 where
     I: Iterator<Item = CommodityCostRaw>,
 {
-    Ok(iter
-        .map(|cost| {
-            cost.try_into_commodity_cost(commodity_ids, region_ids, time_slice_info, year_range)
-        })
-        .process_results(|iter| iter.into_id_map(commodity_ids))?
-        .unwrap()) // Commodity IDs have already been validated
+    iter.map(|cost| {
+        cost.try_into_commodity_cost(commodity_ids, region_ids, time_slice_info, year_range)
+    })
+    // Commodity IDs have already been validated
+    .process_results(|iter| iter.into_id_map(commodity_ids).unwrap())
 }
 
 /// Read costs associated with each commodity from commodity costs CSV file.
