@@ -12,5 +12,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: pre-commit/action@v3.0.1
-      - uses: pre-commit-ci/lite-action@v1.0.2
+      - uses: pre-commit-ci/lite-action@v1.0.3
         if: always()
