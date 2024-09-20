@@ -4,6 +4,7 @@ pub mod model;
 pub mod settings;
 
 mod agent;
+mod commodity;
 mod demand;
 mod input;
 mod process;
@@ -19,6 +20,7 @@ use crate::model::Model;
 /// * `model` - The model to run
 pub fn run(model: &Model) {
     // TODO: Remove this once we're actually doing something with these values
+    println!("Commodities: {:?}", model.commodities);
     println!("Regions: {:?}", model.regions);
     println!("Demand data: {:?}", model.demand_data);
     println!("Processes: {:?}", model.processes);

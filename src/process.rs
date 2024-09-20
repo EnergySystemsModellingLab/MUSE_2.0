@@ -31,7 +31,7 @@ macro_rules! define_process_id_getter {
 struct ProcessAvailabilityRaw {
     process_id: String,
     limit_type: LimitType,
-    time_slice: Option<String>,
+    time_slice: String,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     value: f64,
 }
@@ -181,16 +181,9 @@ where
 {
     let availabilities = iter
         .map(|record| {
-            let time_slice = match record.time_slice {
-                // Defaults to all time slices
-                None => TimeSliceSelection::All,
-                // Get a TimeSliceID from a string of the form season.time_of_day
-                Some(time_slice) => TimeSliceSelection::Some(
-                    time_slice_info
-                        .get_time_slice_id_from_str(&time_slice)
-                        .unwrap_input_err(file_path),
-                ),
-            };
+            let time_slice = time_slice_info
+                .get_selection(&record.time_slice)
+                .unwrap_input_err(file_path);
 
             ProcessAvailability {
                 process_id: record.process_id,
@@ -269,6 +262,7 @@ fn read_process_parameters(
 ///
 /// * `model_dir` - Folder containing model configuration files
 /// * `region_ids` - All possible region IDs
+/// * `time_slice_info` - Information about seasons and times of day
 /// * `year_range` - The possible range of milestone years
 ///
 /// # Returns
@@ -278,7 +272,7 @@ pub fn read_processes(
     model_dir: &Path,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-    year_range: RangeInclusive<u32>,
+    year_range: &RangeInclusive<u32>,
 ) -> HashMap<Rc<str>, Process> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path);
@@ -289,7 +283,7 @@ pub fn read_processes(
     let mut flows = read_csv_grouped_by_id(&file_path, &process_ids);
     let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
     let mut pacs = read_csv_grouped_by_id(&file_path, &process_ids);
-    let mut parameters = read_process_parameters(model_dir, &process_ids, &year_range);
+    let mut parameters = read_process_parameters(model_dir, &process_ids, year_range);
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions =
         read_regions_for_entity::<ProcessRegion>(&file_path, &process_ids, region_ids);

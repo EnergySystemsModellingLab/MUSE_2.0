@@ -1,5 +1,6 @@
 //! Code for simulation models.
 use crate::agent::{read_agents, Agent};
+use crate::commodity::{read_commodities, Commodity};
 use crate::demand::{read_demand_data, Demand};
 use crate::input::{read_toml, UnwrapInputError};
 use crate::process::{read_processes, Process};
@@ -16,6 +17,7 @@ const MODEL_FILE_NAME: &str = "model.toml";
 pub struct Model {
     pub milestone_years: Vec<u32>,
     pub agents: HashMap<Rc<str>, Agent>,
+    pub commodities: HashMap<Rc<str>, Commodity>,
     pub processes: HashMap<Rc<str>, Process>,
     pub time_slice_info: TimeSliceInfo,
     pub demand_data: Vec<Demand>,
@@ -79,11 +81,19 @@ impl Model {
         let regions = read_regions(model_dir.as_ref());
         let region_ids = regions.keys().cloned().collect();
         let years = &model_file.milestone_years.years;
+        let year_range = *years.first().unwrap()..=*years.last().unwrap();
+
+        let commodities = read_commodities(
+            model_dir.as_ref(),
+            &region_ids,
+            &time_slice_info,
+            &year_range,
+        );
         let processes = read_processes(
             model_dir.as_ref(),
             &region_ids,
             &time_slice_info,
-            *years.first().unwrap()..=*years.last().unwrap(),
+            &year_range,
         );
         let process_ids = processes.keys().cloned().collect();
         let agents = read_agents(model_dir.as_ref(), &process_ids, &region_ids);
@@ -91,6 +101,7 @@ impl Model {
         Model {
             milestone_years: model_file.milestone_years.years,
             agents,
+            commodities,
             processes,
             time_slice_info,
             demand_data: read_demand_data(model_dir.as_ref()),

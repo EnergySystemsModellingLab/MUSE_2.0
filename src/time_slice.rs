@@ -6,6 +6,7 @@ use crate::input::*;
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::Deserialize;
+use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt::Display;
@@ -30,8 +31,12 @@ impl Display for TimeSliceID {
 /// Represents a time slice read from an input file, which can be all
 #[derive(PartialEq, Debug)]
 pub enum TimeSliceSelection {
-    All,
-    Some(TimeSliceID),
+    /// All year and all day
+    Annual,
+    /// Only applies to one season
+    Season(Rc<str>),
+    /// Only applies to a single time slice
+    Single(TimeSliceID),
 }
 
 /// Information about the time slices in the simulation, including names and fractions
@@ -90,6 +95,21 @@ impl TimeSliceInfo {
             time_of_day: Rc::clone(time_of_day),
         })
     }
+
+    /// Get a `TimeSliceSelection` from the specified string.
+    ///
+    /// If the string is empty, the default value is `TimeSliceSelection::Annual`.
+    pub fn get_selection(&self, time_slice: &str) -> Result<TimeSliceSelection, Box<dyn Error>> {
+        if time_slice.is_empty() || time_slice.eq_ignore_ascii_case("annual") {
+            Ok(TimeSliceSelection::Annual)
+        } else if time_slice.contains('.') {
+            let time_slice = self.get_time_slice_id_from_str(time_slice)?;
+            Ok(TimeSliceSelection::Single(time_slice))
+        } else {
+            let season = self.seasons.get_id(time_slice)?;
+            Ok(TimeSliceSelection::Season(season))
+        }
+    }
 }
 
 /// A time slice record retrieved from a CSV file
@@ -143,6 +163,17 @@ where
         times_of_day,
         fractions,
     })
+}
+
+/// Refers to a particular aspect of a time slice
+#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
+pub enum TimeSliceLevel {
+    #[string = "annual"]
+    Annual,
+    #[string = "season"]
+    Season,
+    #[string = "daynight"]
+    DayNight,
 }
 
 /// Read time slices from a CSV file.
