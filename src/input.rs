@@ -21,21 +21,6 @@ pub fn read_csv<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> impl Itera
         .unwrap_input_err(file_path)
 }
 
-/// Read a series of type `T`s from a CSV file into a `Vec<T>`.
-///
-/// # Arguments
-///
-/// * `file_path` - Path to the CSV file
-pub fn read_csv_as_vec<T: DeserializeOwned>(file_path: &Path) -> Vec<T> {
-    let vec: Vec<T> = read_csv(file_path).collect();
-
-    if vec.is_empty() {
-        input_panic(file_path, "CSV file cannot be empty");
-    }
-
-    vec
-}
-
 /// Parse a TOML file at the specified path.
 ///
 /// # Arguments
@@ -261,10 +246,10 @@ mod tests {
 
     /// Test a normal read
     #[test]
-    fn test_read_csv_as_vec() {
+    fn test_read_csv() {
         let dir = tempdir().unwrap();
         let file_path = create_csv_file(dir.path(), "id,value\nhello,1\nworld,2\n");
-        let records: Vec<Record> = read_csv_as_vec(&file_path);
+        let records: Vec<Record> = read_csv(&file_path).collect();
         assert_eq!(
             records,
             &[
@@ -278,15 +263,6 @@ mod tests {
                 }
             ]
         );
-    }
-
-    /// Empty CSV files should yield an error
-    #[test]
-    #[should_panic]
-    fn test_read_csv_as_vec_empty() {
-        let dir = tempdir().unwrap();
-        let file_path = create_csv_file(dir.path(), "id,value\n");
-        read_csv_as_vec::<Record>(&file_path);
     }
 
     #[test]
