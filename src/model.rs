@@ -17,7 +17,7 @@ const MODEL_FILE_NAME: &str = "model.toml";
 pub struct Model {
     pub milestone_years: Vec<u32>,
     pub agents: HashMap<Rc<str>, Agent>,
-    pub commodities: HashMap<Rc<str>, Commodity>,
+    pub commodities: HashMap<Rc<str>, Rc<Commodity>>,
     pub processes: HashMap<Rc<str>, Process>,
     pub time_slice_info: TimeSliceInfo,
     pub demand_data: Vec<Demand>,
@@ -91,6 +91,7 @@ impl Model {
         );
         let processes = read_processes(
             model_dir.as_ref(),
+            &commodities,
             &region_ids,
             &time_slice_info,
             &year_range,
