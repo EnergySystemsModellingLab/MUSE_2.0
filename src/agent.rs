@@ -1,5 +1,6 @@
 use crate::asset::{read_assets, Asset};
 use crate::input::*;
+use crate::process::Process;
 use crate::region::*;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -256,17 +257,18 @@ pub fn read_agents_file(
 /// A map of Agents, with the agent ID as the key
 pub fn read_agents(
     model_dir: &Path,
-    process_ids: &HashSet<Rc<str>>,
+    processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
 ) -> HashMap<Rc<str>, Agent> {
-    let mut agents = read_agents_file(model_dir, process_ids);
+    let process_ids = processes.keys().cloned().collect();
+    let mut agents = read_agents_file(model_dir, &process_ids);
     let agent_ids = agents.keys().cloned().collect();
 
     let file_path = model_dir.join(AGENT_REGIONS_FILE_NAME);
     let mut agent_regions =
         read_regions_for_entity::<AgentRegion>(&file_path, &agent_ids, region_ids);
     let mut objectives = read_agent_objectives(model_dir, &agents);
-    let mut assets = read_assets(model_dir, &agent_ids, process_ids, region_ids);
+    let mut assets = read_assets(model_dir, &agent_ids, processes, region_ids);
 
     // Populate each Agent's Vecs
     for (id, agent) in agents.iter_mut() {

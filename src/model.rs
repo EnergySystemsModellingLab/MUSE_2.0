@@ -96,8 +96,7 @@ impl Model {
             &time_slice_info,
             &year_range,
         );
-        let process_ids = processes.keys().cloned().collect();
-        let agents = read_agents(model_dir.as_ref(), &process_ids, &region_ids);
+        let agents = read_agents(model_dir.as_ref(), &processes, &region_ids);
 
         Model {
             milestone_years: model_file.milestone_years.years,
