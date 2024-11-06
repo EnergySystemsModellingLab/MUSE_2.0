@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt::Display;
 use std::fs;
+use std::hash::Hash;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -123,7 +124,7 @@ macro_rules! define_str_id_getter {
 
 pub(crate) use define_str_id_getter;
 
-pub trait IDCollection {
+pub trait IDCollection<T: ?Sized> {
     /// Get the ID after checking that it exists this collection.
     ///
     /// # Arguments
@@ -132,12 +133,15 @@ pub trait IDCollection {
     ///
     /// # Returns
     ///
-    /// A copy of the `Rc<str>` in `self` or an error if not found.
-    fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>>;
+    /// A copy of the `Rc<T>` in `self` or an error if not found.
+    fn get_id(&self, id: &T) -> Result<Rc<T>, Box<dyn Error>>;
 }
 
-impl IDCollection for HashSet<Rc<str>> {
-    fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>> {
+impl<T> IDCollection<T> for HashSet<Rc<T>>
+where
+    T: ?Sized + Display + Hash + Eq,
+{
+    fn get_id(&self, id: &T) -> Result<Rc<T>, Box<dyn Error>> {
         match self.get(id) {
             None => Err(format!("Unknown ID {id} found"))?,
             Some(id) => Ok(Rc::clone(id)),
