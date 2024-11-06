@@ -276,22 +276,25 @@ fn read_process_pacs_from_iter<I>(
 where
     I: Iterator<Item = ProcessPAC>,
 {
-    let pacs = iter.collect_vec();
-    if !pacs.iter().all_unique() {
-        Err("Duplicate entries found")?;
-    }
+    // Keep track of previous PACs so we can check for duplicates
+    let mut pacs = HashSet::new();
 
-    pacs.into_iter()
-        .map(|pac| {
-            let process_id = process_ids.get_id(&pac.process_id)?;
-            let commodity = commodities.get(pac.pac.as_str());
+    iter.map(|pac| {
+        let process_id = process_ids.get_id(&pac.process_id)?;
+        let commodity = commodities.get(pac.pac.as_str());
 
-            match commodity {
-                None => Err(format!("{} is not a valid commodity ID", &pac.pac))?,
-                Some(commodity) => Ok((process_id, Rc::clone(commodity))),
+        match commodity {
+            None => Err(format!("{} is not a valid commodity ID", &pac.pac))?,
+            Some(commodity) => {
+                if !pacs.insert(pac) {
+                    Err("Duplicate PACs found")?;
+                }
+
+                Ok((process_id, Rc::clone(commodity)))
             }
-        })
-        .process_results(|iter| iter.into_group_map())
+        }
+    })
+    .process_results(|iter| iter.into_group_map())
 }
 
 /// Read process Primary Activity Commodities (PACs) from the specified model directory.
