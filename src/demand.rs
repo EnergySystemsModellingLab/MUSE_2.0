@@ -12,7 +12,7 @@ const DEMAND_SLICES_FILE_NAME: &str = "demand_slicing.csv";
 /// Represents a single demand entry in the dataset.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Demand {
-    /// The year of the demand entry
+    /// The commodity this demand entry refers to
     pub commodity_id: String,
     /// The region of the demand entry
     pub region_id: String,
