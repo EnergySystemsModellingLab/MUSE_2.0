@@ -105,15 +105,15 @@ where
 }
 
 /// Indicates that the struct has an ID field
-pub trait HasID {
-    /// Get a string representation of the struct's ID
-    fn get_id(&self) -> &str;
+pub trait HasID<T: ?Sized> {
+    /// Get a representation of the struct's ID
+    fn get_id(&self) -> &T;
 }
 
-/// Implement the `HasID` trait for the given type, assuming it has a field called `id`
-macro_rules! define_id_getter {
+/// Implement the `HasID<str>` trait for the given type, assuming it has a field called `id`
+macro_rules! define_str_id_getter {
     ($t:ty) => {
-        impl HasID for $t {
+        impl HasID<str> for $t {
             fn get_id(&self) -> &str {
                 &self.id
             }
@@ -121,7 +121,7 @@ macro_rules! define_id_getter {
     };
 }
 
-pub(crate) use define_id_getter;
+pub(crate) use define_str_id_getter;
 
 pub trait IDCollection {
     /// Get the ID after checking that it exists this collection.
@@ -151,7 +151,7 @@ impl IDCollection for HashSet<Rc<str>> {
 /// CSV file for a record type, so it assumes that all IDs encountered are valid.
 pub fn read_csv_id_file<T>(file_path: &Path) -> HashMap<Rc<str>, T>
 where
-    T: HasID + DeserializeOwned,
+    T: HasID<str> + DeserializeOwned,
 {
     let mut map = HashMap::new();
     for record in read_csv::<T>(file_path) {
@@ -179,7 +179,7 @@ pub trait IntoIDMap<T> {
 
 impl<T, I> IntoIDMap<T> for I
 where
-    T: HasID,
+    T: HasID<str>,
     I: Iterator<Item = T>,
 {
     /// Convert the specified iterator into a `HashMap` of the items grouped by ID.
@@ -221,7 +221,7 @@ pub fn read_csv_grouped_by_id<T>(
     ids: &HashSet<Rc<str>>,
 ) -> HashMap<Rc<str>, Vec<T>>
 where
-    T: HasID + DeserializeOwned,
+    T: HasID<str> + DeserializeOwned,
 {
     read_csv(file_path)
         .into_id_map(ids)
@@ -245,7 +245,7 @@ mod tests {
         value: u32,
     }
 
-    impl HasID for Record {
+    impl HasID<str> for Record {
         fn get_id(&self) -> &str {
             &self.id
         }

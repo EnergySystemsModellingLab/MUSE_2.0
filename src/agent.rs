@@ -63,11 +63,11 @@ pub struct Agent {
     #[serde(skip)]
     pub objectives: Vec<AgentObjective>,
 }
-define_id_getter! {Agent}
+define_str_id_getter! {Agent}
 
 macro_rules! define_agent_id_getter {
     ($t:ty) => {
-        impl HasID for $t {
+        impl HasID<str> for $t {
             fn get_id(&self) -> &str {
                 &self.agent_id
             }

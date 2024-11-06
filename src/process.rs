@@ -18,7 +18,7 @@ const PROCESS_REGIONS_FILE_NAME: &str = "process_regions.csv";
 
 macro_rules! define_process_id_getter {
     ($t:ty) => {
-        impl HasID for $t {
+        impl HasID<str> for $t {
             fn get_id(&self) -> &str {
                 &self.process_id
             }
@@ -156,7 +156,7 @@ struct ProcessDescription {
     id: Rc<str>,
     description: String,
 }
-define_id_getter! {ProcessDescription}
+define_str_id_getter! {ProcessDescription}
 
 #[derive(PartialEq, Debug)]
 pub struct Process {
@@ -168,7 +168,7 @@ pub struct Process {
     pub parameter: ProcessParameter,
     pub regions: RegionSelection,
 }
-define_id_getter! {Process}
+define_str_id_getter! {Process}
 
 fn read_process_availabilities_from_iter<I>(
     iter: I,

@@ -14,7 +14,7 @@ pub struct Region {
     pub id: Rc<str>,
     pub description: String,
 }
-define_id_getter! {Region}
+define_str_id_getter! {Region}
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum RegionSelection {
@@ -106,7 +106,7 @@ fn read_regions_for_entity_from_iter<I, T>(
 ) -> Result<HashMap<Rc<str>, RegionSelection>, Box<dyn Error>>
 where
     I: Iterator<Item = T>,
-    T: HasID + HasRegionID,
+    T: HasID<str> + HasRegionID,
 {
     let mut entity_regions = HashMap::new();
     for entity in entity_iter {
@@ -141,7 +141,7 @@ pub fn read_regions_for_entity<T>(
     region_ids: &HashSet<Rc<str>>,
 ) -> HashMap<Rc<str>, RegionSelection>
 where
-    T: HasID + HasRegionID + DeserializeOwned,
+    T: HasID<str> + HasRegionID + DeserializeOwned,
 {
     read_regions_for_entity_from_iter(read_csv::<T>(file_path), entity_ids, region_ids)
         .unwrap_input_err(file_path)
@@ -286,7 +286,7 @@ AP,Asia Pacific"
         id: String,
         region_id: String,
     }
-    define_id_getter! {Record}
+    define_str_id_getter! {Record}
     define_region_id_getter! {Record}
 
     #[test]
