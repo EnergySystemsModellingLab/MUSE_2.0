@@ -26,6 +26,5 @@ pub fn run(model: &Model) {
     println!("Demand data: {:?}", model.demand_data);
     println!("Processes: {:?}", model.processes);
     println!("Time slices: {:?}", model.time_slice_info);
-    println!("Assets: {:?}", model.assets);
     println!("Milestone years: {:?}", model.milestone_years);
 }

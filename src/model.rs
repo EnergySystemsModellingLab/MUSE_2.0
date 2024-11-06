@@ -1,6 +1,5 @@
 //! Code for simulation models.
 use crate::agent::{read_agents, Agent};
-use crate::asset::{read_assets, Asset};
 use crate::commodity::{read_commodities, Commodity};
 use crate::demand::{read_demand_data, Demand};
 use crate::input::{read_toml, UnwrapInputError};
@@ -20,7 +19,6 @@ pub struct Model {
     pub agents: HashMap<Rc<str>, Agent>,
     pub commodities: HashMap<Rc<str>, Rc<Commodity>>,
     pub processes: HashMap<Rc<str>, Process>,
-    pub assets: Vec<Asset>,
     pub time_slice_info: TimeSliceInfo,
     pub demand_data: Vec<Demand>,
     pub regions: HashMap<Rc<str>, Region>,
@@ -100,14 +98,12 @@ impl Model {
         );
         let process_ids = processes.keys().cloned().collect();
         let agents = read_agents(model_dir.as_ref(), &process_ids, &region_ids);
-        let assets = read_assets(model_dir.as_ref(), &process_ids, &region_ids);
 
         Model {
             milestone_years: model_file.milestone_years.years,
             agents,
             commodities,
             processes,
-            assets,
             time_slice_info,
             demand_data: read_demand_data(model_dir.as_ref()),
             regions,
