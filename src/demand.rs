@@ -26,6 +26,7 @@ pub struct Demand {
     pub demand_slices: Vec<DemandSlice>,
 }
 
+/// How demand varies by time slice
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct DemandSlice {
     pub commodity_id: String,
@@ -34,6 +35,18 @@ pub struct DemandSlice {
     pub fraction: f64,
 }
 
+/// Read the demand data from an iterator
+///
+/// # Arguments
+///
+/// * `iter` - An iterator of `Demand`s
+/// * `commodity_ids` - All possible IDs of commodities
+/// * `region_ids` - All possible IDs for regions
+/// * `year_range` - The year range for the simulation
+///
+/// # Returns
+///
+/// The demand data (except for the demand slice information), grouped by commodity and region.
 fn read_demand_from_iter<I>(
     iter: I,
     commodity_ids: &HashSet<Rc<str>>,
@@ -68,6 +81,19 @@ where
     Ok(map_by_commodity)
 }
 
+/// Read the demand.csv file.
+///
+/// # Arguments
+///
+/// * `model_dir` - Folder containing model configuration files
+/// * `commodity_ids` - All possible IDs of commodities
+/// * `region_ids` - All possible IDs for regions
+/// * `year_range` - The year range for the simulation
+///
+/// # Returns
+///
+/// The demand data except for the demand slice information, which resides in a separate CSV file.
+/// The data is grouped by commodity and region.
 fn read_demand_file(
     model_dir: &Path,
     commodity_ids: &HashSet<Rc<str>>,
@@ -79,6 +105,7 @@ fn read_demand_file(
         .unwrap_input_err(&file_path)
 }
 
+/// Try to get demand for the given commodity and region. Returns `None` if not found.
 fn try_get_demand<'a>(
     commodity_id: &str,
     region_id: &str,
@@ -87,6 +114,7 @@ fn try_get_demand<'a>(
     demand.get_mut(commodity_id)?.get_mut(region_id)
 }
 
+/// Read demand slices from an iterator and store them in `demand`.
 fn read_demand_slices_from_iter<I>(
     iter: I,
     file_path: &Path,
@@ -112,6 +140,12 @@ fn read_demand_slices_from_iter<I>(
     // TODO: Check for demand entries without any demand slices specified?
 }
 
+/// Read demand slices from specified model directory.
+///
+/// # Arguments
+///
+/// * `model_dir` - Folder containing model configuration files
+/// * `demand` - Demand data grouped by commodity and region
 fn read_demand_slices(model_dir: &Path, demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>) {
     let file_path = model_dir.join(DEMAND_SLICES_FILE_NAME);
     read_demand_slices_from_iter(read_csv(&file_path), &file_path, demand)
