@@ -32,11 +32,11 @@ pub struct Commodity {
     #[serde(skip)]
     pub demand_by_region: HashMap<Rc<str>, Demand>,
 }
-define_id_getter! {Commodity}
+define_str_id_getter! {Commodity}
 
 macro_rules! define_commodity_id_getter {
     ($t:ty) => {
-        impl HasID for $t {
+        impl HasID<str> for $t {
             fn get_id(&self) -> &str {
                 &self.commodity_id
             }
