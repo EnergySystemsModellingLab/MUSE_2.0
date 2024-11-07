@@ -4,8 +4,8 @@ Decision variables:
 
 \\( q_{r,a,c,ts} \\). Where *q* represents *c* commodity flow in region *r*, to/from asset *a*, in
 time slice *ts*.
--ve values are flow into the asset, +ve values are flows from the asset. Note that *q* is a quantity
-flow (e.g. energy) as opposed to an intensity (e.g. power).
+Negative values are flows into the asset and positive values are flows from the asset. Note that *q*
+is a quantity flow (e.g. energy) as opposed to an intensity (e.g. power).
 
 where
 
@@ -70,8 +70,8 @@ For each *r*, *a*, *c*, *ts*:
 
 (**TBD**)
 
-for all *c* that are flexible commodities. “in” refers to input flow commodities (i.e. with a -ve
-sign), and “out” refers to output flow commodities (i.e. with a +ve sign).
+for all *c* that are flexible commodities. “in” refers to input flow commodities (i.e. with a
+negative sign), and “out” refers to output flow commodities (i.e. with a positive sign).
 
 ### Asset-level capacity and availability constraints
 
