@@ -134,8 +134,25 @@ impl ProcessParameterRaw {
 }
 
 impl ProcessParameterRaw {
+    /// Validates the `ProcessParameterRaw` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - `lifetime` is 0.
+    /// - `discount_rate` is present and less than 0.0.
+    /// - `cap2act` is present and less than 0.0.
+    ///
+    /// # Warnings
+    ///
+    /// Logs a warning if:
+    /// - `discount_rate` is present and greater than 1.0.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if all validations pass.
     fn validate(&self) -> Result<(), Box<dyn Error>> {
-        if self.lifetime <= 0 {
+        if self.lifetime == 0 {
             Err(format!(
                 "Error in parameter for process {}: Lifetime must be greater than 0",
                 self.process_id
