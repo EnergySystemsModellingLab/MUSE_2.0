@@ -1,6 +1,7 @@
 use crate::input::*;
 use crate::region::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
+use ::log::warn;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
@@ -134,23 +135,29 @@ impl ProcessParameterRaw {
 
 impl ProcessParameterRaw {
     fn validate(&self) -> Result<(), Box<dyn Error>> {
-        if self.lifetime == 0 {
+        if self.lifetime <= 0 {
             Err(format!(
-                "Error in parameter for process {}: Lifetime must be positive",
+                "Error in parameter for process {}: Lifetime must be greater than 0",
                 self.process_id
             ))?;
         }
         if self.discount_rate.is_some() && self.discount_rate.unwrap() < 0.0 {
             Err(format!(
-                "Error in parameter for process {}: Discount rate must be greater than 0",
+                "Error in parameter for process {}: Discount rate must be positive",
                 self.process_id
             ))?;
         }
         if self.cap2act.is_some() && self.cap2act.unwrap() < 0.0 {
             Err(format!(
-                "Error in parameter for process {}: Cap2act must be greater than 0",
+                "Error in parameter for process {}: Cap2act must be positive",
                 self.process_id
             ))?;
+        }
+        if self.discount_rate.is_some() && self.discount_rate.unwrap() > 1.0 {
+            warn!(
+                "Warning in parameter for process {}: Discount rate is greater than 1",
+                self.process_id
+            );
         }
         Ok(())
     }
@@ -351,6 +358,7 @@ mod tests {
     fn create_param_raw(
         start_year: Option<u32>,
         end_year: Option<u32>,
+        lifetime: u32,
         discount_rate: Option<f64>,
         cap2act: Option<f64>,
     ) -> ProcessParameterRaw {
@@ -361,7 +369,7 @@ mod tests {
             capital_cost: 0.0,
             fixed_operating_cost: 0.0,
             variable_operating_cost: 0.0,
-            lifetime: 1,
+            lifetime,
             discount_rate,
             cap2act,
         }
@@ -389,28 +397,28 @@ mod tests {
         let year_range = 2000..=2100;
 
         // No missing values
-        let raw = create_param_raw(Some(2010), Some(2020), Some(1.0), Some(0.0));
+        let raw = create_param_raw(Some(2010), Some(2020), 1, Some(1.0), Some(0.0));
         assert_eq!(
             raw.into_parameter(&year_range).unwrap(),
             create_param(2010..=2020, 1.0, 0.0)
         );
 
         // Missing years
-        let raw = create_param_raw(None, None, Some(1.0), Some(0.0));
+        let raw = create_param_raw(None, None, 1, Some(1.0), Some(0.0));
         assert_eq!(
             raw.into_parameter(&year_range).unwrap(),
             create_param(2000..=2100, 1.0, 0.0)
         );
 
         // Missing discount_rate
-        let raw = create_param_raw(Some(2010), Some(2020), None, Some(0.0));
+        let raw = create_param_raw(Some(2010), Some(2020), 1, None, Some(0.0));
         assert_eq!(
             raw.into_parameter(&year_range).unwrap(),
             create_param(2010..=2020, 0.0, 0.0)
         );
 
         // Missing cap2act
-        let raw = create_param_raw(Some(2010), Some(2020), Some(1.0), None);
+        let raw = create_param_raw(Some(2010), Some(2020), 1, Some(1.0), None);
         assert_eq!(
             raw.into_parameter(&year_range).unwrap(),
             create_param(2010..=2020, 1.0, 1.0)
@@ -423,21 +431,21 @@ mod tests {
 
         // Normal case
         assert!(
-            create_param_raw(Some(2000), Some(2100), Some(1.0), Some(0.0))
+            create_param_raw(Some(2000), Some(2100), 1, Some(1.0), Some(0.0))
                 .into_parameter(&year_range)
                 .is_ok()
         );
 
         // start_year out of range - this is permitted
         assert!(
-            create_param_raw(Some(1999), Some(2100), Some(1.0), Some(0.0))
+            create_param_raw(Some(1999), Some(2100), 1, Some(1.0), Some(0.0))
                 .into_parameter(&year_range)
                 .is_ok()
         );
 
         // end_year out of range - this is permitted
         assert!(
-            create_param_raw(Some(2000), Some(2101), Some(1.0), Some(0.0))
+            create_param_raw(Some(2000), Some(2101), 1, Some(1.0), Some(0.0))
                 .into_parameter(&year_range)
                 .is_ok()
         );
@@ -450,8 +458,41 @@ mod tests {
 
         // start_year after end_year
         assert!(
-            create_param_raw(Some(2001), Some(2000), Some(1.0), Some(0.0))
+            create_param_raw(Some(2001), Some(2000), 1, Some(1.0), Some(0.0))
                 .into_parameter(&year_range)
+                .is_ok()
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_param_raw_validate_bad_lifetime() {
+        // lifetime = 0
+        assert!(
+            create_param_raw(Some(2000), Some(2100), 0, Some(1.0), Some(0.0))
+                .validate()
+                .is_ok()
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_param_raw_validate_bad_discount_rate() {
+        // discount rate = -1
+        assert!(
+            create_param_raw(Some(2000), Some(2100), 0, Some(-1.0), Some(0.0))
+                .validate()
+                .is_ok()
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_param_raw_validate_bad_capt2act() {
+        // capt2act = -1
+        assert!(
+            create_param_raw(Some(2000), Some(2100), 0, Some(1.0), Some(-1.0))
+                .validate()
                 .is_ok()
         );
     }
