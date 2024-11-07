@@ -117,27 +117,26 @@ fn try_get_demand<'a>(
 /// Read demand slices from an iterator and store them in `demand`.
 fn read_demand_slices_from_iter<I>(
     iter: I,
-    file_path: &Path,
     demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>,
-) where
+) -> Result<(), Box<dyn Error>>
+where
     I: Iterator<Item = DemandSlice>,
 {
     for slice in iter {
-        let demand =
-            try_get_demand(&slice.commodity_id, &slice.region_id, demand).unwrap_or_else(|| {
-                input_panic(
-                    file_path,
-                    &format!(
-                        "No demand specified for commodity {} in region {}",
-                        &slice.commodity_id, &slice.region_id
-                    ),
+        match try_get_demand(&slice.commodity_id, &slice.region_id, demand) {
+            None => {
+                return Err(format!(
+                    "No demand specified for commodity {} in region {}",
+                    &slice.commodity_id, &slice.region_id
                 )
-            });
-
-        demand.demand_slices.push(slice);
+                .into())
+            }
+            Some(demand) => demand.demand_slices.push(slice),
+        }
     }
 
     // TODO: Check for demand entries without any demand slices specified?
+    Ok(())
 }
 
 /// Read demand slices from specified model directory.
@@ -148,7 +147,7 @@ fn read_demand_slices_from_iter<I>(
 /// * `demand` - Demand data grouped by commodity and region
 fn read_demand_slices(model_dir: &Path, demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>) {
     let file_path = model_dir.join(DEMAND_SLICES_FILE_NAME);
-    read_demand_slices_from_iter(read_csv(&file_path), &file_path, demand)
+    read_demand_slices_from_iter(read_csv(&file_path), demand).unwrap_input_err(&file_path)
 }
 
 /// Reads demand data from a CSV file.
@@ -182,7 +181,7 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
     use tempfile::tempdir;
 
     /// Create an example demand file in dir_path
@@ -282,7 +281,6 @@ COM1,West,2023,13"
 
     #[test]
     fn test_read_demand_slices_from_iter_good() {
-        let p = PathBuf::new();
         let mut demand = create_demand();
         let demand_slice = DemandSlice {
             commodity_id: "COM1".into(),
@@ -290,7 +288,7 @@ COM1,West,2023,13"
             time_slice: "winter.day".into(),
             fraction: 1.0,
         };
-        read_demand_slices_from_iter([demand_slice.clone()].into_iter(), &p, &mut demand);
+        read_demand_slices_from_iter([demand_slice.clone()].into_iter(), &mut demand).unwrap();
         assert_eq!(
             try_get_demand("COM1", "GBR", &mut demand)
                 .unwrap()
@@ -301,9 +299,7 @@ COM1,West,2023,13"
 
     /// Demand slice with invalid commodity
     #[test]
-    #[should_panic]
     fn test_read_demand_slices_from_iter_bad_commodity() {
-        let p = PathBuf::new();
         let mut demand = create_demand();
         let demand_slice = DemandSlice {
             commodity_id: "COM2".into(),
@@ -311,14 +307,12 @@ COM1,West,2023,13"
             time_slice: "winter.day".into(),
             fraction: 1.0,
         };
-        read_demand_slices_from_iter([demand_slice].into_iter(), &p, &mut demand);
+        assert!(read_demand_slices_from_iter([demand_slice].into_iter(), &mut demand).is_err());
     }
 
     /// Demand slice with invalid region
     #[test]
-    #[should_panic]
     fn test_read_demand_slices_from_iter_bad_region() {
-        let p = PathBuf::new();
         let mut demand = create_demand();
         let demand_slice = DemandSlice {
             commodity_id: "COM1".into(),
@@ -326,6 +320,6 @@ COM1,West,2023,13"
             time_slice: "winter.day".into(),
             fraction: 1.0,
         };
-        read_demand_slices_from_iter([demand_slice].into_iter(), &p, &mut demand);
+        assert!(read_demand_slices_from_iter([demand_slice].into_iter(), &mut demand).is_err());
     }
 }
