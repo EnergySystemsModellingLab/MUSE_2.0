@@ -40,9 +40,9 @@ constraints).
 
 ### Non-flexible assets
 
-Assets where ratio between output/s and input/s is strictly proportional. *Energy commodity asset
+Assets where ratio between output/s and input/s is strictly proportional. Energy commodity asset
 inputs and outputs are proportional to first-listed primary activity commodity at a time slice level
-defined for each commodity. Input/output ratio is a fixed value.*
+defined for each commodity. Input/output ratio is a fixed value.
 
 > For each *r*, *a*, *ts*, *c*:
 >
