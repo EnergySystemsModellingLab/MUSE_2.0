@@ -165,18 +165,20 @@ impl ProcessParameterRaw {
                     self.process_id
                 ))?;
             }
+            if dr > 1.0 {
+                warn!(
+                    "Warning in parameter for process {}: Discount rate is greater than 1",
+                    self.process_id
+                );
+            }
         }
-        if self.cap2act.is_some() && self.cap2act.unwrap() < 0.0 {
-            Err(format!(
-                "Error in parameter for process {}: Cap2act must be positive",
-                self.process_id
-            ))?;
-        }
-        if self.discount_rate.is_some() && self.discount_rate.unwrap() > 1.0 {
-            warn!(
-                "Warning in parameter for process {}: Discount rate is greater than 1",
-                self.process_id
-            );
+        if let Some(c2a) = self.cap2act {
+            if c2a < 0.0 {
+                Err(format!(
+                    "Error in parameter for process {}: Cap2act must be positive",
+                    self.process_id
+                ))?;
+            }
         }
         Ok(())
     }
@@ -494,24 +496,22 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_param_raw_validate_bad_discount_rate() {
         // discount rate = -1
         assert!(
             create_param_raw(Some(2000), Some(2100), 0, Some(-1.0), Some(0.0))
                 .validate()
-                .is_ok()
+                .is_err()
         );
     }
 
     #[test]
-    #[should_panic]
     fn test_param_raw_validate_bad_capt2act() {
         // capt2act = -1
         assert!(
             create_param_raw(Some(2000), Some(2100), 0, Some(1.0), Some(-1.0))
                 .validate()
-                .is_ok()
+                .is_err()
         );
     }
 
