@@ -262,26 +262,28 @@ COM1,West,2023,13"
         );
     }
 
-    fn create_demand() -> HashMap<Rc<str>, HashMap<Rc<str>, Demand>> {
-        let demand_by_region = [(
-            "GBR".into(),
-            Demand {
-                commodity_id: "COM1".into(),
-                region_id: "GBR".into(),
-                year: 2020,
-                demand: 1.0,
-                demand_slices: Vec::new(),
-            },
-        )];
-
-        [("COM1".into(), demand_by_region.into_iter().collect())]
-            .into_iter()
-            .collect()
-    }
-
     #[test]
-    fn test_read_demand_slices_from_iter_good() {
-        let mut demand = create_demand();
+    fn test_read_demand_slices_from_iter() {
+        // Demand grouped by region
+        let mut demand = [(
+            "COM1".into(),
+            [(
+                "GBR".into(),
+                Demand {
+                    commodity_id: "COM1".into(),
+                    region_id: "GBR".into(),
+                    year: 2020,
+                    demand: 1.0,
+                    demand_slices: Vec::new(),
+                },
+            )]
+            .into_iter()
+            .collect(),
+        )]
+        .into_iter()
+        .collect();
+
+        // Valid
         let demand_slice = DemandSlice {
             commodity_id: "COM1".into(),
             region_id: "GBR".into(),
@@ -295,12 +297,8 @@ COM1,West,2023,13"
                 .demand_slices,
             vec![demand_slice]
         );
-    }
 
-    /// Demand slice with invalid commodity
-    #[test]
-    fn test_read_demand_slices_from_iter_bad_commodity() {
-        let mut demand = create_demand();
+        // Bad commodity
         let demand_slice = DemandSlice {
             commodity_id: "COM2".into(),
             region_id: "GBR".into(),
@@ -308,12 +306,8 @@ COM1,West,2023,13"
             fraction: 1.0,
         };
         assert!(read_demand_slices_from_iter([demand_slice].into_iter(), &mut demand).is_err());
-    }
 
-    /// Demand slice with invalid region
-    #[test]
-    fn test_read_demand_slices_from_iter_bad_region() {
-        let mut demand = create_demand();
+        // Bad region
         let demand_slice = DemandSlice {
             commodity_id: "COM1".into(),
             region_id: "USA".into(),
