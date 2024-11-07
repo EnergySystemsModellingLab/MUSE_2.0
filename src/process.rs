@@ -85,7 +85,7 @@ where
 #[derive(PartialEq, Clone, Eq, Hash, Debug, Deserialize)]
 struct ProcessPAC {
     process_id: String,
-    pac: String,
+    commodity_id: String,
 }
 define_process_id_getter! {ProcessPAC}
 
@@ -282,10 +282,10 @@ where
 
     iter.map(|pac| {
         let process_id = process_ids.get_id(&pac.process_id)?;
-        let commodity = commodities.get(pac.pac.as_str());
+        let commodity = commodities.get(pac.commodity_id.as_str());
 
         match commodity {
-            None => Err(format!("{} is not a valid commodity ID", &pac.pac))?,
+            None => Err(format!("{} is not a valid commodity ID", &pac.commodity_id))?,
             Some(commodity) => {
                 if !pacs.insert(pac) {
                     Err("Duplicate PACs found")?;
@@ -649,7 +649,7 @@ mod tests {
         // duplicate PAC
         let pac = ProcessPAC {
             process_id: "id1".into(),
-            pac: "commodity1".into(),
+            commodity_id: "commodity1".into(),
         };
         let pacs = [pac.clone(), pac];
         assert!(read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities).is_err());
@@ -657,7 +657,7 @@ mod tests {
         // invalid commodity ID
         let bad_pac = ProcessPAC {
             process_id: "id1".into(),
-            pac: "other_commodity".into(),
+            commodity_id: "other_commodity".into(),
         };
         assert!(
             read_process_pacs_from_iter([bad_pac].into_iter(), &process_ids, &commodities).is_err()
@@ -666,15 +666,15 @@ mod tests {
         let pacs = [
             ProcessPAC {
                 process_id: "id1".into(),
-                pac: "commodity1".into(),
+                commodity_id: "commodity1".into(),
             },
             ProcessPAC {
                 process_id: "id1".into(),
-                pac: "commodity2".into(),
+                commodity_id: "commodity2".into(),
             },
             ProcessPAC {
                 process_id: "id2".into(),
-                pac: "commodity1".into(),
+                commodity_id: "commodity1".into(),
             },
         ];
         let expected = [
