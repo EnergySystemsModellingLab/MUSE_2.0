@@ -127,7 +127,7 @@ $$\sum_{a,ts} q_{r,a,c,ts} = cr\\_ net\\_ fx$$
 
 Where *c* is a service demand commodity.
 
-**TBD** – commodities that are consumed (so sum of *q* can be a negative value). E.g. oil reserves.
+**TBD** – commodities that are consumed (so sum of *q* can be a negative value). E.g. oil reserves. \
 **TBD** – trade between regions.
 
 ### Asset-level commodity flow share constraints for flexible assets
