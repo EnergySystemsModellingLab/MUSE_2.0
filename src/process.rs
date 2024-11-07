@@ -158,11 +158,13 @@ impl ProcessParameterRaw {
                 self.process_id
             ))?;
         }
-        if self.discount_rate.is_some() && self.discount_rate.unwrap() < 0.0 {
-            Err(format!(
-                "Error in parameter for process {}: Discount rate must be positive",
-                self.process_id
-            ))?;
+        if let Some(dr) = self.discount_rate {
+            if dr < 0.0 {
+                Err(format!(
+                    "Error in parameter for process {}: Discount rate must be positive",
+                    self.process_id
+                ))?;
+            }
         }
         if self.cap2act.is_some() && self.cap2act.unwrap() < 0.0 {
             Err(format!(
@@ -482,13 +484,12 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_param_raw_validate_bad_lifetime() {
         // lifetime = 0
         assert!(
             create_param_raw(Some(2000), Some(2100), 0, Some(1.0), Some(0.0))
                 .validate()
-                .is_ok()
+                .is_err()
         );
     }
 
