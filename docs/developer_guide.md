@@ -38,6 +38,25 @@ cargo test
 
 More information is available in [the official `cargo` book](https://doc.rust-lang.org/cargo/).
 
+## Developing the documentation
+
+We use [mdBook](https://rust-lang.github.io/mdBook/) for generating technical documentation.
+
+If you are developing the documentation locally, you may want to check that your changes render
+correctly (especially if you are working with equations).
+
+To do this, you first need to install mdBook:
+
+```sh
+cargo install mdbook
+```
+
+You can then view the documentation in your browser like so:
+
+```sh
+mdbook serve -o
+```
+
 ## Pre-Commit hooks
 
 Developers must install the `pre-commit` tool in order to automatically run this
