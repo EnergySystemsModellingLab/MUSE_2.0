@@ -50,7 +50,7 @@ defined for each commodity. Input/output ratio is a fixed value.
 >
 > for all commodity flows that the process has (except *pac1*). Where *pac1* is the first listed
 > primary activity commodity for the asset (i.e. all input and output flows are made proportional to
-> *pac1* flow).*
+> *pac1* flow).
 >
 > Note – need to handle cases where a flow is set to zero in the input data – should raise a
 > warning that the value has been ignored, specifying which region/asset/commodity.
