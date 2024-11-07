@@ -117,6 +117,8 @@ impl ProcessParameterRaw {
             ))?;
         }
 
+        self.validate()?;
+
         Ok(ProcessParameter {
             process_id: self.process_id,
             years: start_year..=end_year,
@@ -127,6 +129,30 @@ impl ProcessParameterRaw {
             discount_rate: self.discount_rate.unwrap_or(0.0),
             cap2act: self.cap2act.unwrap_or(1.0),
         })
+    }
+}
+
+impl ProcessParameterRaw {
+    fn validate(&self) -> Result<(), Box<dyn Error>> {
+        if self.lifetime == 0 {
+            Err(format!(
+                "Error in parameter for process {}: Lifetime must be positive",
+                self.process_id
+            ))?;
+        }
+        if self.discount_rate.is_some() && self.discount_rate.unwrap() < 0.0 {
+            Err(format!(
+                "Error in parameter for process {}: Discount rate must be greater than 0",
+                self.process_id
+            ))?;
+        }
+        if self.cap2act.is_some() && self.cap2act.unwrap() < 0.0 {
+            Err(format!(
+                "Error in parameter for process {}: Cap2act must be greater than 0",
+                self.process_id
+            ))?;
+        }
+        Ok(())
     }
 }
 
