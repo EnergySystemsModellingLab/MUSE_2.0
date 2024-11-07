@@ -1,4 +1,5 @@
 use crate::input::*;
+use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -26,12 +27,18 @@ pub struct Demand {
     pub demand_slices: Vec<DemandSlice>,
 }
 
-/// How demand varies by time slice
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct DemandSlice {
+#[derive(Clone, Deserialize)]
+pub struct DemandSliceRaw {
     pub commodity_id: String,
     pub region_id: String,
     pub time_slice: String,
+    pub fraction: f64,
+}
+
+/// How demand varies by time slice
+#[derive(Debug, PartialEq)]
+pub struct DemandSlice {
+    pub time_slice: TimeSliceSelection,
     pub fraction: f64,
 }
 
@@ -117,22 +124,26 @@ fn try_get_demand<'a>(
 /// Read demand slices from an iterator and store them in `demand`.
 fn read_demand_slices_from_iter<I>(
     iter: I,
+    time_slice_info: &TimeSliceInfo,
     demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>,
 ) -> Result<(), Box<dyn Error>>
 where
-    I: Iterator<Item = DemandSlice>,
+    I: Iterator<Item = DemandSliceRaw>,
 {
     for slice in iter {
-        match try_get_demand(&slice.commodity_id, &slice.region_id, demand) {
-            None => {
-                return Err(format!(
+        let demand =
+            try_get_demand(&slice.commodity_id, &slice.region_id, demand).ok_or_else(|| {
+                format!(
                     "No demand specified for commodity {} in region {}",
                     &slice.commodity_id, &slice.region_id
                 )
-                .into())
-            }
-            Some(demand) => demand.demand_slices.push(slice),
-        }
+            })?;
+
+        let time_slice = time_slice_info.get_selection(&slice.time_slice)?;
+        demand.demand_slices.push(DemandSlice {
+            time_slice,
+            fraction: slice.fraction,
+        });
     }
 
     // TODO: Check for demand entries without any demand slices specified?
@@ -144,10 +155,16 @@ where
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
+/// * `time_slice_info` - Information about seasons and times of day
 /// * `demand` - Demand data grouped by commodity and region
-fn read_demand_slices(model_dir: &Path, demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>) {
+fn read_demand_slices(
+    model_dir: &Path,
+    time_slice_info: &TimeSliceInfo,
+    demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>,
+) {
     let file_path = model_dir.join(DEMAND_SLICES_FILE_NAME);
-    read_demand_slices_from_iter(read_csv(&file_path), demand).unwrap_input_err(&file_path)
+    read_demand_slices_from_iter(read_csv(&file_path), time_slice_info, demand)
+        .unwrap_input_err(&file_path)
 }
 
 /// Reads demand data from a CSV file.
@@ -157,6 +174,7 @@ fn read_demand_slices(model_dir: &Path, demand: &mut HashMap<Rc<str>, HashMap<Rc
 /// * `model_dir` - Folder containing model configuration files
 /// * `commodity_ids` - All possible IDs of commodities
 /// * `region_ids` - All possible IDs for regions
+/// * `time_slice_info` - Information about seasons and times of day
 /// * `year_range` - The year range for the simulation
 ///
 /// # Returns
@@ -166,18 +184,21 @@ pub fn read_demand(
     model_dir: &Path,
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
+    time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
 ) -> HashMap<Rc<str>, HashMap<Rc<str>, Demand>> {
     let mut demand = read_demand_file(model_dir, commodity_ids, region_ids, year_range);
 
     // Read in demand slices
-    read_demand_slices(model_dir, &mut demand);
+    read_demand_slices(model_dir, time_slice_info, &mut demand);
 
     demand
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::time_slice::TimeSliceID;
+
     use super::*;
     use std::fs::File;
     use std::io::Write;
@@ -264,6 +285,20 @@ COM1,West,2023,13"
 
     #[test]
     fn test_read_demand_slices_from_iter() {
+        let time_slice_info = TimeSliceInfo {
+            seasons: ["winter".into()].into_iter().collect(),
+            times_of_day: ["day".into()].into_iter().collect(),
+            fractions: [(
+                TimeSliceID {
+                    season: "winter".into(),
+                    time_of_day: "day".into(),
+                },
+                1.0,
+            )]
+            .into_iter()
+            .collect(),
+        };
+
         // Demand grouped by region
         let mut demand = [(
             "COM1".into(),
@@ -284,36 +319,69 @@ COM1,West,2023,13"
         .collect();
 
         // Valid
-        let demand_slice = DemandSlice {
+        let demand_slice = DemandSliceRaw {
             commodity_id: "COM1".into(),
             region_id: "GBR".into(),
             time_slice: "winter.day".into(),
             fraction: 1.0,
         };
-        read_demand_slices_from_iter([demand_slice.clone()].into_iter(), &mut demand).unwrap();
+        read_demand_slices_from_iter(
+            [demand_slice.clone()].into_iter(),
+            &time_slice_info,
+            &mut demand,
+        )
+        .unwrap();
+        let time_slice = time_slice_info.get_selection("winter.day").unwrap();
         assert_eq!(
             try_get_demand("COM1", "GBR", &mut demand)
                 .unwrap()
                 .demand_slices,
-            vec![demand_slice]
+            vec![DemandSlice {
+                time_slice,
+                fraction: 1.0
+            }]
         );
 
         // Bad commodity
-        let demand_slice = DemandSlice {
+        let demand_slice = DemandSliceRaw {
             commodity_id: "COM2".into(),
             region_id: "GBR".into(),
             time_slice: "winter.day".into(),
             fraction: 1.0,
         };
-        assert!(read_demand_slices_from_iter([demand_slice].into_iter(), &mut demand).is_err());
+        assert!(read_demand_slices_from_iter(
+            [demand_slice].into_iter(),
+            &time_slice_info,
+            &mut demand
+        )
+        .is_err());
 
         // Bad region
-        let demand_slice = DemandSlice {
+        let demand_slice = DemandSliceRaw {
             commodity_id: "COM1".into(),
             region_id: "USA".into(),
             time_slice: "winter.day".into(),
             fraction: 1.0,
         };
-        assert!(read_demand_slices_from_iter([demand_slice].into_iter(), &mut demand).is_err());
+        assert!(read_demand_slices_from_iter(
+            [demand_slice].into_iter(),
+            &time_slice_info,
+            &mut demand
+        )
+        .is_err());
+
+        // Bad time slice
+        let demand_slice = DemandSliceRaw {
+            commodity_id: "COM1".into(),
+            region_id: "GBR".into(),
+            time_slice: "summer.night".into(),
+            fraction: 1.0,
+        };
+        assert!(read_demand_slices_from_iter(
+            [demand_slice.clone()].into_iter(),
+            &time_slice_info,
+            &mut demand,
+        )
+        .is_err());
     }
 }
