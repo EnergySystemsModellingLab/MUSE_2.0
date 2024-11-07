@@ -262,6 +262,7 @@ fn read_process_parameters(
 ///
 /// # Arguments
 ///
+/// * `iter` - An iterator of `ProcessPAC`s
 /// * `process_ids` - All possible process IDs
 /// * `commodities` - Commodities for the model
 ///
