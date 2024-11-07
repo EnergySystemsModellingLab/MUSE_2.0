@@ -221,6 +221,145 @@ COM1,West,2023,13"
     }
 
     #[test]
+    fn test_read_demand_from_iter() {
+        let commodity_ids = ["COM1".into()].into_iter().collect();
+        let region_ids = ["North".into(), "South".into()].into_iter().collect();
+        let year_range = 2020..=2030;
+
+        // Valid
+        let demand = [
+            Demand {
+                year: 2023,
+                region_id: "North".to_string(),
+                commodity_id: "COM1".to_string(),
+                demand: 10.0,
+                demand_slices: Vec::new(),
+            },
+            Demand {
+                year: 2023,
+                region_id: "South".to_string(),
+                commodity_id: "COM1".to_string(),
+                demand: 11.0,
+                demand_slices: Vec::new(),
+            },
+        ];
+        assert!(read_demand_from_iter(
+            demand.into_iter(),
+            &commodity_ids,
+            &region_ids,
+            &year_range
+        )
+        .is_ok());
+
+        // Bad commodity ID
+        let demand = [
+            Demand {
+                year: 2023,
+                region_id: "North".to_string(),
+                commodity_id: "COM2".to_string(),
+                demand: 10.0,
+                demand_slices: Vec::new(),
+            },
+            Demand {
+                year: 2023,
+                region_id: "South".to_string(),
+                commodity_id: "COM1".to_string(),
+                demand: 11.0,
+                demand_slices: Vec::new(),
+            },
+        ];
+        assert!(read_demand_from_iter(
+            demand.into_iter(),
+            &commodity_ids,
+            &region_ids,
+            &year_range
+        )
+        .is_err());
+
+        // Bad region ID
+        let demand = [
+            Demand {
+                year: 2023,
+                region_id: "East".to_string(),
+                commodity_id: "COM1".to_string(),
+                demand: 10.0,
+                demand_slices: Vec::new(),
+            },
+            Demand {
+                year: 2023,
+                region_id: "South".to_string(),
+                commodity_id: "COM1".to_string(),
+                demand: 11.0,
+                demand_slices: Vec::new(),
+            },
+        ];
+        assert!(read_demand_from_iter(
+            demand.into_iter(),
+            &commodity_ids,
+            &region_ids,
+            &year_range
+        )
+        .is_err());
+
+        // Bad year
+        let demand = [
+            Demand {
+                year: 2010,
+                region_id: "North".to_string(),
+                commodity_id: "COM1".to_string(),
+                demand: 10.0,
+                demand_slices: Vec::new(),
+            },
+            Demand {
+                year: 2023,
+                region_id: "South".to_string(),
+                commodity_id: "COM1".to_string(),
+                demand: 11.0,
+                demand_slices: Vec::new(),
+            },
+        ];
+        assert!(read_demand_from_iter(
+            demand.into_iter(),
+            &commodity_ids,
+            &region_ids,
+            &year_range
+        )
+        .is_err());
+
+        // Multiple entries for same commodity and region
+        let demand = [
+            Demand {
+                year: 2023,
+                region_id: "North".to_string(),
+                commodity_id: "COM1".to_string(),
+                demand: 10.0,
+                demand_slices: Vec::new(),
+            },
+            Demand {
+                year: 2023,
+                region_id: "North".to_string(),
+                commodity_id: "COM1".to_string(),
+                demand: 10.0,
+                demand_slices: Vec::new(),
+            },
+            Demand {
+                year: 2023,
+                region_id: "South".to_string(),
+                commodity_id: "COM1".to_string(),
+                demand: 11.0,
+                demand_slices: Vec::new(),
+            },
+        ];
+        assert!(read_demand_from_iter(
+            demand.into_iter(),
+            &commodity_ids,
+            &region_ids,
+            &year_range
+        )
+        .is_err());
+    }
+
+    #[test]
     fn test_read_demand_file() {
         let dir = tempdir().unwrap();
         create_demand_file(dir.path());
