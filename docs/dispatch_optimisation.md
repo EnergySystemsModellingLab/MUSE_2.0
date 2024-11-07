@@ -71,7 +71,7 @@ For each *r*, *a*, *c*, *ts*:
 (**TBD**)
 
 for all *c* that are flexible commodities. “in” refers to input flow commodities (i.e. with a -ve
-sign), and “out” refers to output flow commodities (i.e. with a +ve sign).*
+sign), and “out” refers to output flow commodities (i.e. with a +ve sign).
 
 ### Asset-level capacity and availability constraints
 
