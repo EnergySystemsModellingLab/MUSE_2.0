@@ -141,15 +141,13 @@ pub trait IDCollection {
     /// # Returns
     ///
     /// A copy of the `Rc<str>` in `self` or an error if not found.
-    fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>>;
+    fn get_id(&self, id: &str) -> Result<Rc<str>>;
 }
 
 impl IDCollection for HashSet<Rc<str>> {
-    fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>> {
-        match self.get(id) {
-            None => Err(format!("Unknown ID {id} found"))?,
-            Some(id) => Ok(Rc::clone(id)),
-        }
+    fn get_id(&self, id: &str) -> Result<Rc<str>> {
+        let id = self.get(id).context(format!("Unknown ID {id} found"))?;
+        Ok(Rc::clone(id))
     }
 }
 
