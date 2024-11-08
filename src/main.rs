@@ -16,13 +16,13 @@ fn main() {
     let model_dir = PathBuf::from(args[1].as_str());
 
     // Read program settings
-    let settings = Settings::from_path(&model_dir);
+    let settings = Settings::from_path(&model_dir).unwrap();
 
     // Set the program log level
     log::init(settings.log_level.as_deref());
     log_panics::init(); // Write panic info to logger rather than stderr
 
-    let model = Model::from_path(&model_dir);
+    let model = Model::from_path(&model_dir).unwrap();
     info!("Model loaded successfully.");
 
     // Run simulation

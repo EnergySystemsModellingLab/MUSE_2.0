@@ -2,10 +2,11 @@
 use crate::agent::{read_agents, Agent};
 use crate::commodity::{read_commodities, Commodity};
 use crate::demand::{read_demand_data, Demand};
-use crate::input::{read_toml, UnwrapInputError};
+use crate::input::read_toml;
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slice_info, TimeSliceInfo};
+use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -37,18 +38,24 @@ struct MilestoneYears {
 }
 
 /// Check that the milestone years parameter is valid
-fn check_milestone_years(years: &[u32]) -> Result<(), &'static str> {
-    if years.is_empty() {
-        Err("milestone_years is empty")?;
-    }
+///
+/// # Arguments
+///
+/// * `years` - Integer list of milestone years
+///
+/// # Returns
+///
+/// An error if the milestone years are invalid
+fn check_milestone_years(years: &[u32]) -> Result<()> {
+    ensure!(!years.is_empty(), "`milestone_years` is empty");
 
-    if !years[..years.len() - 1]
-        .iter()
-        .zip(years[1..].iter())
-        .all(|(y1, y2)| y1 < y2)
-    {
-        Err("milestone_years must be composed of unique values in order")?;
-    }
+    ensure!(
+        years[..years.len() - 1]
+            .iter()
+            .zip(years[1..].iter())
+            .all(|(y1, y2)| y1 < y2),
+        "`milestone_years` must be composed of unique values in order"
+    );
 
     Ok(())
 }
@@ -59,12 +66,17 @@ impl ModelFile {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> ModelFile {
+    ///
+    /// # Returns
+    ///
+    /// The model file contents as a `ModelFile` struct or an error if the file is invalid
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelFile> {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
-        let model_file: ModelFile = read_toml(&file_path);
-        check_milestone_years(&model_file.milestone_years.years).unwrap_input_err(&file_path);
+        let model_file: ModelFile = read_toml(&file_path)?;
+        check_milestone_years(&model_file.milestone_years.years)
+            .with_context(|| format!("Error in `{}`", file_path.to_string_lossy()))?;
 
-        model_file
+        Ok(model_file)
     }
 }
 
@@ -74,8 +86,12 @@ impl Model {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Model {
-        let model_file = ModelFile::from_path(&model_dir);
+    ///
+    /// # Returns
+    ///
+    /// The model contents as a `Model` struct or an error if the model is invalid
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<Model> {
+        let model_file = ModelFile::from_path(&model_dir)?;
 
         let time_slice_info = read_time_slice_info(model_dir.as_ref());
         let regions = read_regions(model_dir.as_ref());
@@ -99,7 +115,7 @@ impl Model {
         let process_ids = processes.keys().cloned().collect();
         let agents = read_agents(model_dir.as_ref(), &process_ids, &region_ids);
 
-        Model {
+        Ok(Model {
             milestone_years: model_file.milestone_years.years,
             agents,
             commodities,
@@ -107,7 +123,7 @@ impl Model {
             time_slice_info,
             demand_data: read_demand_data(model_dir.as_ref()),
             regions,
-        }
+        })
     }
 }
 
@@ -138,7 +154,7 @@ mod tests {
             writeln!(file, "[milestone_years]\nyears = [2020, 2100]").unwrap();
         }
 
-        let model_file = ModelFile::from_path(dir.path());
+        let model_file = ModelFile::from_path(dir.path()).unwrap();
         assert_eq!(model_file.milestone_years.years, vec![2020, 2100]);
     }
 }
