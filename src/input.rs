@@ -1,10 +1,9 @@
 //! Common routines for handling input data.
-use anyhow::{Context, Result};
+use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::fmt::Display;
 use std::fs;
 use std::path::Path;
@@ -177,10 +176,7 @@ where
 }
 
 pub trait IntoIDMap<T> {
-    fn into_id_map(
-        self,
-        ids: &HashSet<Rc<str>>,
-    ) -> Result<HashMap<Rc<str>, Vec<T>>, Box<dyn Error>>;
+    fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>>;
 }
 
 impl<T, I> IntoIDMap<T> for I
@@ -193,20 +189,15 @@ where
     /// # Arguments
     ///
     /// `ids` - The set of valid IDs to check against.
-    fn into_id_map(
-        self,
-        ids: &HashSet<Rc<str>>,
-    ) -> Result<HashMap<Rc<str>, Vec<T>>, Box<dyn Error>> {
+    fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>> {
         let map = self
-            .map(|item| match ids.get_id(item.get_id()) {
-                Err(err) => Err(err),
-                Ok(id) => Ok((id, item)),
+            .map(|item| -> Result<_> {
+                let id = ids.get_id(item.get_id())?;
+                Ok((id, item))
             })
             .process_results(|iter| iter.into_group_map())?;
 
-        if map.is_empty() {
-            Err("CSV file is empty")?;
-        }
+        ensure!(!map.is_empty(), "CSV file is empty");
 
         Ok(map)
     }
