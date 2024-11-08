@@ -20,6 +20,10 @@ impl Settings {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
+    ///
+    /// # Returns
+    ///
+    /// The program settings as a `Settings` struct or an error if the file is invalid
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<Settings> {
         let file_path = model_dir.as_ref().join(SETTINGS_FILE_NAME);
         if !file_path.is_file() {

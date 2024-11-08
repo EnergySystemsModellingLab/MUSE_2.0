@@ -38,6 +38,14 @@ struct MilestoneYears {
 }
 
 /// Check that the milestone years parameter is valid
+///
+/// # Arguments
+///
+/// * `years` - Integer list of milestone years
+///
+/// # Returns
+///
+/// An error if the milestone years are invalid
 fn check_milestone_years(years: &[u32]) -> Result<()> {
     ensure!(!years.is_empty(), "`milestone_years` is empty");
 
@@ -58,6 +66,10 @@ impl ModelFile {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
+    ///
+    /// # Returns
+    ///
+    /// The model file contents as a `ModelFile` struct or an error if the file is invalid
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelFile> {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path)?;
@@ -74,6 +86,10 @@ impl Model {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
+    ///
+    /// # Returns
+    ///
+    /// The model contents as a `Model` struct or an error if the model is invalid
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<Model> {
         let model_file = ModelFile::from_path(&model_dir)?;
 

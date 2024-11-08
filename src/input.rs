@@ -42,6 +42,10 @@ pub fn read_csv_as_vec<T: DeserializeOwned>(file_path: &Path) -> Vec<T> {
 /// # Arguments
 ///
 /// * `file_path` - Path to the TOML file
+///
+/// # Returns
+///
+/// * The deserialised TOML data or an error if the file could not be read or parsed.
 pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
     let toml_str = fs::read_to_string(file_path)
         .with_context(|| format!("Failed to read `{}`", file_path.to_string_lossy()))?;
