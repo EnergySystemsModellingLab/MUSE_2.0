@@ -1,5 +1,5 @@
 //! Common routines for handling input data.
-use anyhow::Result;
+use anyhow::{Context, Result};
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -43,8 +43,10 @@ pub fn read_csv_as_vec<T: DeserializeOwned>(file_path: &Path) -> Vec<T> {
 ///
 /// * `file_path` - Path to the TOML file
 pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
-    let toml_str = fs::read_to_string(file_path)?;
-    let toml_data = toml::from_str(&toml_str)?;
+    let toml_str = fs::read_to_string(file_path)
+        .with_context(|| format!("Failed to read `{}`", file_path.to_string_lossy()))?;
+    let toml_data = toml::from_str(&toml_str)
+        .with_context(|| format!("Could not parse `{}`", file_path.to_string_lossy()))?;
     Ok(toml_data)
 }
 
