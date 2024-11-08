@@ -104,3 +104,100 @@ pub fn read_assets(
     read_assets_from_iter(read_csv(&file_path), agent_ids, processes, region_ids)
         .unwrap_input_err(&file_path)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::vec;
+
+    use crate::process::ProcessParameter;
+
+    use super::*;
+
+    #[test]
+    fn test_read_assets_from_iter() {
+        let process_param = ProcessParameter {
+            process_id: "process1".into(),
+            years: 2010..=2020,
+            capital_cost: 5.0,
+            fixed_operating_cost: 2.0,
+            variable_operating_cost: 1.0,
+            lifetime: 5,
+            discount_rate: 0.9,
+            cap2act: 1.0,
+        };
+        let process = Rc::new(Process {
+            id: "process1".into(),
+            description: "Description".into(),
+            availabilities: vec![],
+            flows: vec![],
+            pacs: vec![],
+            parameter: process_param,
+            regions: crate::region::RegionSelection::All,
+        });
+        let processes = [(Rc::clone(&process.id), Rc::clone(&process))]
+            .into_iter()
+            .collect();
+        let agent_ids = ["agent1".into()].into_iter().collect();
+        let region_ids = ["GBR".into()].into_iter().collect();
+
+        // Valid
+        let asset_in = AssetRaw {
+            agent_id: "agent1".into(),
+            process_id: "process1".into(),
+            region_id: "GBR".into(),
+            capacity: 1.0,
+            commission_year: 2010,
+        };
+        let asset_out = Asset {
+            process: Rc::clone(&process),
+            region_id: "GBR".into(),
+            capacity: 1.0,
+            commission_year: 2010,
+        };
+        let expected = [("agent1".into(), vec![asset_out])].into_iter().collect();
+        assert!(
+            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
+                .unwrap()
+                == expected
+        );
+
+        // Bad process ID
+        let asset_in = AssetRaw {
+            agent_id: "agent1".into(),
+            process_id: "process2".into(),
+            region_id: "GBR".into(),
+            capacity: 1.0,
+            commission_year: 2010,
+        };
+        assert!(
+            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
+                .is_err()
+        );
+
+        // Bad agent ID
+        let asset_in = AssetRaw {
+            agent_id: "agent2".into(),
+            process_id: "process1".into(),
+            region_id: "GBR".into(),
+            capacity: 1.0,
+            commission_year: 2010,
+        };
+        assert!(
+            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
+                .is_err()
+        );
+
+        // Bad region ID
+        let asset_in = AssetRaw {
+            agent_id: "agent1".into(),
+            process_id: "process1".into(),
+            region_id: "FRA".into(),
+            capacity: 1.0,
+            commission_year: 2010,
+        };
+        assert!(
+            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
+                .is_err()
+        );
+    }
+}
