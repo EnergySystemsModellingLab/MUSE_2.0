@@ -1,4 +1,5 @@
-use env_logger::Env;
+use fern::Dispatch;
+use std::env;
 
 pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
 
@@ -25,13 +26,40 @@ pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
 ///
 /// * `log_level_from_settings`: The log level specified in `settings.toml`
 pub fn init(log_level_from_settings: Option<&str>) {
-    let env = Env::new()
-        .filter_or(
-            "MUSE2_LOG_LEVEL",
-            log_level_from_settings.unwrap_or(DEFAULT_LOG_LEVEL),
-        )
-        .write_style("MUSE2_LOG_STYLE");
+    // Retrieve the log level from the environment variable or settings, or use the default
+    let log_level = env::var("MUSE2_LOG_LEVEL").unwrap_or_else(|_| {
+        log_level_from_settings
+            .unwrap_or(DEFAULT_LOG_LEVEL)
+            .to_string()
+    });
 
-    // Initialise logger
-    env_logger::init_from_env(env);
+    // Convert the log level string to a log::LevelFilter
+    let log_level = match log_level.to_lowercase().as_str() {
+        "error" => log::LevelFilter::Error,
+        "warn" => log::LevelFilter::Warn,
+        "info" => log::LevelFilter::Info,
+        "debug" => log::LevelFilter::Debug,
+        "trace" => log::LevelFilter::Trace,
+        _ => log::LevelFilter::Info,
+    };
+
+    // Retrieve the log style from the environment variable
+    let log_style = env::var("MUSE2_LOG_STYLE").unwrap_or_else(|_| "auto".to_string());
+
+    // Configure the logger
+    let dispatch = Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{} {}] {}",
+                // humantime::format_rfc3339_seconds(SystemTime::now()),
+                record.level(),
+                record.target(),
+                message
+            ))
+        })
+        .level(log_level)
+        .chain(std::io::stdout());
+
+    // Apply the logger configuration
+    dispatch.apply().unwrap();
 }
