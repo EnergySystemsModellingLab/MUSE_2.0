@@ -12,6 +12,9 @@ jobs:
   coverage:
     name: Build and test with coverage
     runs-on: ubuntu-latest
+    env:
+      # Make warnings fatal
+      RUSTDOCFLAGS: -D warnings
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,7 +31,10 @@ jobs:
       - name: Check docs
         run: cargo doc --no-deps --document-private-items
 
+        # Continue even if docs fail
       - run: cargo build --verbose
+        if: always()
+
       - run: cargo test --verbose
 
       - name: Install tarpaulin
