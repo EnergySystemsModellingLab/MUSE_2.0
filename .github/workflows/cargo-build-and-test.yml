@@ -12,41 +12,31 @@ jobs:
   coverage:
     name: Build and test with coverage
     runs-on: ubuntu-latest
-    env:
-      # Make warnings fatal
-      # **HACK**: Explicitly link against zlib to avoid linking failure
-      RUSTFLAGS: -D warnings -lz
-    container:
-      image: xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Cargo Cache
-        uses: actions/cache@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          path: |
-            ~/.cargo
-            target
-          key: ubuntu-latest-cargo-${{ hashFiles('Cargo.toml') }}
-          restore-keys: |
-            ubuntu-latest-cargo-${{ hashFiles('Cargo.toml') }}
-            ubuntu-latest-cargo
+          toolchain: stable
 
       - name: Install dependencies
         run: |
-          apt update
-          apt install -y cmake libclang-dev
+          sudo apt update
+          sudo apt install -y cmake libclang-dev
 
       - name: Check docs
         run: cargo doc --no-deps --document-private-items
 
       - run: cargo build --verbose
+      - run: cargo test --verbose
+
+      - name: Install tarpaulin
+        run: cargo install cargo-tarpaulin
 
       - name: Generate code coverage
         run: |
-          cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+          cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v4
@@ -57,9 +47,6 @@ jobs:
   build_and_test:
     name: Build and test
     runs-on: ${{ matrix.os }}
-    env:
-      # Make warnings fatal
-      RUSTFLAGS: -D warnings
     strategy:
       fail-fast: false
       matrix:
@@ -68,17 +55,7 @@ jobs:
           - stable
     steps:
       - uses: actions/checkout@v4
-      - name: Cargo Cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo
-            target
-          key: ${{ matrix.os }}-cargo-${{ hashFiles('Cargo.toml') }}
-          restore-keys: |
-            ${{ matrix.os }}-cargo-${{ hashFiles('Cargo.toml') }}
-            ${{ matrix.os }}-cargo
-      - uses: dtolnay/rust-toolchain@master
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
       - run: cargo build --verbose
