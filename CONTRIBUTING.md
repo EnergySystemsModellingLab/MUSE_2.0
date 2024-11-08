@@ -231,7 +231,7 @@ More information is available in [the official `cargo` book](https://doc.rust-la
 
 Developers must install the `pre-commit` tool in order to automatically run this
 repository's hooks when making a new Git commit. Follow [the instructions on the `pre-commit`
-website] in order to get started.
+website](https://pre-commit.com/#install) in order to get started.
 
 Once you have installed `pre-commit`, you need to enable its use for this repository by installing
 the hooks, like so:
