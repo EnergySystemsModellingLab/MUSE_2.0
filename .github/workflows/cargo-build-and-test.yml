@@ -23,11 +23,6 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y cmake libclang-dev
-
       - name: Check docs
         run: cargo doc --no-deps --document-private-items
 
