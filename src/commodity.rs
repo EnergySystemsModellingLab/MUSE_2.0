@@ -182,8 +182,8 @@ pub fn read_commodities(
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, Commodity> {
-    let mut commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME));
+) -> HashMap<Rc<str>, Rc<Commodity>> {
+    let commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME));
     let commodity_ids = commodities.keys().cloned().collect();
     let mut costs = read_commodity_costs(
         model_dir,
@@ -201,16 +201,19 @@ pub fn read_commodities(
     );
 
     // Populate Vecs for each Commodity
-    for (id, commodity) in commodities.iter_mut() {
-        if let Some(costs) = costs.remove(id) {
-            commodity.costs = costs;
-        }
-        if let Some(demand) = demand.remove(id) {
-            commodity.demand_by_region = demand;
-        }
-    }
-
     commodities
+        .into_iter()
+        .map(|(id, mut commodity)| {
+            if let Some(costs) = costs.remove(&id) {
+                commodity.costs = costs;
+            }
+            if let Some(demand) = demand.remove(&id) {
+                commodity.demand_by_region = demand;
+            }
+
+            (id, commodity.into())
+        })
+        .collect()
 }
 
 #[cfg(test)]
