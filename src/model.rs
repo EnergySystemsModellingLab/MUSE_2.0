@@ -2,11 +2,11 @@
 use crate::agent::{read_agents, Agent};
 use crate::commodity::{read_commodities, Commodity};
 use crate::demand::{read_demand_data, Demand};
-use crate::input::{read_toml, UnwrapInputError};
+use crate::input::read_toml;
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slice_info, TimeSliceInfo};
-use anyhow::Result;
+use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -38,18 +38,16 @@ struct MilestoneYears {
 }
 
 /// Check that the milestone years parameter is valid
-fn check_milestone_years(years: &[u32]) -> Result<(), &'static str> {
-    if years.is_empty() {
-        Err("milestone_years is empty")?;
-    }
+fn check_milestone_years(years: &[u32]) -> Result<()> {
+    ensure!(!years.is_empty(), "`milestone_years` is empty");
 
-    if !years[..years.len() - 1]
-        .iter()
-        .zip(years[1..].iter())
-        .all(|(y1, y2)| y1 < y2)
-    {
-        Err("milestone_years must be composed of unique values in order")?;
-    }
+    ensure!(
+        years[..years.len() - 1]
+            .iter()
+            .zip(years[1..].iter())
+            .all(|(y1, y2)| y1 < y2),
+        "`milestone_years` must be composed of unique values in order"
+    );
 
     Ok(())
 }
@@ -63,7 +61,8 @@ impl ModelFile {
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelFile> {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path)?;
-        check_milestone_years(&model_file.milestone_years.years).unwrap_input_err(&file_path);
+        check_milestone_years(&model_file.milestone_years.years)
+            .with_context(|| format!("Error in `{}`", file_path.to_string_lossy()))?;
 
         Ok(model_file)
     }
