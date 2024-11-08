@@ -517,7 +517,7 @@ COM1,West,2023,13"
             fraction: 1.0,
         };
         assert!(read_demand_slices_from_iter(
-            [demand_slice.clone()].into_iter(),
+            [demand_slice].into_iter(),
             &time_slice_info,
             &mut demand,
         )
