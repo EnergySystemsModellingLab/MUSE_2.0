@@ -6,6 +6,7 @@ use crate::input::{read_toml, UnwrapInputError};
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slice_info, TimeSliceInfo};
+use anyhow::Result;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -59,12 +60,12 @@ impl ModelFile {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> ModelFile {
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelFile> {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
-        let model_file: ModelFile = read_toml(&file_path).unwrap_input_err(&file_path);
+        let model_file: ModelFile = read_toml(&file_path)?;
         check_milestone_years(&model_file.milestone_years.years).unwrap_input_err(&file_path);
 
-        model_file
+        Ok(model_file)
     }
 }
 
@@ -74,8 +75,8 @@ impl Model {
     /// # Arguments
     ///
     /// * `model_dir` - Folder containing model configuration files
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Model {
-        let model_file = ModelFile::from_path(&model_dir);
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<Model> {
+        let model_file = ModelFile::from_path(&model_dir)?;
 
         let time_slice_info = read_time_slice_info(model_dir.as_ref());
         let regions = read_regions(model_dir.as_ref());
@@ -98,7 +99,7 @@ impl Model {
         let process_ids = processes.keys().cloned().collect();
         let agents = read_agents(model_dir.as_ref(), &process_ids, &region_ids);
 
-        Model {
+        Ok(Model {
             milestone_years: model_file.milestone_years.years,
             agents,
             commodities,
@@ -106,7 +107,7 @@ impl Model {
             time_slice_info,
             demand_data: read_demand_data(model_dir.as_ref()),
             regions,
-        }
+        })
     }
 }
 
@@ -137,7 +138,7 @@ mod tests {
             writeln!(file, "[milestone_years]\nyears = [2020, 2100]").unwrap();
         }
 
-        let model_file = ModelFile::from_path(dir.path());
+        let model_file = ModelFile::from_path(dir.path()).unwrap();
         assert_eq!(model_file.milestone_years.years, vec![2020, 2100]);
     }
 }
