@@ -32,6 +32,7 @@ pub struct DemandSliceRaw {
     pub commodity_id: String,
     pub region_id: String,
     pub time_slice: String,
+    #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     pub fraction: f64,
 }
 
