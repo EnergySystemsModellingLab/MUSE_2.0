@@ -3,6 +3,7 @@
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
 use crate::input::*;
+use anyhow::{anyhow, Result};
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::Deserialize;
@@ -71,24 +72,21 @@ impl TimeSliceInfo {
     /// Get the `TimeSliceID` corresponding to the `time_slice`.
     ///
     /// `time_slice` must be in the form "season.time_of_day".
-    pub fn get_time_slice_id_from_str(
-        &self,
-        time_slice: &str,
-    ) -> Result<TimeSliceID, Box<dyn Error>> {
+    pub fn get_time_slice_id_from_str(&self, time_slice: &str) -> Result<TimeSliceID> {
         let (season, time_of_day) = time_slice
             .split('.')
             .collect_tuple()
-            .ok_or("Time slice must be in the form season.time_of_day")?;
+            .ok_or(anyhow!("Time slice must be in the form season.time_of_day"))?;
         let season = self
             .seasons
             .iter()
             .find(|item| item.eq_ignore_ascii_case(season))
-            .ok_or(format!("{} is not a known season", season))?;
+            .ok_or(anyhow!("{} is not a known season", season))?;
         let time_of_day = self
             .times_of_day
             .iter()
             .find(|item| item.eq_ignore_ascii_case(time_of_day))
-            .ok_or(format!("{} is not a known time of day", time_of_day))?;
+            .ok_or(anyhow!("{} is not a known time of day", time_of_day))?;
 
         Ok(TimeSliceID {
             season: Rc::clone(season),
@@ -99,7 +97,7 @@ impl TimeSliceInfo {
     /// Get a `TimeSliceSelection` from the specified string.
     ///
     /// If the string is empty, the default value is `TimeSliceSelection::Annual`.
-    pub fn get_selection(&self, time_slice: &str) -> Result<TimeSliceSelection, Box<dyn Error>> {
+    pub fn get_selection(&self, time_slice: &str) -> Result<TimeSliceSelection> {
         if time_slice.is_empty() || time_slice.eq_ignore_ascii_case("annual") {
             Ok(TimeSliceSelection::Annual)
         } else if time_slice.contains('.') {

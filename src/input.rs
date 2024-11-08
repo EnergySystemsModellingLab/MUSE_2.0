@@ -1,5 +1,5 @@
 //! Common routines for handling input data.
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -137,13 +137,13 @@ pub trait IDCollection {
     /// # Returns
     ///
     /// A copy of the `Rc<str>` in `self` or an error if not found.
-    fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>>;
+    fn get_id(&self, id: &str) -> Result<Rc<str>>;
 }
 
 impl IDCollection for HashSet<Rc<str>> {
-    fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>> {
+    fn get_id(&self, id: &str) -> Result<Rc<str>> {
         match self.get(id) {
-            None => Err(format!("Unknown ID {id} found"))?,
+            None => bail!("Unknown ID {id} found"),
             Some(id) => Ok(Rc::clone(id)),
         }
     }
