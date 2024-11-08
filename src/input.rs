@@ -1,4 +1,5 @@
 //! Common routines for handling input data.
+use anyhow::Result;
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -41,9 +42,10 @@ pub fn read_csv_as_vec<T: DeserializeOwned>(file_path: &Path) -> Vec<T> {
 /// # Arguments
 ///
 /// * `file_path` - Path to the TOML file
-pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> T {
-    let toml_str = fs::read_to_string(file_path).unwrap_input_err(file_path);
-    toml::from_str(&toml_str).unwrap_input_err(file_path)
+pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
+    let toml_str = fs::read_to_string(file_path)?;
+    let toml_data = toml::from_str(&toml_str)?;
+    Ok(toml_data)
 }
 
 /// Read an f64, checking that it is between 0 and 1
@@ -299,12 +301,19 @@ mod tests {
         }
 
         assert_eq!(
-            read_toml::<Record>(&file_path),
+            read_toml::<Record>(&file_path).unwrap(),
             Record {
                 id: "hello".to_string(),
                 value: 1,
             }
         );
+
+        {
+            let mut file = File::create(&file_path).unwrap();
+            writeln!(file, "bad toml syntax").unwrap();
+        }
+
+        assert!(read_toml::<Record>(&file_path).is_err());
     }
 
     /// Deserialise value with deserialise_proportion_nonzero()

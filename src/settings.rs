@@ -1,5 +1,5 @@
 //! Code for loading program settings.
-use crate::input::read_toml;
+use crate::input::{read_toml, UnwrapInputError};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -25,7 +25,7 @@ impl Settings {
             return Settings::default();
         }
 
-        read_toml(&file_path)
+        read_toml(&file_path).unwrap_input_err(&file_path)
     }
 }
 

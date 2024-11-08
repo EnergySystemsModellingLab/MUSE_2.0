@@ -61,7 +61,7 @@ impl ModelFile {
     /// * `model_dir` - Folder containing model configuration files
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> ModelFile {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
-        let model_file: ModelFile = read_toml(&file_path);
+        let model_file: ModelFile = read_toml(&file_path).unwrap_input_err(&file_path);
         check_milestone_years(&model_file.milestone_years.years).unwrap_input_err(&file_path);
 
         model_file
