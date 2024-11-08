@@ -30,10 +30,6 @@ and improvements.
 
 [Developer Setup](#developer-setup)
 
-- [Installing the Rust toolchain](#installing-the-rust-toolchain)
-- [Working with the project](#working-with-the-project)
-- [Pre-Commit Hooks](#pre-commit-hooks)
-
 ## Code of Conduct
 
 This project and everyone participating in it is governed by the [MUSE Code of Conduct](CODE_OF_CONDUCT.md).
@@ -194,51 +190,4 @@ on how to write the documentation.
 
 ## Developer Setup
 
-### Installing the Rust toolchain
-
-We recommend that developers use `rustup` to install the Rust toolchain. Follow the instructions on
-[the `rustup` website](https://rustup.rs/).
-
-Once you have done so, select the `stable` toolchain (used by this project) as your default with:
-
-```sh
-rustup default stable
-```
-
-### Working with the project
-
-To build the project, run:
-
-```sh
-cargo build
-```
-
-To run MUSE with the example input files, you can run:
-
-```sh
-cargo run examples/simple
-```
-
-Tests can be run with:
-
-```sh
-cargo test
-```
-
-More information is available in [the official `cargo` book](https://doc.rust-lang.org/cargo/).
-
-### Pre-Commit hooks
-
-Developers must install the `pre-commit` tool in order to automatically run this
-repository's hooks when making a new Git commit. Follow [the instructions on the `pre-commit`
-website](https://pre-commit.com/#install) in order to get started.
-
-Once you have installed `pre-commit`, you need to enable its use for this repository by installing
-the hooks, like so:
-
-```sh
-pre-commit install
-```
-
-Thereafter, a series of checks should be run every time you commit with Git. In addition, the
-`pre-commit` hooks are also run as part of the CI pipeline.
+Please see the [developer guide](docs/developer_guide.md).
