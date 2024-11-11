@@ -1,62 +1,53 @@
-# Introduction
+# Model Description
 
-## Model Purpose
+## Introduction
 
-This Software Requirements Specification (SRS) describes MUSE 2.0
-(**M**od**U**lar energy systems
-**S**imulation **E**nvironment). The purpose of MUSE
-is to provide users with a framework to simulate pathways of energy
-system transition, usually in the context of climate change mitigation.
+### Model Purpose
 
-## Model Scope
+This Software Requirements Specification (SRS) describes MUSE 2.0 (**M**od**U**lar energy systems
+**S**imulation **E**nvironment).
+The purpose of MUSE is to provide users with a framework to simulate pathways of energy system
+transition, usually in the context of climate change mitigation.
 
-MUSE is an [Integrated Assessment
-Modelling](https://unfccc.int/topics/mitigation/workstreams/response-measures/modelling-tools-to-assess-the-impact-of-the-implementation-of-response-measures/integrated-assessment-models-iams-and-energy-environment-economy-e3-models)
-framework that is designed to enable users to create and apply an
-agent-based model that simulates a market equilibrium on a set of
-user-defined commodities, over a user-defined time period, for a
-user-specified region or set of regions. MUSE was developed to simulate
-approaches to climate change mitigation over a long time horizon (e.g.
-5-year steps to 2050 or 2100), but the framework is generalized and can
-therefore simulate any market equilibrium.
+### Model Scope
 
-# Overall Description
+MUSE is an [Integrated Assessment Modelling](https://unfccc.int/topics/mitigation/workstreams/response-measures/modelling-tools-to-assess-the-impact-of-the-implementation-of-response-measures/integrated-assessment-models-iams-and-energy-environment-economy-e3-models)
+framework that is designed to enable users to create and apply an agent-based model that simulates a
+market equilibrium on a set of user-defined commodities, over a user-defined time period, for a
+user-specified region or set of regions.
+MUSE was developed to simulate approaches to climate change mitigation over a long time horizon
+(e.g. 5-year steps to 2050 or 2100), but the framework is generalized and can therefore simulate any
+market equilibrium.
 
-## Overview
+## Overall Description
 
-MUSE 2.0 is the successor to MUSE. The original MUSE framework is
-open-source software available on GitHub
-[here](https://github.com/EnergySystemsModellingLab/MUSE_OS), coded in
-Python. MUSE 2.0 is implemented following re-design of MUSE to address a
-range of legacy issues that are challenging to address via upgrades to
-the existing MUSE framework, and to implement the framework in the
-high-performance Rust language.
+### Overview
 
-MUSE is classified as a recursive dynamic modelling framework in the
-sense that it iterates on a single time period to find a market
-equilibrium, and then moves to the next time period. Agents in MUSE have
-limited foresight, reacting only to information available in the current
-time period. This is distinct from intertemporal optimization modelling
-frameworks (such as
-[TIMES](https://iea-etsap.org/index.php/etsap-tools/model-generators/times)
-and [MESSAGEix](https://docs.messageix.org/en/latest/)) which have
-perfect foresight over the whole modelled time horizon.
+MUSE 2.0 is the successor to MUSE.
+The original MUSE framework is open-source software available on GitHub [here](https://github.com/EnergySystemsModellingLab/MUSE_OS),
+coded in Python. MUSE 2.0 is implemented following re-design of MUSE to address a range of legacy
+issues that are challenging to address via upgrades to the existing MUSE framework, and to implement
+the framework in the high-performance Rust language.
 
-## Model Concept
+MUSE is classified as a recursive dynamic modelling framework in the sense that it iterates on a
+single time period to find a market equilibrium, and then moves to the next time period.
+Agents in MUSE have limited foresight, reacting only to information available in the current time period.
+This is distinct from intertemporal optimization modelling frameworks (such as [TIMES](https://iea-etsap.org/index.php/etsap-tools/model-generators/times)
+and [MESSAGEix](https://docs.messageix.org/en/latest/)) which have perfect foresight over the whole
+modelled time horizon.
 
-MUSE 2.0 is a bottom-up engineering-economic modelling framework that
-computes a price-induced supply-demand equilibrium on a set of
-user-defined commodities. It does this for each milestone time period
-within a user-defined time horizon. This is a "partial equilibrium" in
-the sense that the framework equilibrates only the user-defined
+### Model Concept
+
+MUSE 2.0 is a bottom-up engineering-economic modelling framework that computes a price-induced
+supply-demand equilibrium on a set of user-defined commodities.
+It does this for each milestone time period within a user-defined time horizon.
+This is a "partial equilibrium" in the sense that the framework equilibrates only the user-defined
 commodities, as opposed to a whole economy.
 
-MUSE 2.0 is data-driven in the sense that model processing and data are
-entirely independent, and user-defined data is at the heart of how the
-model behaves. It is also "bottom-up" in nature, which means that it
-requires users to characterize each individual process that produces or
-consumes/produces each commodity, along with a range of other physical,
-economic and agent parameters.
+MUSE 2.0 is data-driven in the sense that model processing and data are entirely independent, and
+user-defined data is at the heart of how the model behaves. It is also "bottom-up" in nature, which
+means that it requires users to characterize each individual process that produces or consumes each
+commodity, along with a range of other physical, economic and agent parameters.
 
 At a high level, the user defines:
 
@@ -89,19 +80,14 @@ The model takes this data, configures and self-checks, and then solves
 for a system change pathway:
 
 1) Initialisation
-
 2) Base Year Price Discovery
-
 3) Agent Investment
-
 4) Carbon Budget Solution (or CO<sub>2</sub> Price Responsiveness)
-
 5) Find Prices for Next Milestone Year
-
 6) Recursively Solve Using Steps (3)-(5) for Each Milestone Year until
     End
 
-# Framework Processing Flow
+## Framework Processing Flow
 
 At a high level, the MUSE 2.0 iterative solution concept is as follows:
 
@@ -147,7 +133,7 @@ At a high level, the MUSE 2.0 iterative solution concept is as follows:
         calculated for each commodity using marginal pricing (i.e. the
         operational cost of the most expensive process serving a
         commodity demand). The result of this step is model-generated
-        time sliced commodity prices for the base year, t~0~.
+        time sliced commodity prices for the base year, t<sub>0</sub>.
 
     5. The model then also calculates the prices of commodities that
         are not present in the base year, directly from input data. This
@@ -182,8 +168,10 @@ At a high level, the MUSE 2.0 iterative solution concept is as follows:
             availability constraints). If the process has the same
             marginal cost as an asset, assume the same utilization as
             that asset. If the process has marginal cost higher than any
-            asset, assume zero utilization. Could calculate utilization
-            using [time slice level]{.underline} utilization of asset
+            asset, assume zero utilization.
+
+            > **Note:** Could calculate utilization
+            using time slice level utilization of asset
             with marginal cost immediately above the process, also
             taking into account capacity factor constraints -- would be
             more accurate in most cases (some complications, e.g. where
@@ -196,7 +184,7 @@ At a high level, the MUSE 2.0 iterative solution concept is as follows:
              milestone year. This step must respect process capacity
              constraints (growth, addition and overall limits).
 
-        4. Issue 1: There is a circularity here. E.g. asset choices
+            > **Issue 1:** There is a circularity here. E.g. asset choices
             influence the dispatch of other assets, which in turn can
             influence objective values, which in turn can influence
             asset choices. An incomplete solution is to run dispatch
@@ -204,13 +192,13 @@ At a high level, the MUSE 2.0 iterative solution concept is as follows:
             assets, and repeat steps (3)(b)(i)-(iii) again, to see if
             any asset's objective has deteriorated to the point where it
             can be replaced, and keep going around this loop until
-            nothing changes between loops -- but there will certainly be
-            cases where this does not converge -- what to do?
+            nothing changes between loops - but there will certainly be
+            cases where this does not converge - what to do?
 
-        5. Issue 2: Also, commodity prices influence dispatch (and thus
+            > **Issue 2:** Also, commodity prices influence dispatch (and thus
             objective value), so upstream decisions also impact outcome
             here. We're not worrying about this as it's a deliberate
-            feature of MUSE -- investors are assuming observed prices
+            feature of MUSE - investors are assuming observed prices
             persist.
 
     3. **Agent investment (commodities):** For each commodity demanded,
@@ -230,7 +218,7 @@ At a high level, the MUSE 2.0 iterative solution concept is as follows:
         3. Continue this process, moving further upstream, until there
              are no commodity demands left to serve.
 
-        4. Issue 3: Circularities here, e.g. power system capacity is
+            > **Issue 3:** Circularities here, e.g. power system capacity is
             required to produce H2, but also H2 can be consumed in the
             power sector so H2 capacity is needed to produce it, which
             in turn requires more power system capacity. Could check if
@@ -238,11 +226,11 @@ At a high level, the MUSE 2.0 iterative solution concept is as follows:
             through all commodities, and if it has then run the capacity
             investment algorithm again for that commodity.
 
-        5. Issue 4: What about commodities that are consumed but not
+            > **Issue 4:** What about commodities that are consumed but not
             produced, or produced but not consumed? Do this capacity
             investment step only for SED commodities? And also check for
             processes that consume non-balance commodities, and check if
-            they can make money -- invest in them if they do -- requires
+            they can make money - invest in them if they do - requires
             specific objective of NPV.
 
     4. **Decision-rule-based capacity decommissioning:** Decommission
@@ -256,16 +244,19 @@ At a high level, the MUSE 2.0 iterative solution concept is as follows:
     (2)-(3) are initially run with the CO<sub>2</sub> price from the previous
     milestone year. After completion, run dispatch with a CO<sub>2</sub> budget
     equal to the user prescribed level (if it exists), and record the
-    resulting <sub>2</sub> price (dual solution of the CO<sub>2</sub> constraint). If there
-    is no solution, then budget cannot be met (warn the user), and
-    re-run dispatch without the budget constraint and set CO<sub>2</sub> price to
-    (Issue 5: XX what should this be?). If CO<sub>2</sub> price is less than zero
+    resulting CO<sub>2</sub> price (dual solution of the CO<sub>2</sub> constraint).
+    If CO<sub>2</sub> price is less than zero
     then re-run dispatch without the budget constraint and set CO<sub>2</sub> price
     to zero. **Alternatively,** a user might specify a CO<sub>2</sub> price for the
     whole time horizon, and no carbon budget, in which case the model
     runs dispatch with the specified carbon price relating to each
     milestone year in steps (2)-(3) and no further processing is needed
     here.
+
+    > **Issue 5:**  If there
+    is no solution, then budget cannot be met (warn the user), and
+    re-run dispatch without the budget constraint.
+    In this case, what should the CO<sub>2</sub> price be set to?
 
 5. **Find Prices for next Milestone Year:** Using the CO<sub>2</sub> price from
     step (4), run dispatch again (note this is not needed if running
@@ -274,7 +265,7 @@ At a high level, the MUSE 2.0 iterative solution concept is as follows:
     commodity consumption and production for the present milestone year,
     record results. Use these prices and perform steps (2) and (3) above
     for the next milestone year, alongside calculated prices for any
-    commodities not present in the system (as per step 2.e.).
+    commodities not present in the system (as per step 2v).
 
 6. **Recursively Solve Using Steps (3)-(5) for Each Milestone Year
     until End:** The model then moves to the next milestone time period

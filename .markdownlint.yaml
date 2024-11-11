@@ -2,3 +2,6 @@
 MD013:
   # Maximum number of characters
   line_length: 100
+
+MD033: false # Allow inline HTML
+MD028: false # Allow adjacent block elements
