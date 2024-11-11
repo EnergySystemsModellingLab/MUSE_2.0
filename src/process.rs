@@ -59,15 +59,37 @@ pub enum FlowType {
 }
 
 #[derive(PartialEq, Debug, Deserialize)]
+struct ProcessFlowRaw {
+    process_id: String,
+    commodity_id: String,
+    flow: f64,
+    #[serde(default)]
+    flow_type: FlowType,
+    #[serde(deserialize_with = "deserialise_flow_cost")]
+    flow_cost: f64,
+}
+
+impl ProcessFlowRaw {
+    fn into_flow(self) -> ProcessFlow {
+        ProcessFlow {
+            process_id: self.process_id,
+            commodity_id: self.commodity_id,
+            flow: self.flow,
+            flow_type: self.flow_type,
+            flow_cost: self.flow_cost,
+        }
+    }
+}
+
+#[derive(PartialEq, Debug, Deserialize)]
 pub struct ProcessFlow {
-    pub process_id: String,
+    process_id: String,
     pub commodity_id: String,
     pub flow: f64,
-    #[serde(default)]
     pub flow_type: FlowType,
-    #[serde(deserialize_with = "deserialise_flow_cost")]
     pub flow_cost: f64,
 }
+
 define_process_id_getter! {ProcessFlow}
 
 /// Custom deserialiser for flow cost - treat empty fields as 0.0
