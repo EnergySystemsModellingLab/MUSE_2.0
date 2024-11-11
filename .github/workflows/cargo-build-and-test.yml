@@ -12,6 +12,8 @@ jobs:
   coverage:
     name: Build and test with coverage
     runs-on: ubuntu-latest
+    # Longer timeout because this job involves more steps
+    timeout-minutes: 20
     env:
       # Make warnings fatal
       RUSTDOCFLAGS: -D warnings
@@ -48,6 +50,7 @@ jobs:
   build_and_test:
     name: Build and test
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
