@@ -67,8 +67,6 @@ where
     let mut map_by_commodity = HashMap::new();
 
     for demand in iter {
-        // **TODO**: add validation checks here? e.g. check not negative, apply interpolation and
-        // extrapolation rules?
         let commodity_id = commodity_ids.get_id(&demand.commodity_id)?;
         let region_id = region_ids.get_id(&demand.region_id)?;
 
@@ -147,7 +145,6 @@ where
         });
     }
 
-    // TODO: Check for demand entries without any demand slices specified?
     Ok(())
 }
 
