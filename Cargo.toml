@@ -23,3 +23,6 @@ tempfile = "3.10.1"
 toml = "0.8.13"
 unicase = "2.7.0"
 fern = "0.7.0"
+colored = "2.0"
+chrono = "0.4"  # for time formatting (HH:MM:SS)
+atty = "0.2"  # for checking if the output is a terminal

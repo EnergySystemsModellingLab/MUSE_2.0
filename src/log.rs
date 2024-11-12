@@ -1,15 +1,17 @@
+use chrono::Local; // Used for timestamp formatting
+use colored::Colorize;
 use fern::Dispatch;
 use std::env;
 
 pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
 
-/// Initialise the program logger.
+/// Initialise the program logger using the `fern` logging library with colored output.
 ///
 /// The user can specify their preferred logging level via the `settings.toml` file (defaulting to
 /// `info` if not present) or with the `MUSE2_LOG_LEVEL` environment variable. If both are provided,
 /// the environment variable takes precedence.
 ///
-/// Possible options are:
+/// Possible log level options are:
 ///
 /// * `error`
 /// * `warn`
@@ -17,10 +19,11 @@ pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
 /// * `debug`
 /// * `trace`
 ///
-/// To choose whether or not to colourise the log output, the `MUSE2_LOG_STYLE` environment
-/// variable can be used. See [the `env_logger`
-/// documentation](https://docs.rs/env_logger/latest/env_logger/index.html#disabling-colors) for
-/// details.
+/// To control whether the log output is colorized, the `MUSE2_LOG_STYLE` environment variable can
+/// be set to:
+/// * `always` - Always colorize log output
+/// * `auto` - Colorize log output only if the output stream is a terminal
+/// * any other value - Disable colorization
 ///
 /// # Arguments
 ///
@@ -40,7 +43,7 @@ pub fn init(log_level_from_settings: Option<&str>) {
         "info" => log::LevelFilter::Info,
         "debug" => log::LevelFilter::Debug,
         "trace" => log::LevelFilter::Trace,
-        _ => log::LevelFilter::Info,
+        unknown => panic!("Unknown log level: {}", unknown),
     };
 
     // Retrieve the log style from the environment variable
@@ -48,14 +51,44 @@ pub fn init(log_level_from_settings: Option<&str>) {
 
     // Configure the logger
     let dispatch = Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "[{} {}] {}",
-                // humantime::format_rfc3339_seconds(SystemTime::now()),
-                record.level(),
-                record.target(),
-                message
-            ))
+        .format(move |out, message, record| {
+            // Format the log level with color
+            let level = match record.level() {
+                log::Level::Error => "ERROR".red(),
+                log::Level::Warn => "WARN".yellow(),
+                log::Level::Info => "INFO".green(),
+                log::Level::Debug => "DEBUG".blue(),
+                log::Level::Trace => "TRACE".purple(),
+            };
+
+            // Format timestamp as HH:MM:SS
+            let timestamp = Local::now().format("%H:%M:%S");
+
+            // Check if color should be applied based on log_style
+            let use_color = match log_style.as_str() {
+                "always" => true,
+                "auto" => atty::is(atty::Stream::Stdout),
+                _ => false,
+            };
+
+            // Format the output with or without color based on `use_color`
+            if use_color {
+                out.finish(format_args!(
+                    "[{} {} {}] {}",
+                    timestamp,
+                    level,
+                    record.target(),
+                    message
+                ))
+            } else {
+                out.finish(format_args!(
+                    "[{} {} {}] {}",
+                    timestamp,
+                    record.level(),
+                    record.target(),
+                    message
+                ))
+            }
         })
         .level(log_level)
         .chain(std::io::stdout());
