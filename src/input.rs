@@ -1,6 +1,7 @@
 //! Common routines for handling input data.
 #![allow(missing_docs)]
 use anyhow::{ensure, Context, Result};
+use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -188,6 +189,21 @@ where
         .with_context(|| input_err_msg(file_path))
 }
 
+/// Check that fractions sum to (approximately) one
+pub fn check_fractions_sum_to_one<I>(fractions: I) -> Result<()>
+where
+    I: Iterator<Item = f64>,
+{
+    let sum = fractions.sum();
+    ensure!(
+        approx_eq!(f64, sum, 1.0, epsilon = 1e-5),
+        "Sum of fractions does not equal one (actual: {})",
+        sum
+    );
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -344,5 +360,24 @@ mod tests {
         // Check that it fails if a non-existent process ID is provided
         let process_ids = create_ids();
         read_csv_grouped_by_id::<Record>(&file_path, &process_ids).unwrap();
+    }
+
+    #[test]
+    fn test_check_fractions_sum_to_one() {
+        // Single input, valid
+        assert!(check_fractions_sum_to_one([1.0].into_iter()).is_ok());
+
+        // Multiple inputs, valid
+        assert!(check_fractions_sum_to_one([0.4, 0.6].into_iter()).is_ok());
+
+        // Single input, invalid
+        assert!(check_fractions_sum_to_one([0.5].into_iter()).is_err());
+
+        // Multiple inputs, invalid
+        assert!(check_fractions_sum_to_one([0.4, 0.3].into_iter()).is_err());
+
+        // Edge cases
+        assert!(check_fractions_sum_to_one([f64::INFINITY].into_iter()).is_err());
+        assert!(check_fractions_sum_to_one([f64::NAN].into_iter()).is_err());
     }
 }
