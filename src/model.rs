@@ -1,4 +1,5 @@
 //! Code for simulation models.
+#![allow(missing_docs)]
 use crate::agent::{read_agents, Agent};
 use crate::commodity::{read_commodities, Commodity};
 use crate::demand::{read_demand_data, Demand};

@@ -1,4 +1,5 @@
 //! High level functionality for launching the simulation.
+#![warn(missing_docs)]
 pub mod log;
 pub mod model;
 pub mod settings;
