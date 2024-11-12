@@ -3,12 +3,12 @@
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
 use crate::input::*;
+use anyhow::{anyhow, ensure, Result};
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::fmt::Display;
 use std::path::Path;
 use std::rc::Rc;
@@ -71,24 +71,21 @@ impl TimeSliceInfo {
     /// Get the `TimeSliceID` corresponding to the `time_slice`.
     ///
     /// `time_slice` must be in the form "season.time_of_day".
-    pub fn get_time_slice_id_from_str(
-        &self,
-        time_slice: &str,
-    ) -> Result<TimeSliceID, Box<dyn Error>> {
+    pub fn get_time_slice_id_from_str(&self, time_slice: &str) -> Result<TimeSliceID> {
         let (season, time_of_day) = time_slice
             .split('.')
             .collect_tuple()
-            .ok_or("Time slice must be in the form season.time_of_day")?;
+            .ok_or(anyhow!("Time slice must be in the form season.time_of_day"))?;
         let season = self
             .seasons
             .iter()
             .find(|item| item.eq_ignore_ascii_case(season))
-            .ok_or(format!("{} is not a known season", season))?;
+            .ok_or(anyhow!("{} is not a known season", season))?;
         let time_of_day = self
             .times_of_day
             .iter()
             .find(|item| item.eq_ignore_ascii_case(time_of_day))
-            .ok_or(format!("{} is not a known time of day", time_of_day))?;
+            .ok_or(anyhow!("{} is not a known time of day", time_of_day))?;
 
         Ok(TimeSliceID {
             season: Rc::clone(season),
@@ -99,7 +96,7 @@ impl TimeSliceInfo {
     /// Get a `TimeSliceSelection` from the specified string.
     ///
     /// If the string is empty, the default value is `TimeSliceSelection::Annual`.
-    pub fn get_selection(&self, time_slice: &str) -> Result<TimeSliceSelection, Box<dyn Error>> {
+    pub fn get_selection(&self, time_slice: &str) -> Result<TimeSliceSelection> {
         if time_slice.is_empty() || time_slice.eq_ignore_ascii_case("annual") {
             Ok(TimeSliceSelection::Annual)
         } else if time_slice.contains('.') {
@@ -135,7 +132,7 @@ fn get_or_insert(value: String, set: &mut HashSet<Rc<str>>) -> Rc<str> {
 }
 
 /// Read time slice information from an iterator of raw time slice records
-fn read_time_slice_info_from_iter<I>(iter: I) -> Result<TimeSliceInfo, Box<dyn Error>>
+fn read_time_slice_info_from_iter<I>(iter: I) -> Result<TimeSliceInfo>
 where
     I: Iterator<Item = TimeSliceRaw>,
 {
@@ -150,9 +147,10 @@ where
             time_of_day,
         };
 
-        if fractions.insert(id.clone(), time_slice.fraction).is_some() {
-            Err(format!("Duplicate time slice entry for {}", id))?;
-        }
+        ensure!(
+            fractions.insert(id.clone(), time_slice.fraction).is_none(),
+            "Duplicate time slice entry for {id}",
+        );
     }
 
     // Validate data
@@ -196,17 +194,15 @@ pub fn read_time_slice_info(model_dir: &Path) -> TimeSliceInfo {
 }
 
 /// Check that time slice fractions sum to (approximately) one
-fn check_time_slice_fractions_sum_to_one<I>(fractions: I) -> Result<(), Box<dyn Error>>
+fn check_time_slice_fractions_sum_to_one<I>(fractions: I) -> Result<()>
 where
     I: Iterator<Item = f64>,
 {
     let sum = fractions.sum();
-    if !approx_eq!(f64, sum, 1.0, epsilon = 1e-5) {
-        Err(format!(
-            "Sum of time slice fractions does not equal one (actual: {})",
-            sum
-        ))?;
-    }
+    ensure!(
+        approx_eq!(f64, sum, 1.0, epsilon = 1e-5),
+        "Sum of time slice fractions does not equal one (actual: {sum})"
+    );
 
     Ok(())
 }
