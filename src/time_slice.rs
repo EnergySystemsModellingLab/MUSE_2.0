@@ -2,6 +2,7 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
+#![allow(missing_docs)]
 use crate::input::*;
 use float_cmp::approx_eq;
 use itertools::Itertools;

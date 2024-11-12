@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 use crate::input::read_csv_as_vec;
 use serde::Deserialize;
 use std::path::Path;

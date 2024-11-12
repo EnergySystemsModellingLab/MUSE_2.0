@@ -1,16 +1,15 @@
 //! High level functionality for launching the simulation.
 #![warn(missing_docs)]
+pub mod agent;
+pub mod commodity;
+pub mod demand;
+pub mod input;
 pub mod log;
 pub mod model;
+pub mod process;
+pub mod region;
 pub mod settings;
-
-mod agent;
-mod commodity;
-mod demand;
-mod input;
-mod process;
-mod region;
-mod time_slice;
+pub mod time_slice;
 
 use crate::model::Model;
 
