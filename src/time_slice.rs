@@ -5,7 +5,6 @@
 #![allow(missing_docs)]
 use crate::input::*;
 use anyhow::{ensure, Context, Result};
-use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -155,7 +154,8 @@ where
     }
 
     // Validate data
-    check_time_slice_fractions_sum_to_one(fractions.values().cloned())?;
+    check_fractions_sum_to_one(fractions.values().cloned())
+        .context("Invalid time slice fractions")?;
 
     Ok(TimeSliceInfo {
         seasons,
@@ -192,20 +192,6 @@ pub fn read_time_slice_info(model_dir: &Path) -> TimeSliceInfo {
     }
 
     read_time_slice_info_from_iter(read_csv(&file_path)).unwrap_input_err(&file_path)
-}
-
-/// Check that time slice fractions sum to (approximately) one
-fn check_time_slice_fractions_sum_to_one<I>(fractions: I) -> Result<()>
-where
-    I: Iterator<Item = f64>,
-{
-    let sum = fractions.sum();
-    ensure!(
-        approx_eq!(f64, sum, 1.0, epsilon = 1e-5),
-        "Sum of time slice fractions does not equal one (actual: {sum})"
-    );
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -296,24 +282,5 @@ autumn,evening,0.25"
     fn test_read_time_slice_info_non_existent() {
         let actual = read_time_slice_info(tempdir().unwrap().path());
         assert_eq!(actual, TimeSliceInfo::default());
-    }
-
-    #[test]
-    fn test_check_time_slice_fractions_sum_to_one() {
-        // Single input, valid
-        assert!(check_time_slice_fractions_sum_to_one([1.0].into_iter()).is_ok());
-
-        // Multiple inputs, valid
-        assert!(check_time_slice_fractions_sum_to_one([0.4, 0.6].into_iter()).is_ok());
-
-        // Single input, invalid
-        assert!(check_time_slice_fractions_sum_to_one([0.5].into_iter()).is_err());
-
-        // Multiple inputs, invalid
-        assert!(check_time_slice_fractions_sum_to_one([0.4, 0.3].into_iter()).is_err());
-
-        // Edge cases
-        assert!(check_time_slice_fractions_sum_to_one([f64::INFINITY].into_iter()).is_err());
-        assert!(check_time_slice_fractions_sum_to_one([f64::NAN].into_iter()).is_err());
     }
 }
