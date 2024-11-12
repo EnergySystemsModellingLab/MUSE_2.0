@@ -42,9 +42,13 @@ struct ProcessAvailabilityRaw {
 /// The availabilities for a process over time slices
 #[derive(PartialEq, Debug)]
 pub struct ProcessAvailability {
+    /// String identifying the process (typically uses a structured naming convention).
     process_id: String,
+    /// The limit type – lower bound, upper bound or equality [lo, up, fx].
     pub limit_type: LimitType,
+    /// Identifies the time slice to which the availability applies.
     pub time_slice: TimeSliceSelection,
+    /// Identifies the availability value.
     pub value: f64,
 }
 define_process_id_getter! {ProcessAvailability}
@@ -60,12 +64,17 @@ pub enum FlowType {
 
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct ProcessFlow {
+    /// String identifying the process (typically uses a structured naming convention).
     pub process_id: String,
+    /// Identifies the commodity for the specified flow
     pub commodity_id: String,
+    /// Commodity flow quantity relative to other commodity flows. +ve value indicates flow out, -ve value indicates flow in.
     pub flow: f64,
     #[serde(default)]
+    /// Identifies if a flow is fixed or flexible. Fixed means input to output flow ratio is fixed. Flexible means flow ratio can vary, subject to overall flow of a specified group of commodities whose input/output ratio must be as per user input data.
     pub flow_type: FlowType,
     #[serde(deserialize_with = "deserialise_flow_cost")]
+    /// Cost per unit flow. For example, cost per unit of natural gas produced. Differs from var_opex because the user can apply it to any specified flow, whereas var_opex applies to pac flow.
     pub flow_cost: f64,
 }
 define_process_id_getter! {ProcessFlow}

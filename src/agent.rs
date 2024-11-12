@@ -48,14 +48,22 @@ pub enum DecisionRule {
 /// An agent in the simulation
 #[derive(Debug, Deserialize, PartialEq, Clone)]
 pub struct Agent {
+    /// the acronym for the agent.
     pub id: Rc<str>,
+    /// a text description of the agent.
     pub description: String,
+    /// the commodity that the agent produces (could be a service demand too).
     pub commodity_id: String,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
+    /// the percentage of the commodity production that the agent is responsible for.
     pub commodity_portion: f64,
+    /// The list of processes that the agent will consider investing in.
     pub search_space: SearchSpace,
+    /// The decision rule that the agent uses to decide investment.
     pub decision_rule: DecisionRule,
+    /// The maximum capital cost the agent will pay.
     pub capex_limit: Option<f64>,
+    /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
     pub annual_cost_limit: Option<f64>,
 
     #[serde(skip)]
@@ -78,6 +86,7 @@ macro_rules! define_agent_id_getter {
 #[derive(Debug, Deserialize, PartialEq)]
 struct AgentRegion {
     agent_id: String,
+    /// The region to which an agent belongs.
     region_id: String,
 }
 define_agent_id_getter! {AgentRegion}
@@ -98,8 +107,11 @@ pub enum ObjectiveType {
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct AgentObjective {
     agent_id: String,
+    /// Acronym identifying the objective (e.g. LCOX)
     objective_type: ObjectiveType,
+    /// For “weighted_sum” objective, the set of weights to apply to each objective.
     decision_weight: Option<f64>,
+    /// The tolerance around the main objective to consider secondary objectives. This is an absolute value of maximum deviation in the units of the main objective.
     decision_lexico_tolerance: Option<f64>,
 }
 define_agent_id_getter! {AgentObjective}
