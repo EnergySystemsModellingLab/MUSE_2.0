@@ -29,7 +29,7 @@ market equilibrium.
 ### Overview
 
 MUSE 2.0 is the successor to MUSE.
-The original MUSE framework is open-source software available on GitHub [here](https://github.com/EnergySystemsModellingLab/MUSE_OS),
+The original MUSE framework is open-source software [available on GitHub](https://github.com/EnergySystemsModellingLab/MUSE_OS),
 coded in Python. MUSE 2.0 is implemented following re-design of MUSE to address a range of legacy
 issues that are challenging to address via upgrades to the existing MUSE framework, and to implement
 the framework in the high-performance Rust language.
@@ -37,6 +37,7 @@ the framework in the high-performance Rust language.
 MUSE is classified as a recursive dynamic modelling framework in the sense that it iterates on a
 single time period to find a market equilibrium, and then moves to the next time period.
 Agents in MUSE have limited foresight, reacting only to information available in the current time period.
+<!-- markdown-link-check-disable-next-line -->
 This is distinct from intertemporal optimization modelling frameworks (such as [TIMES](https://iea-etsap.org/index.php/etsap-tools/model-generators/times)
 and [MESSAGEix](https://docs.messageix.org/en/latest/)) which have perfect foresight over the whole
 modelled time horizon.
@@ -103,7 +104,7 @@ Consistency check is performed.
 ### 2. Base Year Price Discovery
 
 Dispatch is executed to determine base year commodity production and consumption.
-The result is used to discover commodity prices in the calibrated base year (t<sub>0</sub>).
+The result is used to discover commodity prices in the calibrated base year (*t<sub>0</sub>*).
 
 1. Dispatch is solved for all assets and commodities in the system
     simultaneously, where existing assets (known from calibrated
@@ -139,7 +140,7 @@ The result is used to discover commodity prices in the calibrated base year (t<s
     calculated for each commodity using marginal pricing (i.e. the
     operational cost of the most expensive process serving a
     commodity demand). The result of this step is model-generated
-    time sliced commodity prices for the base year, t<sub>0</sub>.
+    time sliced commodity prices for the base year, *t<sub>0</sub>*.
 
 5. The model then also calculates the prices of commodities that
     are not present in the base year, directly from input data. This
