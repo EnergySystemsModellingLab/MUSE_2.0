@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Code for working with demand for a given commodity. Demand can vary by region and year.
 use crate::input::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use anyhow::{anyhow, ensure, Result};
@@ -40,7 +40,9 @@ struct DemandSliceRaw {
 /// How demand varies by time slice
 #[derive(Debug, PartialEq)]
 pub struct DemandSlice {
+    /// Which time slice(s) this applies to
     pub time_slice: TimeSliceSelection,
+    /// The fraction of total demand (between 0 and 1 inclusive)
     pub fraction: f64,
 }
 
