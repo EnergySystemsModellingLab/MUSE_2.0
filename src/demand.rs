@@ -1,7 +1,7 @@
 //! Code for working with demand for a given commodity. Demand can vary by region and year.
 use crate::input::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
@@ -137,11 +137,10 @@ where
 {
     for slice in iter {
         let demand =
-            try_get_demand(&slice.commodity_id, &slice.region_id, demand).ok_or_else(|| {
-                anyhow!(
+            try_get_demand(&slice.commodity_id, &slice.region_id, demand).with_context(|| {
+                format!(
                     "No demand specified for commodity {} in region {}",
-                    &slice.commodity_id,
-                    &slice.region_id
+                    &slice.commodity_id, &slice.region_id
                 )
             })?;
 
