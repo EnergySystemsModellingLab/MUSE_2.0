@@ -1,3 +1,4 @@
+use crate::demand::{read_demand, Demand};
 use crate::input::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
 use itertools::Itertools;
@@ -23,6 +24,8 @@ pub struct Commodity {
 
     #[serde(skip)]
     pub costs: Vec<CommodityCost>,
+    #[serde(skip)]
+    pub demand_by_region: HashMap<Rc<str>, Demand>,
 }
 define_id_getter! {Commodity}
 
@@ -35,6 +38,8 @@ macro_rules! define_commodity_id_getter {
         }
     };
 }
+
+pub(crate) use define_commodity_id_getter;
 
 /// Type of balance for application of cost
 #[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
@@ -187,6 +192,13 @@ pub fn read_commodities(
         time_slice_info,
         year_range,
     );
+    let mut demand = read_demand(
+        model_dir,
+        &commodity_ids,
+        region_ids,
+        time_slice_info,
+        year_range,
+    );
 
     // Populate Vecs for each Commodity
     commodities
@@ -194,6 +206,9 @@ pub fn read_commodities(
         .map(|(id, mut commodity)| {
             if let Some(costs) = costs.remove(&id) {
                 commodity.costs = costs;
+            }
+            if let Some(demand) = demand.remove(&id) {
+                commodity.demand_by_region = demand;
             }
 
             (id, commodity.into())
