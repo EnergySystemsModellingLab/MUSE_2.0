@@ -3,7 +3,7 @@
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
 use crate::input::*;
-use anyhow::{anyhow, ensure, Context, Result};
+use anyhow::{ensure, Context, Result};
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::Deserialize;
@@ -80,12 +80,12 @@ impl TimeSliceInfo {
             .seasons
             .iter()
             .find(|item| item.eq_ignore_ascii_case(season))
-            .ok_or(anyhow!("{} is not a known season", season))?;
+            .with_context(|| format!("{} is not a known season", season))?;
         let time_of_day = self
             .times_of_day
             .iter()
             .find(|item| item.eq_ignore_ascii_case(time_of_day))
-            .ok_or(anyhow!("{} is not a known time of day", time_of_day))?;
+            .with_context(|| format!("{} is not a known time of day", time_of_day))?;
 
         Ok(TimeSliceID {
             season: Rc::clone(season),
