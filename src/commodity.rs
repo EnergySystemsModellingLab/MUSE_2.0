@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 use crate::demand::{read_demand, Demand};
 use crate::input::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};

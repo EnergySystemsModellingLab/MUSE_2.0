@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 use crate::input::*;
 use crate::region::*;
 use serde::Deserialize;

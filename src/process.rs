@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 use crate::commodity::Commodity;
 use crate::input::*;
 use crate::region::*;

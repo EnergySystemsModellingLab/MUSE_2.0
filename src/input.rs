@@ -1,4 +1,5 @@
 //! Common routines for handling input data.
+#![allow(missing_docs)]
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
