@@ -3,7 +3,7 @@
 //! For a description of what assets are, please see the glossary.
 use crate::input::*;
 use crate::process::Process;
-use anyhow::{anyhow, Result};
+use anyhow::{Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -59,7 +59,7 @@ where
         let agent_id = agent_ids.get_id(&asset.agent_id)?;
         let process = processes
             .get(asset.process_id.as_str())
-            .ok_or_else(|| anyhow!("Invalid process ID: {}", &asset.process_id))?;
+            .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
         let region_id = region_ids.get_id(&asset.region_id)?;
 
         Ok((
