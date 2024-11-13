@@ -29,12 +29,12 @@ pub struct Demand {
 }
 
 #[derive(Clone, Deserialize)]
-pub struct DemandSliceRaw {
-    pub commodity_id: String,
-    pub region_id: String,
-    pub time_slice: String,
+struct DemandSliceRaw {
+    commodity_id: String,
+    region_id: String,
+    time_slice: String,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
-    pub fraction: f64,
+    fraction: f64,
 }
 
 /// How demand varies by time slice
