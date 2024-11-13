@@ -42,13 +42,13 @@ struct ProcessAvailabilityRaw {
 /// The availabilities for a process over time slices
 #[derive(PartialEq, Debug)]
 pub struct ProcessAvailability {
-    /// String identifying the process (typically uses a structured naming convention).
+    /// Unique identifier for the process (typically uses a structured naming convention).
     process_id: String,
-    /// The limit type – lower bound, upper bound or equality [lo, up, fx].
+    /// The limit type – lower bound, upper bound or equality.
     pub limit_type: LimitType,
-    /// Identifies the time slice to which the availability applies.
+    /// The time slice to which the availability applies.
     pub time_slice: TimeSliceSelection,
-    /// Identifies the availability value.
+    /// The availability value, between 0 and 1 inclusive.
     pub value: f64,
 }
 define_process_id_getter! {ProcessAvailability}
@@ -64,7 +64,7 @@ pub enum FlowType {
 
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct ProcessFlow {
-    /// String identifying the process (typically uses a structured naming convention).
+    /// A unique identifier for the process (typically uses a structured naming convention).
     pub process_id: String,
     /// Identifies the commodity for the specified flow
     pub commodity_id: String,
