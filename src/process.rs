@@ -4,11 +4,11 @@ use crate::input::*;
 use crate::region::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use ::log::warn;
+use anyhow::{bail, ensure, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
@@ -106,20 +106,16 @@ struct ProcessParameterRaw {
 define_process_id_getter! {ProcessParameterRaw}
 
 impl ProcessParameterRaw {
-    fn into_parameter(
-        self,
-        year_range: &RangeInclusive<u32>,
-    ) -> Result<ProcessParameter, Box<dyn Error>> {
+    fn into_parameter(self, year_range: &RangeInclusive<u32>) -> Result<ProcessParameter> {
         let start_year = self.start_year.unwrap_or(*year_range.start());
         let end_year = self.end_year.unwrap_or(*year_range.end());
 
         // Check year range is valid
-        if start_year > end_year {
-            Err(format!(
-                "Error in parameter for process {}: start_year > end_year",
-                self.process_id
-            ))?;
-        }
+        ensure!(
+            start_year <= end_year,
+            "Error in parameter for process {}: start_year > end_year",
+            self.process_id
+        );
 
         self.validate()?;
 
@@ -154,20 +150,20 @@ impl ProcessParameterRaw {
     /// # Returns
     ///
     /// Returns `Ok(())` if all validations pass.
-    fn validate(&self) -> Result<(), Box<dyn Error>> {
-        if self.lifetime == 0 {
-            Err(format!(
-                "Error in parameter for process {}: Lifetime must be greater than 0",
-                self.process_id
-            ))?;
-        }
+    fn validate(&self) -> Result<()> {
+        ensure!(
+            self.lifetime > 0,
+            "Error in parameter for process {}: Lifetime must be greater than 0",
+            self.process_id
+        );
+
         if let Some(dr) = self.discount_rate {
-            if dr < 0.0 {
-                Err(format!(
-                    "Error in parameter for process {}: Discount rate must be positive",
-                    self.process_id
-                ))?;
-            }
+            ensure!(
+                dr >= 0.0,
+                "Error in parameter for process {}: Discount rate must be positive",
+                self.process_id
+            );
+
             if dr > 1.0 {
                 warn!(
                     "Warning in parameter for process {}: Discount rate is greater than 1",
@@ -175,14 +171,15 @@ impl ProcessParameterRaw {
                 );
             }
         }
+
         if let Some(c2a) = self.cap2act {
-            if c2a < 0.0 {
-                Err(format!(
-                    "Error in parameter for process {}: Cap2act must be positive",
-                    self.process_id
-                ))?;
-            }
+            ensure!(
+                c2a >= 0.0,
+                "Error in parameter for process {}: Cap2act must be positive",
+                self.process_id
+            );
         }
+
         Ok(())
     }
 }
@@ -281,7 +278,7 @@ fn read_process_parameters_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, ProcessParameter>, Box<dyn Error>>
+) -> Result<HashMap<Rc<str>, ProcessParameter>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
@@ -290,14 +287,16 @@ where
         let param = param.into_parameter(year_range)?;
         let id = process_ids.get_id(&param.process_id)?;
 
-        if params.insert(Rc::clone(&id), param).is_some() {
-            Err(format!("More than one parameter provided for process {id}"))?;
-        }
+        ensure!(
+            params.insert(Rc::clone(&id), param).is_none(),
+            "More than one parameter provided for process {id}"
+        );
     }
 
-    if params.len() < process_ids.len() {
-        Err("Each process must have an associated parameter")?;
-    }
+    ensure!(
+        params.len() == process_ids.len(),
+        "Each process must have an associated parameter"
+    );
 
     Ok(params)
 }
@@ -328,7 +327,7 @@ fn read_process_pacs_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
-) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>, Box<dyn Error>>
+) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>>
 where
     I: Iterator<Item = ProcessPAC>,
 {
@@ -340,11 +339,9 @@ where
         let commodity = commodities.get(pac.commodity_id.as_str());
 
         match commodity {
-            None => Err(format!("{} is not a valid commodity ID", &pac.commodity_id))?,
+            None => bail!("{} is not a valid commodity ID", &pac.commodity_id),
             Some(commodity) => {
-                if !pacs.insert(pac) {
-                    Err("Duplicate PACs found")?;
-                }
+                ensure!(pacs.insert(pac), "Duplicate PACs found");
 
                 Ok((process_id, Rc::clone(commodity)))
             }
