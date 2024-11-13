@@ -23,3 +23,5 @@ tempfile = "3.10.1"
 toml = "0.8.13"
 unicase = "2.7.0"
 fern = {version = "0.7.0", features = ["chrono", "colored"]}
+atty = "0.2"
+chrono = "0.4"
