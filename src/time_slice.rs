@@ -3,7 +3,7 @@
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
 use crate::input::*;
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, ensure, Context, Result};
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::Deserialize;
@@ -75,7 +75,7 @@ impl TimeSliceInfo {
         let (season, time_of_day) = time_slice
             .split('.')
             .collect_tuple()
-            .ok_or(anyhow!("Time slice must be in the form season.time_of_day"))?;
+            .context("Time slice must be in the form season.time_of_day")?;
         let season = self
             .seasons
             .iter()
