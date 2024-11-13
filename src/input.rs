@@ -1,9 +1,10 @@
 //! Common routines for handling input data.
+#![allow(missing_docs)]
+use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::fmt::Display;
 use std::fs;
 use std::path::Path;
@@ -21,29 +22,21 @@ pub fn read_csv<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> impl Itera
         .unwrap_input_err(file_path)
 }
 
-/// Read a series of type `T`s from a CSV file into a `Vec<T>`.
-///
-/// # Arguments
-///
-/// * `file_path` - Path to the CSV file
-pub fn read_csv_as_vec<T: DeserializeOwned>(file_path: &Path) -> Vec<T> {
-    let vec: Vec<T> = read_csv(file_path).collect();
-
-    if vec.is_empty() {
-        input_panic(file_path, "CSV file cannot be empty");
-    }
-
-    vec
-}
-
 /// Parse a TOML file at the specified path.
 ///
 /// # Arguments
 ///
 /// * `file_path` - Path to the TOML file
-pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> T {
-    let toml_str = fs::read_to_string(file_path).unwrap_input_err(file_path);
-    toml::from_str(&toml_str).unwrap_input_err(file_path)
+///
+/// # Returns
+///
+/// * The deserialised TOML data or an error if the file could not be read or parsed.
+pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
+    let toml_str = fs::read_to_string(file_path)
+        .with_context(|| format!("Failed to read `{}`", file_path.to_string_lossy()))?;
+    let toml_data = toml::from_str(&toml_str)
+        .with_context(|| format!("Could not parse `{}`", file_path.to_string_lossy()))?;
+    Ok(toml_data)
 }
 
 /// Read an f64, checking that it is between 0 and 1
@@ -133,15 +126,13 @@ pub trait IDCollection {
     /// # Returns
     ///
     /// A copy of the `Rc<str>` in `self` or an error if not found.
-    fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>>;
+    fn get_id(&self, id: &str) -> Result<Rc<str>>;
 }
 
 impl IDCollection for HashSet<Rc<str>> {
-    fn get_id(&self, id: &str) -> Result<Rc<str>, Box<dyn Error>> {
-        match self.get(id) {
-            None => Err(format!("Unknown ID {id} found"))?,
-            Some(id) => Ok(Rc::clone(id)),
-        }
+    fn get_id(&self, id: &str) -> Result<Rc<str>> {
+        let id = self.get(id).context(format!("Unknown ID {id} found"))?;
+        Ok(Rc::clone(id))
     }
 }
 
@@ -171,10 +162,7 @@ where
 }
 
 pub trait IntoIDMap<T> {
-    fn into_id_map(
-        self,
-        ids: &HashSet<Rc<str>>,
-    ) -> Result<HashMap<Rc<str>, Vec<T>>, Box<dyn Error>>;
+    fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>>;
 }
 
 impl<T, I> IntoIDMap<T> for I
@@ -187,20 +175,15 @@ where
     /// # Arguments
     ///
     /// `ids` - The set of valid IDs to check against.
-    fn into_id_map(
-        self,
-        ids: &HashSet<Rc<str>>,
-    ) -> Result<HashMap<Rc<str>, Vec<T>>, Box<dyn Error>> {
+    fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>> {
         let map = self
-            .map(|item| match ids.get_id(item.get_id()) {
-                Err(err) => Err(err),
-                Ok(id) => Ok((id, item)),
+            .map(|item| -> Result<_> {
+                let id = ids.get_id(item.get_id())?;
+                Ok((id, item))
             })
             .process_results(|iter| iter.into_group_map())?;
 
-        if map.is_empty() {
-            Err("CSV file is empty")?;
-        }
+        ensure!(!map.is_empty(), "CSV file is empty");
 
         Ok(map)
     }
@@ -261,10 +244,10 @@ mod tests {
 
     /// Test a normal read
     #[test]
-    fn test_read_csv_as_vec() {
+    fn test_read_csv() {
         let dir = tempdir().unwrap();
         let file_path = create_csv_file(dir.path(), "id,value\nhello,1\nworld,2\n");
-        let records: Vec<Record> = read_csv_as_vec(&file_path);
+        let records: Vec<Record> = read_csv(&file_path).collect();
         assert_eq!(
             records,
             &[
@@ -280,15 +263,6 @@ mod tests {
         );
     }
 
-    /// Empty CSV files should yield an error
-    #[test]
-    #[should_panic]
-    fn test_read_csv_as_vec_empty() {
-        let dir = tempdir().unwrap();
-        let file_path = create_csv_file(dir.path(), "id,value\n");
-        read_csv_as_vec::<Record>(&file_path);
-    }
-
     #[test]
     fn test_read_toml() {
         let dir = tempdir().unwrap();
@@ -299,12 +273,19 @@ mod tests {
         }
 
         assert_eq!(
-            read_toml::<Record>(&file_path),
+            read_toml::<Record>(&file_path).unwrap(),
             Record {
                 id: "hello".to_string(),
                 value: 1,
             }
         );
+
+        {
+            let mut file = File::create(&file_path).unwrap();
+            writeln!(file, "bad toml syntax").unwrap();
+        }
+
+        assert!(read_toml::<Record>(&file_path).is_err());
     }
 
     /// Deserialise value with deserialise_proportion_nonzero()

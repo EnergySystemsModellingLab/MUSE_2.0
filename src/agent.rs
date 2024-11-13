@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 use crate::asset::{read_assets, Asset};
 use crate::input::*;
 use crate::process::Process;

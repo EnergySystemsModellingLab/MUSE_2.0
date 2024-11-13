@@ -15,5 +15,5 @@ fn get_model_dir() -> PathBuf {
 /// An integration test which attempts to load the example model
 #[test]
 fn test_model_from_path() {
-    Model::from_path(get_model_dir());
+    Model::from_path(get_model_dir()).unwrap();
 }

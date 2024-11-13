@@ -1,3 +1,8 @@
+//! Code for working with [Asset]s.
+//!
+//! For a description of what assets are, please see the glossary.
+use crate::input::*;
+use crate::process::Process;
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -5,25 +10,27 @@ use std::error::Error;
 use std::path::Path;
 use std::rc::Rc;
 
-use crate::input::*;
-use crate::process::Process;
-
 const ASSETS_FILE_NAME: &str = "assets.csv";
 
 #[derive(Deserialize, PartialEq)]
-pub struct AssetRaw {
-    pub process_id: String,
-    pub region_id: String,
-    pub agent_id: String,
-    pub capacity: f64,
-    pub commission_year: u32,
+struct AssetRaw {
+    process_id: String,
+    region_id: String,
+    agent_id: String,
+    capacity: f64,
+    commission_year: u32,
 }
 
+/// An asset controlled by an agent.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Asset {
+    /// The [Process] that this asset corresponds to
     pub process: Rc<Process>,
+    /// The region in which the asset is located
     pub region_id: String,
+    /// Capacity of asset
     pub capacity: f64,
+    /// The year the asset comes online
     pub commission_year: u32,
 }
 
@@ -32,14 +39,13 @@ pub struct Asset {
 /// # Arguments
 ///
 /// * `iter` - Iterator of `AssetRaw`s
-/// * `model_dir` - Folder containing model configuration files
 /// * `agent_ids` - All possible process IDs
 /// * `processes` - The model's processes
 /// * `region_ids` - All possible region IDs
 ///
 /// # Returns
 ///
-/// A `HashMap` containing assets grouped by agent ID.
+/// A `HashMap` containing assets grouped by agent ID or an error.
 fn read_assets_from_iter<I>(
     iter: I,
     agent_ids: &HashSet<Rc<str>>,

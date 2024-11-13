@@ -1,3 +1,4 @@
+//! Code for setting up the program logger.
 use env_logger::Env;
 
 pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
