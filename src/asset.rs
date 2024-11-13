@@ -3,10 +3,10 @@
 //! For a description of what assets are, please see the glossary.
 use crate::input::*;
 use crate::process::Process;
+use anyhow::{anyhow, ensure, Result};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -51,15 +51,15 @@ fn read_assets_from_iter<I>(
     agent_ids: &HashSet<Rc<str>>,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Vec<Asset>>, Box<dyn Error>>
+) -> Result<HashMap<Rc<str>, Vec<Asset>>>
 where
     I: Iterator<Item = AssetRaw>,
 {
     let map: HashMap<Rc<str>, _> = iter
-        .map(|asset| -> Result<_, Box<dyn Error>> {
+        .map(|asset| -> Result<_> {
             let process = processes
                 .get(asset.process_id.as_str())
-                .ok_or(format!("Invalid process ID: {}", &asset.process_id))?;
+                .ok_or_else(|| anyhow!("Invalid process ID: {}", &asset.process_id))?;
 
             Ok((
                 asset.agent_id.into(),
@@ -74,15 +74,19 @@ where
         .process_results(|iter| iter.into_group_map())?;
 
     for agent_id in map.keys() {
-        if !agent_ids.contains(agent_id) {
-            Err(format!("Invalid agent ID: {}", agent_id))?;
-        }
+        ensure!(
+            agent_ids.contains(agent_id),
+            "Invalid agent ID: {}",
+            agent_id
+        );
     }
 
     for asset in map.values().flatten() {
-        if !region_ids.contains(asset.region_id.as_str()) {
-            Err(format!("Invalid region ID: {}", asset.region_id))?;
-        }
+        ensure!(
+            region_ids.contains(asset.region_id.as_str()),
+            "Invalid region ID: {}",
+            asset.region_id
+        );
     }
 
     Ok(map)
