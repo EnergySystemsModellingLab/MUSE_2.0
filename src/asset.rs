@@ -3,7 +3,7 @@
 //! For a description of what assets are, please see the glossary.
 use crate::input::*;
 use crate::process::Process;
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -27,7 +27,7 @@ pub struct Asset {
     /// The [Process] that this asset corresponds to
     pub process: Rc<Process>,
     /// The region in which the asset is located
-    pub region_id: String,
+    pub region_id: Rc<str>,
     /// Capacity of asset
     pub capacity: f64,
     /// The year the asset comes online
@@ -55,41 +55,24 @@ fn read_assets_from_iter<I>(
 where
     I: Iterator<Item = AssetRaw>,
 {
-    let map: HashMap<Rc<str>, _> = iter
-        .map(|asset| -> Result<_> {
-            let process = processes
-                .get(asset.process_id.as_str())
-                .ok_or_else(|| anyhow!("Invalid process ID: {}", &asset.process_id))?;
+    iter.map(|asset| -> Result<_> {
+        let agent_id = agent_ids.get_id(&asset.agent_id)?;
+        let process = processes
+            .get(asset.process_id.as_str())
+            .ok_or_else(|| anyhow!("Invalid process ID: {}", &asset.process_id))?;
+        let region_id = region_ids.get_id(&asset.region_id)?;
 
-            Ok((
-                asset.agent_id.into(),
-                Asset {
-                    process: Rc::clone(process),
-                    region_id: asset.region_id,
-                    capacity: asset.capacity,
-                    commission_year: asset.commission_year,
-                },
-            ))
-        })
-        .process_results(|iter| iter.into_group_map())?;
-
-    for agent_id in map.keys() {
-        ensure!(
-            agent_ids.contains(agent_id),
-            "Invalid agent ID: {}",
-            agent_id
-        );
-    }
-
-    for asset in map.values().flatten() {
-        ensure!(
-            region_ids.contains(asset.region_id.as_str()),
-            "Invalid region ID: {}",
-            asset.region_id
-        );
-    }
-
-    Ok(map)
+        Ok((
+            agent_id,
+            Asset {
+                process: Rc::clone(process),
+                region_id,
+                capacity: asset.capacity,
+                commission_year: asset.commission_year,
+            },
+        ))
+    })
+    .process_results(|iter| iter.into_group_map())
 }
 
 /// Read assets CSV file from model directory.
