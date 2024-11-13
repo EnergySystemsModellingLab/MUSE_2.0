@@ -721,11 +721,12 @@ mod tests {
             .into_iter()
             .map(|id| {
                 let commodity = Commodity {
-                    costs: vec![],
                     id: id.into(),
                     description: "Some description".into(),
                     kind: CommodityType::InputCommodity,
                     time_slice_level: TimeSliceLevel::Annual,
+                    costs: vec![],
+                    demand_by_region: HashMap::new(),
                 };
 
                 (Rc::clone(&commodity.id), commodity.into())

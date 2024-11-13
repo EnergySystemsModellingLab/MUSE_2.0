@@ -2,8 +2,7 @@
 #![allow(missing_docs)]
 use crate::agent::{read_agents, Agent};
 use crate::commodity::{read_commodities, Commodity};
-use crate::demand::{read_demand_data, Demand};
-use crate::input::read_toml;
+use crate::input::*;
 use crate::process::{read_processes, Process};
 use crate::region::{read_regions, Region};
 use crate::time_slice::{read_time_slice_info, TimeSliceInfo};
@@ -22,7 +21,6 @@ pub struct Model {
     pub commodities: HashMap<Rc<str>, Rc<Commodity>>,
     pub processes: HashMap<Rc<str>, Process>,
     pub time_slice_info: TimeSliceInfo,
-    pub demand_data: Vec<Demand>,
     pub regions: HashMap<Rc<str>, Region>,
 }
 
@@ -122,7 +120,6 @@ impl Model {
             commodities,
             processes,
             time_slice_info,
-            demand_data: read_demand_data(model_dir.as_ref()),
             regions,
         })
     }
