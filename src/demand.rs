@@ -98,6 +98,11 @@ where
             demand.year
         );
 
+        ensure!(
+            demand.demand.is_normal() && demand.demand > 0.0,
+            "Demand must be a valid number greater than zero"
+        );
+
         // Get entry for this commodity
         let map = map
             .entry(commodity_id)
@@ -362,6 +367,31 @@ COM1,West,2020,13"
             &milestone_years
         )
         .is_err());
+
+        // Bad demand quantity
+        macro_rules! test_quantity {
+            ($quantity: expr) => {
+                let demand = [Demand {
+                    year: 2020,
+                    region_id: "North".to_string(),
+                    commodity_id: "COM1".to_string(),
+                    demand: $quantity,
+                    demand_slices: Vec::new(),
+                }];
+                assert!(read_demand_from_iter(
+                    demand.into_iter(),
+                    &commodity_ids,
+                    &region_ids,
+                    &milestone_years,
+                )
+                .is_err());
+            };
+        }
+        test_quantity!(-1.0);
+        test_quantity!(0.0);
+        test_quantity!(f64::NAN);
+        test_quantity!(f64::NEG_INFINITY);
+        test_quantity!(f64::INFINITY);
 
         // Multiple entries for same commodity and region
         let demand = [
