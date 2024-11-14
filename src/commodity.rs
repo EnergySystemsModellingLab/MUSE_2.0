@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+use crate::demand::{read_demand, Demand};
 use crate::input::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
 use itertools::Itertools;
@@ -15,14 +17,20 @@ const COMMODITY_COSTS_FILE_NAME: &str = "commodity_costs.csv";
 /// A commodity within the simulation
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct Commodity {
+    /// Unique identifier for the commodity (e.g. "ELC")
     pub id: Rc<str>,
+    /// Text description of commodity (e.g. "electricity")
     pub description: String,
     #[serde(rename = "type")] // NB: we can't name a field type as it's a reserved keyword
+    /// Commodity balance type. Can be supply = demand (SED), service demand (SVD), non-balance commodity (NBC).
     pub kind: CommodityType,
+    /// The time slice level for commodity balance. Can be annual, seasonal or at time slice level.
     pub time_slice_level: TimeSliceLevel,
 
     #[serde(skip)]
     pub costs: Vec<CommodityCost>,
+    #[serde(skip)]
+    pub demand_by_region: HashMap<Rc<str>, Demand>,
 }
 define_id_getter! {Commodity}
 
@@ -35,6 +43,8 @@ macro_rules! define_commodity_id_getter {
         }
     };
 }
+
+pub(crate) use define_commodity_id_getter;
 
 /// Type of balance for application of cost
 #[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
@@ -50,11 +60,17 @@ pub enum BalanceType {
 /// Cost parameters for each commodity
 #[derive(PartialEq, Debug, Deserialize)]
 struct CommodityCostRaw {
+    /// Unique identifier for the commodity (e.g. "ELC")
     pub commodity_id: String,
+    /// The region to which the commodity cost applies.
     pub region_id: String,
+    /// Type of balance for application of cost.
     pub balance_type: BalanceType,
+    /// The year to which the cost applies.
     pub year: u32,
+    /// The time slice to which the cost applies.
     pub time_slice: String,
+    /// Cost per unit commodity. For example, if a CO2 price is specified in input data, it can be applied to net CO2 via this value.
     pub value: f64,
 }
 
@@ -177,8 +193,8 @@ pub fn read_commodities(
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, Commodity> {
-    let mut commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME));
+) -> HashMap<Rc<str>, Rc<Commodity>> {
+    let commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME));
     let commodity_ids = commodities.keys().cloned().collect();
     let mut costs = read_commodity_costs(
         model_dir,
@@ -187,15 +203,28 @@ pub fn read_commodities(
         time_slice_info,
         year_range,
     );
+    let mut demand = read_demand(
+        model_dir,
+        &commodity_ids,
+        region_ids,
+        time_slice_info,
+        year_range,
+    );
 
     // Populate Vecs for each Commodity
-    for (id, commodity) in commodities.iter_mut() {
-        if let Some(costs) = costs.remove(id) {
-            commodity.costs = costs;
-        }
-    }
-
     commodities
+        .into_iter()
+        .map(|(id, mut commodity)| {
+            if let Some(costs) = costs.remove(&id) {
+                commodity.costs = costs;
+            }
+            if let Some(demand) = demand.remove(&id) {
+                commodity.demand_by_region = demand;
+            }
+
+            (id, commodity.into())
+        })
+        .collect()
 }
 
 #[cfg(test)]

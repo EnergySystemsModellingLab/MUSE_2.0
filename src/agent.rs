@@ -1,4 +1,7 @@
+#![allow(missing_docs)]
+use crate::asset::{read_assets, Asset};
 use crate::input::*;
+use crate::process::Process;
 use crate::region::*;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -48,20 +51,30 @@ pub enum DecisionRule {
 /// An agent in the simulation
 #[derive(Debug, Deserialize, PartialEq, Clone)]
 pub struct Agent {
+    /// A unique identifier for the agent.
     pub id: Rc<str>,
+    /// A text description of the agent.
     pub description: String,
+    /// The commodity that the agent produces (could be a service demand too).
     pub commodity_id: String,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
+    /// The proportion of the commodity production that the agent is responsible for.
     pub commodity_portion: f64,
+    /// The list of processes that the agent will consider investing in.
     pub search_space: SearchSpace,
+    /// The decision rule that the agent uses to decide investment.
     pub decision_rule: DecisionRule,
+    /// The maximum capital cost the agent will pay.
     pub capex_limit: Option<f64>,
+    /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
     pub annual_cost_limit: Option<f64>,
 
     #[serde(skip)]
     pub regions: RegionSelection,
     #[serde(skip)]
     pub objectives: Vec<AgentObjective>,
+    #[serde(skip)]
+    pub assets: Vec<Asset>,
 }
 define_id_getter! {Agent}
 
@@ -78,6 +91,7 @@ macro_rules! define_agent_id_getter {
 #[derive(Debug, Deserialize, PartialEq)]
 struct AgentRegion {
     agent_id: String,
+    /// The region to which an agent belongs.
     region_id: String,
 }
 define_agent_id_getter! {AgentRegion}
@@ -97,9 +111,13 @@ pub enum ObjectiveType {
 /// An objective for an agent with associated parameters
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct AgentObjective {
+    /// Unique agent id identifying the agent this objective belongs to
     agent_id: String,
+    /// Acronym identifying the objective (e.g. LCOX)
     objective_type: ObjectiveType,
+    /// For the weighted sum objective, the set of weights to apply to each objective.
     decision_weight: Option<f64>,
+    /// The tolerance around the main objective to consider secondary objectives. This is an absolute value of maximum deviation in the units of the main objective.
     decision_lexico_tolerance: Option<f64>,
 }
 define_agent_id_getter! {AgentObjective}
@@ -253,21 +271,24 @@ pub fn read_agents_file(
 /// A map of Agents, with the agent ID as the key
 pub fn read_agents(
     model_dir: &Path,
-    process_ids: &HashSet<Rc<str>>,
+    processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
 ) -> HashMap<Rc<str>, Agent> {
-    let mut agents = read_agents_file(model_dir, process_ids);
+    let process_ids = processes.keys().cloned().collect();
+    let mut agents = read_agents_file(model_dir, &process_ids);
     let agent_ids = agents.keys().cloned().collect();
 
     let file_path = model_dir.join(AGENT_REGIONS_FILE_NAME);
     let mut agent_regions =
         read_regions_for_entity::<AgentRegion>(&file_path, &agent_ids, region_ids);
     let mut objectives = read_agent_objectives(model_dir, &agents);
+    let mut assets = read_assets(model_dir, &agent_ids, processes, region_ids);
 
     // Populate each Agent's Vecs
     for (id, agent) in agents.iter_mut() {
         agent.regions = agent_regions.remove(id).unwrap();
         agent.objectives = objectives.remove(id).unwrap();
+        agent.assets = assets.remove(id).unwrap_or_default();
     }
 
     agents
@@ -294,6 +315,7 @@ mod tests {
             annual_cost_limit: None,
             regions: RegionSelection::All,
             objectives: Vec::new(),
+            assets: Vec::new(),
         }];
         let expected = HashMap::from_iter([("agent".into(), agents[0].clone())]);
         let actual = read_agents_file_from_iter(agents.into_iter(), &process_ids).unwrap();
@@ -312,6 +334,7 @@ mod tests {
             annual_cost_limit: None,
             regions: RegionSelection::All,
             objectives: Vec::new(),
+            assets: Vec::new(),
         }];
         assert!(read_agents_file_from_iter(agents.into_iter(), &process_ids).is_err());
 
@@ -328,6 +351,7 @@ mod tests {
                 annual_cost_limit: None,
                 regions: RegionSelection::All,
                 objectives: Vec::new(),
+                assets: Vec::new(),
             },
             Agent {
                 id: "agent".into(),
@@ -340,6 +364,7 @@ mod tests {
                 annual_cost_limit: None,
                 regions: RegionSelection::All,
                 objectives: Vec::new(),
+                assets: Vec::new(),
             },
         ];
         assert!(read_agents_file_from_iter(agents.into_iter(), &process_ids).is_err());
@@ -401,6 +426,7 @@ mod tests {
                 annual_cost_limit: None,
                 regions: RegionSelection::All,
                 objectives: Vec::new(),
+                assets: Vec::new(),
             },
         )]
         .into_iter()

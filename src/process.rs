@@ -1,10 +1,14 @@
+#![allow(missing_docs)]
+use crate::commodity::Commodity;
 use crate::input::*;
 use crate::region::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
+use ::log::warn;
+use anyhow::{bail, ensure, Result};
+use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
@@ -39,9 +43,13 @@ struct ProcessAvailabilityRaw {
 /// The availabilities for a process over time slices
 #[derive(PartialEq, Debug)]
 pub struct ProcessAvailability {
+    /// Unique identifier for the process (typically uses a structured naming convention).
     process_id: String,
+    /// The limit type – lower bound, upper bound or equality.
     pub limit_type: LimitType,
+    /// The time slice to which the availability applies.
     pub time_slice: TimeSliceSelection,
+    /// The availability value, between 0 and 1 inclusive.
     pub value: f64,
 }
 define_process_id_getter! {ProcessAvailability}
@@ -50,19 +58,26 @@ define_process_id_getter! {ProcessAvailability}
 pub enum FlowType {
     #[default]
     #[string = "fixed"]
+    /// The input to output flow ratio is fixed.
     Fixed,
     #[string = "flexible"]
+    /// The flow ratio can vary, subject to overall flow of a specified group of commodities whose input/output ratio must be as per user input data.
     Flexible,
 }
 
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct ProcessFlow {
+    /// A unique identifier for the process (typically uses a structured naming convention).
     pub process_id: String,
+    /// Identifies the commodity for the specified flow
     pub commodity_id: String,
+    /// Commodity flow quantity relative to other commodity flows. +ve value indicates flow out, -ve value indicates flow in.
     pub flow: f64,
     #[serde(default)]
+    /// Identifies if a flow is fixed or flexible.
     pub flow_type: FlowType,
     #[serde(deserialize_with = "deserialise_flow_cost")]
+    /// Cost per unit flow. For example, cost per unit of natural gas produced. Differs from var_opex because the user can apply it to any specified flow, whereas var_opex applies to pac flow.
     pub flow_cost: f64,
 }
 define_process_id_getter! {ProcessFlow}
@@ -80,10 +95,10 @@ where
 }
 
 /// Primary Activity Commodity
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Clone, Eq, Hash, Debug, Deserialize)]
 struct ProcessPAC {
     process_id: String,
-    pac: String,
+    commodity_id: String,
 }
 define_process_id_getter! {ProcessPAC}
 
@@ -102,20 +117,18 @@ struct ProcessParameterRaw {
 define_process_id_getter! {ProcessParameterRaw}
 
 impl ProcessParameterRaw {
-    fn into_parameter(
-        self,
-        year_range: &RangeInclusive<u32>,
-    ) -> Result<ProcessParameter, Box<dyn Error>> {
+    fn into_parameter(self, year_range: &RangeInclusive<u32>) -> Result<ProcessParameter> {
         let start_year = self.start_year.unwrap_or(*year_range.start());
         let end_year = self.end_year.unwrap_or(*year_range.end());
 
         // Check year range is valid
-        if start_year > end_year {
-            Err(format!(
-                "Error in parameter for process {}: start_year > end_year",
-                self.process_id
-            ))?;
-        }
+        ensure!(
+            start_year <= end_year,
+            "Error in parameter for process {}: start_year > end_year",
+            self.process_id
+        );
+
+        self.validate()?;
 
         Ok(ProcessParameter {
             process_id: self.process_id,
@@ -130,7 +143,59 @@ impl ProcessParameterRaw {
     }
 }
 
-#[derive(PartialEq, Debug, Deserialize)]
+impl ProcessParameterRaw {
+    /// Validates the `ProcessParameterRaw` instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - `lifetime` is 0.
+    /// - `discount_rate` is present and less than 0.0.
+    /// - `cap2act` is present and less than 0.0.
+    ///
+    /// # Warnings
+    ///
+    /// Logs a warning if:
+    /// - `discount_rate` is present and greater than 1.0.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if all validations pass.
+    fn validate(&self) -> Result<()> {
+        ensure!(
+            self.lifetime > 0,
+            "Error in parameter for process {}: Lifetime must be greater than 0",
+            self.process_id
+        );
+
+        if let Some(dr) = self.discount_rate {
+            ensure!(
+                dr >= 0.0,
+                "Error in parameter for process {}: Discount rate must be positive",
+                self.process_id
+            );
+
+            if dr > 1.0 {
+                warn!(
+                    "Warning in parameter for process {}: Discount rate is greater than 1",
+                    self.process_id
+                );
+            }
+        }
+
+        if let Some(c2a) = self.cap2act {
+            ensure!(
+                c2a >= 0.0,
+                "Error in parameter for process {}: Cap2act must be positive",
+                self.process_id
+            );
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(PartialEq, Clone, Debug, Deserialize)]
 pub struct ProcessParameter {
     pub process_id: String,
     pub years: RangeInclusive<u32>,
@@ -164,7 +229,7 @@ pub struct Process {
     pub description: String,
     pub availabilities: Vec<ProcessAvailability>,
     pub flows: Vec<ProcessFlow>,
-    pub pacs: Vec<String>,
+    pub pacs: Vec<Rc<Commodity>>,
     pub parameter: ProcessParameter,
     pub regions: RegionSelection,
 }
@@ -224,7 +289,7 @@ fn read_process_parameters_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, ProcessParameter>, Box<dyn Error>>
+) -> Result<HashMap<Rc<str>, ProcessParameter>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
@@ -233,14 +298,16 @@ where
         let param = param.into_parameter(year_range)?;
         let id = process_ids.get_id(&param.process_id)?;
 
-        if params.insert(Rc::clone(&id), param).is_some() {
-            Err(format!("More than one parameter provided for process {id}"))?;
-        }
+        ensure!(
+            params.insert(Rc::clone(&id), param).is_none(),
+            "More than one parameter provided for process {id}"
+        );
     }
 
-    if params.len() < process_ids.len() {
-        Err("Each process must have an associated parameter")?;
-    }
+    ensure!(
+        params.len() == process_ids.len(),
+        "Each process must have an associated parameter"
+    );
 
     Ok(params)
 }
@@ -256,11 +323,67 @@ fn read_process_parameters(
     read_process_parameters_from_iter(iter, process_ids, year_range).unwrap_input_err(&file_path)
 }
 
+/// Read process Primary Activity Commodities (PACs) from an iterator.
+///
+/// # Arguments
+///
+/// * `iter` - An iterator of `ProcessPAC`s
+/// * `process_ids` - All possible process IDs
+/// * `commodities` - Commodities for the model
+///
+/// # Returns
+///
+/// A `HashMap` with process IDs as keys and `Vec`s of commodities as values or an error.
+fn read_process_pacs_from_iter<I>(
+    iter: I,
+    process_ids: &HashSet<Rc<str>>,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>>
+where
+    I: Iterator<Item = ProcessPAC>,
+{
+    // Keep track of previous PACs so we can check for duplicates
+    let mut pacs = HashSet::new();
+
+    iter.map(|pac| {
+        let process_id = process_ids.get_id(&pac.process_id)?;
+        let commodity = commodities.get(pac.commodity_id.as_str());
+
+        match commodity {
+            None => bail!("{} is not a valid commodity ID", &pac.commodity_id),
+            Some(commodity) => {
+                ensure!(pacs.insert(pac), "Duplicate PACs found");
+
+                Ok((process_id, Rc::clone(commodity)))
+            }
+        }
+    })
+    .process_results(|iter| iter.into_group_map())
+}
+
+/// Read process Primary Activity Commodities (PACs) from the specified model directory.
+///
+/// # Arguments
+///
+/// * `model_dir` - Folder containing model configuration files
+/// * `process_ids` - All possible process IDs
+/// * `commodities` - Commodities for the model
+fn read_process_pacs(
+    model_dir: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+) -> HashMap<Rc<str>, Vec<Rc<Commodity>>> {
+    let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
+    read_process_pacs_from_iter(read_csv(&file_path), process_ids, commodities)
+        .unwrap_input_err(&file_path)
+}
+
 /// Read process information from the specified CSV files.
 ///
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
+/// * `commodities` - Commodities for the model
 /// * `region_ids` - All possible region IDs
 /// * `time_slice_info` - Information about seasons and times of day
 /// * `year_range` - The possible range of milestone years
@@ -270,10 +393,11 @@ fn read_process_parameters(
 /// This function returns a map of processes, with the IDs as keys.
 pub fn read_processes(
     model_dir: &Path,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, Process> {
+) -> HashMap<Rc<str>, Rc<Process>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path);
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
@@ -281,8 +405,7 @@ pub fn read_processes(
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info);
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let mut flows = read_csv_grouped_by_id(&file_path, &process_ids);
-    let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
-    let mut pacs = read_csv_grouped_by_id(&file_path, &process_ids);
+    let mut pacs = read_process_pacs(model_dir, &process_ids, commodities);
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range);
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions =
@@ -303,28 +426,27 @@ pub fn read_processes(
                 description: desc.description,
                 availabilities: availabilities.remove(&id).unwrap_or_default(),
                 flows: flows.remove(&id).unwrap_or_default(),
-                pacs: pacs
-                    .remove(&id)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|p: ProcessPAC| p.pac)
-                    .collect(),
+                pacs: pacs.remove(&id).unwrap_or_default(),
                 parameter,
                 regions,
             };
 
-            (id, process)
+            (id, process.into())
         })
         .collect()
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::commodity::CommodityType;
+    use crate::time_slice::TimeSliceLevel;
+
     use super::*;
 
     fn create_param_raw(
         start_year: Option<u32>,
         end_year: Option<u32>,
+        lifetime: u32,
         discount_rate: Option<f64>,
         cap2act: Option<f64>,
     ) -> ProcessParameterRaw {
@@ -335,7 +457,7 @@ mod tests {
             capital_cost: 0.0,
             fixed_operating_cost: 0.0,
             variable_operating_cost: 0.0,
-            lifetime: 1,
+            lifetime,
             discount_rate,
             cap2act,
         }
@@ -363,28 +485,28 @@ mod tests {
         let year_range = 2000..=2100;
 
         // No missing values
-        let raw = create_param_raw(Some(2010), Some(2020), Some(1.0), Some(0.0));
+        let raw = create_param_raw(Some(2010), Some(2020), 1, Some(1.0), Some(0.0));
         assert_eq!(
             raw.into_parameter(&year_range).unwrap(),
             create_param(2010..=2020, 1.0, 0.0)
         );
 
         // Missing years
-        let raw = create_param_raw(None, None, Some(1.0), Some(0.0));
+        let raw = create_param_raw(None, None, 1, Some(1.0), Some(0.0));
         assert_eq!(
             raw.into_parameter(&year_range).unwrap(),
             create_param(2000..=2100, 1.0, 0.0)
         );
 
         // Missing discount_rate
-        let raw = create_param_raw(Some(2010), Some(2020), None, Some(0.0));
+        let raw = create_param_raw(Some(2010), Some(2020), 1, None, Some(0.0));
         assert_eq!(
             raw.into_parameter(&year_range).unwrap(),
             create_param(2010..=2020, 0.0, 0.0)
         );
 
         // Missing cap2act
-        let raw = create_param_raw(Some(2010), Some(2020), Some(1.0), None);
+        let raw = create_param_raw(Some(2010), Some(2020), 1, Some(1.0), None);
         assert_eq!(
             raw.into_parameter(&year_range).unwrap(),
             create_param(2010..=2020, 1.0, 1.0)
@@ -397,21 +519,21 @@ mod tests {
 
         // Normal case
         assert!(
-            create_param_raw(Some(2000), Some(2100), Some(1.0), Some(0.0))
+            create_param_raw(Some(2000), Some(2100), 1, Some(1.0), Some(0.0))
                 .into_parameter(&year_range)
                 .is_ok()
         );
 
         // start_year out of range - this is permitted
         assert!(
-            create_param_raw(Some(1999), Some(2100), Some(1.0), Some(0.0))
+            create_param_raw(Some(1999), Some(2100), 1, Some(1.0), Some(0.0))
                 .into_parameter(&year_range)
                 .is_ok()
         );
 
         // end_year out of range - this is permitted
         assert!(
-            create_param_raw(Some(2000), Some(2101), Some(1.0), Some(0.0))
+            create_param_raw(Some(2000), Some(2101), 1, Some(1.0), Some(0.0))
                 .into_parameter(&year_range)
                 .is_ok()
         );
@@ -424,9 +546,39 @@ mod tests {
 
         // start_year after end_year
         assert!(
-            create_param_raw(Some(2001), Some(2000), Some(1.0), Some(0.0))
+            create_param_raw(Some(2001), Some(2000), 1, Some(1.0), Some(0.0))
                 .into_parameter(&year_range)
                 .is_ok()
+        );
+    }
+
+    #[test]
+    fn test_param_raw_validate_bad_lifetime() {
+        // lifetime = 0
+        assert!(
+            create_param_raw(Some(2000), Some(2100), 0, Some(1.0), Some(0.0))
+                .validate()
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_param_raw_validate_bad_discount_rate() {
+        // discount rate = -1
+        assert!(
+            create_param_raw(Some(2000), Some(2100), 0, Some(-1.0), Some(0.0))
+                .validate()
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_param_raw_validate_bad_capt2act() {
+        // capt2act = -1
+        assert!(
+            create_param_raw(Some(2000), Some(2100), 0, Some(1.0), Some(-1.0))
+                .validate()
+                .is_err()
         );
     }
 
@@ -568,5 +720,82 @@ mod tests {
             &year_range
         )
         .is_err());
+    }
+
+    #[test]
+    fn test_read_process_pacs_from_iter() {
+        let process_ids = ["id1".into(), "id2".into()].into_iter().collect();
+        let commodities = ["commodity1", "commodity2"]
+            .into_iter()
+            .map(|id| {
+                let commodity = Commodity {
+                    id: id.into(),
+                    description: "Some description".into(),
+                    kind: CommodityType::InputCommodity,
+                    time_slice_level: TimeSliceLevel::Annual,
+                    costs: vec![],
+                    demand_by_region: HashMap::new(),
+                };
+
+                (Rc::clone(&commodity.id), commodity.into())
+            })
+            .collect();
+
+        // duplicate PAC
+        let pac = ProcessPAC {
+            process_id: "id1".into(),
+            commodity_id: "commodity1".into(),
+        };
+        let pacs = [pac.clone(), pac];
+        assert!(read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities).is_err());
+
+        // invalid commodity ID
+        let bad_pac = ProcessPAC {
+            process_id: "id1".into(),
+            commodity_id: "other_commodity".into(),
+        };
+        assert!(
+            read_process_pacs_from_iter([bad_pac].into_iter(), &process_ids, &commodities).is_err()
+        );
+
+        let pacs = [
+            ProcessPAC {
+                process_id: "id1".into(),
+                commodity_id: "commodity1".into(),
+            },
+            ProcessPAC {
+                process_id: "id1".into(),
+                commodity_id: "commodity2".into(),
+            },
+            ProcessPAC {
+                process_id: "id2".into(),
+                commodity_id: "commodity1".into(),
+            },
+        ];
+        let expected = [
+            (
+                "id1".into(),
+                [
+                    commodities.get("commodity1").unwrap(),
+                    commodities.get("commodity2").unwrap(),
+                ]
+                .into_iter()
+                .cloned()
+                .collect(),
+            ),
+            (
+                "id2".into(),
+                [commodities.get("commodity1").unwrap()]
+                    .into_iter()
+                    .cloned()
+                    .collect(),
+            ),
+        ]
+        .into_iter()
+        .collect();
+        assert!(
+            read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities).unwrap()
+                == expected
+        );
     }
 }
