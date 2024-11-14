@@ -16,3 +16,5 @@ Cargo.lock
 # mdBook output
 book/
 index.html
+
+.python-version
