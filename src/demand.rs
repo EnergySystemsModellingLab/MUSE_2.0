@@ -148,10 +148,10 @@ where
     );
 
     for slice in iter {
-        let demand =
-            get_demand_mut(&slice.commodity_id, &slice.region_id, demand).with_context(|| {
+        let demand = get_demand_mut(&slice.commodity_id, &slice.region_id, demand)
+            .with_context(|| {
                 format!(
-                    "No demand specified for commodity {} in region {}",
+                    "Demand slicing entry without corresponding demand entry (commodity {} in region {})",
                     &slice.commodity_id, &slice.region_id
                 )
             })?;
