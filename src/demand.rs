@@ -138,6 +138,15 @@ fn read_demand_slices_from_iter<I>(
 where
     I: Iterator<Item = DemandSliceRaw>,
 {
+    // Sanity check
+    assert!(
+        demand
+            .values()
+            .flat_map(|map| map.values())
+            .all(|demand| demand.demand_slices.is_empty()),
+        "demand already has demand slicing defined"
+    );
+
     for slice in iter {
         let demand =
             get_demand_mut(&slice.commodity_id, &slice.region_id, demand).with_context(|| {
