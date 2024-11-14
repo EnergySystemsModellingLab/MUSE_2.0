@@ -19,16 +19,11 @@ pub struct Region {
 }
 define_id_getter! {Region}
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Default)]
 pub enum RegionSelection {
+    #[default]
     All,
     Some(HashSet<Rc<str>>),
-}
-
-impl Default for RegionSelection {
-    fn default() -> Self {
-        Self::All
-    }
 }
 
 impl RegionSelection {
