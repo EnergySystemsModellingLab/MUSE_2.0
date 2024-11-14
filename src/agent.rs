@@ -275,8 +275,6 @@ pub fn read_agents(
     for (id, agent) in agents.iter_mut() {
         agent.regions = agent_regions.remove(id).unwrap();
         agent.objectives = objectives.remove(id).unwrap();
-
-        // **CHECK**: Can you have agents without assets?
         agent.assets = assets.remove(id).unwrap_or_default();
     }
 
