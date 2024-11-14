@@ -16,3 +16,6 @@ Cargo.lock
 # mdBook output
 book/
 index.html
+
+# Coverage report from tarpaulin
+tarpaulin-report.html
