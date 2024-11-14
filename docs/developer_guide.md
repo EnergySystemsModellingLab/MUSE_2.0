@@ -38,6 +38,29 @@ cargo test
 
 More information is available in [the official `cargo` book](https://doc.rust-lang.org/cargo/).
 
+## Checking test coverage
+
+We use [Codecov](https://about.codecov.io/) to check whether pull requests introduce code without
+tests.
+
+To check coverage locally (i.e. to make sure newly written code has tests), we recommend using
+[Tarpaulin](https://github.com/xd009642/tarpaulin).
+
+It can be installed with:
+
+```sh
+cargo install cargo-tarpaulin
+```
+
+Once installed, you can use it like so:
+
+```sh
+cargo tarpaulin --out html
+```
+
+This will generate a file, `tarpaulin-report.html`, showing which lines of code are not currently
+covered by tests.
+
 ## Developing the documentation
 
 We use [mdBook](https://rust-lang.github.io/mdBook/) for generating technical documentation.
