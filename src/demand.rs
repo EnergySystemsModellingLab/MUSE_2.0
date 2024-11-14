@@ -170,6 +170,14 @@ where
             demand.commodity_id,
             demand.region_id
         );
+
+        check_fractions_sum_to_one(demand.demand_slices.iter().map(|slice| slice.fraction))
+            .with_context(|| {
+                format!(
+                    "Invalid demand slicing fractions (commodity {} in region {})",
+                    demand.commodity_id, demand.region_id
+                )
+            })?;
     }
 
     Ok(())
@@ -567,6 +575,23 @@ COM1,West,2023,13"
                 read_demand_slices_from_iter([].into_iter(), &time_slice_info, &mut demand)
                     .is_err()
             );
+        }
+
+        // Time slice fractions don't sum to one
+        {
+            let mut demand = demand.clone();
+            let demand_slice = DemandSliceRaw {
+                commodity_id: "COM1".into(),
+                region_id: "GBR".into(),
+                time_slice: "winter.day".into(),
+                fraction: 0.5,
+            };
+            assert!(read_demand_slices_from_iter(
+                [demand_slice].into_iter(),
+                &time_slice_info,
+                &mut demand,
+            )
+            .is_err());
         }
     }
 }
