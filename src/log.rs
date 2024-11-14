@@ -20,12 +20,6 @@ pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
 /// * `debug`
 /// * `trace`
 ///
-/// To control whether the log output is colourised, the `MUSE2_LOG_STYLE` environment variable can
-/// be set to:
-/// * `always` - Always colourise log output
-/// * `auto` - Colourise log output only if the output stream is a terminal
-/// * any other value - Disable colourisation
-///
 /// # Arguments
 ///
 /// * `log_level_from_settings`: The log level specified in `settings.toml`
@@ -47,18 +41,11 @@ pub fn init(log_level_from_settings: Option<&str>) {
         unknown => panic!("Unknown log level: {}", unknown),
     };
 
-    // Retrieve the log style from the environment variable
-    let log_style = env::var("MUSE2_LOG_STYLE").unwrap_or_else(|_| "auto".to_string());
-
     // Format timestamp as HH:MM:SS
     let timestamp_format = "%H:%M:%S";
 
-    // Check if colour should be applied based on log_style
-    let use_colour = match log_style.as_str() {
-        "always" => true,
-        "auto" => atty::is(atty::Stream::Stdout),
-        _ => false,
-    };
+    // Automatically apply colours only if the output is a terminal
+    let use_colour = atty::is(atty::Stream::Stdout);
 
     // Set up colours for log levels
     let colours = ColoredLevelConfig::new()
