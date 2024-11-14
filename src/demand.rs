@@ -12,7 +12,7 @@ const DEMAND_FILE_NAME: &str = "demand.csv";
 const DEMAND_SLICES_FILE_NAME: &str = "demand_slicing.csv";
 
 /// Represents a single demand entry in the dataset.
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct Demand {
     /// The commodity this demand entry refers to
     pub commodity_id: String,
@@ -38,7 +38,7 @@ struct DemandSliceRaw {
 }
 
 /// How demand varies by time slice
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DemandSlice {
     /// Which time slice(s) this applies to
     pub time_slice: TimeSliceSelection,
@@ -446,7 +446,7 @@ COM1,West,2023,13"
         };
 
         // Demand grouped by region
-        let mut demand = [(
+        let demand: HashMap<_, _> = [(
             "COM1".into(),
             [(
                 "GBR".into(),
@@ -465,69 +465,81 @@ COM1,West,2023,13"
         .collect();
 
         // Valid
-        let demand_slice = DemandSliceRaw {
-            commodity_id: "COM1".into(),
-            region_id: "GBR".into(),
-            time_slice: "winter.day".into(),
-            fraction: 1.0,
-        };
-        read_demand_slices_from_iter(
-            [demand_slice.clone()].into_iter(),
-            &time_slice_info,
-            &mut demand,
-        )
-        .unwrap();
-        let time_slice = time_slice_info.get_selection("winter.day").unwrap();
-        assert_eq!(
-            get_demand_mut("COM1", "GBR", &mut demand)
-                .unwrap()
-                .demand_slices,
-            vec![DemandSlice {
-                time_slice,
-                fraction: 1.0
-            }]
-        );
+        {
+            let mut demand = demand.clone();
+            let demand_slice = DemandSliceRaw {
+                commodity_id: "COM1".into(),
+                region_id: "GBR".into(),
+                time_slice: "winter.day".into(),
+                fraction: 1.0,
+            };
+            read_demand_slices_from_iter(
+                [demand_slice.clone()].into_iter(),
+                &time_slice_info,
+                &mut demand,
+            )
+            .unwrap();
+            let time_slice = time_slice_info.get_selection("winter.day").unwrap();
+            assert_eq!(
+                get_demand_mut("COM1", "GBR", &mut demand)
+                    .unwrap()
+                    .demand_slices,
+                vec![DemandSlice {
+                    time_slice,
+                    fraction: 1.0
+                }]
+            );
+        }
 
         // Bad commodity
-        let demand_slice = DemandSliceRaw {
-            commodity_id: "COM2".into(),
-            region_id: "GBR".into(),
-            time_slice: "winter.day".into(),
-            fraction: 1.0,
-        };
-        assert!(read_demand_slices_from_iter(
-            [demand_slice].into_iter(),
-            &time_slice_info,
-            &mut demand
-        )
-        .is_err());
+        {
+            let mut demand = demand.clone();
+            let demand_slice = DemandSliceRaw {
+                commodity_id: "COM2".into(),
+                region_id: "GBR".into(),
+                time_slice: "winter.day".into(),
+                fraction: 1.0,
+            };
+            assert!(read_demand_slices_from_iter(
+                [demand_slice].into_iter(),
+                &time_slice_info,
+                &mut demand
+            )
+            .is_err());
+        }
 
         // Bad region
-        let demand_slice = DemandSliceRaw {
-            commodity_id: "COM1".into(),
-            region_id: "USA".into(),
-            time_slice: "winter.day".into(),
-            fraction: 1.0,
-        };
-        assert!(read_demand_slices_from_iter(
-            [demand_slice].into_iter(),
-            &time_slice_info,
-            &mut demand
-        )
-        .is_err());
+        {
+            let mut demand = demand.clone();
+            let demand_slice = DemandSliceRaw {
+                commodity_id: "COM1".into(),
+                region_id: "USA".into(),
+                time_slice: "winter.day".into(),
+                fraction: 1.0,
+            };
+            assert!(read_demand_slices_from_iter(
+                [demand_slice].into_iter(),
+                &time_slice_info,
+                &mut demand
+            )
+            .is_err());
+        }
 
         // Bad time slice
-        let demand_slice = DemandSliceRaw {
-            commodity_id: "COM1".into(),
-            region_id: "GBR".into(),
-            time_slice: "summer.night".into(),
-            fraction: 1.0,
-        };
-        assert!(read_demand_slices_from_iter(
-            [demand_slice].into_iter(),
-            &time_slice_info,
-            &mut demand,
-        )
-        .is_err());
+        {
+            let mut demand = demand.clone();
+            let demand_slice = DemandSliceRaw {
+                commodity_id: "COM1".into(),
+                region_id: "GBR".into(),
+                time_slice: "summer.night".into(),
+                fraction: 1.0,
+            };
+            assert!(read_demand_slices_from_iter(
+                [demand_slice].into_iter(),
+                &time_slice_info,
+                &mut demand,
+            )
+            .is_err());
+        }
     }
 }

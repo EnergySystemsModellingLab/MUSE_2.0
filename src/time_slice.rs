@@ -30,7 +30,7 @@ impl Display for TimeSliceID {
 }
 
 /// Represents a time slice read from an input file, which can be all
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum TimeSliceSelection {
     /// All year and all day
     Annual,
