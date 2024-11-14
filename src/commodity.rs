@@ -17,10 +17,14 @@ const COMMODITY_COSTS_FILE_NAME: &str = "commodity_costs.csv";
 /// A commodity within the simulation
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct Commodity {
+    /// Unique identifier for the commodity (e.g. "ELC")
     pub id: Rc<str>,
+    /// Text description of commodity (e.g. "electricity")
     pub description: String,
     #[serde(rename = "type")] // NB: we can't name a field type as it's a reserved keyword
+    /// Commodity balance type. Can be supply = demand (SED), service demand (SVD), non-balance commodity (NBC).
     pub kind: CommodityType,
+    /// The time slice level for commodity balance. Can be annual, seasonal or at time slice level.
     pub time_slice_level: TimeSliceLevel,
 
     #[serde(skip)]
@@ -56,11 +60,17 @@ pub enum BalanceType {
 /// Cost parameters for each commodity
 #[derive(PartialEq, Debug, Deserialize)]
 struct CommodityCostRaw {
+    /// Unique identifier for the commodity (e.g. "ELC")
     pub commodity_id: String,
+    /// The region to which the commodity cost applies.
     pub region_id: String,
+    /// Type of balance for application of cost.
     pub balance_type: BalanceType,
+    /// The year to which the cost applies.
     pub year: u32,
+    /// The time slice to which the cost applies.
     pub time_slice: String,
+    /// Cost per unit commodity. For example, if a CO2 price is specified in input data, it can be applied to net CO2 via this value.
     pub value: f64,
 }
 
