@@ -187,7 +187,7 @@ impl ProcessParameterRaw {
     }
 }
 
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Deserialize)]
 pub struct ProcessParameter {
     pub process_id: String,
     pub years: RangeInclusive<u32>,

@@ -3,7 +3,7 @@
 //! For a description of what assets are, please see the glossary.
 use crate::input::*;
 use crate::process::Process;
-use anyhow::{Context, Result};
+use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -61,6 +61,12 @@ where
             .get(asset.process_id.as_str())
             .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
         let region_id = region_ids.get_id(&asset.region_id)?;
+        ensure!(
+            process.regions.contains(&region_id),
+            "Region {} is not one of the regions in which process {} operates",
+            region_id,
+            process.id
+        );
 
         Ok((
             agent_id,
@@ -124,14 +130,14 @@ mod tests {
             availabilities: vec![],
             flows: vec![],
             pacs: vec![],
-            parameter: process_param,
+            parameter: process_param.clone(),
             regions: crate::region::RegionSelection::All,
         });
         let processes = [(Rc::clone(&process.id), Rc::clone(&process))]
             .into_iter()
             .collect();
         let agent_ids = ["agent1".into()].into_iter().collect();
-        let region_ids = ["GBR".into()].into_iter().collect();
+        let region_ids = ["GBR".into(), "USA".into()].into_iter().collect();
 
         // Valid
         let asset_in = AssetRaw {
@@ -180,7 +186,7 @@ mod tests {
                 .is_err()
         );
 
-        // Bad region ID
+        // Bad region ID: not in region_ids
         let asset_in = AssetRaw {
             agent_id: "agent1".into(),
             process_id: "process1".into(),
@@ -188,6 +194,31 @@ mod tests {
             capacity: 1.0,
             commission_year: 2010,
         };
+        assert!(
+            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
+                .is_err()
+        );
+
+        // Bad region ID: process not active there
+        let process = Rc::new(Process {
+            id: "process1".into(),
+            description: "Description".into(),
+            availabilities: vec![],
+            flows: vec![],
+            pacs: vec![],
+            parameter: process_param,
+            regions: crate::region::RegionSelection::Some(["GBR".into()].into_iter().collect()),
+        });
+        let asset_in = AssetRaw {
+            agent_id: "agent1".into(),
+            process_id: "process1".into(),
+            region_id: "USA".into(), // NB: In region_ids, but not in process.regions
+            capacity: 1.0,
+            commission_year: 2010,
+        };
+        let processes = [(Rc::clone(&process.id), Rc::clone(&process))]
+            .into_iter()
+            .collect();
         assert!(
             read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
                 .is_err()
