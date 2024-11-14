@@ -57,8 +57,10 @@ define_process_id_getter! {ProcessAvailability}
 pub enum FlowType {
     #[default]
     #[string = "fixed"]
+    /// The input to output flow ratio is fixed.
     Fixed,
     #[string = "flexible"]
+    /// The flow ratio can vary, subject to overall flow of a specified group of commodities whose input/output ratio must be as per user input data.
     Flexible,
 }
 
@@ -71,7 +73,7 @@ pub struct ProcessFlow {
     /// Commodity flow quantity relative to other commodity flows. +ve value indicates flow out, -ve value indicates flow in.
     pub flow: f64,
     #[serde(default)]
-    /// Identifies if a flow is fixed or flexible. Fixed means input to output flow ratio is fixed. Flexible means flow ratio can vary, subject to overall flow of a specified group of commodities whose input/output ratio must be as per user input data.
+    /// Identifies if a flow is fixed or flexible.
     pub flow_type: FlowType,
     #[serde(deserialize_with = "deserialise_flow_cost")]
     /// Cost per unit flow. For example, cost per unit of natural gas produced. Differs from var_opex because the user can apply it to any specified flow, whereas var_opex applies to pac flow.
