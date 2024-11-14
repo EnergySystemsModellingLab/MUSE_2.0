@@ -163,6 +163,15 @@ where
         });
     }
 
+    for demand in demand.values().flat_map(|map| map.values()) {
+        ensure!(
+            !demand.demand_slices.is_empty(),
+            "Demand entry without demand slicing specified (commodity {} in region {})",
+            demand.commodity_id,
+            demand.region_id
+        );
+    }
+
     Ok(())
 }
 
@@ -549,6 +558,15 @@ COM1,West,2023,13"
                 &mut demand,
             )
             .is_err());
+        }
+
+        // Missing demand slicing
+        {
+            let mut demand = demand.clone();
+            assert!(
+                read_demand_slices_from_iter([].into_iter(), &time_slice_info, &mut demand)
+                    .is_err()
+            );
         }
     }
 }
