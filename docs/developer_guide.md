@@ -38,6 +38,29 @@ cargo test
 
 More information is available in [the official `cargo` book](https://doc.rust-lang.org/cargo/).
 
+## Checking test coverage
+
+We use [Codecov](https://about.codecov.io/) to check whether pull requests introduce code without
+tests.
+
+To check coverage locally (i.e. to make sure newly written code has tests), we recommend using
+[cargo-llvm-cov](https://github.com/taiki-e/cargo-llvm-cov).
+
+It can be installed with:
+
+```sh
+cargo install cargo-llvm-cov
+```
+
+Once installed, you can use it like so:
+
+```sh
+cargo llvm-cov --open
+```
+
+This will generate a report in HTML format showing which lines are not currently covered by tests
+and open it in your default browser.
+
 ## Developing the documentation
 
 We use [mdBook](https://rust-lang.github.io/mdBook/) for generating technical documentation.
