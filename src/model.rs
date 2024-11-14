@@ -19,7 +19,7 @@ pub struct Model {
     pub milestone_years: Vec<u32>,
     pub agents: HashMap<Rc<str>, Agent>,
     pub commodities: HashMap<Rc<str>, Rc<Commodity>>,
-    pub processes: HashMap<Rc<str>, Process>,
+    pub processes: HashMap<Rc<str>, Rc<Process>>,
     pub time_slice_info: TimeSliceInfo,
     pub regions: HashMap<Rc<str>, Region>,
 }
@@ -111,8 +111,7 @@ impl Model {
             &time_slice_info,
             &year_range,
         );
-        let process_ids = processes.keys().cloned().collect();
-        let agents = read_agents(model_dir.as_ref(), &process_ids, &region_ids);
+        let agents = read_agents(model_dir.as_ref(), &processes, &region_ids);
 
         Ok(Model {
             milestone_years: model_file.milestone_years.years,

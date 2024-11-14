@@ -1,5 +1,7 @@
 #![allow(missing_docs)]
+use crate::asset::{read_assets, Asset};
 use crate::input::*;
+use crate::process::Process;
 use crate::region::*;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -71,6 +73,8 @@ pub struct Agent {
     pub regions: RegionSelection,
     #[serde(skip)]
     pub objectives: Vec<AgentObjective>,
+    #[serde(skip)]
+    pub assets: Vec<Asset>,
 }
 define_id_getter! {Agent}
 
@@ -267,21 +271,24 @@ pub fn read_agents_file(
 /// A map of Agents, with the agent ID as the key
 pub fn read_agents(
     model_dir: &Path,
-    process_ids: &HashSet<Rc<str>>,
+    processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
 ) -> HashMap<Rc<str>, Agent> {
-    let mut agents = read_agents_file(model_dir, process_ids);
+    let process_ids = processes.keys().cloned().collect();
+    let mut agents = read_agents_file(model_dir, &process_ids);
     let agent_ids = agents.keys().cloned().collect();
 
     let file_path = model_dir.join(AGENT_REGIONS_FILE_NAME);
     let mut agent_regions =
         read_regions_for_entity::<AgentRegion>(&file_path, &agent_ids, region_ids);
     let mut objectives = read_agent_objectives(model_dir, &agents);
+    let mut assets = read_assets(model_dir, &agent_ids, processes, region_ids);
 
     // Populate each Agent's Vecs
     for (id, agent) in agents.iter_mut() {
         agent.regions = agent_regions.remove(id).unwrap();
         agent.objectives = objectives.remove(id).unwrap();
+        agent.assets = assets.remove(id).unwrap_or_default();
     }
 
     agents
@@ -308,6 +315,7 @@ mod tests {
             annual_cost_limit: None,
             regions: RegionSelection::All,
             objectives: Vec::new(),
+            assets: Vec::new(),
         }];
         let expected = HashMap::from_iter([("agent".into(), agents[0].clone())]);
         let actual = read_agents_file_from_iter(agents.into_iter(), &process_ids).unwrap();
@@ -326,6 +334,7 @@ mod tests {
             annual_cost_limit: None,
             regions: RegionSelection::All,
             objectives: Vec::new(),
+            assets: Vec::new(),
         }];
         assert!(read_agents_file_from_iter(agents.into_iter(), &process_ids).is_err());
 
@@ -342,6 +351,7 @@ mod tests {
                 annual_cost_limit: None,
                 regions: RegionSelection::All,
                 objectives: Vec::new(),
+                assets: Vec::new(),
             },
             Agent {
                 id: "agent".into(),
@@ -354,6 +364,7 @@ mod tests {
                 annual_cost_limit: None,
                 regions: RegionSelection::All,
                 objectives: Vec::new(),
+                assets: Vec::new(),
             },
         ];
         assert!(read_agents_file_from_iter(agents.into_iter(), &process_ids).is_err());
@@ -415,6 +426,7 @@ mod tests {
                 annual_cost_limit: None,
                 regions: RegionSelection::All,
                 objectives: Vec::new(),
+                assets: Vec::new(),
             },
         )]
         .into_iter()
