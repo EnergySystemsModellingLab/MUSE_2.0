@@ -121,7 +121,7 @@ fn read_demand_file(
 }
 
 /// Try to get demand for the given commodity and region. Returns `None` if not found.
-fn try_get_demand<'a>(
+fn get_demand_mut<'a>(
     commodity_id: &str,
     region_id: &str,
     demand: &'a mut DemandHashMap,
@@ -140,7 +140,7 @@ where
 {
     for slice in iter {
         let demand =
-            try_get_demand(&slice.commodity_id, &slice.region_id, demand).with_context(|| {
+            get_demand_mut(&slice.commodity_id, &slice.region_id, demand).with_context(|| {
                 format!(
                     "No demand specified for commodity {} in region {}",
                     &slice.commodity_id, &slice.region_id
@@ -479,7 +479,7 @@ COM1,West,2023,13"
         .unwrap();
         let time_slice = time_slice_info.get_selection("winter.day").unwrap();
         assert_eq!(
-            try_get_demand("COM1", "GBR", &mut demand)
+            get_demand_mut("COM1", "GBR", &mut demand)
                 .unwrap()
                 .demand_slices,
             vec![DemandSlice {
