@@ -5,10 +5,7 @@ pub mod asset;
 pub mod commodity;
 pub mod demand;
 pub mod input;
-
-/// This module handles logging functionality for the application.
 pub mod log;
-
 pub mod model;
 pub mod process;
 pub mod region;
