@@ -1,9 +1,8 @@
-/// The `log` module provides initialisation and configuration of the application’s logging system.
-///
-/// This module sets up logging with various levels (error, warn, info, debug, trace) and optional
-/// colourisation based on terminal support. It also allows configuration of the log level through
-/// environment variables.
-///
+//! The `log` module provides initialisation and configuration of the application's logging system.
+//!
+//! This module sets up logging with various levels (error, warn, info, debug, trace) and optional
+//! colourisation based on terminal support. It also allows configuration of the log level through
+//! environment variables.
 use atty;
 use chrono::Local;
 use fern::colors::{Color, ColoredLevelConfig};
