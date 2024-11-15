@@ -5,8 +5,7 @@
 //! environment variables.
 use atty;
 use chrono::Local;
-use fern::colors::{Color, ColoredLevelConfig};
-use fern::Dispatch;
+use fern::colors::{Color, ColoredLevelConfig, Dispatch};
 use std::env;
 
 pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
