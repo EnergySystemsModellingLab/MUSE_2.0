@@ -1,9 +1,9 @@
-#![allow(missing_docs)]
+//! Code for working with demand for a given commodity. Demand can vary by region and year.
 use crate::input::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
+use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
@@ -29,18 +29,20 @@ pub struct Demand {
 }
 
 #[derive(Clone, Deserialize)]
-pub struct DemandSliceRaw {
-    pub commodity_id: String,
-    pub region_id: String,
-    pub time_slice: String,
+struct DemandSliceRaw {
+    commodity_id: String,
+    region_id: String,
+    time_slice: String,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
-    pub fraction: f64,
+    fraction: f64,
 }
 
 /// How demand varies by time slice
 #[derive(Debug, PartialEq)]
 pub struct DemandSlice {
+    /// Which time slice(s) this applies to
     pub time_slice: TimeSliceSelection,
+    /// The fraction of total demand (between 0 and 1 inclusive)
     pub fraction: f64,
 }
 
@@ -61,7 +63,7 @@ fn read_demand_from_iter<I>(
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, HashMap<Rc<str>, Demand>>, Box<dyn Error>>
+) -> Result<HashMap<Rc<str>, HashMap<Rc<str>, Demand>>>
 where
     I: Iterator<Item = Demand>,
 {
@@ -71,18 +73,21 @@ where
         let commodity_id = commodity_ids.get_id(&demand.commodity_id)?;
         let region_id = region_ids.get_id(&demand.region_id)?;
 
-        if !year_range.contains(&demand.year) {
-            Err(format!("Year {} is out of range", demand.year))?;
-        }
+        ensure!(
+            year_range.contains(&demand.year),
+            "Year {} is out of range",
+            demand.year
+        );
 
         // Get entry for this commodity
         let map_by_region = map_by_commodity
             .entry(commodity_id)
             .or_insert_with(|| HashMap::with_capacity(1));
 
-        if map_by_region.insert(region_id, demand).is_some() {
-            Err("Multiple entries for same commodity and region found")?;
-        }
+        ensure!(
+            map_by_region.insert(region_id, demand).is_none(),
+            "Multiple entries for same commodity and region found"
+        );
     }
 
     Ok(map_by_commodity)
@@ -126,13 +131,13 @@ fn read_demand_slices_from_iter<I>(
     iter: I,
     time_slice_info: &TimeSliceInfo,
     demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>,
-) -> Result<(), Box<dyn Error>>
+) -> Result<()>
 where
     I: Iterator<Item = DemandSliceRaw>,
 {
     for slice in iter {
         let demand =
-            try_get_demand(&slice.commodity_id, &slice.region_id, demand).ok_or_else(|| {
+            try_get_demand(&slice.commodity_id, &slice.region_id, demand).with_context(|| {
                 format!(
                     "No demand specified for commodity {} in region {}",
                     &slice.commodity_id, &slice.region_id
