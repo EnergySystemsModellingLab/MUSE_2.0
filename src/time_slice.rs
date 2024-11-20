@@ -19,7 +19,9 @@ const TIME_SLICES_FILE_NAME: &str = "time_slices.csv";
 /// An ID describing season and time of day
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
 pub struct TimeSliceID {
+    /// The name of each season.
     pub season: Rc<str>,
+    /// The name of each time slice within a day.
     pub time_of_day: Rc<str>,
 }
 
