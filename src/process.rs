@@ -735,7 +735,7 @@ mod tests {
                     kind: CommodityType::InputCommodity,
                     time_slice_level: TimeSliceLevel::Annual,
                     costs: vec![],
-                    demand_by_region: DemandHashMap::new(),
+                    demand: DemandHashMap::new(),
                 };
 
                 (Rc::clone(&commodity.id), commodity.into())

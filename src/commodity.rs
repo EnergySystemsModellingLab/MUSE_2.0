@@ -30,7 +30,7 @@ pub struct Commodity {
     #[serde(skip)]
     pub costs: Vec<CommodityCost>,
     #[serde(skip)]
-    pub demand_by_region: DemandHashMap,
+    pub demand: DemandHashMap,
 }
 define_id_getter! {Commodity}
 
@@ -219,7 +219,7 @@ pub fn read_commodities(
                 commodity.costs = costs;
             }
             if let Some(demand) = demand.remove(&id) {
-                commodity.demand_by_region = demand;
+                commodity.demand = demand;
             }
 
             (id, commodity.into())
