@@ -46,6 +46,9 @@ pub struct DemandSlice {
     pub fraction: f64,
 }
 
+/// A [HashMap] of [Demand] grouped first by commodity, then region
+pub type DemandHashMap = HashMap<Rc<str>, HashMap<Rc<str>, Demand>>;
+
 /// Read the demand data from an iterator
 ///
 /// # Arguments
@@ -63,7 +66,7 @@ fn read_demand_from_iter<I>(
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, HashMap<Rc<str>, Demand>>>
+) -> Result<DemandHashMap>
 where
     I: Iterator<Item = Demand>,
 {
@@ -111,7 +114,7 @@ fn read_demand_file(
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, HashMap<Rc<str>, Demand>> {
+) -> DemandHashMap {
     let file_path = model_dir.join(DEMAND_FILE_NAME);
     read_demand_from_iter(read_csv(&file_path), commodity_ids, region_ids, year_range)
         .unwrap_input_err(&file_path)
@@ -121,7 +124,7 @@ fn read_demand_file(
 fn try_get_demand<'a>(
     commodity_id: &str,
     region_id: &str,
-    demand: &'a mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>,
+    demand: &'a mut DemandHashMap,
 ) -> Option<&'a mut Demand> {
     demand.get_mut(commodity_id)?.get_mut(region_id)
 }
@@ -130,7 +133,7 @@ fn try_get_demand<'a>(
 fn read_demand_slices_from_iter<I>(
     iter: I,
     time_slice_info: &TimeSliceInfo,
-    demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>,
+    demand: &mut DemandHashMap,
 ) -> Result<()>
 where
     I: Iterator<Item = DemandSliceRaw>,
@@ -164,7 +167,7 @@ where
 fn read_demand_slices(
     model_dir: &Path,
     time_slice_info: &TimeSliceInfo,
-    demand: &mut HashMap<Rc<str>, HashMap<Rc<str>, Demand>>,
+    demand: &mut DemandHashMap,
 ) {
     let file_path = model_dir.join(DEMAND_SLICES_FILE_NAME);
     read_demand_slices_from_iter(read_csv(&file_path), time_slice_info, demand)
@@ -190,7 +193,7 @@ pub fn read_demand(
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, HashMap<Rc<str>, Demand>> {
+) -> DemandHashMap {
     let mut demand = read_demand_file(model_dir, commodity_ids, region_ids, year_range);
 
     // Read in demand slices
