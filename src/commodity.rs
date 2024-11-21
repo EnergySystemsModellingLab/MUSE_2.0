@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use crate::demand::{read_demand, Demand};
+use crate::demand::{read_demand, DemandHashMap};
 use crate::input::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
 use itertools::Itertools;
@@ -30,7 +30,7 @@ pub struct Commodity {
     #[serde(skip)]
     pub costs: Vec<CommodityCost>,
     #[serde(skip)]
-    pub demand_by_region: HashMap<Rc<str>, Demand>,
+    pub demand_by_region: DemandHashMap,
 }
 define_id_getter! {Commodity}
 

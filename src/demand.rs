@@ -46,8 +46,19 @@ pub struct DemandSlice {
     pub fraction: f64,
 }
 
+/// A [HashMap] of [Demand] grouped by region ID
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct DemandHashMap(HashMap<Rc<str>, Demand>);
+
+impl DemandHashMap {
+    /// Create a new empty [DemandHashMap]
+    pub fn new() -> DemandHashMap {
+        DemandHashMap(HashMap::new())
+    }
+}
+
 /// A [HashMap] of [Demand] grouped first by commodity, then region
-type CommodityDemandHashMap = HashMap<Rc<str>, HashMap<Rc<str>, Demand>>;
+type CommodityDemandHashMap = HashMap<Rc<str>, DemandHashMap>;
 
 /// Read the demand data from an iterator
 ///
@@ -70,7 +81,7 @@ fn read_demand_from_iter<I>(
 where
     I: Iterator<Item = Demand>,
 {
-    let mut map_by_commodity = HashMap::new();
+    let mut map_by_commodity: CommodityDemandHashMap = HashMap::new();
 
     for demand in iter {
         let commodity_id = commodity_ids.get_id(&demand.commodity_id)?;
@@ -90,10 +101,10 @@ where
         // Get entry for this commodity
         let map_by_region = map_by_commodity
             .entry(commodity_id)
-            .or_insert_with(|| HashMap::with_capacity(1));
+            .or_insert_with(|| DemandHashMap(HashMap::with_capacity(1)));
 
         ensure!(
-            map_by_region.insert(region_id, demand).is_none(),
+            map_by_region.0.insert(region_id, demand).is_none(),
             "Multiple entries for same commodity and region found"
         );
     }
@@ -131,7 +142,7 @@ fn get_demand_mut<'a>(
     region_id: &str,
     demand: &'a mut CommodityDemandHashMap,
 ) -> Option<&'a mut Demand> {
-    demand.get_mut(commodity_id)?.get_mut(region_id)
+    demand.get_mut(commodity_id)?.0.get_mut(region_id)
 }
 
 /// Read demand slices from an iterator and store them in `demand`.
@@ -147,7 +158,7 @@ where
     assert!(
         demand
             .values()
-            .flat_map(|map| map.values())
+            .flat_map(|map| map.0.values())
             .all(|demand| demand.demand_slices.is_empty()),
         "demand already has demand slicing defined"
     );
@@ -168,7 +179,7 @@ where
         });
     }
 
-    for demand in demand.values().flat_map(|map| map.values()) {
+    for demand in demand.values().flat_map(|map| map.0.values()) {
         ensure!(
             !demand.demand_slices.is_empty(),
             "Demand entry without demand slicing specified (commodity {} in region {})",
@@ -437,7 +448,7 @@ COM1,West,2023,13"
             HashMap::from_iter(
                 [(
                     "COM1".into(),
-                    HashMap::from_iter([
+                    DemandHashMap(HashMap::from_iter([
                         (
                             "North".into(),
                             Demand {
@@ -478,7 +489,7 @@ COM1,West,2023,13"
                                 demand_slices: Vec::new()
                             }
                         )
-                    ])
+                    ]))
                 )]
                 .into_iter()
             )
@@ -504,18 +515,20 @@ COM1,West,2023,13"
         // Demand grouped by region
         let demand: HashMap<_, _> = [(
             "COM1".into(),
-            [(
-                "GBR".into(),
-                Demand {
-                    commodity_id: "COM1".into(),
-                    region_id: "GBR".into(),
-                    year: 2020,
-                    demand: 1.0,
-                    demand_slices: Vec::new(),
-                },
-            )]
-            .into_iter()
-            .collect(),
+            DemandHashMap(
+                [(
+                    "GBR".into(),
+                    Demand {
+                        commodity_id: "COM1".into(),
+                        region_id: "GBR".into(),
+                        year: 2020,
+                        demand: 1.0,
+                        demand_slices: Vec::new(),
+                    },
+                )]
+                .into_iter()
+                .collect(),
+            ),
         )]
         .into_iter()
         .collect();

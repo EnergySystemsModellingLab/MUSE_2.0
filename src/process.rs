@@ -439,6 +439,7 @@ pub fn read_processes(
 #[cfg(test)]
 mod tests {
     use crate::commodity::CommodityType;
+    use crate::demand::DemandHashMap;
     use crate::time_slice::TimeSliceLevel;
 
     use super::*;
@@ -734,7 +735,7 @@ mod tests {
                     kind: CommodityType::InputCommodity,
                     time_slice_level: TimeSliceLevel::Annual,
                     costs: vec![],
-                    demand_by_region: HashMap::new(),
+                    demand_by_region: DemandHashMap::new(),
                 };
 
                 (Rc::clone(&commodity.id), commodity.into())
