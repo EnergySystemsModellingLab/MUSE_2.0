@@ -5,11 +5,13 @@
 #![allow(missing_docs)]
 use crate::input::*;
 use anyhow::{ensure, Context, Result};
+use chrono::format::Item;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
+use std::iter;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -107,6 +109,46 @@ impl TimeSliceInfo {
             Ok(TimeSliceSelection::Season(season))
         }
     }
+
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = TimeSliceID> + 'a {
+        self.fractions.keys().cloned()
+    }
+
+    pub fn iter_selection<'a>(
+        &'a self,
+        selection: &'a TimeSliceSelection,
+    ) -> Box<dyn Iterator<Item = TimeSliceID> + 'a> {
+        match selection {
+            TimeSliceSelection::Annual => Box::new(self.fractions.keys().cloned()),
+            TimeSliceSelection::Season(season) => Box::new(
+                self.fractions
+                    .keys()
+                    .filter(move |ts| &ts.season == season)
+                    .cloned(),
+            ),
+            TimeSliceSelection::Single(ts) => Box::new(iter::once(ts.clone())),
+        }
+    }
+
+    // pub fn for_each_selection<F: Fn(TimeSliceID) -> >(
+    //     &self,
+    //     selection: &TimeSliceSelection,
+    //     predicate: F,
+    // ) {
+    //     match selection {
+    //         TimeSliceSelection::Annual => {
+    //             for ts in self.fractions.keys() {
+    //                 predicate(ts.clone());
+    //             }
+    //         }
+    //         TimeSliceSelection::Season(season) => {
+    //             for ts in self.fractions.keys().filter(|ts| &ts.season == season) {
+    //                 predicate(ts.clone());
+    //             }
+    //         }
+    //         TimeSliceSelection::Single(ts) => predicate(ts.clone()),
+    //     }
+    // }
 }
 
 /// A time slice record retrieved from a CSV file

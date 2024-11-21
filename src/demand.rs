@@ -1,9 +1,12 @@
 //! Code for working with demand for a given commodity. Demand can vary by region and year.
-use crate::input::*;
-use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
+use crate::{input::*, region, time_slice};
 use anyhow::{ensure, Context, Result};
+use float_cmp::approx_eq;
+use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
+use std::fmt::Display;
 use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
@@ -13,19 +16,15 @@ const DEMAND_SLICES_FILE_NAME: &str = "demand_slicing.csv";
 
 /// Represents a single demand entry in the dataset.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct Demand {
+struct Demand {
     /// The commodity this demand entry refers to
-    pub commodity_id: String,
+    commodity_id: String,
     /// The region of the demand entry
-    pub region_id: String,
+    region_id: String,
     /// The year of the demand entry
-    pub year: u32,
+    year: u32,
     /// Annual demand quantity
-    pub demand: f64,
-
-    /// How demand varies by time slice
-    #[serde(skip)]
-    pub demand_slices: Vec<DemandSlice>,
+    demand: f64,
 }
 
 #[derive(Clone, Deserialize)]
@@ -46,9 +45,16 @@ pub struct DemandSlice {
     pub fraction: f64,
 }
 
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+struct DemandHashMapKey {
+    region_id: Rc<str>,
+    milestone_year: u32,
+    time_slice: TimeSliceID,
+}
+
 /// A [HashMap] of [Demand] grouped by region ID
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct DemandHashMap(HashMap<Rc<str>, Demand>);
+pub struct DemandHashMap(HashMap<DemandHashMapKey, Demand>);
 
 impl DemandHashMap {
     /// Create a new empty [DemandHashMap]
@@ -57,13 +63,29 @@ impl DemandHashMap {
     }
 
     /// Get demand for a particular region.
-    pub fn get(&self, region_id: &str) -> Option<&Demand> {
-        HashMap::get(&self.0, region_id)
+    pub fn get(
+        &self,
+        region_id: Rc<str>,
+        milestone_year: u32,
+        time_slice: TimeSliceID,
+    ) -> Option<&Demand> {
+        self.0.get(&DemandHashMapKey {
+            region_id,
+            milestone_year,
+            time_slice,
+        })
     }
 }
 
 /// A [HashMap] of [Demand] grouped first by commodity, then region
 type CommodityDemandHashMap = HashMap<Rc<str>, DemandHashMap>;
+
+#[derive(PartialEq, Eq, Hash)]
+struct DemandKey {
+    commodity_id: Rc<str>,
+    region_id: Rc<str>,
+    year: u32,
+}
 
 /// Read the demand data from an iterator
 ///
@@ -82,11 +104,11 @@ fn read_demand_from_iter<I>(
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> Result<CommodityDemandHashMap>
+) -> Result<HashMap<DemandKey, f64>>
 where
     I: Iterator<Item = Demand>,
 {
-    let mut map_by_commodity: CommodityDemandHashMap = HashMap::new();
+    let mut map = HashMap::new();
 
     for demand in iter {
         let commodity_id = commodity_ids.get_id(&demand.commodity_id)?;
@@ -103,18 +125,19 @@ where
             "Demand must be a valid number greater than zero"
         );
 
-        // Get entry for this commodity
-        let map_by_region = map_by_commodity
-            .entry(commodity_id)
-            .or_insert_with(|| DemandHashMap(HashMap::with_capacity(1)));
+        let key = DemandKey {
+            commodity_id,
+            region_id,
+            year: demand.year,
+        };
 
         ensure!(
-            map_by_region.0.insert(region_id, demand).is_none(),
+            map.insert(key, demand.demand).is_none(),
             "Multiple entries for same commodity and region found"
         );
     }
 
-    Ok(map_by_commodity)
+    Ok(map)
 }
 
 /// Read the demand.csv file.
@@ -143,68 +166,93 @@ fn read_demand_file(
 
 /// Try to get demand for the given commodity and region. Returns `None` if not found.
 fn get_demand_mut<'a>(
-    commodity_id: &str,
-    region_id: &str,
     demand: &'a mut CommodityDemandHashMap,
+    commodity_id: &str,
+    region_id: &Rc<str>,
+    milestone_year: u32,
 ) -> Option<&'a mut Demand> {
-    demand.get_mut(commodity_id)?.0.get_mut(region_id)
+    let key = DemandHashMapKey {
+        region_id: Rc::clone(region_id),
+        milestone_year,
+    };
+    demand.get_mut(commodity_id)?.0.get_mut(&key)
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct DemandSliceFractionsKey {
+    commodity_id: Rc<str>,
+    region_id: Rc<str>,
+    time_slice: TimeSliceID,
+}
+
+impl Display for DemandSliceFractionsKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "commodity: {}, region: {}, time slice: {}",
+            self.commodity_id, self.region_id, self.time_slice
+        )
+    }
 }
 
 /// Read demand slices from an iterator and store them in `demand`.
 fn read_demand_slices_from_iter<I>(
     iter: I,
     time_slice_info: &TimeSliceInfo,
-    demand: &mut CommodityDemandHashMap,
-) -> Result<()>
+    commodity_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<Rc<str>>,
+) -> Result<HashMap<DemandSliceFractionsKey, f64>>
 where
     I: Iterator<Item = DemandSliceRaw>,
 {
-    // Sanity check
-    assert!(
-        demand
-            .values()
-            .flat_map(|map| map.0.values())
-            .all(|demand| demand.demand_slices.is_empty()),
-        "demand already has demand slicing defined"
-    );
+    let mut demand_slices = HashMap::new();
 
     for slice in iter {
-        let demand = get_demand_mut(&slice.commodity_id, &slice.region_id, demand)
-            .with_context(|| {
-                format!(
-                    "Demand slicing entry without corresponding demand entry (commodity {} in region {})",
-                    &slice.commodity_id, &slice.region_id
-                )
-            })?;
+        let commodity_id = commodity_ids.get_id(&slice.commodity_id)?;
+        let region_id = region_ids.get_id(&slice.region_id)?;
 
-        let time_slice = time_slice_info.get_selection(&slice.time_slice)?;
-        demand.demand_slices.push(DemandSlice {
-            time_slice,
-            fraction: slice.fraction,
-        });
+        let ts_selection = time_slice_info.get_selection(&slice.time_slice)?;
+        for time_slice in time_slice_info.iter_selection(&ts_selection) {
+            let key = DemandSliceFractionsKey {
+                commodity_id: Rc::clone(&commodity_id),
+                region_id: Rc::clone(&region_id),
+                time_slice,
+            };
+
+            ensure!(
+                demand_slices.insert(key.clone(), slice.fraction).is_none(),
+                "Demand slice covered by two or more entries ({key})"
+            );
+        }
     }
 
-    for demand in demand.values().flat_map(|map| map.0.values()) {
+    for (commodity_id, region_id) in commodity_ids.iter().zip(region_ids.iter()) {
+        let mut sum = 0.0;
+        for time_slice in time_slice_info.iter() {
+            let key = DemandSliceFractionsKey {
+                commodity_id: Rc::clone(commodity_id),
+                region_id: Rc::clone(region_id),
+                time_slice,
+            };
+            let fraction = demand_slices
+                .get(&key)
+                .with_context(|| format!("Missing demand slice entry: {key}",))?;
+
+            sum += fraction;
+        }
+
         ensure!(
-            !demand.demand_slices.is_empty(),
-            "Demand entry without demand slicing specified (commodity {} in region {})",
-            demand.commodity_id,
-            demand.region_id
+            approx_eq!(f64, sum, 1.0, epsilon = 1e-5),
+            "Sum of demand slice fractions does not equal one \
+            (actual: {sum}, commodity: {commodity_id}, region: {region_id})",
         );
-
-        check_fractions_sum_to_one(demand.demand_slices.iter().map(|slice| slice.fraction))
-            .with_context(|| {
-                format!(
-                    "Invalid demand slicing fractions (commodity {} in region {})",
-                    demand.commodity_id, demand.region_id
-                )
-            })?;
     }
 
-    Ok(())
+    Ok(demand_slices)
 }
 
 /// Read demand slices from specified model directory.
+/// FIX ME!!!!!!!!!!1
 ///
 /// # Arguments
 ///
@@ -214,11 +262,17 @@ where
 fn read_demand_slices(
     model_dir: &Path,
     time_slice_info: &TimeSliceInfo,
-    demand: &mut CommodityDemandHashMap,
-) {
+    commodity_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<Rc<str>>,
+) -> HashMap<DemandSliceFractionsKey, f64> {
     let file_path = model_dir.join(DEMAND_SLICES_FILE_NAME);
-    read_demand_slices_from_iter(read_csv(&file_path), time_slice_info, demand)
-        .unwrap_input_err(&file_path)
+    read_demand_slices_from_iter(
+        read_csv(&file_path),
+        time_slice_info,
+        commodity_ids,
+        region_ids,
+    )
+    .unwrap_input_err(&file_path)
 }
 
 /// Reads demand data from a CSV file.
@@ -244,7 +298,7 @@ pub fn read_demand(
     let mut demand = read_demand_file(model_dir, commodity_ids, region_ids, year_range);
 
     // Read in demand slices
-    read_demand_slices(model_dir, time_slice_info, &mut demand);
+    let slices = read_demand_slices(model_dir, time_slice_info, &mut demand);
 
     demand
 }
