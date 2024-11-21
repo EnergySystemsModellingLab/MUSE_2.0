@@ -55,6 +55,11 @@ impl DemandHashMap {
     pub fn new() -> DemandHashMap {
         DemandHashMap(HashMap::new())
     }
+
+    /// Get demand for a particular region.
+    pub fn get(&self, region_id: &str) -> Option<&Demand> {
+        HashMap::get(&self.0, region_id)
+    }
 }
 
 /// A [HashMap] of [Demand] grouped first by commodity, then region
@@ -636,5 +641,18 @@ COM1,West,2023,13"
             )
             .is_err());
         }
+    }
+
+    #[test]
+    fn test_demand_hash_map_get() {
+        let demand = Demand {
+            commodity_id: "COM1".into(),
+            region_id: "GBR".into(),
+            year: 2020,
+            demand: 1.0,
+            demand_slices: Vec::new(),
+        };
+        let demand_hash_map = DemandHashMap([("GBR".into(), demand.clone())].into_iter().collect());
+        assert!(*demand_hash_map.get("GBR").unwrap() == demand);
     }
 }
