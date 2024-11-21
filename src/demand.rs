@@ -46,7 +46,7 @@ pub struct DemandSlice {
     pub fraction: f64,
 }
 
-/// A [HashMap] grouped by region and then commodity
+/// A [HashMap] of [Demand] grouped first by commodity, then region
 pub type DemandHashMap = HashMap<Rc<str>, HashMap<Rc<str>, Demand>>;
 
 /// Read the demand data from an iterator
