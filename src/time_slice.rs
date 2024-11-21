@@ -39,6 +39,16 @@ pub enum TimeSliceSelection {
     Single(TimeSliceID),
 }
 
+impl TimeSliceSelection {
+    pub fn level(&self) -> TimeSliceLevel {
+        match self {
+            Self::Annual => TimeSliceLevel::Annual,
+            Self::Season(_) => TimeSliceLevel::Season,
+            Self::Single(_) => TimeSliceLevel::DayNight,
+        }
+    }
+}
+
 /// Information about the time slices in the simulation, including names and fractions
 #[derive(PartialEq, Debug)]
 pub struct TimeSliceInfo {
@@ -165,7 +175,7 @@ where
 }
 
 /// Refers to a particular aspect of a time slice
-#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Debug, DeserializeLabeledStringEnum)]
 pub enum TimeSliceLevel {
     #[string = "annual"]
     Annual,
