@@ -438,7 +438,7 @@ pub fn read_processes(
 
 #[cfg(test)]
 mod tests {
-    use crate::commodity::CommodityType;
+    use crate::commodity::{CommodityCostMap, CommodityType};
     use crate::time_slice::TimeSliceLevel;
 
     use super::*;
@@ -733,7 +733,7 @@ mod tests {
                     description: "Some description".into(),
                     kind: CommodityType::InputCommodity,
                     time_slice_level: TimeSliceLevel::Annual,
-                    costs: vec![],
+                    costs: CommodityCostMap::new(),
                     demand_by_region: HashMap::new(),
                 };
 
