@@ -433,4 +433,29 @@ mod tests {
         )
         .is_err());
     }
+
+    #[test]
+    #[should_panic]
+    fn test_read_commodity_costs_iter_non_milestone_year() {
+        let commodity_ids = ["commodity".into()].into_iter().collect();
+        let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
+        let time_slice_info = TimeSliceInfo::default();
+        let milestone_years = [2010, 2020];
+
+        let cost = CommodityCostRaw {
+            commodity_id: "commodity".into(),
+            region_id: "GBR".into(),
+            balance_type: BalanceType::Consumption,
+            year: 2011, // NB: Non-milestone year
+            time_slice: "all-year.all-day".into(),
+            value: 0.5,
+        };
+        let _ = read_commodity_costs_iter(
+            iter::once(cost),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+            &milestone_years,
+        );
+    }
 }
