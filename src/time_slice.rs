@@ -11,6 +11,7 @@ use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
+use std::iter;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -106,6 +107,23 @@ impl TimeSliceInfo {
         } else {
             let season = self.seasons.get_id(time_slice)?;
             Ok(TimeSliceSelection::Season(season))
+        }
+    }
+
+    /// Iterate over the subset of [`TimeSliceID`] indicated by `selection`
+    pub fn iter_selection<'a>(
+        &'a self,
+        selection: &'a TimeSliceSelection,
+    ) -> Box<dyn Iterator<Item = TimeSliceID> + 'a> {
+        match selection {
+            TimeSliceSelection::Annual => Box::new(self.fractions.keys().cloned()),
+            TimeSliceSelection::Season(season) => Box::new(
+                self.fractions
+                    .keys()
+                    .filter(move |ts| &ts.season == season)
+                    .cloned(),
+            ),
+            TimeSliceSelection::Single(ts) => Box::new(iter::once(ts.clone())),
         }
     }
 }
@@ -296,6 +314,41 @@ autumn,evening,0.25"
     fn test_read_time_slice_info_non_existent() {
         let actual = read_time_slice_info(tempdir().unwrap().path());
         assert_eq!(actual, TimeSliceInfo::default());
+    }
+
+    #[test]
+    fn test_iter_selection() {
+        let slices = [
+            TimeSliceID {
+                season: "winter".into(),
+                time_of_day: "day".into(),
+            },
+            TimeSliceID {
+                season: "summer".into(),
+                time_of_day: "night".into(),
+            },
+        ];
+        let ts_info = TimeSliceInfo {
+            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            times_of_day: ["day".into(), "night".into()].into_iter().collect(),
+            fractions: [(slices[0].clone(), 0.5), (slices[1].clone(), 0.5)]
+                .into_iter()
+                .collect(),
+        };
+
+        assert_eq!(
+            HashSet::<TimeSliceID>::from_iter(ts_info.iter_selection(&TimeSliceSelection::Annual)),
+            HashSet::from_iter(slices.iter().cloned())
+        );
+        itertools::assert_equal(
+            ts_info.iter_selection(&TimeSliceSelection::Season("winter".into())),
+            iter::once(slices[0].clone()),
+        );
+        let ts = ts_info.get_time_slice_id_from_str("summer.night").unwrap();
+        itertools::assert_equal(
+            ts_info.iter_selection(&TimeSliceSelection::Single(ts)),
+            iter::once(slices[1].clone()),
+        );
     }
 
     #[test]
