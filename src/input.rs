@@ -7,7 +7,6 @@ use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::fs;
-use std::hash::Hash;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -117,7 +116,7 @@ macro_rules! define_str_id_getter {
 
 pub(crate) use define_str_id_getter;
 
-pub trait IDCollection<T: ?Sized> {
+pub trait IDCollection<T: ?Sized, U = T> {
     /// Get the ID after checking that it exists this collection.
     ///
     /// # Arguments
@@ -126,15 +125,12 @@ pub trait IDCollection<T: ?Sized> {
     ///
     /// # Returns
     ///
-    /// A copy of the `Rc<T>` in `self` or an error if not found.
-    fn get_id(&self, id: &T) -> Result<Rc<T>>;
+    /// A copy of the ID in `self` or an error if not found.
+    fn get_id(&self, id: &T) -> Result<U>;
 }
 
-impl<T> IDCollection<T> for HashSet<Rc<T>>
-where
-    T: ?Sized + Display + Hash + Eq,
-{
-    fn get_id(&self, id: &T) -> Result<Rc<T>> {
+impl IDCollection<str, Rc<str>> for HashSet<Rc<str>> {
+    fn get_id(&self, id: &str) -> Result<Rc<str>> {
         let id = self.get(id).context(format!("Unknown ID {id} found"))?;
         Ok(Rc::clone(id))
     }
