@@ -2,11 +2,11 @@
 use crate::demand::{read_demand, Demand};
 use crate::input::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
+use anyhow::{ensure, Result};
 use itertools::Itertools;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
@@ -82,15 +82,17 @@ impl CommodityCostRaw {
         region_ids: &HashSet<Rc<str>>,
         time_slice_info: &TimeSliceInfo,
         year_range: &RangeInclusive<u32>,
-    ) -> Result<CommodityCost, Box<dyn Error>> {
+    ) -> Result<CommodityCost> {
         let commodity_id = commodity_ids.get_id(&self.commodity_id)?;
         let region_id = region_ids.get_id(&self.region_id)?;
         let time_slice = time_slice_info.get_selection(&self.time_slice)?;
 
         // Check year is in range
-        if !year_range.contains(&self.year) {
-            Err(format!("Year {} is out of range", self.year))?;
-        }
+        ensure!(
+            year_range.contains(&self.year),
+            "Year {} is out of range",
+            self.year
+        );
 
         Ok(CommodityCost {
             commodity_id,
@@ -134,7 +136,7 @@ fn read_commodity_costs_iter<I>(
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, Vec<CommodityCost>>, Box<dyn Error>>
+) -> Result<HashMap<Rc<str>, Vec<CommodityCost>>>
 where
     I: Iterator<Item = CommodityCostRaw>,
 {
