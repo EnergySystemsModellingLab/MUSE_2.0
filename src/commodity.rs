@@ -2,12 +2,11 @@
 use crate::demand::{read_demand, Demand};
 use crate::input::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
-use anyhow::{ensure, Result};
+use anyhow::Result;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
-use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -81,18 +80,19 @@ impl CommodityCostRaw {
         commodity_ids: &HashSet<Rc<str>>,
         region_ids: &HashSet<Rc<str>>,
         time_slice_info: &TimeSliceInfo,
-        year_range: &RangeInclusive<u32>,
+        milestone_years: &[u32],
     ) -> Result<CommodityCost> {
         let commodity_id = commodity_ids.get_id(&self.commodity_id)?;
         let region_id = region_ids.get_id(&self.region_id)?;
         let time_slice = time_slice_info.get_selection(&self.time_slice)?;
 
-        // Check year is in range
-        ensure!(
-            year_range.contains(&self.year),
-            "Year {} is out of range",
-            self.year
-        );
+        if milestone_years.binary_search(&self.year).is_err() {
+            todo!(
+                "Year {} is not a milestone year. \
+                Input of non-milestone years is currently not supported.",
+                self.year
+            );
+        }
 
         Ok(CommodityCost {
             commodity_id,
@@ -135,13 +135,13 @@ fn read_commodity_costs_iter<I>(
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-    year_range: &RangeInclusive<u32>,
+    milestone_years: &[u32],
 ) -> Result<HashMap<Rc<str>, Vec<CommodityCost>>>
 where
     I: Iterator<Item = CommodityCostRaw>,
 {
     iter.map(|cost| {
-        cost.try_into_commodity_cost(commodity_ids, region_ids, time_slice_info, year_range)
+        cost.try_into_commodity_cost(commodity_ids, region_ids, time_slice_info, milestone_years)
     })
     // Commodity IDs have already been validated
     .process_results(|iter| iter.into_id_map(commodity_ids).unwrap())
@@ -155,7 +155,7 @@ where
 /// * `commodity_ids` - All possible commodity IDs
 /// * `region_ids` - All possible region IDs
 /// * `time_slice_info` - Information about time slices
-/// * `year_range` - The possible range of milestone years
+/// * `milestone_years` - All milestone years
 ///
 /// # Returns
 ///
@@ -165,7 +165,7 @@ fn read_commodity_costs(
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-    year_range: &RangeInclusive<u32>,
+    milestone_years: &[u32],
 ) -> HashMap<Rc<str>, Vec<CommodityCost>> {
     let file_path = model_dir.join(COMMODITY_COSTS_FILE_NAME);
     read_commodity_costs_iter(
@@ -173,7 +173,7 @@ fn read_commodity_costs(
         commodity_ids,
         region_ids,
         time_slice_info,
-        year_range,
+        milestone_years,
     )
     .unwrap_input_err(&file_path)
 }
@@ -185,7 +185,7 @@ fn read_commodity_costs(
 /// * `model_dir` - Folder containing model configuration files
 /// * `region_ids` - All possible region IDs
 /// * `time_slice_info` - Information about time slices
-/// * `year_range` - The possible range of milestone years
+/// * `milestone_years` - All milestone years
 ///
 /// # Returns
 ///
@@ -194,7 +194,7 @@ pub fn read_commodities(
     model_dir: &Path,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-    year_range: &RangeInclusive<u32>,
+    milestone_years: &[u32],
 ) -> HashMap<Rc<str>, Rc<Commodity>> {
     let commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME));
     let commodity_ids = commodities.keys().cloned().collect();
@@ -203,14 +203,16 @@ pub fn read_commodities(
         &commodity_ids,
         region_ids,
         time_slice_info,
-        year_range,
+        milestone_years,
     );
+
+    let year_range = *milestone_years.first().unwrap()..=*milestone_years.last().unwrap();
     let mut demand = read_demand(
         model_dir,
         &commodity_ids,
         region_ids,
         time_slice_info,
-        year_range,
+        &year_range,
     );
 
     // Populate Vecs for each Commodity
@@ -238,7 +240,7 @@ mod tests {
         let commodity_ids = ["commodity".into()].into_iter().collect();
         let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
         let time_slice_info = TimeSliceInfo::default();
-        let year_range = 2010..=2020;
+        let milestone_years = vec![2010, 2020];
 
         // Valid
         let cost = CommodityCostRaw {
@@ -250,7 +252,12 @@ mod tests {
             value: 5.0,
         };
         assert!(cost
-            .try_into_commodity_cost(&commodity_ids, &region_ids, &time_slice_info, &year_range)
+            .try_into_commodity_cost(
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+                &milestone_years
+            )
             .is_ok());
 
         // Bad commodity
@@ -263,7 +270,12 @@ mod tests {
             value: 5.0,
         };
         assert!(cost
-            .try_into_commodity_cost(&commodity_ids, &region_ids, &time_slice_info, &year_range)
+            .try_into_commodity_cost(
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+                &milestone_years
+            )
             .is_err());
 
         // Bad region
@@ -276,7 +288,12 @@ mod tests {
             value: 5.0,
         };
         assert!(cost
-            .try_into_commodity_cost(&commodity_ids, &region_ids, &time_slice_info, &year_range)
+            .try_into_commodity_cost(
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+                &milestone_years
+            )
             .is_err());
 
         // Bad time slice selection
@@ -289,20 +306,12 @@ mod tests {
             value: 5.0,
         };
         assert!(cost
-            .try_into_commodity_cost(&commodity_ids, &region_ids, &time_slice_info, &year_range)
-            .is_err());
-
-        // Bad year
-        let cost = CommodityCostRaw {
-            commodity_id: "commodity".into(),
-            region_id: "GBR".into(),
-            balance_type: BalanceType::Consumption,
-            year: 1999,
-            time_slice: "".into(),
-            value: 5.0,
-        };
-        assert!(cost
-            .try_into_commodity_cost(&commodity_ids, &region_ids, &time_slice_info, &year_range)
+            .try_into_commodity_cost(
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+                &milestone_years
+            )
             .is_err());
     }
 }
