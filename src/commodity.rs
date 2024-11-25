@@ -251,13 +251,12 @@ pub fn read_commodities(
         milestone_years,
     )?;
 
-    let year_range = *milestone_years.first().unwrap()..=*milestone_years.last().unwrap();
     let mut demand = read_demand(
         model_dir,
         &commodity_ids,
         region_ids,
         time_slice_info,
-        &year_range,
+        milestone_years,
     )?;
 
     // Populate Vecs for each Commodity
