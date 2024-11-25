@@ -145,13 +145,12 @@ where
         let region_id = region_ids.get_id(&cost.region_id)?;
         let ts_selection = time_slice_info.get_selection(&cost.time_slice)?;
 
-        if milestone_years.binary_search(&cost.year).is_err() {
-            todo!(
-                "Year {} is not a milestone year. \
+        ensure!(
+            milestone_years.binary_search(&cost.year).is_ok(),
+            "Year {} is not a milestone year. \
                 Input of non-milestone years is currently not supported.",
-                cost.year
-            );
-        }
+            cost.year
+        );
 
         // Get or create CommodityCostMap for this commodity
         let map = map
@@ -188,13 +187,12 @@ where
 
     let milestone_years = HashSet::from_iter(milestone_years.iter().cloned());
     for ((commodity_id, region_id), years) in used_milestone_years.iter() {
-        if years != &milestone_years {
-            todo!(
-                "Commodity costs missing for some milestone years (commodity: {}, region: {})",
-                commodity_id,
-                region_id
-            );
-        }
+        ensure!(
+            years == &milestone_years,
+            "Commodity costs missing for some milestone years (commodity: {}, region: {})",
+            commodity_id,
+            region_id
+        );
     }
 
     Ok(map)
@@ -454,64 +452,42 @@ mod tests {
             &milestone_years,
         )
         .is_err());
-    }
 
-    #[test]
-    #[should_panic]
-    fn test_read_commodity_costs_iter_non_milestone_year() {
-        let commodity_ids = ["commodity".into()].into_iter().collect();
-        let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
-        let time_slice_info = TimeSliceInfo::default();
-        let milestone_years = [2010];
-
-        let cost1 = CommodityCostRaw {
-            commodity_id: "commodity".into(),
-            region_id: "GBR".into(),
-            balance_type: BalanceType::Consumption,
-            year: 2010,
-            time_slice: "all-year.all-day".into(),
-            value: 0.5,
-        };
+        // Invalid: non-milestone year
         let cost2 = CommodityCostRaw {
             commodity_id: "commodity".into(),
             region_id: "GBR".into(),
             balance_type: BalanceType::Consumption,
             year: 2011, // NB: Non-milestone year
-            time_slice: "all-year.all-day".into(),
+            time_slice: "winter.day".into(),
             value: 0.5,
         };
-        let _ = read_commodity_costs_iter(
+        assert!(read_commodity_costs_iter(
             [cost1, cost2].into_iter(),
             &commodity_ids,
             &region_ids,
             &time_slice_info,
             &milestone_years,
-        );
-    }
+        )
+        .is_err());
 
-    #[test]
-    #[should_panic]
-    fn test_read_commodity_costs_iter_missing_milestone_year() {
-        let commodity_ids = ["commodity".into()].into_iter().collect();
-        let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
-        let time_slice_info = TimeSliceInfo::default();
+        // Invalid: Milestone year 2020 is not covered
         let milestone_years = [2010, 2020];
-
-        // NB: Milestone year 2020 is not covered
         let cost = CommodityCostRaw {
             commodity_id: "commodity".into(),
             region_id: "GBR".into(),
             balance_type: BalanceType::Consumption,
             year: 2010,
-            time_slice: "all-year.all-day".into(),
+            time_slice: "winter.day".into(),
             value: 0.5,
         };
-        let _ = read_commodity_costs_iter(
+        assert!(read_commodity_costs_iter(
             iter::once(cost),
             &commodity_ids,
             &region_ids,
             &time_slice_info,
             &milestone_years,
-        );
+        )
+        .is_err());
     }
 }
