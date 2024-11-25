@@ -4,7 +4,6 @@ use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -72,7 +71,7 @@ type CommodityDemandMap = HashMap<Rc<str>, DemandMap>;
 /// * `iter` - An iterator of `Demand`s
 /// * `commodity_ids` - All possible IDs of commodities
 /// * `region_ids` - All possible IDs for regions
-/// * `year_range` - The year range for the simulation
+/// * `milestone_years` - All milestone years
 ///
 /// # Returns
 ///
@@ -81,7 +80,7 @@ fn read_demand_from_iter<I>(
     iter: I,
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
-    year_range: &RangeInclusive<u32>,
+    milestone_years: &[u32],
 ) -> Result<CommodityDemandMap>
 where
     I: Iterator<Item = Demand>,
@@ -93,8 +92,9 @@ where
         let region_id = region_ids.get_id(&demand.region_id)?;
 
         ensure!(
-            year_range.contains(&demand.year),
-            "Year {} is out of range",
+            milestone_years.binary_search(&demand.year).is_ok(),
+            "Year {} is not a milestone year. \
+            Input of non-milestone years is currently not supported.",
             demand.year
         );
 
@@ -119,7 +119,7 @@ where
 /// * `model_dir` - Folder containing model configuration files
 /// * `commodity_ids` - All possible IDs of commodities
 /// * `region_ids` - All possible IDs for regions
-/// * `year_range` - The year range for the simulation
+/// * `milestone_years` - All milestone years
 ///
 /// # Returns
 ///
@@ -129,11 +129,16 @@ fn read_demand_file(
     model_dir: &Path,
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
-    year_range: &RangeInclusive<u32>,
+    milestone_years: &[u32],
 ) -> CommodityDemandMap {
     let file_path = model_dir.join(DEMAND_FILE_NAME);
-    read_demand_from_iter(read_csv(&file_path), commodity_ids, region_ids, year_range)
-        .unwrap_input_err(&file_path)
+    read_demand_from_iter(
+        read_csv(&file_path),
+        commodity_ids,
+        region_ids,
+        milestone_years,
+    )
+    .unwrap_input_err(&file_path)
 }
 
 /// Try to get demand for the given commodity and region. Returns `None` if not found.
@@ -198,7 +203,7 @@ fn read_demand_slices(
 /// * `commodity_ids` - All possible IDs of commodities
 /// * `region_ids` - All possible IDs for regions
 /// * `time_slice_info` - Information about seasons and times of day
-/// * `year_range` - The year range for the simulation
+/// * `milestone_years` - All milestone years
 ///
 /// # Returns
 ///
@@ -208,9 +213,9 @@ pub fn read_demand(
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-    year_range: &RangeInclusive<u32>,
+    milestone_years: &[u32],
 ) -> CommodityDemandMap {
-    let mut demand = read_demand_file(model_dir, commodity_ids, region_ids, year_range);
+    let mut demand = read_demand_file(model_dir, commodity_ids, region_ids, milestone_years);
 
     // Read in demand slices
     read_demand_slices(model_dir, time_slice_info, &mut demand);
@@ -231,7 +236,7 @@ mod tests {
     #[test]
     fn test_demand_map_get() {
         let value = Demand {
-            year: 2023,
+            year: 2020,
             region_id: "North".to_string(),
             commodity_id: "COM1".to_string(),
             demand: 10.0,
@@ -248,10 +253,10 @@ mod tests {
         writeln!(
             file,
             "commodity_id,region_id,year,demand
-COM1,North,2023,10
-COM1,South,2023,11
-COM1,East,2023,12
-COM1,West,2023,13"
+COM1,North,2020,10
+COM1,South,2020,11
+COM1,East,2020,12
+COM1,West,2020,13"
         )
         .unwrap();
     }
@@ -260,19 +265,19 @@ COM1,West,2023,13"
     fn test_read_demand_from_iter() {
         let commodity_ids = ["COM1".into()].into_iter().collect();
         let region_ids = ["North".into(), "South".into()].into_iter().collect();
-        let year_range = 2020..=2030;
+        let milestone_years = [2020, 2030];
 
         // Valid
         let demand = [
             Demand {
-                year: 2023,
+                year: 2020,
                 region_id: "North".to_string(),
                 commodity_id: "COM1".to_string(),
                 demand: 10.0,
                 demand_slices: Vec::new(),
             },
             Demand {
-                year: 2023,
+                year: 2020,
                 region_id: "South".to_string(),
                 commodity_id: "COM1".to_string(),
                 demand: 11.0,
@@ -283,21 +288,21 @@ COM1,West,2023,13"
             demand.into_iter(),
             &commodity_ids,
             &region_ids,
-            &year_range
+            &milestone_years
         )
         .is_ok());
 
         // Bad commodity ID
         let demand = [
             Demand {
-                year: 2023,
+                year: 2020,
                 region_id: "North".to_string(),
                 commodity_id: "COM2".to_string(),
                 demand: 10.0,
                 demand_slices: Vec::new(),
             },
             Demand {
-                year: 2023,
+                year: 2020,
                 region_id: "South".to_string(),
                 commodity_id: "COM1".to_string(),
                 demand: 11.0,
@@ -308,21 +313,21 @@ COM1,West,2023,13"
             demand.into_iter(),
             &commodity_ids,
             &region_ids,
-            &year_range
+            &milestone_years
         )
         .is_err());
 
         // Bad region ID
         let demand = [
             Demand {
-                year: 2023,
+                year: 2020,
                 region_id: "East".to_string(),
                 commodity_id: "COM1".to_string(),
                 demand: 10.0,
                 demand_slices: Vec::new(),
             },
             Demand {
-                year: 2023,
+                year: 2020,
                 region_id: "South".to_string(),
                 commodity_id: "COM1".to_string(),
                 demand: 11.0,
@@ -333,7 +338,7 @@ COM1,West,2023,13"
             demand.into_iter(),
             &commodity_ids,
             &region_ids,
-            &year_range
+            &milestone_years
         )
         .is_err());
 
@@ -347,7 +352,7 @@ COM1,West,2023,13"
                 demand_slices: Vec::new(),
             },
             Demand {
-                year: 2023,
+                year: 2020,
                 region_id: "South".to_string(),
                 commodity_id: "COM1".to_string(),
                 demand: 11.0,
@@ -358,28 +363,28 @@ COM1,West,2023,13"
             demand.into_iter(),
             &commodity_ids,
             &region_ids,
-            &year_range
+            &milestone_years
         )
         .is_err());
 
         // Multiple entries for same commodity and region
         let demand = [
             Demand {
-                year: 2023,
+                year: 2020,
                 region_id: "North".to_string(),
                 commodity_id: "COM1".to_string(),
                 demand: 10.0,
                 demand_slices: Vec::new(),
             },
             Demand {
-                year: 2023,
+                year: 2020,
                 region_id: "North".to_string(),
                 commodity_id: "COM1".to_string(),
                 demand: 10.0,
                 demand_slices: Vec::new(),
             },
             Demand {
-                year: 2023,
+                year: 2020,
                 region_id: "South".to_string(),
                 commodity_id: "COM1".to_string(),
                 demand: 11.0,
@@ -390,7 +395,7 @@ COM1,West,2023,13"
             demand.into_iter(),
             &commodity_ids,
             &region_ids,
-            &year_range
+            &milestone_years
         )
         .is_err());
     }
@@ -403,8 +408,8 @@ COM1,West,2023,13"
         let region_ids = ["North".into(), "South".into(), "East".into(), "West".into()]
             .into_iter()
             .collect();
-        let year_range = 2020..=2030;
-        let demand = read_demand_file(dir.path(), &commodity_ids, &region_ids, &year_range);
+        let milestone_years = [2020, 2030];
+        let demand = read_demand_file(dir.path(), &commodity_ids, &region_ids, &milestone_years);
         assert_eq!(
             demand,
             HashMap::from_iter(
@@ -414,7 +419,7 @@ COM1,West,2023,13"
                         (
                             "North".into(),
                             Demand {
-                                year: 2023,
+                                year: 2020,
                                 region_id: "North".to_string(),
                                 commodity_id: "COM1".to_string(),
                                 demand: 10.0,
@@ -424,7 +429,7 @@ COM1,West,2023,13"
                         (
                             "South".into(),
                             Demand {
-                                year: 2023,
+                                year: 2020,
                                 region_id: "South".to_string(),
                                 commodity_id: "COM1".to_string(),
                                 demand: 11.0,
@@ -434,7 +439,7 @@ COM1,West,2023,13"
                         (
                             "East".into(),
                             Demand {
-                                year: 2023,
+                                year: 2020,
                                 region_id: "East".to_string(),
                                 commodity_id: "COM1".to_string(),
                                 demand: 12.0,
@@ -444,7 +449,7 @@ COM1,West,2023,13"
                         (
                             "West".into(),
                             Demand {
-                                year: 2023,
+                                year: 2020,
                                 region_id: "West".to_string(),
                                 commodity_id: "COM1".to_string(),
                                 demand: 13.0,
