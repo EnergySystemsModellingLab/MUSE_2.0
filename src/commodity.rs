@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use crate::demand::{read_demand, Demand};
+use crate::demand::{read_demand, DemandMap};
 use crate::input::*;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use anyhow::{ensure, Context, Result};
@@ -28,7 +28,7 @@ pub struct Commodity {
     #[serde(skip)]
     pub costs: CommodityCostMap,
     #[serde(skip)]
-    pub demand_by_region: HashMap<Rc<str>, Demand>,
+    pub demand: DemandMap,
 }
 define_id_getter! {Commodity}
 
@@ -268,7 +268,7 @@ pub fn read_commodities(
                 commodity.costs = costs;
             }
             if let Some(demand) = demand.remove(&id) {
-                commodity.demand_by_region = demand;
+                commodity.demand = demand;
             }
 
             (id, commodity.into())

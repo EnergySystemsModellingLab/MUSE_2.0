@@ -46,8 +46,24 @@ pub struct DemandSlice {
     pub fraction: f64,
 }
 
+/// A map of [`Demand`], keyed by region
+#[derive(PartialEq, Debug, Clone, Default)]
+pub struct DemandMap(HashMap<Rc<str>, Demand>);
+
+impl DemandMap {
+    /// Create a new, empty [`DemandMap`]
+    pub fn new() -> DemandMap {
+        DemandMap::default()
+    }
+
+    /// Retrieve a [`Demand`] entry from the map
+    pub fn get(&self, region_id: &str) -> Option<&Demand> {
+        self.0.get(region_id)
+    }
+}
+
 /// A [`HashMap`] of [`Demand`] grouped first by commodity, then region
-type CommodityDemandMap = HashMap<Rc<str>, HashMap<Rc<str>, Demand>>;
+type CommodityDemandMap = HashMap<Rc<str>, DemandMap>;
 
 /// Read the demand data from an iterator
 ///
@@ -70,7 +86,7 @@ fn read_demand_from_iter<I>(
 where
     I: Iterator<Item = Demand>,
 {
-    let mut map_by_commodity = HashMap::new();
+    let mut map = HashMap::new();
 
     for demand in iter {
         let commodity_id = commodity_ids.get_id(&demand.commodity_id)?;
@@ -83,17 +99,17 @@ where
         );
 
         // Get entry for this commodity
-        let map_by_region = map_by_commodity
+        let map = map
             .entry(commodity_id)
-            .or_insert_with(|| HashMap::with_capacity(1));
+            .or_insert_with(|| DemandMap(HashMap::with_capacity(1)));
 
         ensure!(
-            map_by_region.insert(region_id, demand).is_none(),
+            map.0.insert(region_id, demand).is_none(),
             "Multiple entries for same commodity and region found"
         );
     }
 
-    Ok(map_by_commodity)
+    Ok(map)
 }
 
 /// Read the demand.csv file.
@@ -127,7 +143,7 @@ fn try_get_demand<'a>(
     region_id: &str,
     demand: &'a mut CommodityDemandMap,
 ) -> Option<&'a mut Demand> {
-    demand.get_mut(commodity_id)?.get_mut(region_id)
+    demand.get_mut(commodity_id)?.0.get_mut(region_id)
 }
 
 /// Read demand slices from an iterator and store them in `demand`.
@@ -213,6 +229,19 @@ mod tests {
     use std::io::Write;
     use std::path::Path;
     use tempfile::tempdir;
+
+    #[test]
+    fn test_demand_map_get() {
+        let value = Demand {
+            year: 2023,
+            region_id: "North".to_string(),
+            commodity_id: "COM1".to_string(),
+            demand: 10.0,
+            demand_slices: Vec::new(),
+        };
+        let map = DemandMap(HashMap::from_iter([("North".into(), value.clone())]));
+        assert_eq!(map.get("North").unwrap(), &value)
+    }
 
     /// Create an example demand file in dir_path
     fn create_demand_file(dir_path: &Path) {
@@ -383,7 +412,7 @@ COM1,West,2023,13"
             HashMap::from_iter(
                 [(
                     "COM1".into(),
-                    HashMap::from_iter([
+                    DemandMap(HashMap::from_iter([
                         (
                             "North".into(),
                             Demand {
@@ -424,7 +453,7 @@ COM1,West,2023,13"
                                 demand_slices: Vec::new()
                             }
                         )
-                    ])
+                    ]))
                 )]
                 .into_iter()
             )
@@ -450,18 +479,20 @@ COM1,West,2023,13"
         // Demand grouped by region
         let demand: HashMap<_, _> = [(
             "COM1".into(),
-            [(
-                "GBR".into(),
-                Demand {
-                    commodity_id: "COM1".into(),
-                    region_id: "GBR".into(),
-                    year: 2020,
-                    demand: 1.0,
-                    demand_slices: Vec::new(),
-                },
-            )]
-            .into_iter()
-            .collect(),
+            DemandMap(
+                [(
+                    "GBR".into(),
+                    Demand {
+                        commodity_id: "COM1".into(),
+                        region_id: "GBR".into(),
+                        year: 2020,
+                        demand: 1.0,
+                        demand_slices: Vec::new(),
+                    },
+                )]
+                .into_iter()
+                .collect(),
+            ),
         )]
         .into_iter()
         .collect();
