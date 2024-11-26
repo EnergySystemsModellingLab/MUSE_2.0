@@ -109,19 +109,27 @@ impl TimeSliceInfo {
         }
     }
 
-    /// Iterate over the subset of [`TimeSliceID`] indicated by `selection`
+    /// Iterate over all [`TimeSliceID`]s.
+    ///
+    /// The order will be consistent each time this is called, but not every time the program is
+    /// run.
+    pub fn iter(&self) -> impl Iterator<Item = TimeSliceID> + '_ {
+        self.fractions.keys().cloned()
+    }
+
+    /// Iterate over the subset of [`TimeSliceID`] indicated by `selection`.
+    ///
+    /// The order will be consistent each time this is called, but not every time the program is
+    /// run.
     pub fn iter_selection<'a>(
         &'a self,
         selection: &'a TimeSliceSelection,
     ) -> Box<dyn Iterator<Item = TimeSliceID> + 'a> {
         match selection {
-            TimeSliceSelection::Annual => Box::new(self.fractions.keys().cloned()),
-            TimeSliceSelection::Season(season) => Box::new(
-                self.fractions
-                    .keys()
-                    .filter(move |ts| &ts.season == season)
-                    .cloned(),
-            ),
+            TimeSliceSelection::Annual => Box::new(self.iter()),
+            TimeSliceSelection::Season(season) => {
+                Box::new(self.iter().filter(move |ts| ts.season == *season))
+            }
             TimeSliceSelection::Single(ts) => Box::new(iter::once(ts.clone())),
         }
     }
