@@ -110,20 +110,28 @@ impl TimeSliceInfo {
         }
     }
 
-    /// Iterate over the subset of [`TimeSliceID`] indicated by `selection`
+    /// Iterate over all [`TimeSliceID`]s.
+    ///
+    /// The order will be consistent each time this is called, but not every time the program is
+    /// run.
+    pub fn iter(&self) -> impl Iterator<Item = &TimeSliceID> {
+        self.fractions.keys()
+    }
+
+    /// Iterate over the subset of [`TimeSliceID`] indicated by `selection`.
+    ///
+    /// The order will be consistent each time this is called, but not every time the program is
+    /// run.
     pub fn iter_selection<'a>(
         &'a self,
         selection: &'a TimeSliceSelection,
-    ) -> Box<dyn Iterator<Item = TimeSliceID> + 'a> {
+    ) -> Box<dyn Iterator<Item = &TimeSliceID> + 'a> {
         match selection {
-            TimeSliceSelection::Annual => Box::new(self.fractions.keys().cloned()),
-            TimeSliceSelection::Season(season) => Box::new(
-                self.fractions
-                    .keys()
-                    .filter(move |ts| &ts.season == season)
-                    .cloned(),
-            ),
-            TimeSliceSelection::Single(ts) => Box::new(iter::once(ts.clone())),
+            TimeSliceSelection::Annual => Box::new(self.iter()),
+            TimeSliceSelection::Season(season) => {
+                Box::new(self.iter().filter(move |ts| ts.season == *season))
+            }
+            TimeSliceSelection::Single(ts) => Box::new(iter::once(ts)),
         }
     }
 }
@@ -337,17 +345,17 @@ autumn,evening,0.25"
         };
 
         assert_eq!(
-            HashSet::<TimeSliceID>::from_iter(ts_info.iter_selection(&TimeSliceSelection::Annual)),
-            HashSet::from_iter(slices.iter().cloned())
+            HashSet::<&TimeSliceID>::from_iter(ts_info.iter_selection(&TimeSliceSelection::Annual)),
+            HashSet::from_iter(slices.iter())
         );
         itertools::assert_equal(
             ts_info.iter_selection(&TimeSliceSelection::Season("winter".into())),
-            iter::once(slices[0].clone()),
+            iter::once(&slices[0]),
         );
         let ts = ts_info.get_time_slice_id_from_str("summer.night").unwrap();
         itertools::assert_equal(
             ts_info.iter_selection(&TimeSliceSelection::Single(ts)),
-            iter::once(slices[1].clone()),
+            iter::once(&slices[1]),
         );
     }
 
