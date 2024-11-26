@@ -32,35 +32,6 @@ pub struct Commodity {
 }
 define_id_getter! {Commodity}
 
-impl CommodityCostMap {
-    /// Create a new, empty [`CommodityCostMap`]
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-
-    /// Retrieve a [`CommodityCost`] from the map
-    pub fn get(
-        &self,
-        region_id: Rc<str>,
-        year: u32,
-        time_slice: TimeSliceID,
-    ) -> Option<&CommodityCost> {
-        let key = CommodityCostKey {
-            region_id,
-            year,
-            time_slice,
-        };
-        self.0.get(&key)
-    }
-}
-
-impl Default for CommodityCostMap {
-    /// Create a new, empty [`CommodityCostMap`]
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Type of balance for application of cost
 #[derive(PartialEq, Clone, Debug, DeserializeLabeledStringEnum)]
 pub enum BalanceType {
@@ -107,8 +78,30 @@ struct CommodityCostKey {
 }
 
 /// A data structure for easy lookup of [`CommodityCost`]s
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Default)]
 pub struct CommodityCostMap(HashMap<CommodityCostKey, CommodityCost>);
+
+impl CommodityCostMap {
+    /// Create a new, empty [`CommodityCostMap`]
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    /// Retrieve a [`CommodityCost`] from the map
+    pub fn get(
+        &self,
+        region_id: Rc<str>,
+        year: u32,
+        time_slice: TimeSliceID,
+    ) -> Option<&CommodityCost> {
+        let key = CommodityCostKey {
+            region_id,
+            year,
+            time_slice,
+        };
+        self.0.get(&key)
+    }
+}
 
 /// Commodity balance type
 #[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
