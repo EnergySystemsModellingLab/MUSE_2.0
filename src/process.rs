@@ -399,7 +399,7 @@ pub fn read_processes(
     year_range: &RangeInclusive<u32>,
 ) -> Result<HashMap<Rc<str>, Rc<Process>>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path);
+    let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path)?;
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info);

@@ -145,25 +145,28 @@ impl IDCollection for HashSet<Rc<str>> {
 ///
 /// This is like `read_csv_grouped_by_id`, with the difference that it is to be used on the "main"
 /// CSV file for a record type, so it assumes that all IDs encountered are valid.
-pub fn read_csv_id_file<T>(file_path: &Path) -> HashMap<Rc<str>, T>
+pub fn read_csv_id_file<T>(file_path: &Path) -> Result<HashMap<Rc<str>, T>>
 where
     T: HasID + DeserializeOwned,
 {
-    let mut map = HashMap::new();
-    for record in read_csv::<T>(file_path) {
-        let id = record.get_id();
+    fn fill_and_validate_map<T>(file_path: &Path) -> Result<HashMap<Rc<str>, T>>
+    where
+        T: HasID + DeserializeOwned,
+    {
+        let mut map = HashMap::new();
+        for record in read_csv::<T>(file_path) {
+            let id = record.get_id();
 
-        if map.contains_key(id) {
-            input_panic(file_path, &format!("Duplicate ID found: {id}"));
+            ensure!(!map.contains_key(id), format!("Duplicate ID found: {id}"));
+
+            map.insert(id.into(), record);
         }
+        ensure!(!map.is_empty(), "CSV file is empty");
 
-        map.insert(id.into(), record);
-    }
-    if map.is_empty() {
-        input_panic(file_path, "CSV file is empty");
+        Ok(map)
     }
 
-    map
+    fill_and_validate_map(file_path).with_context(|| input_err_msg(file_path))
 }
 
 pub trait IntoIDMap<T> {
