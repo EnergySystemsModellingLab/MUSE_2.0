@@ -1,3 +1,4 @@
+//! The main entry point for the `muse2` command-line tool.
 use ::log::info;
 use clap::{Arg, Command};
 use muse2::log;
@@ -5,6 +6,7 @@ use muse2::model::Model;
 use muse2::settings::Settings;
 use std::path::PathBuf;
 
+/// The main entry point for the `muse2 run` command.
 fn main() {
     let cmd = Command::new("muse2")
         .version("2.0")
@@ -27,12 +29,15 @@ fn main() {
                 .get_one::<PathBuf>("model_dir")
                 .expect("Required argument");
 
+            // Read program settings
             let settings = Settings::from_path(model_dir).unwrap();
+            // Set the program to log level
             log::init(settings.log_level.as_deref());
             log_panics::init();
 
             let model = Model::from_path(model_dir).unwrap();
             info!("Model loaded successfully.");
+            // Run simulation
             muse2::run(&model);
         }
         _ => {
