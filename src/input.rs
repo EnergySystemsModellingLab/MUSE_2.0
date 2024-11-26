@@ -203,17 +203,17 @@ where
 ///
 /// # Returns
 ///
-/// A HashMap with ID as a key and a vector of CSV data as a value.
+/// A HashMap with ID as a key and a vector of CSV data as a value or an error.
 pub fn read_csv_grouped_by_id<T>(
     file_path: &Path,
     ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, Vec<T>>
+) -> Result<HashMap<Rc<str>, Vec<T>>>
 where
     T: HasID + DeserializeOwned,
 {
     read_csv(file_path)
         .into_id_map(ids)
-        .unwrap_input_err(file_path)
+        .with_context(|| input_err_msg(file_path))
 }
 
 #[cfg(test)]
@@ -353,7 +353,7 @@ mod tests {
         let process_ids = create_ids();
         let file_path = dir.path().join("data.csv");
         let map = read_csv_grouped_by_id::<Record>(&file_path, &process_ids);
-        assert_eq!(expected, map);
+        assert_eq!(expected, map.unwrap());
     }
 
     #[test]
@@ -371,6 +371,6 @@ mod tests {
 
         // Check that it fails if a non-existent process ID is provided
         let process_ids = create_ids();
-        read_csv_grouped_by_id::<Record>(&file_path, &process_ids);
+        read_csv_grouped_by_id::<Record>(&file_path, &process_ids).unwrap();
     }
 }

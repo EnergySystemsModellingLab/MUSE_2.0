@@ -110,7 +110,7 @@ impl Model {
             &region_ids,
             &time_slice_info,
             &year_range,
-        );
+        )?;
         let agents = read_agents(model_dir.as_ref(), &processes, &region_ids);
 
         Ok(Model {
