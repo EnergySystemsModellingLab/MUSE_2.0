@@ -32,10 +32,8 @@ pub fn read_csv<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> impl Itera
 ///
 /// * The deserialised TOML data or an error if the file could not be read or parsed.
 pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
-    let toml_str = fs::read_to_string(file_path)
-        .with_context(|| format!("Failed to read `{}`", file_path.to_string_lossy()))?;
-    let toml_data = toml::from_str(&toml_str)
-        .with_context(|| format!("Could not parse `{}`", file_path.to_string_lossy()))?;
+    let toml_str = fs::read_to_string(file_path).with_context(|| input_err_msg(file_path))?;
+    let toml_data = toml::from_str(&toml_str).with_context(|| input_err_msg(file_path))?;
     Ok(toml_data)
 }
 
@@ -60,6 +58,11 @@ pub enum LimitType {
     UpperBound,
     #[string = "fx"]
     Equality,
+}
+
+/// Format an error message to include the file path. To be used with `anyhow::Context`.
+pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
+    format!("Error reading {}", file_path.as_ref().to_string_lossy())
 }
 
 /// Panic including the path to the file along with the message
@@ -131,7 +134,9 @@ pub trait IDCollection {
 
 impl IDCollection for HashSet<Rc<str>> {
     fn get_id(&self, id: &str) -> Result<Rc<str>> {
-        let id = self.get(id).context(format!("Unknown ID {id} found"))?;
+        let id = self
+            .get(id)
+            .with_context(|| format!("Unknown ID {id} found"))?;
         Ok(Rc::clone(id))
     }
 }

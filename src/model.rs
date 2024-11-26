@@ -73,7 +73,7 @@ impl ModelFile {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path)?;
         check_milestone_years(&model_file.milestone_years.years)
-            .with_context(|| format!("Error in `{}`", file_path.to_string_lossy()))?;
+            .with_context(|| input_err_msg(file_path))?;
 
         Ok(model_file)
     }
