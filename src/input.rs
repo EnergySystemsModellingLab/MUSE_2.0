@@ -65,11 +65,6 @@ pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
     format!("Error reading {}", file_path.as_ref().to_string_lossy())
 }
 
-/// Panic including the path to the file along with the message
-pub fn input_panic(file_path: &Path, msg: &str) -> ! {
-    panic!("Error reading {}: {}", file_path.to_string_lossy(), msg);
-}
-
 /// A trait allowing us to add the unwrap_input_err method to `Result`s
 pub trait UnwrapInputError<T> {
     /// Maps a `Result` with an arbitrary `Error` type to an `T`
@@ -80,7 +75,11 @@ impl<T, E: Display> UnwrapInputError<T> for Result<T, E> {
     fn unwrap_input_err(self, file_path: &Path) -> T {
         match self {
             Ok(value) => value,
-            Err(err) => input_panic(file_path, &err.to_string()),
+            Err(err) => panic!(
+                "Error reading {}: {}",
+                file_path.to_string_lossy(),
+                &err.to_string()
+            ),
         }
     }
 }
