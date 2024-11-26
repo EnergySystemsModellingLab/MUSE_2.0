@@ -27,7 +27,6 @@ fn main() {
                 .get_one::<PathBuf>("model_dir")
                 .expect("Required argument");
 
-            // Your existing simulation logic
             let settings = Settings::from_path(model_dir).unwrap();
             log::init(settings.log_level.as_deref());
             log_panics::init();
@@ -37,7 +36,6 @@ fn main() {
             muse2::run(&model);
         }
         _ => {
-            // No need to handle help explicitly - clap does it automatically
             println!("Use 'muse2 run <MODEL_DIR>' to run a simulation");
             println!("Use 'muse2 --help' for more information");
         }
