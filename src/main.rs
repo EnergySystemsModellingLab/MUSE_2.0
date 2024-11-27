@@ -6,20 +6,22 @@ use muse2::model::Model;
 use muse2::settings::Settings;
 use std::path::PathBuf;
 
+fn build_run_command() -> Command {
+    Command::new("run").about("Run a model simulation").arg(
+        Arg::new("model_dir")
+            .help("Path to the model directory")
+            .required(true)
+            .index(1)
+            .value_parser(clap::value_parser!(PathBuf)),
+    )
+}
+
 /// The main entry point for the `muse2 run` command.
 fn main() {
     let cmd = Command::new("muse2")
         .version("2.0")
         .about("MUSE2 Simulation Tool")
-        .subcommand(
-            Command::new("run").about("Run a model simulation").arg(
-                Arg::new("model_dir")
-                    .help("Path to the model directory")
-                    .required(true)
-                    .index(1)
-                    .value_parser(clap::value_parser!(PathBuf)),
-            ),
-        );
+        .subcommand(build_run_command());
 
     let matches = cmd.get_matches();
 
