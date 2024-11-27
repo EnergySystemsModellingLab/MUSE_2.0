@@ -16,6 +16,19 @@ fn build_run_command() -> Command {
     )
 }
 
+fn handle_run_command(model_dir: &PathBuf) {
+    // Read program settings
+    let settings = Settings::from_path(model_dir).unwrap();
+
+    // Set up logging
+    log::init(settings.log_level.as_deref());
+    log_panics::init();
+
+    // Load and run model
+    let model = Model::from_path(model_dir).unwrap();
+    info!("Model loaded successfully.");
+    muse2::run(&model);
+}
 /// The main entry point for the `muse2 run` command.
 fn main() {
     let cmd = Command::new("muse2")
@@ -31,16 +44,7 @@ fn main() {
                 .get_one::<PathBuf>("model_dir")
                 .expect("Required argument");
 
-            // Read program settings
-            let settings = Settings::from_path(model_dir).unwrap();
-            // Set the program to log level
-            log::init(settings.log_level.as_deref());
-            log_panics::init();
-
-            let model = Model::from_path(model_dir).unwrap();
-            info!("Model loaded successfully.");
-            // Run simulation
-            muse2::run(&model);
+            handle_run_command(model_dir);
         }
         _ => {
             println!("Use 'muse2 run <MODEL_DIR>' to run a simulation");
