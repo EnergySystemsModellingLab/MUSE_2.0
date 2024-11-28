@@ -2,7 +2,7 @@
 use crate::demand::{read_demand, Demand};
 use crate::input::*;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
@@ -210,7 +210,7 @@ fn read_commodity_costs(
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> HashMap<Rc<str>, CommodityCostMap> {
+) -> Result<HashMap<Rc<str>, CommodityCostMap>> {
     let file_path = model_dir.join(COMMODITY_COSTS_FILE_NAME);
     read_commodity_costs_iter(
         read_csv::<CommodityCostRaw>(&file_path),
@@ -219,7 +219,7 @@ fn read_commodity_costs(
         time_slice_info,
         milestone_years,
     )
-    .unwrap_input_err(&file_path)
+    .context("Error reading commodity costs")
 }
 
 /// Read commodity data from the specified model directory.
@@ -248,7 +248,7 @@ pub fn read_commodities(
         region_ids,
         time_slice_info,
         milestone_years,
-    );
+    )?;
 
     let year_range = *milestone_years.first().unwrap()..=*milestone_years.last().unwrap();
     let mut demand = read_demand(
