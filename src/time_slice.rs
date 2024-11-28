@@ -127,7 +127,7 @@ impl TimeSliceInfo {
     pub fn iter_selection<'a>(
         &'a self,
         selection: &'a TimeSliceSelection,
-    ) -> Box<dyn Iterator<Item = &TimeSliceID> + 'a> {
+    ) -> Box<dyn Iterator<Item = &'a TimeSliceID> + 'a> {
         match selection {
             TimeSliceSelection::Annual => Box::new(self.iter()),
             TimeSliceSelection::Season(season) => {
