@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 use crate::input::*;
+use anyhow::Result;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -12,7 +13,9 @@ const REGIONS_FILE_NAME: &str = "regions.csv";
 /// Represents a region with an ID and a longer description.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Region {
+    /// A unique identifier for a region (e.g. "GBR").
     pub id: Rc<str>,
+    /// A text description of the region (e.g. "United Kingdom").
     pub description: String,
 }
 define_id_getter! {Region}
@@ -46,9 +49,8 @@ impl RegionSelection {
 ///
 /// # Returns
 ///
-/// This function returns a `HashMap<Rc<str>, Region>` with the parsed regions data. The keys are
-/// region IDs.
-pub fn read_regions(model_dir: &Path) -> HashMap<Rc<str>, Region> {
+/// A `HashMap<Rc<str>, Region>` with the parsed regions data or an error. The keys are region IDs.
+pub fn read_regions(model_dir: &Path) -> Result<HashMap<Rc<str>, Region>> {
     read_csv_id_file(&model_dir.join(REGIONS_FILE_NAME))
 }
 
@@ -174,7 +176,7 @@ AP,Asia Pacific"
     fn test_read_regions() {
         let dir = tempdir().unwrap();
         create_regions_file(dir.path());
-        let regions = read_regions(dir.path());
+        let regions = read_regions(dir.path()).unwrap();
         assert_eq!(
             regions,
             HashMap::from([

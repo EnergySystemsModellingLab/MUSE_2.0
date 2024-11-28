@@ -4,7 +4,7 @@ use crate::input::*;
 use crate::region::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use ::log::warn;
-use anyhow::{bail, ensure, Result};
+use anyhow::{bail, ensure, Context, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -240,7 +240,7 @@ fn read_process_availabilities_from_iter<I>(
     file_path: &Path,
     process_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-) -> HashMap<Rc<str>, Vec<ProcessAvailability>>
+) -> Result<HashMap<Rc<str>, Vec<ProcessAvailability>>>
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
@@ -260,14 +260,12 @@ where
         .into_id_map(process_ids)
         .unwrap_input_err(file_path);
 
-    if availabilities.len() < process_ids.len() {
-        input_panic(
-            file_path,
-            "Every process must have at least one availability period",
-        );
-    }
+    ensure!(
+        availabilities.len() >= process_ids.len(),
+        "Every process must have at least one availability period"
+    );
 
-    availabilities
+    Ok(availabilities)
 }
 
 /// Read the availability of each process over time slices
@@ -275,7 +273,7 @@ fn read_process_availabilities(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-) -> HashMap<Rc<str>, Vec<ProcessAvailability>> {
+) -> Result<HashMap<Rc<str>, Vec<ProcessAvailability>>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     read_process_availabilities_from_iter(
         read_csv(&file_path),
@@ -283,6 +281,7 @@ fn read_process_availabilities(
         process_ids,
         time_slice_info,
     )
+    .with_context(|| input_err_msg(file_path))
 }
 
 fn read_process_parameters_from_iter<I>(
@@ -397,21 +396,21 @@ pub fn read_processes(
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, Rc<Process>> {
+) -> Result<HashMap<Rc<str>, Rc<Process>>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path);
+    let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path)?;
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
-    let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info);
+    let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
-    let mut flows = read_csv_grouped_by_id(&file_path, &process_ids);
+    let mut flows = read_csv_grouped_by_id(&file_path, &process_ids)?;
     let mut pacs = read_process_pacs(model_dir, &process_ids, commodities);
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range);
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions =
         read_regions_for_entity::<ProcessRegion>(&file_path, &process_ids, region_ids);
 
-    process_ids
+    Ok(process_ids
         .into_iter()
         .map(|id| {
             // We know entry is present
@@ -433,7 +432,7 @@ pub fn read_processes(
 
             (id, process.into())
         })
-        .collect()
+        .collect())
 }
 
 #[cfg(test)]

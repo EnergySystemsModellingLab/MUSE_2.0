@@ -233,14 +233,14 @@ fn read_commodity_costs(
 ///
 /// # Returns
 ///
-/// A map containing commodities, grouped by commodity ID.
+/// A map containing commodities, grouped by commodity ID or an error.
 pub fn read_commodities(
     model_dir: &Path,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> HashMap<Rc<str>, Rc<Commodity>> {
-    let commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME));
+) -> Result<HashMap<Rc<str>, Rc<Commodity>>> {
+    let commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME))?;
     let commodity_ids = commodities.keys().cloned().collect();
     let mut costs = read_commodity_costs(
         model_dir,
@@ -260,7 +260,7 @@ pub fn read_commodities(
     );
 
     // Populate Vecs for each Commodity
-    commodities
+    Ok(commodities
         .into_iter()
         .map(|(id, mut commodity)| {
             if let Some(costs) = costs.remove(&id) {
@@ -272,7 +272,7 @@ pub fn read_commodities(
 
             (id, commodity.into())
         })
-        .collect()
+        .collect())
 }
 
 #[cfg(test)]

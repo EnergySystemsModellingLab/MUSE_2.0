@@ -73,7 +73,7 @@ impl ModelFile {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path)?;
         check_milestone_years(&model_file.milestone_years.years)
-            .with_context(|| format!("Error in `{}`", file_path.to_string_lossy()))?;
+            .with_context(|| input_err_msg(file_path))?;
 
         Ok(model_file)
     }
@@ -93,20 +93,20 @@ impl Model {
         let model_file = ModelFile::from_path(&model_dir)?;
 
         let time_slice_info = read_time_slice_info(model_dir.as_ref());
-        let regions = read_regions(model_dir.as_ref());
+        let regions = read_regions(model_dir.as_ref())?;
         let region_ids = regions.keys().cloned().collect();
         let years = &model_file.milestone_years.years;
         let year_range = *years.first().unwrap()..=*years.last().unwrap();
 
         let commodities =
-            read_commodities(model_dir.as_ref(), &region_ids, &time_slice_info, years);
+            read_commodities(model_dir.as_ref(), &region_ids, &time_slice_info, years)?;
         let processes = read_processes(
             model_dir.as_ref(),
             &commodities,
             &region_ids,
             &time_slice_info,
             &year_range,
-        );
+        )?;
         let agents = read_agents(model_dir.as_ref(), &processes, &region_ids);
 
         Ok(Model {
