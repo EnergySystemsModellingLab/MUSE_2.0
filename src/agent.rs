@@ -3,10 +3,10 @@ use crate::asset::{read_assets, Asset};
 use crate::input::*;
 use crate::process::Process;
 use crate::region::*;
+use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -126,25 +126,26 @@ define_agent_id_getter! {AgentObjective}
 fn check_objective_parameter(
     objective: &AgentObjective,
     decision_rule: &DecisionRule,
-) -> Result<(), String> {
+) -> Result<()> {
     // Check that the user hasn't supplied a value for a field we're not using
     macro_rules! check_field_none {
         ($field:ident) => {
-            if objective.$field.is_some() {
-                Err(format!(
-                    "Field {} should be empty for this decision rule",
-                    stringify!($field)
-                ))?;
-            }
+            ensure!(
+                objective.$field.is_none(),
+                "Field {} should be empty for this decision rule",
+                stringify!($field)
+            )
         };
     }
 
     // Check that required fields are present
     macro_rules! check_field_some {
         ($field:ident) => {
-            if objective.$field.is_none() {
-                Err(format!("Required field {} is empty", stringify!($field)))?;
-            }
+            ensure!(
+                objective.$field.is_some(),
+                "Required field {} is empty",
+                stringify!($field)
+            )
         };
     }
 
@@ -169,7 +170,7 @@ fn check_objective_parameter(
 fn read_agent_objectives_from_iter<I>(
     iter: I,
     agents: &HashMap<Rc<str>, Agent>,
-) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>, Box<dyn Error>>
+) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>>
 where
     I: Iterator<Item = AgentObjective>,
 {
@@ -177,7 +178,7 @@ where
     for objective in iter {
         let (id, agent) = agents
             .get_key_value(objective.agent_id.as_str())
-            .ok_or("Invalid agent ID")?;
+            .context("Invalid agent ID")?;
 
         // Check that required parameters are present and others are absent
         check_objective_parameter(&objective, &agent.decision_rule)?;
@@ -189,9 +190,10 @@ where
             .push(objective);
     }
 
-    if objectives.len() < agents.len() {
-        Err("All agents must have at least one objective")?;
-    }
+    ensure!(
+        objectives.len() >= agents.len(),
+        "All agents must have at least one objective"
+    );
 
     Ok(objectives)
 }
@@ -216,7 +218,7 @@ fn read_agent_objectives(
 pub fn read_agents_file_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Agent>, &'static str>
+) -> Result<HashMap<Rc<str>, Agent>>
 where
     I: Iterator<Item = Agent>,
 {
@@ -228,13 +230,14 @@ where
                 .iter()
                 .all(|id| process_ids.contains(id.as_str()))
             {
-                Err("Invalid process ID")?;
+                bail!("Invalid process ID");
             }
         }
 
-        if agents.insert(Rc::clone(&agent.id), agent).is_some() {
-            Err("Duplicate agent ID")?;
-        }
+        ensure!(
+            agents.insert(Rc::clone(&agent.id), agent).is_none(),
+            "Duplicate agent ID"
+        );
     }
 
     Ok(agents)
