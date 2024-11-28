@@ -210,9 +210,11 @@ where
 fn read_agent_objectives(
     model_dir: &Path,
     agents: &HashMap<Rc<str>, Agent>,
-) -> HashMap<Rc<str>, Vec<AgentObjective>> {
+) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>> {
     let file_path = model_dir.join(AGENT_OBJECTIVES_FILE_NAME);
-    read_agent_objectives_from_iter(read_csv(&file_path), agents).unwrap_input_err(&file_path)
+    let agent_objectives_csv = read_csv(&file_path)?;
+    read_agent_objectives_from_iter(agent_objectives_csv, agents)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 pub fn read_agents_file_from_iter<I>(
@@ -256,9 +258,10 @@ where
 pub fn read_agents_file(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, Agent> {
+) -> Result<HashMap<Rc<str>, Agent>> {
     let file_path = model_dir.join(AGENT_FILE_NAME);
-    read_agents_file_from_iter(read_csv(&file_path), process_ids).unwrap_input_err(&file_path)
+    let agents_csv = read_csv(&file_path)?;
+    read_agents_file_from_iter(agents_csv, process_ids).with_context(|| input_err_msg(&file_path))
 }
 
 /// Read agents info from various CSV files.
@@ -276,16 +279,16 @@ pub fn read_agents(
     model_dir: &Path,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, Agent> {
+) -> Result<HashMap<Rc<str>, Agent>> {
     let process_ids = processes.keys().cloned().collect();
-    let mut agents = read_agents_file(model_dir, &process_ids);
+    let mut agents = read_agents_file(model_dir, &process_ids)?;
     let agent_ids = agents.keys().cloned().collect();
 
     let file_path = model_dir.join(AGENT_REGIONS_FILE_NAME);
     let mut agent_regions =
-        read_regions_for_entity::<AgentRegion>(&file_path, &agent_ids, region_ids);
-    let mut objectives = read_agent_objectives(model_dir, &agents);
-    let mut assets = read_assets(model_dir, &agent_ids, processes, region_ids);
+        read_regions_for_entity::<AgentRegion>(&file_path, &agent_ids, region_ids)?;
+    let mut objectives = read_agent_objectives(model_dir, &agents)?;
+    let mut assets = read_assets(model_dir, &agent_ids, processes, region_ids)?;
 
     // Populate each Agent's Vecs
     for (id, agent) in agents.iter_mut() {
@@ -294,7 +297,7 @@ pub fn read_agents(
         agent.assets = assets.remove(id).unwrap_or_default();
     }
 
-    agents
+    Ok(agents)
 }
 
 #[cfg(test)]

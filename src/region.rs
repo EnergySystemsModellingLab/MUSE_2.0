@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 use crate::input::*;
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Context, Result};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -142,12 +142,12 @@ pub fn read_regions_for_entity<T>(
     file_path: &Path,
     entity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, RegionSelection>
+) -> Result<HashMap<Rc<str>, RegionSelection>>
 where
     T: HasID + HasRegionID + DeserializeOwned,
 {
-    read_regions_for_entity_from_iter(read_csv::<T>(file_path), entity_ids, region_ids)
-        .unwrap_input_err(file_path)
+    read_regions_for_entity_from_iter(read_csv::<T>(file_path)?, entity_ids, region_ids)
+        .with_context(|| input_err_msg(file_path))
 }
 
 #[cfg(test)]

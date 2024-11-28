@@ -98,10 +98,11 @@ pub fn read_assets(
     agent_ids: &HashSet<Rc<str>>,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, Vec<Asset>> {
+) -> Result<HashMap<Rc<str>, Vec<Asset>>> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
-    read_assets_from_iter(read_csv(&file_path), agent_ids, processes, region_ids)
-        .unwrap_input_err(&file_path)
+    let assets_csv = read_csv(&file_path)?;
+    read_assets_from_iter(assets_csv, agent_ids, processes, region_ids)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 #[cfg(test)]
