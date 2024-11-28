@@ -39,7 +39,7 @@ fn handle_run_command(sub_matches: &clap::ArgMatches) {
 
 fn main() {
     let cmd = Command::new("muse2")
-        .version("2.0")
+        .version("1.0")
         .about("MUSE2 Simulation Tool")
         .subcommand(build_run_command());
 
