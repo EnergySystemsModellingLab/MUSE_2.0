@@ -143,10 +143,10 @@ where
         T: HasID + DeserializeOwned,
     {
         let mut map = HashMap::new();
-        for record in read_csv::<T>(file_path) {
+        for record in read_csv::<T>(file_path)? {
             let id = record.get_id();
 
-            ensure!(!map.contains_key(id), format!("Duplicate ID found: {id}"));
+            ensure!(!map.contains_key(id), "Duplicate ID found: {id}");
 
             map.insert(id.into(), record);
         }
@@ -203,7 +203,7 @@ pub fn read_csv_grouped_by_id<T>(
 where
     T: HasID + DeserializeOwned,
 {
-    read_csv(file_path)
+    read_csv(file_path)?
         .into_id_map(ids)
         .with_context(|| input_err_msg(file_path))
 }
