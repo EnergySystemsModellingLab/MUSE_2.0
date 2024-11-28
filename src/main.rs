@@ -31,7 +31,7 @@ fn handle_run_command(sub_matches: &clap::ArgMatches) {
     log_panics::init();
 
     // Load and run model
-    let model = Model::from_path(&model_dir).unwrap();
+    let model = Model::from_path(model_dir).unwrap();
     info!("Model loaded successfully.");
     muse2::run(&model);
 }
