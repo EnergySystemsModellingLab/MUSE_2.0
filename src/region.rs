@@ -1,9 +1,9 @@
 #![allow(missing_docs)]
 use crate::input::*;
+use anyhow::{ensure, Result};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -106,7 +106,7 @@ fn read_regions_for_entity_from_iter<I, T>(
     entity_iter: I,
     entity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, RegionSelection>, Box<dyn Error>>
+) -> Result<HashMap<Rc<str>, RegionSelection>>
 where
     I: Iterator<Item = T>,
     T: HasID + HasRegionID,
@@ -118,15 +118,16 @@ where
 
         let succeeded = try_insert_region(entity_id, region_id, region_ids, &mut entity_regions);
 
-        if !succeeded {
-            Err("Invalid regions specified for entity. \
-                 Must specify either unique region IDs or \"all\".")?;
-        }
+        ensure!(
+            succeeded,
+            "Invalid regions specified for entity. Must specify either unique region IDs or \"all\"."
+        );
     }
 
-    if entity_regions.len() < entity_ids.len() {
-        Err("At least one region must be specified per entity")?;
-    }
+    ensure!(
+        entity_regions.len() >= entity_ids.len(),
+        "At least one region must be specified per entity"
+    );
 
     Ok(entity_regions)
 }
