@@ -15,11 +15,16 @@ use std::rc::Rc;
 /// # Arguments
 ///
 /// * `file_path` - Path to the CSV file
-pub fn read_csv<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> impl Iterator<Item = T> + 'a {
-    csv::Reader::from_path(file_path)
-        .unwrap_input_err(file_path)
+pub fn read_csv<'a, T: DeserializeOwned + 'a>(
+    file_path: &'a Path,
+) -> Result<impl Iterator<Item = T> + 'a> {
+    let vec = csv::Reader::from_path(file_path)
+        .with_context(|| input_err_msg(file_path))?
         .into_deserialize()
-        .unwrap_input_err(file_path)
+        .process_results(|iter| iter.collect_vec())
+        .with_context(|| input_err_msg(file_path))?;
+
+    Ok(vec.into_iter())
 }
 
 /// Parse a TOML file at the specified path.
