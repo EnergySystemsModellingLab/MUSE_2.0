@@ -89,21 +89,6 @@ impl<T, E: Display> UnwrapInputError<T> for Result<T, E> {
     }
 }
 
-pub trait UnwrapInputErrorIter<T> {
-    /// Maps an `Iterator` of `Result`s with an arbitrary `Error` type to an `Iterator<Item = T>`
-    fn unwrap_input_err(self, file_path: &Path) -> impl Iterator<Item = T>;
-}
-
-impl<T, E, I> UnwrapInputErrorIter<T> for I
-where
-    E: Display,
-    I: Iterator<Item = Result<T, E>>,
-{
-    fn unwrap_input_err(self, file_path: &Path) -> impl Iterator<Item = T> {
-        self.map(|x| x.unwrap_input_err(file_path))
-    }
-}
-
 /// Indicates that the struct has an ID field
 pub trait HasID {
     /// Get a string representation of the struct's ID
