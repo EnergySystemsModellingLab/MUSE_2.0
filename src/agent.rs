@@ -132,10 +132,8 @@ fn check_objective_parameter(
         ($field:ident) => {
             ensure!(
                 objective.$field.is_none(),
-                format!(
-                    "Field {} should be empty for this decision rule",
-                    stringify!($field)
-                )
+                "Field {} should be empty for this decision rule",
+                stringify!($field)
             )
         };
     }
@@ -145,7 +143,8 @@ fn check_objective_parameter(
         ($field:ident) => {
             ensure!(
                 objective.$field.is_some(),
-                format!("Required field {} is empty", stringify!($field))
+                "Required field {} is empty",
+                stringify!($field)
             )
         };
     }
