@@ -7,16 +7,23 @@ use muse2::settings::Settings;
 use std::path::PathBuf;
 
 fn build_run_command() -> Command {
-    Command::new("run").about("Run a model simulation").arg(
-        Arg::new("model_dir")
-            .help("Path to the model directory")
-            .required(true)
-            .index(1)
-            .value_parser(clap::value_parser!(PathBuf)),
-    )
+    Command::new("run")
+        .about("Use 'muse2 run <MODEL_DIR>' to run a simulation")
+        .override_usage("muse2 run <MODEL_DIR>")
+        .arg(
+            Arg::new("model_dir")
+                .help("Path to the model directory")
+                .required(true)
+                .index(1)
+                .value_parser(clap::value_parser!(PathBuf)),
+        )
 }
 
-fn handle_run_command(model_dir: &PathBuf) {
+fn handle_run_command(sub_matches: &clap::ArgMatches) {
+    let model_dir = sub_matches
+        .get_one::<PathBuf>("model_dir")
+        .expect("Required argument");
+
     // Read program settings
     let settings = Settings::from_path(model_dir).unwrap();
 
@@ -29,7 +36,7 @@ fn handle_run_command(model_dir: &PathBuf) {
     info!("Model loaded successfully.");
     muse2::run(&model);
 }
-/// The main entry point for the `muse2 run` command.
+
 fn main() {
     let cmd = Command::new("muse2")
         .version("2.0")
@@ -37,15 +44,8 @@ fn main() {
         .subcommand(build_run_command());
 
     let matches = cmd.get_matches();
-
     match matches.subcommand() {
-        Some(("run", sub_matches)) => {
-            let model_dir = sub_matches
-                .get_one::<PathBuf>("model_dir")
-                .expect("Required argument");
-
-            handle_run_command(model_dir);
-        }
+        Some(("run", sub_matches)) => handle_run_command(sub_matches),
         _ => {
             println!("Use 'muse2 run <MODEL_DIR>' to run a simulation");
             println!("Use 'muse2 --help' for more information");
