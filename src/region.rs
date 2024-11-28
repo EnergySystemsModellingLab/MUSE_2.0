@@ -48,9 +48,8 @@ impl RegionSelection {
 ///
 /// # Returns
 ///
-/// This function returns a `HashMap<Rc<str>, Region>` with the parsed regions data. The keys are
-/// region IDs.
-pub fn read_regions(model_dir: &Path) -> HashMap<Rc<str>, Region> {
+/// A `HashMap<Rc<str>, Region>` with the parsed regions data or an error. The keys are region IDs.
+pub fn read_regions(model_dir: &Path) -> Result<HashMap<Rc<str>, Region>> {
     read_csv_id_file(&model_dir.join(REGIONS_FILE_NAME))
 }
 
@@ -177,7 +176,7 @@ AP,Asia Pacific"
     fn test_read_regions() {
         let dir = tempdir().unwrap();
         create_regions_file(dir.path());
-        let regions = read_regions(dir.path());
+        let regions = read_regions(dir.path()).unwrap();
         assert_eq!(
             regions,
             HashMap::from([

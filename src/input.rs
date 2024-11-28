@@ -32,10 +32,8 @@ pub fn read_csv<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> impl Itera
 ///
 /// * The deserialised TOML data or an error if the file could not be read or parsed.
 pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
-    let toml_str = fs::read_to_string(file_path)
-        .with_context(|| format!("Failed to read `{}`", file_path.to_string_lossy()))?;
-    let toml_data = toml::from_str(&toml_str)
-        .with_context(|| format!("Could not parse `{}`", file_path.to_string_lossy()))?;
+    let toml_str = fs::read_to_string(file_path).with_context(|| input_err_msg(file_path))?;
+    let toml_data = toml::from_str(&toml_str).with_context(|| input_err_msg(file_path))?;
     Ok(toml_data)
 }
 
@@ -62,9 +60,9 @@ pub enum LimitType {
     Equality,
 }
 
-/// Panic including the path to the file along with the message
-pub fn input_panic(file_path: &Path, msg: &str) -> ! {
-    panic!("Error reading {}: {}", file_path.to_string_lossy(), msg);
+/// Format an error message to include the file path. To be used with `anyhow::Context`.
+pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
+    format!("Error reading {}", file_path.as_ref().to_string_lossy())
 }
 
 /// A trait allowing us to add the unwrap_input_err method to `Result`s
@@ -77,7 +75,11 @@ impl<T, E: Display> UnwrapInputError<T> for Result<T, E> {
     fn unwrap_input_err(self, file_path: &Path) -> T {
         match self {
             Ok(value) => value,
-            Err(err) => input_panic(file_path, &err.to_string()),
+            Err(err) => panic!(
+                "Error reading {}: {}",
+                file_path.to_string_lossy(),
+                &err.to_string()
+            ),
         }
     }
 }
@@ -131,7 +133,9 @@ pub trait IDCollection {
 
 impl IDCollection for HashSet<Rc<str>> {
     fn get_id(&self, id: &str) -> Result<Rc<str>> {
-        let id = self.get(id).context(format!("Unknown ID {id} found"))?;
+        let id = self
+            .get(id)
+            .with_context(|| format!("Unknown ID {id} found"))?;
         Ok(Rc::clone(id))
     }
 }
@@ -140,25 +144,28 @@ impl IDCollection for HashSet<Rc<str>> {
 ///
 /// This is like `read_csv_grouped_by_id`, with the difference that it is to be used on the "main"
 /// CSV file for a record type, so it assumes that all IDs encountered are valid.
-pub fn read_csv_id_file<T>(file_path: &Path) -> HashMap<Rc<str>, T>
+pub fn read_csv_id_file<T>(file_path: &Path) -> Result<HashMap<Rc<str>, T>>
 where
     T: HasID + DeserializeOwned,
 {
-    let mut map = HashMap::new();
-    for record in read_csv::<T>(file_path) {
-        let id = record.get_id();
+    fn fill_and_validate_map<T>(file_path: &Path) -> Result<HashMap<Rc<str>, T>>
+    where
+        T: HasID + DeserializeOwned,
+    {
+        let mut map = HashMap::new();
+        for record in read_csv::<T>(file_path) {
+            let id = record.get_id();
 
-        if map.contains_key(id) {
-            input_panic(file_path, &format!("Duplicate ID found: {id}"));
+            ensure!(!map.contains_key(id), format!("Duplicate ID found: {id}"));
+
+            map.insert(id.into(), record);
         }
+        ensure!(!map.is_empty(), "CSV file is empty");
 
-        map.insert(id.into(), record);
-    }
-    if map.is_empty() {
-        input_panic(file_path, "CSV file is empty");
+        Ok(map)
     }
 
-    map
+    fill_and_validate_map(file_path).with_context(|| input_err_msg(file_path))
 }
 
 pub trait IntoIDMap<T> {
@@ -198,17 +205,17 @@ where
 ///
 /// # Returns
 ///
-/// A HashMap with ID as a key and a vector of CSV data as a value.
+/// A HashMap with ID as a key and a vector of CSV data as a value or an error.
 pub fn read_csv_grouped_by_id<T>(
     file_path: &Path,
     ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, Vec<T>>
+) -> Result<HashMap<Rc<str>, Vec<T>>>
 where
     T: HasID + DeserializeOwned,
 {
     read_csv(file_path)
         .into_id_map(ids)
-        .unwrap_input_err(file_path)
+        .with_context(|| input_err_msg(file_path))
 }
 
 #[cfg(test)]
@@ -348,7 +355,7 @@ mod tests {
         let process_ids = create_ids();
         let file_path = dir.path().join("data.csv");
         let map = read_csv_grouped_by_id::<Record>(&file_path, &process_ids);
-        assert_eq!(expected, map);
+        assert_eq!(expected, map.unwrap());
     }
 
     #[test]
@@ -366,6 +373,6 @@ mod tests {
 
         // Check that it fails if a non-existent process ID is provided
         let process_ids = create_ids();
-        read_csv_grouped_by_id::<Record>(&file_path, &process_ids);
+        read_csv_grouped_by_id::<Record>(&file_path, &process_ids).unwrap();
     }
 }
