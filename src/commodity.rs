@@ -1,14 +1,11 @@
 #![allow(missing_docs)]
 use crate::demand::{read_demand, Demand};
 use crate::input::*;
-use crate::time_slice::{TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
-use anyhow::Result;
-use itertools::Itertools;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
+use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
-use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -29,26 +26,14 @@ pub struct Commodity {
     pub time_slice_level: TimeSliceLevel,
 
     #[serde(skip)]
-    pub costs: Vec<CommodityCost>,
+    pub costs: CommodityCostMap,
     #[serde(skip)]
     pub demand_by_region: HashMap<Rc<str>, Demand>,
 }
 define_id_getter! {Commodity}
 
-macro_rules! define_commodity_id_getter {
-    ($t:ty) => {
-        impl HasID for $t {
-            fn get_id(&self) -> &str {
-                &self.commodity_id
-            }
-        }
-    };
-}
-
-pub(crate) use define_commodity_id_getter;
-
 /// Type of balance for application of cost
-#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
+#[derive(PartialEq, Clone, Debug, DeserializeLabeledStringEnum)]
 pub enum BalanceType {
     #[string = "net"]
     Net,
@@ -59,7 +44,7 @@ pub enum BalanceType {
 }
 
 /// Cost parameters for each commodity
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Debug, Deserialize, Clone)]
 struct CommodityCostRaw {
     /// Unique identifier for the commodity (e.g. "ELC")
     pub commodity_id: String,
@@ -75,46 +60,48 @@ struct CommodityCostRaw {
     pub value: f64,
 }
 
-impl CommodityCostRaw {
-    /// Convert the raw record type into a validated `CommodityCost` type
-    fn try_into_commodity_cost(
-        self,
-        commodity_ids: &HashSet<Rc<str>>,
-        region_ids: &HashSet<Rc<str>>,
-        time_slice_info: &TimeSliceInfo,
-        year_range: &RangeInclusive<u32>,
-    ) -> Result<CommodityCost, Box<dyn Error>> {
-        let commodity_id = commodity_ids.get_id(&self.commodity_id)?;
-        let region_id = region_ids.get_id(&self.region_id)?;
-        let time_slice = time_slice_info.get_selection(&self.time_slice)?;
-
-        // Check year is in range
-        if !year_range.contains(&self.year) {
-            Err(format!("Year {} is out of range", self.year))?;
-        }
-
-        Ok(CommodityCost {
-            commodity_id,
-            region_id,
-            balance_type: self.balance_type,
-            year: self.year,
-            time_slice,
-            value: self.value,
-        })
-    }
-}
-
 /// Cost parameters for each commodity
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct CommodityCost {
-    pub commodity_id: Rc<str>,
-    pub region_id: Rc<str>,
+    /// Type of balance for application of cost.
     pub balance_type: BalanceType,
-    pub year: u32,
-    pub time_slice: TimeSliceSelection,
+    /// Cost per unit commodity. For example, if a CO2 price is specified in input data, it can be applied to net CO2 via this value.
     pub value: f64,
 }
-define_commodity_id_getter! {CommodityCost}
+
+/// Used for looking up [`CommodityCost`]s in a [`CommodityCostMap`]
+#[derive(PartialEq, Eq, Hash, Debug)]
+struct CommodityCostKey {
+    region_id: Rc<str>,
+    year: u32,
+    time_slice: TimeSliceID,
+}
+
+/// A data structure for easy lookup of [`CommodityCost`]s
+#[derive(PartialEq, Debug, Default)]
+pub struct CommodityCostMap(HashMap<CommodityCostKey, CommodityCost>);
+
+impl CommodityCostMap {
+    /// Create a new, empty [`CommodityCostMap`]
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    /// Retrieve a [`CommodityCost`] from the map
+    pub fn get(
+        &self,
+        region_id: Rc<str>,
+        year: u32,
+        time_slice: TimeSliceID,
+    ) -> Option<&CommodityCost> {
+        let key = CommodityCostKey {
+            region_id,
+            year,
+            time_slice,
+        };
+        self.0.get(&key)
+    }
+}
 
 /// Commodity balance type
 #[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
@@ -134,16 +121,74 @@ fn read_commodity_costs_iter<I>(
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-    year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, Vec<CommodityCost>>, Box<dyn Error>>
+    milestone_years: &[u32],
+) -> Result<HashMap<Rc<str>, CommodityCostMap>>
 where
     I: Iterator<Item = CommodityCostRaw>,
 {
-    iter.map(|cost| {
-        cost.try_into_commodity_cost(commodity_ids, region_ids, time_slice_info, year_range)
-    })
-    // Commodity IDs have already been validated
-    .process_results(|iter| iter.into_id_map(commodity_ids).unwrap())
+    let mut map = HashMap::new();
+
+    // Keep track of milestone years used for each commodity + region combo. If a user provides an
+    // entry with a given commodity + region combo for one milestone year, they must also provide
+    // entries for all the other milestone years.
+    let mut used_milestone_years = HashMap::new();
+
+    for cost in iter {
+        let commodity_id = commodity_ids.get_id(&cost.commodity_id)?;
+        let region_id = region_ids.get_id(&cost.region_id)?;
+        let ts_selection = time_slice_info.get_selection(&cost.time_slice)?;
+
+        ensure!(
+            milestone_years.binary_search(&cost.year).is_ok(),
+            "Year {} is not a milestone year. \
+                Input of non-milestone years is currently not supported.",
+            cost.year
+        );
+
+        // Get or create CommodityCostMap for this commodity
+        let map = map
+            .entry(commodity_id.clone())
+            .or_insert_with(|| CommodityCostMap(HashMap::with_capacity(1)));
+
+        for time_slice in time_slice_info.iter_selection(&ts_selection) {
+            let key = CommodityCostKey {
+                region_id: Rc::clone(&region_id),
+                year: cost.year,
+                time_slice: time_slice.clone(),
+            };
+            let value = CommodityCost {
+                balance_type: cost.balance_type.clone(),
+                value: cost.value,
+            };
+
+            ensure!(
+                map.0.insert(key, value).is_none(),
+                "Commodity cost entry covered by more than one time slice \
+                (region: {}, year: {}, time slice: {})",
+                region_id,
+                cost.year,
+                time_slice
+            );
+        }
+
+        // Keep track of milestone years used for each commodity + region combo
+        used_milestone_years
+            .entry((commodity_id, region_id))
+            .or_insert_with(|| HashSet::with_capacity(1))
+            .insert(cost.year);
+    }
+
+    let milestone_years = HashSet::from_iter(milestone_years.iter().cloned());
+    for ((commodity_id, region_id), years) in used_milestone_years.iter() {
+        ensure!(
+            years == &milestone_years,
+            "Commodity costs missing for some milestone years (commodity: {}, region: {})",
+            commodity_id,
+            region_id
+        );
+    }
+
+    Ok(map)
 }
 
 /// Read costs associated with each commodity from commodity costs CSV file.
@@ -154,7 +199,7 @@ where
 /// * `commodity_ids` - All possible commodity IDs
 /// * `region_ids` - All possible region IDs
 /// * `time_slice_info` - Information about time slices
-/// * `year_range` - The possible range of milestone years
+/// * `milestone_years` - All milestone years
 ///
 /// # Returns
 ///
@@ -164,17 +209,17 @@ fn read_commodity_costs(
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-    year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, Vec<CommodityCost>> {
+    milestone_years: &[u32],
+) -> Result<HashMap<Rc<str>, CommodityCostMap>> {
     let file_path = model_dir.join(COMMODITY_COSTS_FILE_NAME);
     read_commodity_costs_iter(
         read_csv::<CommodityCostRaw>(&file_path),
         commodity_ids,
         region_ids,
         time_slice_info,
-        year_range,
+        milestone_years,
     )
-    .unwrap_input_err(&file_path)
+    .context("Error reading commodity costs")
 }
 
 /// Read commodity data from the specified model directory.
@@ -184,7 +229,7 @@ fn read_commodity_costs(
 /// * `model_dir` - Folder containing model configuration files
 /// * `region_ids` - All possible region IDs
 /// * `time_slice_info` - Information about time slices
-/// * `year_range` - The possible range of milestone years
+/// * `milestone_years` - All milestone years
 ///
 /// # Returns
 ///
@@ -193,7 +238,7 @@ pub fn read_commodities(
     model_dir: &Path,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-    year_range: &RangeInclusive<u32>,
+    milestone_years: &[u32],
 ) -> Result<HashMap<Rc<str>, Rc<Commodity>>> {
     let commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME))?;
     let commodity_ids = commodities.keys().cloned().collect();
@@ -202,14 +247,16 @@ pub fn read_commodities(
         &commodity_ids,
         region_ids,
         time_slice_info,
-        year_range,
-    );
+        milestone_years,
+    )?;
+
+    let year_range = *milestone_years.first().unwrap()..=*milestone_years.last().unwrap();
     let mut demand = read_demand(
         model_dir,
         &commodity_ids,
         region_ids,
         time_slice_info,
-        year_range,
+        &year_range,
     );
 
     // Populate Vecs for each Commodity
@@ -231,77 +278,209 @@ pub fn read_commodities(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::iter;
 
     #[test]
-    fn test_try_into_commodity_cost() {
+    fn test_commodity_cost_map_get() {
+        let ts = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "day".into(),
+        };
+        let key = CommodityCostKey {
+            region_id: "GBR".into(),
+            year: 2010,
+            time_slice: ts.clone(),
+        };
+        let value = CommodityCost {
+            balance_type: BalanceType::Consumption,
+            value: 0.5,
+        };
+        let map = CommodityCostMap(HashMap::from_iter([(key, value.clone())]));
+        assert_eq!(map.get("GBR".into(), 2010, ts).unwrap(), &value);
+    }
+
+    #[test]
+    fn test_read_commodity_costs_iter() {
         let commodity_ids = ["commodity".into()].into_iter().collect();
         let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
-        let time_slice_info = TimeSliceInfo::default();
-        let year_range = 2010..=2020;
+        let slices = [
+            TimeSliceID {
+                season: "winter".into(),
+                time_of_day: "day".into(),
+            },
+            TimeSliceID {
+                season: "summer".into(),
+                time_of_day: "night".into(),
+            },
+        ];
+        let time_slice_info = TimeSliceInfo {
+            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            times_of_day: ["day".into(), "night".into()].into_iter().collect(),
+            fractions: [(slices[0].clone(), 0.5), (slices[1].clone(), 0.5)]
+                .into_iter()
+                .collect(),
+        };
+        let time_slice = time_slice_info
+            .get_time_slice_id_from_str("winter.day")
+            .unwrap();
+        let milestone_years = [2010];
 
         // Valid
-        let cost = CommodityCostRaw {
+        let cost1 = CommodityCostRaw {
             commodity_id: "commodity".into(),
             region_id: "GBR".into(),
             balance_type: BalanceType::Consumption,
             year: 2010,
-            time_slice: "".into(),
-            value: 5.0,
+            time_slice: "winter.day".into(),
+            value: 0.5,
         };
-        assert!(cost
-            .try_into_commodity_cost(&commodity_ids, &region_ids, &time_slice_info, &year_range)
-            .is_ok());
+        let cost2 = CommodityCostRaw {
+            commodity_id: "commodity".into(),
+            region_id: "FRA".into(),
+            balance_type: BalanceType::Production,
+            year: 2010,
+            time_slice: "winter.day".into(),
+            value: 0.5,
+        };
+        let key1 = CommodityCostKey {
+            region_id: "GBR".into(),
+            year: cost1.year,
+            time_slice: time_slice.clone(),
+        };
+        let value1 = CommodityCost {
+            balance_type: cost1.balance_type.clone(),
+            value: cost1.value,
+        };
+        let key2 = CommodityCostKey {
+            region_id: "FRA".into(),
+            year: cost2.year,
+            time_slice: time_slice.clone(),
+        };
+        let value2 = CommodityCost {
+            balance_type: cost2.balance_type.clone(),
+            value: cost2.value,
+        };
+        let map = CommodityCostMap(HashMap::from_iter([(key1, value1), (key2, value2)]));
+        let expected = HashMap::from_iter([("commodity".into(), map)]);
+        assert_eq!(
+            read_commodity_costs_iter(
+                [cost1.clone(), cost2].into_iter(),
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+                &milestone_years,
+            )
+            .unwrap(),
+            expected
+        );
 
-        // Bad commodity
+        // Invalid: Overlapping time slices
+        let cost2 = CommodityCostRaw {
+            commodity_id: "commodity".into(),
+            region_id: "GBR".into(),
+            balance_type: BalanceType::Production,
+            year: 2010,
+            time_slice: "winter".into(), // NB: Covers all winter
+            value: 0.5,
+        };
+        assert!(read_commodity_costs_iter(
+            [cost1.clone(), cost2].into_iter(),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+            &milestone_years,
+        )
+        .is_err());
+
+        // Invalid: Bad commodity
         let cost = CommodityCostRaw {
             commodity_id: "commodity2".into(),
             region_id: "GBR".into(),
-            balance_type: BalanceType::Consumption,
+            balance_type: BalanceType::Production,
             year: 2010,
-            time_slice: "".into(),
-            value: 5.0,
+            time_slice: "winter.day".into(),
+            value: 0.5,
         };
-        assert!(cost
-            .try_into_commodity_cost(&commodity_ids, &region_ids, &time_slice_info, &year_range)
-            .is_err());
+        assert!(read_commodity_costs_iter(
+            iter::once(cost),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+            &milestone_years,
+        )
+        .is_err());
 
-        // Bad region
+        // Invalid: Bad region
         let cost = CommodityCostRaw {
             commodity_id: "commodity".into(),
             region_id: "USA".into(),
-            balance_type: BalanceType::Consumption,
+            balance_type: BalanceType::Production,
             year: 2010,
-            time_slice: "".into(),
-            value: 5.0,
+            time_slice: "winter.day".into(),
+            value: 0.5,
         };
-        assert!(cost
-            .try_into_commodity_cost(&commodity_ids, &region_ids, &time_slice_info, &year_range)
-            .is_err());
+        assert!(read_commodity_costs_iter(
+            iter::once(cost),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+            &milestone_years,
+        )
+        .is_err());
 
-        // Bad time slice selection
+        // Invalid: Bad time slice selection
+        let cost = CommodityCostRaw {
+            commodity_id: "commodity".into(),
+            region_id: "GBR".into(),
+            balance_type: BalanceType::Production,
+            year: 2010,
+            time_slice: "summer.evening".into(),
+            value: 0.5,
+        };
+        assert!(read_commodity_costs_iter(
+            iter::once(cost),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+            &milestone_years,
+        )
+        .is_err());
+
+        // Invalid: non-milestone year
+        let cost2 = CommodityCostRaw {
+            commodity_id: "commodity".into(),
+            region_id: "GBR".into(),
+            balance_type: BalanceType::Consumption,
+            year: 2011, // NB: Non-milestone year
+            time_slice: "winter.day".into(),
+            value: 0.5,
+        };
+        assert!(read_commodity_costs_iter(
+            [cost1, cost2].into_iter(),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+            &milestone_years,
+        )
+        .is_err());
+
+        // Invalid: Milestone year 2020 is not covered
+        let milestone_years = [2010, 2020];
         let cost = CommodityCostRaw {
             commodity_id: "commodity".into(),
             region_id: "GBR".into(),
             balance_type: BalanceType::Consumption,
             year: 2010,
-            time_slice: "spring".into(),
-            value: 5.0,
+            time_slice: "winter.day".into(),
+            value: 0.5,
         };
-        assert!(cost
-            .try_into_commodity_cost(&commodity_ids, &region_ids, &time_slice_info, &year_range)
-            .is_err());
-
-        // Bad year
-        let cost = CommodityCostRaw {
-            commodity_id: "commodity".into(),
-            region_id: "GBR".into(),
-            balance_type: BalanceType::Consumption,
-            year: 1999,
-            time_slice: "".into(),
-            value: 5.0,
-        };
-        assert!(cost
-            .try_into_commodity_cost(&commodity_ids, &region_ids, &time_slice_info, &year_range)
-            .is_err());
+        assert!(read_commodity_costs_iter(
+            iter::once(cost),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+            &milestone_years,
+        )
+        .is_err());
     }
 }
