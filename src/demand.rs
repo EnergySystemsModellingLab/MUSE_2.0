@@ -114,10 +114,11 @@ fn read_demand_file(
     commodity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> DemandHashMap {
+) -> Result<DemandHashMap> {
     let file_path = model_dir.join(DEMAND_FILE_NAME);
-    read_demand_from_iter(read_csv(&file_path), commodity_ids, region_ids, year_range)
-        .unwrap_input_err(&file_path)
+    let demand_csv = read_csv(&file_path)?;
+    read_demand_from_iter(demand_csv, commodity_ids, region_ids, year_range)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 /// Try to get demand for the given commodity and region. Returns `None` if not found.
@@ -168,10 +169,11 @@ fn read_demand_slices(
     model_dir: &Path,
     time_slice_info: &TimeSliceInfo,
     demand: &mut DemandHashMap,
-) {
+) -> Result<()> {
     let file_path = model_dir.join(DEMAND_SLICES_FILE_NAME);
-    read_demand_slices_from_iter(read_csv(&file_path), time_slice_info, demand)
-        .unwrap_input_err(&file_path)
+    let demand_slices_csv = read_csv(&file_path)?;
+    read_demand_slices_from_iter(demand_slices_csv, time_slice_info, demand)
+        .with_context(|| input_err_msg(file_path))
 }
 
 /// Reads demand data from a CSV file.
@@ -193,13 +195,13 @@ pub fn read_demand(
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
-) -> DemandHashMap {
-    let mut demand = read_demand_file(model_dir, commodity_ids, region_ids, year_range);
+) -> Result<DemandHashMap> {
+    let mut demand = read_demand_file(model_dir, commodity_ids, region_ids, year_range)?;
 
     // Read in demand slices
-    read_demand_slices(model_dir, time_slice_info, &mut demand);
+    read_demand_slices(model_dir, time_slice_info, &mut demand)?;
 
-    demand
+    Ok(demand)
 }
 
 #[cfg(test)]
@@ -377,7 +379,7 @@ COM1,West,2023,13"
         let year_range = 2020..=2030;
         let demand = read_demand_file(dir.path(), &commodity_ids, &region_ids, &year_range);
         assert_eq!(
-            demand,
+            demand.unwrap(),
             HashMap::from_iter(
                 [(
                     "COM1".into(),

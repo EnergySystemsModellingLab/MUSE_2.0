@@ -258,7 +258,7 @@ pub fn read_commodities(
         region_ids,
         time_slice_info,
         &year_range,
-    );
+    )?;
 
     // Populate Vecs for each Commodity
     Ok(commodities
