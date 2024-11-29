@@ -244,7 +244,7 @@ mod tests {
     fn test_read_csv() {
         let dir = tempdir().unwrap();
         let file_path = create_csv_file(dir.path(), "id,value\nhello,1\nworld,2\n");
-        let records: Vec<Record> = read_csv(&file_path).collect();
+        let records: Vec<Record> = read_csv(&file_path).unwrap().collect();
         assert_eq!(
             records,
             &[

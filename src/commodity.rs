@@ -212,14 +212,15 @@ fn read_commodity_costs(
     milestone_years: &[u32],
 ) -> Result<HashMap<Rc<str>, CommodityCostMap>> {
     let file_path = model_dir.join(COMMODITY_COSTS_FILE_NAME);
+    let commodity_costs_csv = read_csv::<CommodityCostRaw>(&file_path)?;
     read_commodity_costs_iter(
-        read_csv::<CommodityCostRaw>(&file_path),
+        commodity_costs_csv,
         commodity_ids,
         region_ids,
         time_slice_info,
         milestone_years,
     )
-    .context("Error reading commodity costs")
+    .with_context(|| input_err_msg(&file_path))
 }
 
 /// Read commodity data from the specified model directory.

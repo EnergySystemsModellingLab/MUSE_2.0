@@ -213,13 +213,14 @@ pub enum TimeSliceLevel {
 ///
 /// This function returns a `TimeSliceInfo` struct or, if the file doesn't exist, a single time
 /// slice covering the whole year (see `TimeSliceInfo::default()`).
-pub fn read_time_slice_info(model_dir: &Path) -> TimeSliceInfo {
+pub fn read_time_slice_info(model_dir: &Path) -> Result<TimeSliceInfo> {
     let file_path = model_dir.join(TIME_SLICES_FILE_NAME);
     if !file_path.exists() {
-        return TimeSliceInfo::default();
+        return Ok(TimeSliceInfo::default());
     }
 
-    read_time_slice_info_from_iter(read_csv(&file_path)).unwrap_input_err(&file_path)
+    let time_slices_csv = read_csv(&file_path)?;
+    read_time_slice_info_from_iter(time_slices_csv).with_context(|| input_err_msg(file_path))
 }
 
 /// Check that time slice fractions sum to (approximately) one
@@ -264,7 +265,7 @@ autumn,evening,0.25"
         let dir = tempdir().unwrap();
         create_time_slices_file(dir.path());
 
-        let info = read_time_slice_info(dir.path());
+        let info = read_time_slice_info(dir.path()).unwrap();
         assert_eq!(
             info,
             TimeSliceInfo {
@@ -323,7 +324,7 @@ autumn,evening,0.25"
     #[test]
     fn test_read_time_slice_info_non_existent() {
         let actual = read_time_slice_info(tempdir().unwrap().path());
-        assert_eq!(actual, TimeSliceInfo::default());
+        assert_eq!(actual.unwrap(), TimeSliceInfo::default());
     }
 
     #[test]
