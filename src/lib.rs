@@ -8,7 +8,6 @@ pub mod input;
 pub mod log;
 pub mod model;
 pub mod process;
-pub mod process_readers;
 pub mod region;
 pub mod settings;
 pub mod time_slice;

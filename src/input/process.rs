@@ -1,9 +1,9 @@
 #![allow(missing_docs)]
-use crate::commodity::Commodity;
-use crate::input::{
+use super::{
     deserialise_proportion_nonzero, input_err_msg, read_csv, read_csv_grouped_by_id,
     read_csv_id_file, HasID, IDCollection, IntoIDMap, LimitType, UnwrapInputError,
 };
+use crate::commodity::Commodity;
 use crate::process::{
     Process, ProcessAvailability, ProcessDescription, ProcessPAC, ProcessParameter, ProcessRegion,
 };

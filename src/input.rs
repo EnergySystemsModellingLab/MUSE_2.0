@@ -10,6 +10,8 @@ use std::fs;
 use std::path::Path;
 use std::rc::Rc;
 
+pub mod process;
+
 /// Read a series of type `T`s from a CSV file.
 ///
 /// # Arguments
