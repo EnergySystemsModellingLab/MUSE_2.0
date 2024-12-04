@@ -3,6 +3,7 @@
 //! This module sets up logging with various levels (error, warn, info, debug, trace) and optional
 //! colourisation based on terminal support. It also allows configuration of the log level through
 //! environment variables.
+use anyhow::Result;
 use atty;
 use chrono::Local;
 use fern::colors::{Color, ColoredLevelConfig};
@@ -28,7 +29,7 @@ pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
 /// # Arguments
 ///
 /// * `log_level_from_settings`: The log level specified in `settings.toml`
-pub fn init(log_level_from_settings: Option<&str>) {
+pub fn init(log_level_from_settings: Option<&str>) -> Result<()> {
     // Retrieve the log level from the environment variable or settings, or use the default
     let log_level = env::var("MUSE2_LOG_LEVEL").unwrap_or_else(|_| {
         log_level_from_settings
@@ -89,5 +90,7 @@ pub fn init(log_level_from_settings: Option<&str>) {
         .chain(std::io::stdout());
 
     // Apply the logger configuration
-    dispatch.apply().unwrap();
+    dispatch.apply()?;
+
+    Ok(())
 }
