@@ -5,7 +5,6 @@ use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
-use std::fmt::Display;
 use std::fs;
 use std::path::Path;
 use std::rc::Rc;
@@ -68,25 +67,6 @@ pub enum LimitType {
 /// Format an error message to include the file path. To be used with `anyhow::Context`.
 pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
     format!("Error reading {}", file_path.as_ref().to_string_lossy())
-}
-
-/// A trait allowing us to add the unwrap_input_err method to `Result`s
-pub trait UnwrapInputError<T> {
-    /// Maps a `Result` with an arbitrary `Error` type to an `T`
-    fn unwrap_input_err(self, file_path: &Path) -> T;
-}
-
-impl<T, E: Display> UnwrapInputError<T> for Result<T, E> {
-    fn unwrap_input_err(self, file_path: &Path) -> T {
-        match self {
-            Ok(value) => value,
-            Err(err) => panic!(
-                "Error reading {}: {}",
-                file_path.to_string_lossy(),
-                &err.to_string()
-            ),
-        }
-    }
 }
 
 /// Indicates that the struct has an ID field
