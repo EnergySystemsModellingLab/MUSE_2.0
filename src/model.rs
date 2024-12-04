@@ -92,7 +92,7 @@ impl Model {
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<Model> {
         let model_file = ModelFile::from_path(&model_dir)?;
 
-        let time_slice_info = read_time_slice_info(model_dir.as_ref());
+        let time_slice_info = read_time_slice_info(model_dir.as_ref())?;
         let regions = read_regions(model_dir.as_ref())?;
         let region_ids = regions.keys().cloned().collect();
         let years = &model_file.milestone_years.years;
@@ -107,7 +107,7 @@ impl Model {
             &time_slice_info,
             &year_range,
         )?;
-        let agents = read_agents(model_dir.as_ref(), &processes, &region_ids);
+        let agents = read_agents(model_dir.as_ref(), &processes, &region_ids)?;
 
         Ok(Model {
             milestone_years: model_file.milestone_years.years,

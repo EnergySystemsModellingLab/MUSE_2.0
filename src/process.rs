@@ -275,13 +275,14 @@ fn read_process_availabilities(
     time_slice_info: &TimeSliceInfo,
 ) -> Result<HashMap<Rc<str>, Vec<ProcessAvailability>>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
+    let process_availabilities_csv = read_csv(&file_path)?;
     read_process_availabilities_from_iter(
-        read_csv(&file_path),
+        process_availabilities_csv,
         &file_path,
         process_ids,
         time_slice_info,
     )
-    .with_context(|| input_err_msg(file_path))
+    .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_process_parameters_from_iter<I>(
@@ -316,10 +317,11 @@ fn read_process_parameters(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, ProcessParameter> {
+) -> Result<HashMap<Rc<str>, ProcessParameter>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
-    let iter = read_csv::<ProcessParameterRaw>(&file_path);
-    read_process_parameters_from_iter(iter, process_ids, year_range).unwrap_input_err(&file_path)
+    let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
+    read_process_parameters_from_iter(iter, process_ids, year_range)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 /// Read process Primary Activity Commodities (PACs) from an iterator.
@@ -371,10 +373,11 @@ fn read_process_pacs(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
-) -> HashMap<Rc<str>, Vec<Rc<Commodity>>> {
+) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>> {
     let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
-    read_process_pacs_from_iter(read_csv(&file_path), process_ids, commodities)
-        .unwrap_input_err(&file_path)
+    let process_pacs_csv = read_csv(&file_path)?;
+    read_process_pacs_from_iter(process_pacs_csv, process_ids, commodities)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 /// Read process information from the specified CSV files.
@@ -404,11 +407,11 @@ pub fn read_processes(
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let mut flows = read_csv_grouped_by_id(&file_path, &process_ids)?;
-    let mut pacs = read_process_pacs(model_dir, &process_ids, commodities);
-    let mut parameters = read_process_parameters(model_dir, &process_ids, year_range);
+    let mut pacs = read_process_pacs(model_dir, &process_ids, commodities)?;
+    let mut parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions =
-        read_regions_for_entity::<ProcessRegion>(&file_path, &process_ids, region_ids);
+        read_regions_for_entity::<ProcessRegion>(&file_path, &process_ids, region_ids)?;
 
     Ok(process_ids
         .into_iter()
