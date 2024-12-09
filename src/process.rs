@@ -1,13 +1,14 @@
+#![allow(missing_docs)]
 use crate::commodity::Commodity;
 use crate::input::*;
 use crate::region::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use ::log::warn;
+use anyhow::{bail, ensure, Context, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
@@ -42,9 +43,13 @@ struct ProcessAvailabilityRaw {
 /// The availabilities for a process over time slices
 #[derive(PartialEq, Debug)]
 pub struct ProcessAvailability {
+    /// Unique identifier for the process (typically uses a structured naming convention).
     process_id: String,
+    /// The limit type – lower bound, upper bound or equality.
     pub limit_type: LimitType,
+    /// The time slice to which the availability applies.
     pub time_slice: TimeSliceSelection,
+    /// The availability value, between 0 and 1 inclusive.
     pub value: f64,
 }
 define_process_id_getter! {ProcessAvailability}
@@ -53,8 +58,10 @@ define_process_id_getter! {ProcessAvailability}
 pub enum FlowType {
     #[default]
     #[string = "fixed"]
+    /// The input to output flow ratio is fixed.
     Fixed,
     #[string = "flexible"]
+    /// The flow ratio can vary, subject to overall flow of a specified group of commodities whose input/output ratio must be as per user input data.
     Flexible,
 }
 
@@ -83,10 +90,17 @@ impl ProcessFlowRaw {
 
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct ProcessFlow {
-    process_id: String,
+    /// A unique identifier for the process (typically uses a structured naming convention).
+    pub process_id: String,
+    /// Identifies the commodity for the specified flow
     pub commodity_id: String,
+    /// Commodity flow quantity relative to other commodity flows. +ve value indicates flow out, -ve value indicates flow in.
     pub flow: f64,
+    #[serde(default)]
+    /// Identifies if a flow is fixed or flexible.
     pub flow_type: FlowType,
+    #[serde(deserialize_with = "deserialise_flow_cost")]
+    /// Cost per unit flow. For example, cost per unit of natural gas produced. Differs from var_opex because the user can apply it to any specified flow, whereas var_opex applies to pac flow.
     pub flow_cost: f64,
 }
 
@@ -127,20 +141,16 @@ struct ProcessParameterRaw {
 define_process_id_getter! {ProcessParameterRaw}
 
 impl ProcessParameterRaw {
-    fn into_parameter(
-        self,
-        year_range: &RangeInclusive<u32>,
-    ) -> Result<ProcessParameter, Box<dyn Error>> {
+    fn into_parameter(self, year_range: &RangeInclusive<u32>) -> Result<ProcessParameter> {
         let start_year = self.start_year.unwrap_or(*year_range.start());
         let end_year = self.end_year.unwrap_or(*year_range.end());
 
         // Check year range is valid
-        if start_year > end_year {
-            Err(format!(
-                "Error in parameter for process {}: start_year > end_year",
-                self.process_id
-            ))?;
-        }
+        ensure!(
+            start_year <= end_year,
+            "Error in parameter for process {}: start_year > end_year",
+            self.process_id
+        );
 
         self.validate()?;
 
@@ -175,20 +185,20 @@ impl ProcessParameterRaw {
     /// # Returns
     ///
     /// Returns `Ok(())` if all validations pass.
-    fn validate(&self) -> Result<(), Box<dyn Error>> {
-        if self.lifetime == 0 {
-            Err(format!(
-                "Error in parameter for process {}: Lifetime must be greater than 0",
-                self.process_id
-            ))?;
-        }
+    fn validate(&self) -> Result<()> {
+        ensure!(
+            self.lifetime > 0,
+            "Error in parameter for process {}: Lifetime must be greater than 0",
+            self.process_id
+        );
+
         if let Some(dr) = self.discount_rate {
-            if dr < 0.0 {
-                Err(format!(
-                    "Error in parameter for process {}: Discount rate must be positive",
-                    self.process_id
-                ))?;
-            }
+            ensure!(
+                dr >= 0.0,
+                "Error in parameter for process {}: Discount rate must be positive",
+                self.process_id
+            );
+
             if dr > 1.0 {
                 warn!(
                     "Warning in parameter for process {}: Discount rate is greater than 1",
@@ -196,19 +206,20 @@ impl ProcessParameterRaw {
                 );
             }
         }
+
         if let Some(c2a) = self.cap2act {
-            if c2a < 0.0 {
-                Err(format!(
-                    "Error in parameter for process {}: Cap2act must be positive",
-                    self.process_id
-                ))?;
-            }
+            ensure!(
+                c2a >= 0.0,
+                "Error in parameter for process {}: Cap2act must be positive",
+                self.process_id
+            );
         }
+
         Ok(())
     }
 }
 
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Deserialize)]
 pub struct ProcessParameter {
     pub process_id: String,
     pub years: RangeInclusive<u32>,
@@ -253,7 +264,7 @@ fn read_process_availabilities_from_iter<I>(
     file_path: &Path,
     process_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-) -> HashMap<Rc<str>, Vec<ProcessAvailability>>
+) -> Result<HashMap<Rc<str>, Vec<ProcessAvailability>>>
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
@@ -273,14 +284,12 @@ where
         .into_id_map(process_ids)
         .unwrap_input_err(file_path);
 
-    if availabilities.len() < process_ids.len() {
-        input_panic(
-            file_path,
-            "Every process must have at least one availability period",
-        );
-    }
+    ensure!(
+        availabilities.len() >= process_ids.len(),
+        "Every process must have at least one availability period"
+    );
 
-    availabilities
+    Ok(availabilities)
 }
 
 /// Read the availability of each process over time slices
@@ -288,21 +297,23 @@ fn read_process_availabilities(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-) -> HashMap<Rc<str>, Vec<ProcessAvailability>> {
+) -> Result<HashMap<Rc<str>, Vec<ProcessAvailability>>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
+    let process_availabilities_csv = read_csv(&file_path)?;
     read_process_availabilities_from_iter(
-        read_csv(&file_path),
+        process_availabilities_csv,
         &file_path,
         process_ids,
         time_slice_info,
     )
+    .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, ProcessParameter>, Box<dyn Error>>
+) -> Result<HashMap<Rc<str>, ProcessParameter>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
@@ -311,14 +322,16 @@ where
         let param = param.into_parameter(year_range)?;
         let id = process_ids.get_id(&param.process_id)?;
 
-        if params.insert(Rc::clone(&id), param).is_some() {
-            Err(format!("More than one parameter provided for process {id}"))?;
-        }
+        ensure!(
+            params.insert(Rc::clone(&id), param).is_none(),
+            "More than one parameter provided for process {id}"
+        );
     }
 
-    if params.len() < process_ids.len() {
-        Err("Each process must have an associated parameter")?;
-    }
+    ensure!(
+        params.len() == process_ids.len(),
+        "Each process must have an associated parameter"
+    );
 
     Ok(params)
 }
@@ -328,10 +341,11 @@ fn read_process_parameters(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, ProcessParameter> {
+) -> Result<HashMap<Rc<str>, ProcessParameter>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
-    let iter = read_csv::<ProcessParameterRaw>(&file_path);
-    read_process_parameters_from_iter(iter, process_ids, year_range).unwrap_input_err(&file_path)
+    let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
+    read_process_parameters_from_iter(iter, process_ids, year_range)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 /// Read process Primary Activity Commodities (PACs) from an iterator.
@@ -349,7 +363,7 @@ fn read_process_pacs_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
-) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>, Box<dyn Error>>
+) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>>
 where
     I: Iterator<Item = ProcessPAC>,
 {
@@ -361,11 +375,9 @@ where
         let commodity = commodities.get(pac.commodity_id.as_str());
 
         match commodity {
-            None => Err(format!("{} is not a valid commodity ID", &pac.commodity_id))?,
+            None => bail!("{} is not a valid commodity ID", &pac.commodity_id),
             Some(commodity) => {
-                if !pacs.insert(pac) {
-                    Err("Duplicate PACs found")?;
-                }
+                ensure!(pacs.insert(pac), "Duplicate PACs found");
 
                 Ok((process_id, Rc::clone(commodity)))
             }
@@ -385,10 +397,11 @@ fn read_process_pacs(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
-) -> HashMap<Rc<str>, Vec<Rc<Commodity>>> {
+) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>> {
     let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
-    read_process_pacs_from_iter(read_csv(&file_path), process_ids, commodities)
-        .unwrap_input_err(&file_path)
+    let process_pacs_csv = read_csv(&file_path)?;
+    read_process_pacs_from_iter(process_pacs_csv, process_ids, commodities)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 /// Read process information from the specified CSV files.
@@ -410,21 +423,21 @@ pub fn read_processes(
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
-) -> HashMap<Rc<str>, Process> {
+) -> Result<HashMap<Rc<str>, Rc<Process>>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path);
+    let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path)?;
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
-    let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info);
+    let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
-    let mut flows = read_csv_grouped_by_id(&file_path, &process_ids);
-    let mut pacs = read_process_pacs(model_dir, &process_ids, commodities);
-    let mut parameters = read_process_parameters(model_dir, &process_ids, year_range);
+    let mut flows = read_csv_grouped_by_id(&file_path, &process_ids)?;
+    let mut pacs = read_process_pacs(model_dir, &process_ids, commodities)?;
+    let mut parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions =
-        read_regions_for_entity::<ProcessRegion>(&file_path, &process_ids, region_ids);
+        read_regions_for_entity::<ProcessRegion>(&file_path, &process_ids, region_ids)?;
 
-    process_ids
+    Ok(process_ids
         .into_iter()
         .map(|id| {
             // We know entry is present
@@ -444,14 +457,14 @@ pub fn read_processes(
                 regions,
             };
 
-            (id, process)
+            (id, process.into())
         })
-        .collect()
+        .collect())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::commodity::CommodityType;
+    use crate::commodity::{CommodityCostMap, CommodityType};
     use crate::time_slice::TimeSliceLevel;
 
     use super::*;
@@ -742,11 +755,12 @@ mod tests {
             .into_iter()
             .map(|id| {
                 let commodity = Commodity {
-                    costs: vec![],
                     id: id.into(),
                     description: "Some description".into(),
                     kind: CommodityType::InputCommodity,
                     time_slice_level: TimeSliceLevel::Annual,
+                    costs: CommodityCostMap::new(),
+                    demand_by_region: HashMap::new(),
                 };
 
                 (Rc::clone(&commodity.id), commodity.into())

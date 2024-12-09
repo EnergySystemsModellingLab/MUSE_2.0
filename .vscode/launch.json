@@ -15,7 +15,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["${workspaceFolder}/examples/simple"],
+            "args": ["run", "${workspaceFolder}/examples/simple"],
             "cwd": "${workspaceFolder}"
         },
         {
@@ -29,7 +29,6 @@
                     "kind": "bin"
                 }
             },
-            "args": ["${workspaceFolder}/examples/simple"],
             "cwd": "${workspaceFolder}"
         }
     ]

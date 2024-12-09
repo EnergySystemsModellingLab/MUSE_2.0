@@ -6,9 +6,10 @@ use std::path::Path;
 
 const SETTINGS_FILE_NAME: &str = "settings.toml";
 
-/// Program settings
+/// Program settings from config file
 #[derive(Debug, Default, Deserialize, PartialEq)]
 pub struct Settings {
+    /// The user's preferred logging level
     pub log_level: Option<String>,
 }
 

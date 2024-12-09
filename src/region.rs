@@ -1,8 +1,9 @@
+#![allow(missing_docs)]
 use crate::input::*;
+use anyhow::{ensure, Context, Result};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -11,7 +12,9 @@ const REGIONS_FILE_NAME: &str = "regions.csv";
 /// Represents a region with an ID and a longer description.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Region {
+    /// A unique identifier for a region (e.g. "GBR").
     pub id: Rc<str>,
+    /// A text description of the region (e.g. "United Kingdom").
     pub description: String,
 }
 define_id_getter! {Region}
@@ -45,9 +48,8 @@ impl RegionSelection {
 ///
 /// # Returns
 ///
-/// This function returns a `HashMap<Rc<str>, Region>` with the parsed regions data. The keys are
-/// region IDs.
-pub fn read_regions(model_dir: &Path) -> HashMap<Rc<str>, Region> {
+/// A `HashMap<Rc<str>, Region>` with the parsed regions data or an error. The keys are region IDs.
+pub fn read_regions(model_dir: &Path) -> Result<HashMap<Rc<str>, Region>> {
     read_csv_id_file(&model_dir.join(REGIONS_FILE_NAME))
 }
 
@@ -103,7 +105,7 @@ fn read_regions_for_entity_from_iter<I, T>(
     entity_iter: I,
     entity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, RegionSelection>, Box<dyn Error>>
+) -> Result<HashMap<Rc<str>, RegionSelection>>
 where
     I: Iterator<Item = T>,
     T: HasID + HasRegionID,
@@ -115,15 +117,16 @@ where
 
         let succeeded = try_insert_region(entity_id, region_id, region_ids, &mut entity_regions);
 
-        if !succeeded {
-            Err("Invalid regions specified for entity. \
-                 Must specify either unique region IDs or \"all\".")?;
-        }
+        ensure!(
+            succeeded,
+            "Invalid regions specified for entity. Must specify either unique region IDs or \"all\"."
+        );
     }
 
-    if entity_regions.len() < entity_ids.len() {
-        Err("At least one region must be specified per entity")?;
-    }
+    ensure!(
+        entity_regions.len() >= entity_ids.len(),
+        "At least one region must be specified per entity"
+    );
 
     Ok(entity_regions)
 }
@@ -139,12 +142,12 @@ pub fn read_regions_for_entity<T>(
     file_path: &Path,
     entity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
-) -> HashMap<Rc<str>, RegionSelection>
+) -> Result<HashMap<Rc<str>, RegionSelection>>
 where
     T: HasID + HasRegionID + DeserializeOwned,
 {
-    read_regions_for_entity_from_iter(read_csv::<T>(file_path), entity_ids, region_ids)
-        .unwrap_input_err(file_path)
+    read_regions_for_entity_from_iter(read_csv::<T>(file_path)?, entity_ids, region_ids)
+        .with_context(|| input_err_msg(file_path))
 }
 
 #[cfg(test)]
@@ -173,7 +176,7 @@ AP,Asia Pacific"
     fn test_read_regions() {
         let dir = tempdir().unwrap();
         create_regions_file(dir.path());
-        let regions = read_regions(dir.path());
+        let regions = read_regions(dir.path()).unwrap();
         assert_eq!(
             regions,
             HashMap::from([
