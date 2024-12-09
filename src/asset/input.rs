@@ -20,75 +20,77 @@ struct AssetRaw {
     commission_year: u32,
 }
 
-/// Process assets from an iterator.
-///
-/// # Arguments
-///
-/// * `iter` - Iterator of `AssetRaw`s
-/// * `agent_ids` - All possible process IDs
-/// * `processes` - The model's processes
-/// * `region_ids` - All possible region IDs
-///
-/// # Returns
-///
-/// A `HashMap` containing assets grouped by agent ID or an error.
-fn read_assets_from_iter<I>(
-    iter: I,
-    agent_ids: &HashSet<Rc<str>>,
-    processes: &HashMap<Rc<str>, Rc<Process>>,
-    region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Vec<Asset>>>
-where
-    I: Iterator<Item = AssetRaw>,
-{
-    iter.map(|asset| -> Result<_> {
-        let agent_id = agent_ids.get_id(&asset.agent_id)?;
-        let process = processes
-            .get(asset.process_id.as_str())
-            .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
-        let region_id = region_ids.get_id(&asset.region_id)?;
-        ensure!(
-            process.regions.contains(&region_id),
-            "Region {} is not one of the regions in which process {} operates",
-            region_id,
-            process.id
-        );
-
-        Ok((
-            agent_id,
-            Asset {
-                process: Rc::clone(process),
+impl Asset {
+    /// Process assets from an iterator.
+    ///
+    /// # Arguments
+    ///
+    /// * `iter` - Iterator of `AssetRaw`s
+    /// * `agent_ids` - All possible process IDs
+    /// * `processes` - The model's processes
+    /// * `region_ids` - All possible region IDs
+    ///
+    /// # Returns
+    ///
+    /// A `HashMap` containing assets grouped by agent ID or an error.
+    fn from_iter<I>(
+        iter: I,
+        agent_ids: &HashSet<Rc<str>>,
+        processes: &HashMap<Rc<str>, Rc<Process>>,
+        region_ids: &HashSet<Rc<str>>,
+    ) -> Result<HashMap<Rc<str>, Vec<Self>>>
+    where
+        I: Iterator<Item = AssetRaw>,
+    {
+        iter.map(|asset| -> Result<_> {
+            let agent_id = agent_ids.get_id(&asset.agent_id)?;
+            let process = processes
+                .get(asset.process_id.as_str())
+                .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
+            let region_id = region_ids.get_id(&asset.region_id)?;
+            ensure!(
+                process.regions.contains(&region_id),
+                "Region {} is not one of the regions in which process {} operates",
                 region_id,
-                capacity: asset.capacity,
-                commission_year: asset.commission_year,
-            },
-        ))
-    })
-    .process_results(|iter| iter.into_group_map())
-}
+                process.id
+            );
 
-/// Read assets CSV file from model directory.
-///
-/// # Arguments
-///
-/// * `model_dir` - Folder containing model configuration files
-/// * `agent_ids` - All possible process IDs
-/// * `processes` - The model's processes
-/// * `region_ids` - All possible region IDs
-///
-/// # Returns
-///
-/// A `HashMap` containing assets grouped by agent ID.
-pub fn read_assets(
-    model_dir: &Path,
-    agent_ids: &HashSet<Rc<str>>,
-    processes: &HashMap<Rc<str>, Rc<Process>>,
-    region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Vec<Asset>>> {
-    let file_path = model_dir.join(ASSETS_FILE_NAME);
-    let assets_csv = read_csv(&file_path)?;
-    read_assets_from_iter(assets_csv, agent_ids, processes, region_ids)
-        .with_context(|| input_err_msg(&file_path))
+            Ok((
+                agent_id,
+                Self {
+                    process: Rc::clone(process),
+                    region_id,
+                    capacity: asset.capacity,
+                    commission_year: asset.commission_year,
+                },
+            ))
+        })
+        .process_results(|iter| iter.into_group_map())
+    }
+
+    /// Read assets CSV file from model directory.
+    ///
+    /// # Arguments
+    ///
+    /// * `model_dir` - Folder containing model configuration files
+    /// * `agent_ids` - All possible process IDs
+    /// * `processes` - The model's processes
+    /// * `region_ids` - All possible region IDs
+    ///
+    /// # Returns
+    ///
+    /// A `HashMap` containing assets grouped by agent ID.
+    pub fn read_csv(
+        model_dir: &Path,
+        agent_ids: &HashSet<Rc<str>>,
+        processes: &HashMap<Rc<str>, Rc<Process>>,
+        region_ids: &HashSet<Rc<str>>,
+    ) -> Result<HashMap<Rc<str>, Vec<Self>>> {
+        let file_path = model_dir.join(ASSETS_FILE_NAME);
+        let assets_csv = read_csv(&file_path)?;
+        Self::from_iter(assets_csv, agent_ids, processes, region_ids)
+            .with_context(|| input_err_msg(&file_path))
+    }
 }
 
 #[cfg(test)]
@@ -142,8 +144,7 @@ mod tests {
         };
         let expected = [("agent1".into(), vec![asset_out])].into_iter().collect();
         assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
-                .unwrap()
+            Asset::from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids).unwrap()
                 == expected
         );
 
@@ -156,8 +157,7 @@ mod tests {
             commission_year: 2010,
         };
         assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
-                .is_err()
+            Asset::from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids).is_err()
         );
 
         // Bad agent ID
@@ -169,8 +169,7 @@ mod tests {
             commission_year: 2010,
         };
         assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
-                .is_err()
+            Asset::from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids).is_err()
         );
 
         // Bad region ID: not in region_ids
@@ -182,8 +181,7 @@ mod tests {
             commission_year: 2010,
         };
         assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
-                .is_err()
+            Asset::from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids).is_err()
         );
 
         // Bad region ID: process not active there
@@ -207,8 +205,7 @@ mod tests {
             .into_iter()
             .collect();
         assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
-                .is_err()
+            Asset::from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids).is_err()
         );
     }
 }

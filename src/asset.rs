@@ -5,7 +5,6 @@ use crate::process::Process;
 use std::rc::Rc;
 
 mod input;
-pub use input::read_assets;
 
 /// An asset controlled by an agent.
 #[derive(Clone, Debug, PartialEq)]
