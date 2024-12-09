@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use crate::asset::{read_assets, Asset};
+use crate::asset::Asset;
 use crate::input::*;
 use crate::process::Process;
 use crate::region::*;
@@ -288,7 +288,7 @@ pub fn read_agents(
     let mut agent_regions =
         read_regions_for_entity::<AgentRegion>(&file_path, &agent_ids, region_ids)?;
     let mut objectives = read_agent_objectives(model_dir, &agents)?;
-    let mut assets = read_assets(model_dir, &agent_ids, processes, region_ids)?;
+    let mut assets = Asset::read_csv(model_dir, &agent_ids, processes, region_ids)?;
 
     // Populate each Agent's Vecs
     for (id, agent) in agents.iter_mut() {
