@@ -28,7 +28,6 @@ fn handle_run_command(sub_matches: &clap::ArgMatches) {
 
     // Set up logging
     log::init(settings.log_level.as_deref()).expect("Failed to initialize logging");
-    log_panics::init();
 
     // Load and run model
     let model = Model::from_path(model_dir).unwrap();
