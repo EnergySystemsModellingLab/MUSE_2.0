@@ -243,17 +243,18 @@ fn read_process_availabilities_from_iter<I>(
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
-    let mut records: Vec<ProcessAvailability> = Vec::new();
-    for record in iter {
-        let time_slice = time_slice_info.get_selection(&record.time_slice)?;
-        records.push(ProcessAvailability {
-            process_id: record.process_id,
-            limit_type: record.limit_type,
-            time_slice,
-            value: record.value,
-        });
-    }
-    let availabilities = records.into_iter().into_id_map(process_ids)?;
+    let availabilities = iter
+        .map(|record| -> Result<_> {
+            let time_slice = time_slice_info.get_selection(&record.time_slice)?;
+
+            Ok(ProcessAvailability {
+                process_id: record.process_id,
+                limit_type: record.limit_type,
+                time_slice,
+                value: record.value,
+            })
+        })
+        .process_results(|iter| iter.into_id_map(process_ids))??;
 
     ensure!(
         availabilities.len() >= process_ids.len(),
