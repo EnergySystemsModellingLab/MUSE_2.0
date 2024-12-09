@@ -22,8 +22,6 @@ enum Commands {
         #[arg(help = "Path to the model directory")]
         model_dir: PathBuf,
     },
-    #[command(about = "Run the test suite.")]
-    Test,
 }
 
 fn handle_run_command(model_dir: &PathBuf) {
