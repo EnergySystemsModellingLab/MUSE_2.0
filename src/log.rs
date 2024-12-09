@@ -3,7 +3,7 @@
 //! This module sets up logging with various levels (error, warn, info, debug, trace) and optional
 //! colourisation based on terminal support. It also allows configuration of the log level through
 //! environment variables.
-use anyhow::Result;
+use anyhow::{bail, Result};
 use atty;
 use chrono::Local;
 use fern::colors::{Color, ColoredLevelConfig};
@@ -44,7 +44,7 @@ pub fn init(log_level_from_settings: Option<&str>) -> Result<()> {
         "info" => log::LevelFilter::Info,
         "debug" => log::LevelFilter::Debug,
         "trace" => log::LevelFilter::Trace,
-        unknown => panic!("Unknown log level: {}", unknown),
+        unknown => bail!("Unknown log level: {}", unknown),
     };
 
     // Format timestamp as HH:MM:SS
