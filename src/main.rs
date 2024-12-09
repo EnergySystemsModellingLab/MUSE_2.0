@@ -50,3 +50,29 @@ fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+
+    use super::*;
+
+    /// Get the path to the example model.
+    fn get_model_dir() -> PathBuf {
+        Path::new(file!())
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("examples")
+            .join("simple")
+    }
+
+    /// An integration test for the `run` command.
+    #[test]
+    fn test_handle_run_command() {
+        let matches =
+            build_run_command().get_matches_from(vec!["muse2", get_model_dir().to_str().unwrap()]);
+        handle_run_command(&matches);
+    }
+}
