@@ -7,9 +7,7 @@ use muse2::settings::Settings;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = clap::crate_name!())]
-#[command(version = clap::crate_version!())]
-#[command(about = clap::crate_description!())]
+#[command(version, about)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
