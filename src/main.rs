@@ -1,5 +1,6 @@
 //! The main entry point for the `muse2` command-line tool.
 use ::log::info;
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use muse2::log;
 use muse2::model::Model;
@@ -22,17 +23,19 @@ enum Commands {
     },
 }
 
-fn handle_run_command(model_dir: &PathBuf) {
+fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
     // Read program settings
-    let settings = Settings::from_path(model_dir).unwrap();
+    let settings = Settings::from_path(model_dir)?;
 
     // Set up logging
-    log::init(settings.log_level.as_deref()).expect("Failed to initialize logging");
+    log::init(settings.log_level.as_deref()).context("Failed to initialize logging.")?;
 
     // Load and run model
-    let model = Model::from_path(model_dir).unwrap();
+    let model = Model::from_path(model_dir).context("Failed to load Model.")?;
     info!("Model loaded successfully.");
     muse2::run(&model);
+
+    Ok(())
 }
 
 fn main() {
@@ -41,6 +44,7 @@ fn main() {
     match cli.command {
         Commands::Run { model_dir } => handle_run_command(&model_dir),
     }
+    .unwrap_or_else(|err| print!("{:?}", err))
 }
 
 #[cfg(test)]
@@ -62,6 +66,16 @@ mod tests {
     /// An integration test for the `run` command.
     #[test]
     fn test_handle_run_command() {
-        handle_run_command(&get_model_dir());
+        handle_run_command(&get_model_dir()).unwrap();
+
+        // Second time will fail because the logging is already initialised
+        assert_eq!(
+            handle_run_command(&get_model_dir())
+                .unwrap_err()
+                .chain()
+                .next()
+                .map(|x| format!("{x}")),
+            Some("Failed to initialize logging.".to_owned())
+        );
     }
 }
