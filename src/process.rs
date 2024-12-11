@@ -1,7 +1,10 @@
 #![allow(missing_docs)]
 use crate::commodity::Commodity;
+use crate::commodity::CommodityCostMap;
+use crate::commodity::CommodityType;
 use crate::input::*;
 use crate::region::*;
+use crate::time_slice::TimeSliceLevel;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use ::log::warn;
 use anyhow::{bail, ensure, Context, Result};
@@ -78,9 +81,18 @@ struct ProcessFlowRaw {
 
 impl ProcessFlowRaw {
     fn into_flow(self) -> ProcessFlow {
+        let commodity = Rc::new(Commodity {
+            id: Rc::from(self.commodity_id),
+            description: "".to_string(),
+            kind: CommodityType::InputCommodity,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand_by_region: HashMap::new(),
+        });
+
         ProcessFlow {
             process_id: self.process_id,
-            commodity_id: self.commodity_id,
+            commodity,
             flow: self.flow,
             flow_type: self.flow_type,
             flow_cost: self.flow_cost,
@@ -93,7 +105,7 @@ pub struct ProcessFlow {
     /// A unique identifier for the process (typically uses a structured naming convention).
     pub process_id: String,
     /// Identifies the commodity for the specified flow
-    pub commodity_id: String,
+    pub commodity: Rc<Commodity>,
     /// Commodity flow quantity relative to other commodity flows. +ve value indicates flow out, -ve value indicates flow in.
     pub flow: f64,
     #[serde(default)]
