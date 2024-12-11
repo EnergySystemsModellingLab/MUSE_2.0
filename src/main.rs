@@ -1,11 +1,13 @@
-//! The main entry point for the `muse2` command-line tool.
 use ::log::info;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
+use include_dir::{include_dir, Dir};
 use muse2::log;
 use muse2::model::Model;
 use muse2::settings::Settings;
 use std::path::PathBuf;
+
+const EXAMPLES_DIR: Dir = include_dir!("examples");
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -20,6 +22,11 @@ enum Commands {
     Run {
         #[arg(help = "Path to the model directory")]
         model_dir: PathBuf,
+    },
+    #[command(about = "Run an example model.")]
+    Example {
+        #[arg(help = "Name of the example model")]
+        example_name: Option<String>,
     },
 }
 
@@ -38,15 +45,36 @@ fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
     Ok(())
 }
 
+fn handle_example_command(example_name: Option<String>) -> Result<()> {
+    match example_name.as_deref() {
+        Some("list") => {
+            println!("Available examples:");
+            for entry in EXAMPLES_DIR.dirs() {
+                println!("{}", entry.path().display());
+            }
+            Ok(())
+        }
+        Some(name) => {
+            let example_dir = EXAMPLES_DIR.get_dir(name).context("Example not found")?;
+            info!("Found example directory: {}", example_dir.path().display());
+            let model_dir = PathBuf::from(example_dir.path());
+            handle_run_command(&model_dir)
+        }
+        None => {
+            println!("Please provide an example name or 'list' to list available examples.");
+            Ok(())
+        }
+    }
+}
 fn main() {
     let cli = Cli::parse();
 
     match cli.command {
         Commands::Run { model_dir } => handle_run_command(&model_dir),
+        Commands::Example { example_name } => handle_example_command(example_name),
     }
     .unwrap_or_else(|err| print!("{:?}", err))
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
