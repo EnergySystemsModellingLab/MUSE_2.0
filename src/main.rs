@@ -46,24 +46,15 @@ fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
 }
 
 fn handle_example_command(example_name: Option<String>) -> Result<()> {
-    match example_name.as_deref() {
-        Some("list") => {
-            println!("Available examples:");
-            for entry in EXAMPLES_DIR.dirs() {
-                println!("{}", entry.path().display());
-            }
-            Ok(())
+    if let Some("list") = example_name.as_deref() {
+        println!("Available examples:");
+        for entry in EXAMPLES_DIR.dirs() {
+            println!("{}", entry.path().display());
         }
-        Some(name) => {
-            let example_dir = EXAMPLES_DIR.get_dir(name).context("Example not found")?;
-            info!("Found example directory: {}", example_dir.path().display());
-            let model_dir = PathBuf::from(example_dir.path());
-            handle_run_command(&model_dir)
-        }
-        None => {
-            println!("Please provide an example name or 'list' to list available examples.");
-            Ok(())
-        }
+        Ok(())
+    } else {
+        println!("Please provide an example name or 'list' to list available examples.");
+        Ok(())
     }
 }
 fn main() {
