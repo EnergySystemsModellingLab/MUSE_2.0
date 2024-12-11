@@ -74,8 +74,9 @@ mod tests {
                 .unwrap_err()
                 .chain()
                 .next()
-                .map(|x| format!("{x}")),
-            Some("Failed to initialize logging.".to_owned())
+                .unwrap()
+                .to_string(),
+            "Failed to initialize logging."
         );
     }
 }
