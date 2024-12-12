@@ -330,6 +330,7 @@ fn read_process_pacs_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
 ) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>>
 where
     I: Iterator<Item = ProcessPAC>,
@@ -337,20 +338,25 @@ where
     // Keep track of previous PACs so we can check for duplicates
     let mut pacs = HashSet::new();
 
-    iter.map(|pac| {
-        let process_id = process_ids.get_id(&pac.process_id)?;
-        let commodity = commodities.get(pac.commodity_id.as_str());
+    let pacs = iter
+        .map(|pac| {
+            let process_id = process_ids.get_id(&pac.process_id)?;
+            let commodity = commodities.get(pac.commodity_id.as_str());
 
-        match commodity {
-            None => bail!("{} is not a valid commodity ID", &pac.commodity_id),
-            Some(commodity) => {
-                ensure!(pacs.insert(pac), "Duplicate PACs found");
+            match commodity {
+                None => bail!("{} is not a valid commodity ID", &pac.commodity_id),
+                Some(commodity) => {
+                    ensure!(pacs.insert(pac), "Duplicate PACs found");
 
-                Ok((process_id, Rc::clone(commodity)))
+                    Ok((process_id, Rc::clone(commodity)))
+                }
             }
-        }
-    })
-    .process_results(|iter| iter.into_group_map())
+        })
+        .process_results(|iter| iter.into_group_map());
+
+    // Check that all PACs are inputs or outputs
+
+    pacs
 }
 
 /// Read process Primary Activity Commodities (PACs) from the specified model directory.
@@ -364,10 +370,11 @@ fn read_process_pacs(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
 ) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>> {
     let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
     let process_pacs_csv = read_csv(&file_path)?;
-    read_process_pacs_from_iter(process_pacs_csv, process_ids, commodities)
+    read_process_pacs_from_iter(process_pacs_csv, process_ids, commodities, flows)
         .with_context(|| input_err_msg(&file_path))
 }
 
@@ -398,7 +405,7 @@ pub fn read_processes(
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let mut flows = read_csv_grouped_by_id(&file_path, &process_ids)?;
-    let mut pacs = read_process_pacs(model_dir, &process_ids, commodities)?;
+    let mut pacs = read_process_pacs(model_dir, &process_ids, commodities, &flows)?;
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions =
