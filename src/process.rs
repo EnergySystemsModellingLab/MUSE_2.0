@@ -336,10 +336,10 @@ where
     I: Iterator<Item = ProcessPAC>,
 {
     // Keep track of previous PACs so we can check for duplicates
-    let mut pacs = HashSet::new();
+    let mut existing_pacs = HashSet::new();
 
     // Build hashmap of process ID to PAC commodities
-    let _pacs = iter
+    let pacs = iter
         .map(|pac| {
             let process_id = process_ids.get_id(&pac.process_id)?;
             let commodity = commodities.get(pac.commodity_id.as_str());
@@ -348,7 +348,7 @@ where
             match commodity {
                 None => bail!("{} is not a valid commodity ID", &pac.commodity_id),
                 Some(commodity) => {
-                    ensure!(pacs.insert(pac), "Duplicate PACs found");
+                    ensure!(existing_pacs.insert(pac), "Duplicate PACs found");
                     Ok((process_id, Rc::clone(commodity)))
                 }
             }
@@ -356,7 +356,7 @@ where
         .process_results(|iter| iter.into_group_map())?;
 
     // Check that PACs for each process are either all inputs or all outputs
-    for (process_id, pacs) in _pacs.iter() {
+    for (process_id, pacs) in pacs.iter() {
         let flows = flows.get(process_id).unwrap();
 
         let mut flow_sign: Option<bool> = None; // False for inputs, true for outputs
@@ -389,7 +389,7 @@ where
         }
     }
 
-    Ok(_pacs)
+    Ok(pacs)
 }
 
 /// Read process Primary Activity Commodities (PACs) from the specified model directory.
