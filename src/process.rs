@@ -338,25 +338,58 @@ where
     // Keep track of previous PACs so we can check for duplicates
     let mut pacs = HashSet::new();
 
-    let pacs = iter
+    // Build hashmap of process ID to PAC commodities
+    let _pacs = iter
         .map(|pac| {
             let process_id = process_ids.get_id(&pac.process_id)?;
             let commodity = commodities.get(pac.commodity_id.as_str());
 
+            // Check that commodity is valid and not a duplicate
             match commodity {
                 None => bail!("{} is not a valid commodity ID", &pac.commodity_id),
                 Some(commodity) => {
                     ensure!(pacs.insert(pac), "Duplicate PACs found");
-
                     Ok((process_id, Rc::clone(commodity)))
                 }
             }
         })
-        .process_results(|iter| iter.into_group_map());
+        .process_results(|iter| iter.into_group_map())?;
 
-    // Check that all PACs are inputs or outputs
+    // Check that PACs for each process are either all inputs or all outputs
+    for (process_id, pacs) in _pacs.iter() {
+        let flows = flows.get(process_id).unwrap();
 
-    pacs
+        let mut flow_sign: Option<bool> = None; // False for inputs, true for outputs
+        for pac in pacs.iter() {
+            // Find the flow associated with the PAC
+            let flow = flows
+                .iter()
+                .find(|item| *item.commodity_id.as_str() == *pac.id)
+                .with_context(|| {
+                    format!(
+                        "PAC {} for process {} must have an associated flow",
+                        pac.id, process_id
+                    )
+                })?;
+
+            // Check that flow sign is consistent
+            let current_flow_sign = flow.flow > 0.0;
+            match flow_sign {
+                None => {
+                    flow_sign = Some(current_flow_sign);
+                }
+                Some(existing_flow_type) => {
+                    ensure!(
+                        existing_flow_type == current_flow_sign,
+                        "PACs for process {} are a mix of inputs and outputs",
+                        process_id
+                    );
+                }
+            };
+        }
+    }
+
+    Ok(_pacs)
 }
 
 /// Read process Primary Activity Commodities (PACs) from the specified model directory.
