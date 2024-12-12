@@ -47,7 +47,6 @@ fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
 
 fn handle_example_command(example_name: Option<String>) -> Result<()> {
     if let Some("list") = example_name.as_deref() {
-        println!("Available examples:");
         for entry in EXAMPLES_DIR.dirs() {
             println!("{}", entry.path().display());
         }
