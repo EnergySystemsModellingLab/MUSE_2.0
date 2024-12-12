@@ -770,11 +770,51 @@ mod tests {
                     costs: CommodityCostMap::new(),
                     demand_by_region: HashMap::new(),
                 };
-
                 (Rc::clone(&commodity.id), commodity.into())
             })
             .collect();
-        let flows: HashMap<Rc<str>, Vec<ProcessFlow>> = HashMap::new();
+        let flows: HashMap<Rc<str>, Vec<ProcessFlow>> = [
+            (
+                "id1".into(),
+                vec![
+                    ProcessFlow {
+                        process_id: "id1".into(),
+                        commodity_id: "commodity1".into(),
+                        flow: 1.0,
+                        flow_type: FlowType::Fixed,
+                        flow_cost: 1.0,
+                    },
+                    ProcessFlow {
+                        process_id: "id1".into(),
+                        commodity_id: "commodity2".into(),
+                        flow: 1.0,
+                        flow_type: FlowType::Fixed,
+                        flow_cost: 1.0,
+                    },
+                ],
+            ),
+            (
+                "id2".into(),
+                vec![
+                    ProcessFlow {
+                        process_id: "id2".into(),
+                        commodity_id: "commodity1".into(),
+                        flow: 1.0,
+                        flow_type: FlowType::Fixed,
+                        flow_cost: 1.0,
+                    },
+                    ProcessFlow {
+                        process_id: "id2".into(),
+                        commodity_id: "commodity2".into(),
+                        flow: 1.0,
+                        flow_type: FlowType::Flexible,
+                        flow_cost: 1.0,
+                    },
+                ],
+            ),
+        ]
+        .into_iter()
+        .collect();
 
         // duplicate PAC
         let pac = ProcessPAC {
