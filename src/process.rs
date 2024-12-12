@@ -724,6 +724,7 @@ mod tests {
 
     #[test]
     fn test_read_process_pacs_from_iter() {
+        // Prepare test data
         let process_ids = ["id1".into(), "id2".into()].into_iter().collect();
         let commodities = ["commodity1", "commodity2"]
             .into_iter()
@@ -740,6 +741,7 @@ mod tests {
                 (Rc::clone(&commodity.id), commodity.into())
             })
             .collect();
+        let flows: HashMap<Rc<str>, Vec<ProcessFlow>> = HashMap::new();
 
         // duplicate PAC
         let pac = ProcessPAC {
@@ -747,17 +749,27 @@ mod tests {
             commodity_id: "commodity1".into(),
         };
         let pacs = [pac.clone(), pac];
-        assert!(read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities).is_err());
+        assert!(
+            read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities, &flows)
+                .is_err()
+        );
 
         // invalid commodity ID
         let bad_pac = ProcessPAC {
             process_id: "id1".into(),
             commodity_id: "other_commodity".into(),
         };
-        assert!(
-            read_process_pacs_from_iter([bad_pac].into_iter(), &process_ids, &commodities).is_err()
-        );
+        assert!(read_process_pacs_from_iter(
+            [bad_pac].into_iter(),
+            &process_ids,
+            &commodities,
+            &flows
+        )
+        .is_err());
 
+        // Invalid flows
+
+        // Valid
         let pacs = [
             ProcessPAC {
                 process_id: "id1".into(),
@@ -794,7 +806,8 @@ mod tests {
         .into_iter()
         .collect();
         assert!(
-            read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities).unwrap()
+            read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities, &flows)
+                .unwrap()
                 == expected
         );
     }
