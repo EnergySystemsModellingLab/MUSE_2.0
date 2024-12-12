@@ -607,33 +607,31 @@ COM1,West,2020,13"
         let region_ids = iter::once("GBR".into()).collect();
 
         // Valid
-        {
-            let demand_slice = DemandSlice {
-                commodity_id: "COM1".into(),
-                region_id: "GBR".into(),
-                time_slice: "winter".into(),
-                fraction: 1.0,
-            };
-            let time_slice = time_slice_info
-                .get_time_slice_id_from_str("winter.day")
-                .unwrap();
-            let key = DemandSliceMapKey {
-                commodity_id: "COM1".into(),
-                region_id: "GBR".into(),
-                time_slice,
-            };
-            let expected = DemandSliceMap::from_iter(iter::once((key, 1.0)));
-            assert_eq!(
-                read_demand_slices_from_iter(
-                    iter::once(demand_slice.clone()),
-                    &commodity_ids,
-                    &region_ids,
-                    &time_slice_info,
-                )
-                .unwrap(),
-                expected
-            );
-        }
+        let demand_slice = DemandSlice {
+            commodity_id: "COM1".into(),
+            region_id: "GBR".into(),
+            time_slice: "winter".into(),
+            fraction: 1.0,
+        };
+        let time_slice = time_slice_info
+            .get_time_slice_id_from_str("winter.day")
+            .unwrap();
+        let key = DemandSliceMapKey {
+            commodity_id: "COM1".into(),
+            region_id: "GBR".into(),
+            time_slice,
+        };
+        let expected = DemandSliceMap::from_iter(iter::once((key, 1.0)));
+        assert_eq!(
+            read_demand_slices_from_iter(
+                iter::once(demand_slice.clone()),
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+            )
+            .unwrap(),
+            expected
+        );
 
         // Empty CSV file
         assert!(read_demand_slices_from_iter(
@@ -645,144 +643,131 @@ COM1,West,2020,13"
         .is_err());
 
         // Bad commodity
-        {
-            let demand_slice = DemandSlice {
-                commodity_id: "COM2".into(),
-                region_id: "GBR".into(),
-                time_slice: "winter.day".into(),
-                fraction: 1.0,
-            };
-            assert!(read_demand_slices_from_iter(
-                iter::once(demand_slice.clone()),
-                &commodity_ids,
-                &region_ids,
-                &time_slice_info,
-            )
-            .is_err());
-        }
+        let demand_slice = DemandSlice {
+            commodity_id: "COM2".into(),
+            region_id: "GBR".into(),
+            time_slice: "winter.day".into(),
+            fraction: 1.0,
+        };
+        assert!(read_demand_slices_from_iter(
+            iter::once(demand_slice.clone()),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+        )
+        .is_err());
 
         // Bad region
-        {
-            let demand_slice = DemandSlice {
-                commodity_id: "COM1".into(),
-                region_id: "FRA".into(),
-                time_slice: "winter.day".into(),
-                fraction: 1.0,
-            };
-            assert!(read_demand_slices_from_iter(
-                iter::once(demand_slice.clone()),
-                &commodity_ids,
-                &region_ids,
-                &time_slice_info,
-            )
-            .is_err());
-        }
+        let demand_slice = DemandSlice {
+            commodity_id: "COM1".into(),
+            region_id: "FRA".into(),
+            time_slice: "winter.day".into(),
+            fraction: 1.0,
+        };
+        assert!(read_demand_slices_from_iter(
+            iter::once(demand_slice.clone()),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+        )
+        .is_err());
 
         // Bad time slice selection
-        {
-            let demand_slice = DemandSlice {
-                commodity_id: "COM1".into(),
-                region_id: "GBR".into(),
-                time_slice: "summer".into(),
-                fraction: 1.0,
-            };
-            assert!(read_demand_slices_from_iter(
-                iter::once(demand_slice.clone()),
-                &commodity_ids,
-                &region_ids,
-                &time_slice_info,
-            )
-            .is_err());
-        }
+        let demand_slice = DemandSlice {
+            commodity_id: "COM1".into(),
+            region_id: "GBR".into(),
+            time_slice: "summer".into(),
+            fraction: 1.0,
+        };
+        assert!(read_demand_slices_from_iter(
+            iter::once(demand_slice.clone()),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+        )
+        .is_err());
 
         // Some time slices uncovered
-        {
-            let time_slice_info = TimeSliceInfo {
-                seasons: ["winter".into(), "summer".into()].into_iter().collect(),
-                times_of_day: iter::once("day".into()).collect(),
-                fractions: [
-                    (
-                        TimeSliceID {
-                            season: "winter".into(),
-                            time_of_day: "day".into(),
-                        },
-                        0.5,
-                    ),
-                    (
-                        TimeSliceID {
-                            season: "summer".into(),
-                            time_of_day: "day".into(),
-                        },
-                        0.5,
-                    ),
-                ]
-                .into_iter()
-                .collect(),
-            };
-            let demand_slice = DemandSlice {
-                commodity_id: "COM1".into(),
-                region_id: "GBR".into(),
-                time_slice: "winter".into(),
-                fraction: 1.0,
-            };
-            assert!(read_demand_slices_from_iter(
-                iter::once(demand_slice.clone()),
-                &commodity_ids,
-                &region_ids,
-                &time_slice_info,
-            )
-            .is_err());
-        }
+        let time_slice_info = TimeSliceInfo {
+            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            times_of_day: iter::once("day".into()).collect(),
+            fractions: [
+                (
+                    TimeSliceID {
+                        season: "winter".into(),
+                        time_of_day: "day".into(),
+                    },
+                    0.5,
+                ),
+                (
+                    TimeSliceID {
+                        season: "summer".into(),
+                        time_of_day: "day".into(),
+                    },
+                    0.5,
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        };
+        let demand_slice = DemandSlice {
+            commodity_id: "COM1".into(),
+            region_id: "GBR".into(),
+            time_slice: "winter".into(),
+            fraction: 1.0,
+        };
+        assert!(read_demand_slices_from_iter(
+            iter::once(demand_slice.clone()),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+        )
+        .is_err());
 
-        // Duplicate entry
-        {
-            // Same time slice twice
-            let demand_slice = DemandSlice {
-                commodity_id: "COM1".into(),
-                region_id: "GBR".into(),
-                time_slice: "winter.day".into(),
-                fraction: 0.5,
-            };
-            assert!(read_demand_slices_from_iter(
-                iter::repeat_n(demand_slice.clone(), 2),
-                &commodity_ids,
-                &region_ids,
-                &time_slice_info,
-            )
-            .is_err());
+        // Same time slice twice
+        let demand_slice = DemandSlice {
+            commodity_id: "COM1".into(),
+            region_id: "GBR".into(),
+            time_slice: "winter.day".into(),
+            fraction: 0.5,
+        };
+        assert!(read_demand_slices_from_iter(
+            iter::repeat_n(demand_slice.clone(), 2),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+        )
+        .is_err());
 
-            // Whole season and single time slice conflicting
-            let demand_slice_season = DemandSlice {
-                commodity_id: "COM1".into(),
-                region_id: "GBR".into(),
-                time_slice: "winter".into(),
-                fraction: 0.5,
-            };
-            assert!(read_demand_slices_from_iter(
-                [demand_slice, demand_slice_season].into_iter(),
-                &commodity_ids,
-                &region_ids,
-                &time_slice_info,
-            )
-            .is_err());
-        }
+        // Whole season and single time slice conflicting
+        let demand_slice_season = DemandSlice {
+            commodity_id: "COM1".into(),
+            region_id: "GBR".into(),
+            time_slice: "winter".into(),
+            fraction: 0.5,
+        };
+        assert!(read_demand_slices_from_iter(
+            [demand_slice, demand_slice_season].into_iter(),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+        )
+        .is_err());
 
         // Fractions don't sum to one
-        {
-            let demand_slice = DemandSlice {
-                commodity_id: "COM1".into(),
-                region_id: "GBR".into(),
-                time_slice: "winter".into(),
-                fraction: 0.5,
-            };
-            assert!(read_demand_slices_from_iter(
-                iter::once(demand_slice),
-                &commodity_ids,
-                &region_ids,
-                &time_slice_info,
-            )
-            .is_err());
-        }
+        let demand_slice = DemandSlice {
+            commodity_id: "COM1".into(),
+            region_id: "GBR".into(),
+            time_slice: "winter".into(),
+            fraction: 0.5,
+        };
+        assert!(read_demand_slices_from_iter(
+            iter::once(demand_slice),
+            &commodity_ids,
+            &region_ids,
+            &time_slice_info,
+        )
+        .is_err());
     }
 
     #[test]
