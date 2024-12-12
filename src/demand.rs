@@ -159,6 +159,10 @@ where
 {
     let mut map = AnnualDemandMap::new();
 
+    // Keep track of all commodity + region pairs so we can check that every milestone year is
+    // covered
+    let mut commodity_regions = HashSet::new();
+
     for demand in iter {
         let commodity_id = commodity_ids.get_id(&demand.commodity_id)?;
         let region_id = region_ids.get_id(&demand.region_id)?;
@@ -187,6 +191,24 @@ where
             region_id,
             demand.year
         );
+
+        commodity_regions.insert((commodity_id, region_id));
+    }
+
+    // If a commodity + region combination is represented, it must include entries for every
+    // milestone year
+    for (commodity_id, region_id) in commodity_regions {
+        for year in milestone_years.iter().copied() {
+            let key = AnnualDemandMapKey {
+                commodity_id: Rc::clone(&commodity_id),
+                region_id: Rc::clone(&region_id),
+                year,
+            };
+            ensure!(
+                map.contains_key(&key),
+                "Missing milestone year {year} for commodity {commodity_id} in region {region_id}"
+            );
+        }
     }
 
     Ok(map)
@@ -395,7 +417,7 @@ COM1,West,2020,13"
     fn test_read_demand_from_iter() {
         let commodity_ids = ["COM1".into()].into_iter().collect();
         let region_ids = ["North".into(), "South".into()].into_iter().collect();
-        let milestone_years = [2020, 2030];
+        let milestone_years = [2020];
 
         // Valid
         let demand = [
@@ -541,6 +563,21 @@ COM1,West,2020,13"
             &milestone_years
         )
         .is_err());
+
+        // Missing entry for a milestone year
+        let demand = Demand {
+            year: 2020,
+            region_id: "North".to_string(),
+            commodity_id: "COM1".to_string(),
+            demand: 10.0,
+        };
+        assert!(read_demand_from_iter(
+            iter::once(demand),
+            &commodity_ids,
+            &region_ids,
+            &[2020, 2030]
+        )
+        .is_err());
     }
 
     #[test]
@@ -551,7 +588,7 @@ COM1,West,2020,13"
         let region_ids = ["North".into(), "South".into(), "East".into(), "West".into()]
             .into_iter()
             .collect();
-        let milestone_years = [2020, 2030];
+        let milestone_years = [2020];
         let expected = AnnualDemandMap::from_iter([
             (
                 AnnualDemandMapKey {
