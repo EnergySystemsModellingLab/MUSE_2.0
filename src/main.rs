@@ -52,7 +52,7 @@ fn handle_example_command(example_name: Option<String>) -> Result<()> {
         }
         Ok(())
     } else {
-        println!("Please provide an example name or 'list' to list available examples.");
+        eprintln!("Please provide an example name or 'list' to list available examples.");
         Ok(())
     }
 }
