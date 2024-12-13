@@ -378,9 +378,9 @@ where
                 None => {
                     flow_sign = Some(current_flow_sign);
                 }
-                Some(existing_flow_type) => {
+                Some(flow_sign) => {
                     ensure!(
-                        existing_flow_type == current_flow_sign,
+                        current_flow_sign == flow_sign,
                         "PACs for process {} are a mix of inputs and outputs",
                         process_id
                     );
@@ -388,7 +388,6 @@ where
             };
         }
     }
-
     Ok(pacs)
 }
 
