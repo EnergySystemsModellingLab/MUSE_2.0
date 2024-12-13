@@ -4,7 +4,7 @@ use crate::input::*;
 use crate::region::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use ::log::warn;
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -54,7 +54,9 @@ pub struct ProcessAvailability {
 }
 define_process_id_getter! {ProcessAvailability}
 
-#[derive(PartialEq, Default, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
+#[derive(
+    PartialEq, Default, Debug, Clone, SerializeLabeledStringEnum, DeserializeLabeledStringEnum,
+)]
 pub enum FlowType {
     #[default]
     #[string = "fixed"]
@@ -65,7 +67,7 @@ pub enum FlowType {
     Flexible,
 }
 
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Debug, Deserialize, Clone)]
 pub struct ProcessFlow {
     /// A unique identifier for the process (typically uses a structured naming convention).
     pub process_id: String,
@@ -342,21 +344,19 @@ where
     let pacs = iter
         .map(|pac| {
             let process_id = process_ids.get_id(&pac.process_id)?;
-            let commodity = commodities.get(pac.commodity_id.as_str());
+            let commodity = commodities
+                .get(pac.commodity_id.as_str())
+                .with_context(|| format!("{} is not a valid commodity ID", &pac.commodity_id))?;
 
             // Check that commodity is valid and PAC is not a duplicate
-            match commodity {
-                None => bail!("{} is not a valid commodity ID", &pac.commodity_id),
-                Some(commodity) => {
-                    ensure!(existing_pacs.insert(pac), "Duplicate PACs found");
-                    Ok((process_id, Rc::clone(commodity)))
-                }
-            }
+            ensure!(existing_pacs.insert(pac), "Duplicate PACs found");
+            Ok((process_id, Rc::clone(commodity)))
         })
         .process_results(|iter| iter.into_group_map())?;
 
     // Check that PACs for each process are either all inputs or all outputs
     for (process_id, pacs) in pacs.iter() {
+        // Get the flows for the process (unwrap is safe as every process has associated flows)
         let flows = flows.get(process_id).unwrap();
 
         let mut flow_sign: Option<bool> = None; // False for inputs, true for outputs
@@ -374,18 +374,14 @@ where
 
             // Check that flow sign is consistent
             let current_flow_sign = flow.flow > 0.0;
-            match flow_sign {
-                None => {
-                    flow_sign = Some(current_flow_sign);
-                }
-                Some(flow_sign) => {
-                    ensure!(
-                        current_flow_sign == flow_sign,
-                        "PACs for process {} are a mix of inputs and outputs",
-                        process_id
-                    );
-                }
-            };
+            if let Some(flow_sign) = flow_sign {
+                ensure!(
+                    current_flow_sign == flow_sign,
+                    "PACs for process {} are a mix of inputs and outputs",
+                    process_id
+                );
+            }
+            flow_sign = Some(current_flow_sign);
         }
     }
     Ok(pacs)
@@ -772,7 +768,7 @@ mod tests {
                 (Rc::clone(&commodity.id), commodity.into())
             })
             .collect();
-        let mut flows: HashMap<Rc<str>, Vec<ProcessFlow>> = ["id1", "id2"]
+        let flows: HashMap<Rc<str>, Vec<ProcessFlow>> = ["id1", "id2"]
             .into_iter()
             .map(|process_id| {
                 (
@@ -864,6 +860,7 @@ mod tests {
 
         // Invalid flows
         // Making commodity1 an input so the PACs for process id1 are a mix of inputs and outputs
+        let mut flows = flows.clone();
         flows
             .get_mut(&Rc::from("id1"))
             .unwrap()
