@@ -344,7 +344,7 @@ where
             let process_id = process_ids.get_id(&pac.process_id)?;
             let commodity = commodities.get(pac.commodity_id.as_str());
 
-            // Check that commodity is valid and not a duplicate
+            // Check that commodity is valid and PAC is not a duplicate
             match commodity {
                 None => bail!("{} is not a valid commodity ID", &pac.commodity_id),
                 Some(commodity) => {
@@ -773,48 +773,24 @@ mod tests {
                 (Rc::clone(&commodity.id), commodity.into())
             })
             .collect();
-        let flows: HashMap<Rc<str>, Vec<ProcessFlow>> = [
-            (
-                "id1".into(),
-                vec![
-                    ProcessFlow {
-                        process_id: "id1".into(),
-                        commodity_id: "commodity1".into(),
-                        flow: 1.0,
-                        flow_type: FlowType::Fixed,
-                        flow_cost: 1.0,
-                    },
-                    ProcessFlow {
-                        process_id: "id1".into(),
-                        commodity_id: "commodity2".into(),
-                        flow: 1.0,
-                        flow_type: FlowType::Fixed,
-                        flow_cost: 1.0,
-                    },
-                ],
-            ),
-            (
-                "id2".into(),
-                vec![
-                    ProcessFlow {
-                        process_id: "id2".into(),
-                        commodity_id: "commodity1".into(),
-                        flow: 1.0,
-                        flow_type: FlowType::Fixed,
-                        flow_cost: 1.0,
-                    },
-                    ProcessFlow {
-                        process_id: "id2".into(),
-                        commodity_id: "commodity2".into(),
-                        flow: 1.0,
-                        flow_type: FlowType::Flexible,
-                        flow_cost: 1.0,
-                    },
-                ],
-            ),
-        ]
-        .into_iter()
-        .collect();
+        let flows: HashMap<Rc<str>, Vec<ProcessFlow>> = ["id1", "id2"]
+            .into_iter()
+            .map(|process_id| {
+                (
+                    process_id.into(),
+                    ["commodity1", "commodity2"]
+                        .into_iter()
+                        .map(|commodity_id| ProcessFlow {
+                            process_id: process_id.into(),
+                            commodity_id: commodity_id.into(),
+                            flow: 1.0,
+                            flow_type: FlowType::Fixed,
+                            flow_cost: 1.0,
+                        })
+                        .collect(),
+                )
+            })
+            .collect();
 
         // duplicate PAC
         let pac = ProcessPAC {
