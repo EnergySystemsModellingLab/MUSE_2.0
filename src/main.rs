@@ -23,11 +23,17 @@ enum Commands {
         #[arg(help = "Path to the model directory")]
         model_dir: PathBuf,
     },
-    #[command(about = "Run an example model.")]
+    #[command(about = "Manage example models.")]
     Example {
-        #[arg(help = "Name of the example model")]
-        example_name: Option<String>,
+        #[command(subcommand)]
+        subcommand: ExampleSubcommands,
     },
+}
+
+#[derive(Subcommand)]
+enum ExampleSubcommands {
+    #[command(about = "List available examples.")]
+    List,
 }
 
 fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
@@ -44,26 +50,23 @@ fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
 
     Ok(())
 }
-
-fn handle_example_command(example_name: Option<String>) -> Result<()> {
-    if let Some("list") = example_name.as_deref() {
-        for entry in EXAMPLES_DIR.dirs() {
-            println!("{}", entry.path().display());
-        }
-        Ok(())
-    } else {
-        eprintln!("Please provide an example name or 'list' to list available examples.");
-        Ok(())
+fn handle_example_list_command() -> Result<()> {
+    for entry in EXAMPLES_DIR.dirs() {
+        println!("{}", entry.path().display());
     }
+    Ok(())
 }
+
 fn main() {
     let cli = Cli::parse();
 
     match cli.command {
         Commands::Run { model_dir } => handle_run_command(&model_dir),
-        Commands::Example { example_name } => handle_example_command(example_name),
+        Commands::Example { subcommand } => match subcommand {
+            ExampleSubcommands::List => handle_example_list_command(),
+        },
     }
-    .unwrap_or_else(|err| print!("{:?}", err))
+    .unwrap_or_else(|err| eprintln!("{:?}", err))
 }
 #[cfg(test)]
 mod tests {
