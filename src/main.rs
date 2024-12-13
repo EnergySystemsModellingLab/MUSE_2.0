@@ -1,11 +1,13 @@
-//! The main entry point for the `muse2` command-line tool.
 use ::log::info;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
+use include_dir::{include_dir, Dir};
 use muse2::log;
 use muse2::model::Model;
 use muse2::settings::Settings;
 use std::path::PathBuf;
+
+const EXAMPLES_DIR: Dir = include_dir!("examples");
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -21,6 +23,17 @@ enum Commands {
         #[arg(help = "Path to the model directory")]
         model_dir: PathBuf,
     },
+    #[command(about = "Manage example models.")]
+    Example {
+        #[command(subcommand)]
+        subcommand: ExampleSubcommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum ExampleSubcommands {
+    #[command(about = "List available examples.")]
+    List,
 }
 
 fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
@@ -37,16 +50,24 @@ fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
 
     Ok(())
 }
+fn handle_example_list_command() -> Result<()> {
+    for entry in EXAMPLES_DIR.dirs() {
+        println!("{}", entry.path().display());
+    }
+    Ok(())
+}
 
 fn main() {
     let cli = Cli::parse();
 
     match cli.command {
         Commands::Run { model_dir } => handle_run_command(&model_dir),
+        Commands::Example { subcommand } => match subcommand {
+            ExampleSubcommands::List => handle_example_list_command(),
+        },
     }
-    .unwrap_or_else(|err| print!("{:?}", err))
+    .unwrap_or_else(|err| eprintln!("{:?}", err))
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
