@@ -864,7 +864,7 @@ mod tests {
         );
 
         // Invalid flows
-        // Making commodity1 an input so the PACs are a mix of inputs and outputs
+        // Making commodity1 an input so the PACs for process id1 are a mix of inputs and outputs
         flows
             .get_mut(&Rc::from("id1"))
             .unwrap()
