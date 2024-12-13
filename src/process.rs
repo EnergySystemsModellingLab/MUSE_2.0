@@ -1,10 +1,7 @@
 #![allow(missing_docs)]
 use crate::commodity::Commodity;
-use crate::commodity::CommodityCostMap;
-use crate::commodity::CommodityType;
 use crate::input::*;
 use crate::region::*;
-use crate::time_slice::TimeSliceLevel;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use ::log::warn;
 use anyhow::{bail, ensure, Context, Result};
@@ -79,23 +76,21 @@ struct ProcessFlowRaw {
     flow_cost: f64,
 }
 
-impl ProcessFlowRaw {
-    fn into_flow(self) -> ProcessFlow {
-        let commodity = Rc::new(Commodity {
-            id: Rc::from(self.commodity_id),
-            description: "".to_string(),
-            kind: CommodityType::InputCommodity,
-            time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::new(),
-            demand_by_region: HashMap::new(),
-        });
+define_process_id_getter! {ProcessFlowRaw}
 
-        ProcessFlow {
-            process_id: self.process_id,
-            commodity,
-            flow: self.flow,
-            flow_type: self.flow_type,
-            flow_cost: self.flow_cost,
+impl ProcessFlowRaw {
+    fn into_flow(self, commodities: &HashMap<Rc<str>, Rc<Commodity>>) -> ProcessFlow {
+        let commodity = commodities.get(self.commodity_id.as_str());
+
+        match commodity {
+            None => panic!("{} is not a valid commodity ID", &self.commodity_id),
+            Some(commodity) => ProcessFlow {
+                process_id: self.process_id,
+                commodity: Rc::clone(commodity),
+                flow: self.flow,
+                flow_type: self.flow_type,
+                flow_cost: self.flow_cost,
+            },
         }
     }
 }
@@ -108,10 +103,8 @@ pub struct ProcessFlow {
     pub commodity: Rc<Commodity>,
     /// Commodity flow quantity relative to other commodity flows. +ve value indicates flow out, -ve value indicates flow in.
     pub flow: f64,
-    #[serde(default)]
     /// Identifies if a flow is fixed or flexible.
     pub flow_type: FlowType,
-    #[serde(deserialize_with = "deserialise_flow_cost")]
     /// Cost per unit flow. For example, cost per unit of natural gas produced. Differs from var_opex because the user can apply it to any specified flow, whereas var_opex applies to pac flow.
     pub flow_cost: f64,
 }
@@ -321,6 +314,31 @@ fn read_process_availabilities(
     .with_context(|| input_err_msg(&file_path))
 }
 
+fn read_process_flows(
+    file_path: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+) -> Result<HashMap<Rc<str>, Vec<ProcessFlow>>> {
+    // Read raw process flows from file then convert raw flows to ProcessFlow
+    let process_flows: HashMap<Rc<str>, Vec<ProcessFlowRaw>> =
+        read_csv_grouped_by_id(file_path, process_ids)?;
+
+    // Convert raw flows to ProcessFlow
+    let flows: HashMap<Rc<str>, Vec<ProcessFlow>> = process_flows
+        .into_iter()
+        .map(|(id, raw_flows)| {
+            let flows = raw_flows
+                .into_iter()
+                .map(|raw_flow| raw_flow.into_flow(commodities))
+                .collect::<Vec<_>>();
+
+            (id, flows)
+        })
+        .collect();
+
+    Ok(flows)
+}
+
 fn read_process_parameters_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
@@ -333,18 +351,15 @@ where
     for param in iter {
         let param = param.into_parameter(year_range)?;
         let id = process_ids.get_id(&param.process_id)?;
-
         ensure!(
             params.insert(Rc::clone(&id), param).is_none(),
             "More than one parameter provided for process {id}"
         );
     }
-
     ensure!(
         params.len() == process_ids.len(),
         "Each process must have an associated parameter"
     );
-
     Ok(params)
 }
 
@@ -442,7 +457,7 @@ pub fn read_processes(
 
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
-    let mut flows = read_csv_grouped_by_id(&file_path, &process_ids)?;
+    let mut flows = read_process_flows(&file_path, &process_ids, commodities)?;
     let mut pacs = read_process_pacs(model_dir, &process_ids, commodities)?;
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
