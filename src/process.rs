@@ -773,7 +773,7 @@ mod tests {
                 (Rc::clone(&commodity.id), commodity.into())
             })
             .collect();
-        let flows: HashMap<Rc<str>, Vec<ProcessFlow>> = ["id1", "id2"]
+        let mut flows: HashMap<Rc<str>, Vec<ProcessFlow>> = ["id1", "id2"]
             .into_iter()
             .map(|process_id| {
                 (
@@ -816,8 +816,6 @@ mod tests {
         )
         .is_err());
 
-        // Invalid flows
-
         // Valid
         let pacs = [
             ProcessPAC {
@@ -855,9 +853,28 @@ mod tests {
         .into_iter()
         .collect();
         assert!(
-            read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities, &flows)
-                .unwrap()
+            read_process_pacs_from_iter(
+                pacs.clone().into_iter(),
+                &process_ids,
+                &commodities,
+                &flows
+            )
+            .unwrap()
                 == expected
+        );
+
+        // Invalid flows
+        // Making commodity1 an input so the PACs are a mix of inputs and outputs
+        flows
+            .get_mut(&Rc::from("id1"))
+            .unwrap()
+            .iter_mut()
+            .find(|flow| flow.commodity_id == "commodity1")
+            .unwrap()
+            .flow = -1.0;
+        assert!(
+            read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities, &flows)
+                .is_err()
         );
     }
 }
