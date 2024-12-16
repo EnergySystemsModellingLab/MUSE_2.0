@@ -641,6 +641,114 @@ mod tests {
     }
 
     #[test]
+    fn test_read_process_flows_from_iter_good() {
+        let commodities: HashMap<Rc<str>, Rc<Commodity>> = ["commodity1", "commodity2"]
+            .into_iter()
+            .map(|id| {
+                let commodity = Commodity {
+                    id: id.into(),
+                    description: "Some description".into(),
+                    kind: CommodityType::InputCommodity,
+                    time_slice_level: TimeSliceLevel::Annual,
+                    costs: CommodityCostMap::new(),
+                    demand_by_region: HashMap::new(),
+                };
+
+                (Rc::clone(&commodity.id), commodity.into())
+            })
+            .collect();
+
+        let flows_raw = [
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity2".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+            ProcessFlowRaw {
+                process_id: "id2".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+        ];
+
+        let expected: Vec<ProcessFlow> = vec![
+            ProcessFlow {
+                process_id: "id1".into(),
+                commodity: commodities.get("commodity1").unwrap().clone(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+            ProcessFlow {
+                process_id: "id1".into(),
+                commodity: commodities.get("commodity2").unwrap().clone(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+            ProcessFlow {
+                process_id: "id2".into(),
+                commodity: commodities.get("commodity1").unwrap().clone(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+        ];
+
+        let actual = read_process_flows_from_iter(flows_raw.into_iter(), &commodities).unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_read_process_flows_from_iter_bad_commodity_id() {
+        let commodities = ["commodity1", "commodity2"]
+            .into_iter()
+            .map(|id| {
+                let commodity = Commodity {
+                    id: id.into(),
+                    description: "Some description".into(),
+                    kind: CommodityType::InputCommodity,
+                    time_slice_level: TimeSliceLevel::Annual,
+                    costs: CommodityCostMap::new(),
+                    demand_by_region: HashMap::new(),
+                };
+
+                (Rc::clone(&commodity.id), commodity.into())
+            })
+            .collect();
+
+        let flows_raw = [
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity3".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+        ];
+
+        assert!(read_process_flows_from_iter(flows_raw.into_iter(), &commodities).is_err());
+    }
+
+    #[test]
     fn test_read_process_parameters_from_iter_good() {
         let year_range = 2000..=2100;
         let process_ids = ["A".into(), "B".into()].into_iter().collect();
