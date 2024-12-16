@@ -78,23 +78,6 @@ struct ProcessFlowRaw {
 
 define_process_id_getter! {ProcessFlowRaw}
 
-impl ProcessFlowRaw {
-    fn into_flow(self, commodities: &HashMap<Rc<str>, Rc<Commodity>>) -> ProcessFlow {
-        let commodity = commodities.get(self.commodity_id.as_str());
-
-        match commodity {
-            None => panic!("{} is not a valid commodity ID", &self.commodity_id),
-            Some(commodity) => ProcessFlow {
-                process_id: self.process_id,
-                commodity: Rc::clone(commodity),
-                flow: self.flow,
-                flow_type: self.flow_type,
-                flow_cost: self.flow_cost,
-            },
-        }
-    }
-}
-
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct ProcessFlow {
     /// A unique identifier for the process (typically uses a structured naming convention).
@@ -314,29 +297,51 @@ fn read_process_availabilities(
     .with_context(|| input_err_msg(&file_path))
 }
 
+fn read_process_flows_from_iter<I>(
+    iter: I,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+) -> Result<Vec<ProcessFlow>>
+where
+    I: Iterator<Item = ProcessFlowRaw>,
+{
+    let mut flows = Vec::new();
+    for flow_raw in iter {
+        let commodity = commodities
+            .get(flow_raw.commodity_id.as_str())
+            .with_context(|| format!("{} is not a valid commodity ID", &flow_raw.commodity_id))?;
+
+        let flow = ProcessFlow {
+            process_id: flow_raw.process_id,
+            commodity: Rc::clone(commodity),
+            flow: flow_raw.flow,
+            flow_type: flow_raw.flow_type,
+            flow_cost: flow_raw.flow_cost,
+        };
+
+        flows.push(flow);
+    }
+
+    Ok(flows)
+}
+
 fn read_process_flows(
     file_path: &Path,
     process_ids: &HashSet<Rc<str>>,
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
 ) -> Result<HashMap<Rc<str>, Vec<ProcessFlow>>> {
     // Read raw process flows from file then convert raw flows to ProcessFlow
-    let process_flows: HashMap<Rc<str>, Vec<ProcessFlowRaw>> =
+    let mut process_flow_raws: HashMap<Rc<str>, Vec<ProcessFlowRaw>> =
         read_csv_grouped_by_id(file_path, process_ids)?;
 
-    // Convert raw flows to ProcessFlow
-    let flows: HashMap<Rc<str>, Vec<ProcessFlow>> = process_flows
-        .into_iter()
-        .map(|(id, raw_flows)| {
-            let flows = raw_flows
-                .into_iter()
-                .map(|raw_flow| raw_flow.into_flow(commodities))
-                .collect::<Vec<_>>();
+    let mut process_flows = HashMap::new();
 
-            (id, flows)
-        })
-        .collect();
+    for process_id in process_ids.iter() {
+        let iter = process_flow_raws.remove(process_id).unwrap().into_iter();
+        let flows = read_process_flows_from_iter(iter, commodities)?;
+        process_flows.insert(process_id.to_owned(), flows);
+    }
 
-    Ok(flows)
+    Ok(process_flows)
 }
 
 fn read_process_parameters_from_iter<I>(
