@@ -355,6 +355,25 @@ where
         .process_results(|iter| iter.into_group_map())?;
 
     // Check that PACs for each process are either all inputs or all outputs
+    validate_pac_flows(&pacs, flows)?;
+
+    // Return result
+    Ok(pacs)
+}
+
+/// Validate that the PACs for each process are either all inputs or all outputs.
+///
+/// # Arguments
+///
+/// * `pacs` - A map of process IDs to PAC commodities
+/// * `flows` - A map of process IDs to process flows
+///
+/// # Returns
+/// An `Ok(())` if the check is successful, or an error.
+fn validate_pac_flows(
+    pacs: &HashMap<Rc<str>, Vec<Rc<Commodity>>>,
+    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
+) -> Result<()> {
     for (process_id, pacs) in pacs.iter() {
         // Get the flows for the process (unwrap is safe as every process has associated flows)
         let flows = flows.get(process_id).unwrap();
@@ -384,7 +403,7 @@ where
             flow_sign = Some(current_flow_sign);
         }
     }
-    Ok(pacs)
+    Ok(())
 }
 
 /// Read process Primary Activity Commodities (PACs) from the specified model directory.
