@@ -325,13 +325,13 @@ where
 }
 
 fn read_process_flows(
-    file_path: &Path,
+    model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
 ) -> Result<HashMap<Rc<str>, Vec<ProcessFlow>>> {
-    // Read raw process flows from file then convert raw flows to ProcessFlow
+    let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let mut process_flow_raws: HashMap<Rc<str>, Vec<ProcessFlowRaw>> =
-        read_csv_grouped_by_id(file_path, process_ids)?;
+        read_csv_grouped_by_id(&file_path, process_ids)?;
 
     let mut process_flows = HashMap::new();
 
@@ -461,8 +461,7 @@ pub fn read_processes(
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
-    let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
-    let mut flows = read_process_flows(&file_path, &process_ids, commodities)?;
+    let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
     let mut pacs = read_process_pacs(model_dir, &process_ids, commodities)?;
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
