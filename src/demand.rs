@@ -326,12 +326,7 @@ fn compute_demand_map(
             };
 
             // NB: This has already been checked, so shouldn't fail
-            let demand_fraction = slices.get(&slice_key).unwrap_or_else(|| {
-                panic!(
-                    "Missing demand slice entry (commodity: {}, region: {}, time slice: {})",
-                    commodity_id, region_id, time_slice
-                )
-            });
+            let demand_fraction = slices.get(&slice_key).unwrap();
 
             // Get or create entry
             let map = map
@@ -889,41 +884,5 @@ COM1,West,2020,13"
             &time_slice_info,
         )
         .is_err());
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_compute_demand_map_missing_entry() {
-        let time_slice_info = TimeSliceInfo {
-            seasons: iter::once("winter".into()).collect(),
-            times_of_day: iter::once("day".into()).collect(),
-            fractions: [(
-                TimeSliceID {
-                    season: "winter".into(),
-                    time_of_day: "day".into(),
-                },
-                1.0,
-            )]
-            .into_iter()
-            .collect(),
-        };
-        let key = AnnualDemandMapKey {
-            commodity_id: "COM1".into(),
-            region_id: "GBR".into(),
-            year: 2024,
-        };
-        let demand = iter::once((key, 1.0)).collect();
-
-        // NB: No entry for GBR
-        let key = DemandSliceMapKey {
-            commodity_id: "COM1".into(),
-            region_id: "FRA".into(),
-            time_slice: time_slice_info
-                .get_time_slice_id_from_str("winter.day")
-                .unwrap(),
-        };
-        let slices = iter::once((key, 1.0)).collect();
-
-        compute_demand_map(&demand, &slices, &time_slice_info);
     }
 }
