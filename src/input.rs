@@ -10,6 +10,9 @@ use std::fs;
 use std::path::Path;
 use std::rc::Rc;
 
+mod time_slice;
+pub use time_slice::read_time_slice_info;
+
 /// Read a series of type `T`s from a CSV file.
 ///
 /// # Arguments
