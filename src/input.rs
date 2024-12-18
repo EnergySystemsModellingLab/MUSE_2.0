@@ -13,6 +13,10 @@ use std::rc::Rc;
 mod time_slice;
 pub use time_slice::read_time_slice_info;
 
+// TODO: Make this private once all its users have been moved to `input` submodules
+pub mod region;
+pub use region::read_regions;
+
 /// Read a series of type `T`s from a CSV file.
 ///
 /// # Arguments

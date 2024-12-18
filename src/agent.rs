@@ -1,8 +1,8 @@
 #![allow(missing_docs)]
 use crate::asset::{read_assets, Asset};
+use crate::input::region::{define_region_id_getter, read_regions_for_entity, RegionSelection};
 use crate::input::*;
 use crate::process::Process;
-use crate::region::*;
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
