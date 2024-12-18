@@ -16,6 +16,8 @@ pub mod process;
 pub use process::read_processes;
 pub mod region;
 pub use region::read_regions;
+mod time_slice;
+pub use time_slice::read_time_slice_info;
 
 /// Read a series of type `T`s from a CSV file.
 ///
