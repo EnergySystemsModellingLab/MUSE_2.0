@@ -4,7 +4,7 @@ use crate::agent::{read_agents, Agent};
 use crate::commodity::{read_commodities, Commodity};
 use crate::input::*;
 use crate::process::{read_processes, Process};
-use crate::region::{read_regions, Region};
+use crate::region::Region;
 use crate::time_slice::{read_time_slice_info, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;

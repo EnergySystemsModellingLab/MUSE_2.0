@@ -107,11 +107,10 @@ pub fn read_assets(
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
-    use crate::process::ProcessParameter;
-
     use super::*;
+    use crate::process::ProcessParameter;
+    use crate::region::RegionSelection;
+    use std::vec;
 
     #[test]
     fn test_read_assets_from_iter() {
@@ -132,7 +131,7 @@ mod tests {
             flows: vec![],
             pacs: vec![],
             parameter: process_param.clone(),
-            regions: crate::region::RegionSelection::All,
+            regions: RegionSelection::All,
         });
         let processes = [(Rc::clone(&process.id), Rc::clone(&process))]
             .into_iter()
@@ -208,7 +207,7 @@ mod tests {
             flows: vec![],
             pacs: vec![],
             parameter: process_param,
-            regions: crate::region::RegionSelection::Some(["GBR".into()].into_iter().collect()),
+            regions: RegionSelection::Some(["GBR".into()].into_iter().collect()),
         });
         let asset_in = AssetRaw {
             agent_id: "agent1".into(),
