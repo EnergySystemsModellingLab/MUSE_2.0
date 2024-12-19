@@ -30,6 +30,16 @@ macro_rules! define_process_id_getter {
     };
 }
 
+#[derive(PartialEq, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
+pub enum LimitType {
+    #[string = "lo"]
+    LowerBound,
+    #[string = "up"]
+    UpperBound,
+    #[string = "fx"]
+    Equality,
+}
+
 /// Represents a row of the process availabilities CSV file
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessAvailabilityRaw {

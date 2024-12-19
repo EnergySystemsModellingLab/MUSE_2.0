@@ -3,7 +3,6 @@
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
-use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
@@ -52,16 +51,6 @@ where
     }
 
     Ok(value)
-}
-
-#[derive(PartialEq, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
-pub enum LimitType {
-    #[string = "lo"]
-    LowerBound,
-    #[string = "up"]
-    UpperBound,
-    #[string = "fx"]
-    Equality,
 }
 
 /// Format an error message to include the file path. To be used with `anyhow::Context`.
