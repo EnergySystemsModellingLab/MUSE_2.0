@@ -87,6 +87,22 @@ impl CommodityCostMap {
         Self(HashMap::new())
     }
 
+    /// Insert a [`CommodityCost`] into the map
+    pub fn insert(
+        &mut self,
+        region_id: Rc<str>,
+        year: u32,
+        time_slice: TimeSliceID,
+        value: CommodityCost,
+    ) -> Option<CommodityCost> {
+        let key = CommodityCostKey {
+            region_id,
+            year,
+            time_slice,
+        };
+        self.0.insert(key, value)
+    }
+
     /// Retrieve a [`CommodityCost`] from the map
     pub fn get(
         &self,
@@ -148,21 +164,17 @@ where
         // Get or create CommodityCostMap for this commodity
         let map = map
             .entry(commodity_id.clone())
-            .or_insert_with(|| CommodityCostMap(HashMap::with_capacity(1)));
+            .or_insert_with(CommodityCostMap::new);
 
         for time_slice in time_slice_info.iter_selection(&ts_selection) {
-            let key = CommodityCostKey {
-                region_id: Rc::clone(&region_id),
-                year: cost.year,
-                time_slice: time_slice.clone(),
-            };
             let value = CommodityCost {
                 balance_type: cost.balance_type.clone(),
                 value: cost.value,
             };
 
             ensure!(
-                map.0.insert(key, value).is_none(),
+                map.insert(Rc::clone(&region_id), cost.year, time_slice.clone(), value)
+                    .is_none(),
                 "Commodity cost entry covered by more than one time slice \
                 (region: {}, year: {}, time slice: {})",
                 region_id,
@@ -282,21 +294,19 @@ mod tests {
     use std::iter;
 
     #[test]
-    fn test_commodity_cost_map_get() {
+    fn test_commodity_cost_map() {
         let ts = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
-        };
-        let key = CommodityCostKey {
-            region_id: "GBR".into(),
-            year: 2010,
-            time_slice: ts.clone(),
         };
         let value = CommodityCost {
             balance_type: BalanceType::Consumption,
             value: 0.5,
         };
-        let map = CommodityCostMap(HashMap::from_iter([(key, value.clone())]));
+        let mut map = CommodityCostMap::new();
+        assert!(map
+            .insert("GBR".into(), 2010, ts.clone(), value.clone())
+            .is_none());
         assert_eq!(map.get("GBR".into(), 2010, ts).unwrap(), &value);
     }
 
@@ -343,25 +353,17 @@ mod tests {
             time_slice: "winter.day".into(),
             value: 0.5,
         };
-        let key1 = CommodityCostKey {
-            region_id: "GBR".into(),
-            year: cost1.year,
-            time_slice: time_slice.clone(),
-        };
         let value1 = CommodityCost {
             balance_type: cost1.balance_type.clone(),
             value: cost1.value,
-        };
-        let key2 = CommodityCostKey {
-            region_id: "FRA".into(),
-            year: cost2.year,
-            time_slice: time_slice.clone(),
         };
         let value2 = CommodityCost {
             balance_type: cost2.balance_type.clone(),
             value: cost2.value,
         };
-        let map = CommodityCostMap(HashMap::from_iter([(key1, value1), (key2, value2)]));
+        let mut map = CommodityCostMap::new();
+        map.insert("GBR".into(), cost1.year, time_slice.clone(), value1);
+        map.insert("FRA".into(), cost2.year, time_slice.clone(), value2);
         let expected = HashMap::from_iter([("commodity".into(), map)]);
         assert_eq!(
             read_commodity_costs_iter(
