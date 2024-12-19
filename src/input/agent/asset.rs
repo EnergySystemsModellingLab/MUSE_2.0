@@ -1,5 +1,5 @@
 //! Code for reading [Asset]s from a CSV file.
-use crate::asset::Asset;
+use crate::agent::Asset;
 use crate::input::*;
 use crate::process::Process;
 use anyhow::{ensure, Context, Result};
