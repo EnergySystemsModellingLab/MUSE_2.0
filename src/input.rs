@@ -7,6 +7,10 @@ use std::fs;
 use std::path::Path;
 use std::rc::Rc;
 
+// TODO: Make this private once all its users have been moved to `input` submodules
+pub mod region;
+pub use region::read_regions;
+
 /// Read a series of type `T`s from a CSV file.
 ///
 /// # Arguments
