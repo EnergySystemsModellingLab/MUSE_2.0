@@ -1,7 +1,8 @@
 #![allow(missing_docs)]
 use crate::commodity::Commodity;
+use crate::input::region::{define_region_id_getter, read_regions_for_entity};
 use crate::input::*;
-use crate::region::*;
+use crate::region::RegionSelection;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
