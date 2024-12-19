@@ -9,6 +9,8 @@ use std::rc::Rc;
 
 mod agent;
 pub use agent::read_agents;
+mod process;
+pub use process::read_processes;
 
 // TODO: Make this private once all its users have been moved to `input` submodules
 pub mod region;
