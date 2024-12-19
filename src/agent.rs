@@ -103,7 +103,7 @@ define_region_id_getter! {AgentRegion}
 #[derive(Debug, Clone, PartialEq, DeserializeLabeledStringEnum)]
 pub enum ObjectiveType {
     #[string = "lcox"]
-    LevellisedCostOfX,
+    LevelisedCostOfX,
     #[string = "eac"]
     EquivalentAnnualCost,
 }
