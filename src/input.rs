@@ -1,5 +1,4 @@
 //! Common routines for handling input data.
-#![allow(missing_docs)]
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
@@ -77,6 +76,7 @@ macro_rules! define_id_getter {
 
 pub(crate) use define_id_getter;
 
+/// A data structure containing a set of IDs
 pub trait IDCollection {
     /// Get the ID after checking that it exists this collection.
     ///
@@ -127,7 +127,9 @@ where
     fill_and_validate_map(file_path).with_context(|| input_err_msg(file_path))
 }
 
+/// Trait for converting an iterator into a [`HashMap`] grouped by IDs.
 pub trait IntoIDMap<T> {
+    /// Convert into a [`HashMap`] grouped by IDs.
     fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>>;
 }
 
