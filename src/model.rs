@@ -1,7 +1,7 @@
 //! Code for simulation models.
 #![allow(missing_docs)]
 use crate::agent::Agent;
-use crate::commodity::{read_commodities, Commodity};
+use crate::commodity::Commodity;
 use crate::input::*;
 use crate::process::{read_processes, Process};
 use crate::region::Region;

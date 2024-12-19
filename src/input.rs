@@ -9,6 +9,8 @@ use std::rc::Rc;
 
 pub mod agent;
 pub use agent::read_agents;
+pub mod commodity;
+pub use commodity::read_commodities;
 pub mod region;
 pub use region::read_regions;
 
