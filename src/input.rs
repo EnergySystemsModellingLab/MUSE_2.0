@@ -7,6 +7,8 @@ use std::fs;
 use std::path::Path;
 use std::rc::Rc;
 
+pub mod agent;
+pub use agent::read_agents;
 pub mod region;
 pub use region::read_regions;
 
