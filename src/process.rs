@@ -7,7 +7,7 @@ use ::log::warn;
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
-use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
+use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
 use std::path::Path;
@@ -30,7 +30,7 @@ macro_rules! define_process_id_getter {
     };
 }
 
-#[derive(PartialEq, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
+#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
 pub enum LimitType {
     #[string = "lo"]
     LowerBound,
@@ -64,9 +64,7 @@ pub struct ProcessAvailability {
 }
 define_process_id_getter! {ProcessAvailability}
 
-#[derive(
-    PartialEq, Default, Debug, Clone, SerializeLabeledStringEnum, DeserializeLabeledStringEnum,
-)]
+#[derive(PartialEq, Default, Debug, Clone, DeserializeLabeledStringEnum)]
 pub enum FlowType {
     #[default]
     #[string = "fixed"]
