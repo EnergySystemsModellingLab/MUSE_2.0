@@ -7,6 +7,9 @@ use std::fs;
 use std::path::Path;
 use std::rc::Rc;
 
+mod agent;
+pub use agent::read_agents;
+
 // TODO: Make this private once all its users have been moved to `input` submodules
 pub mod region;
 pub use region::read_regions;
