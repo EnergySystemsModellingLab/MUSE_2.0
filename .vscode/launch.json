@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'muse2'",
+            "name": "Run muse2 with example",
             "cargo": {
                 "args": ["build", "--bin=muse2", "--package=muse2"],
                 "filter": {
@@ -21,15 +21,11 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'muse2'",
+            "name": "Cargo test",
             "cargo": {
-                "args": ["test", "--no-run", "--bin=muse2", "--package=muse2"],
-                "filter": {
-                    "name": "muse2",
-                    "kind": "bin"
-                }
+                "args": ["test", "--no-run", "--lib"]
             },
-            "cwd": "${workspaceFolder}"
+            "args": []
         }
     ]
 }

@@ -4,7 +4,7 @@ use crate::input::*;
 use crate::region::*;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use ::log::warn;
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Deserializer};
 use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
@@ -54,7 +54,9 @@ pub struct ProcessAvailability {
 }
 define_process_id_getter! {ProcessAvailability}
 
-#[derive(PartialEq, Default, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
+#[derive(
+    PartialEq, Default, Debug, Clone, SerializeLabeledStringEnum, DeserializeLabeledStringEnum,
+)]
 pub enum FlowType {
     #[default]
     #[string = "fixed"]
@@ -78,7 +80,7 @@ struct ProcessFlowRaw {
 
 define_process_id_getter! {ProcessFlowRaw}
 
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Debug, Deserialize, Clone)]
 pub struct ProcessFlow {
     /// A unique identifier for the process (typically uses a structured naming convention).
     pub process_id: String,
@@ -249,7 +251,6 @@ define_id_getter! {Process}
 
 fn read_process_availabilities_from_iter<I>(
     iter: I,
-    file_path: &Path,
     process_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<HashMap<Rc<str>, Vec<ProcessAvailability>>>
@@ -257,20 +258,17 @@ where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
     let availabilities = iter
-        .map(|record| {
-            let time_slice = time_slice_info
-                .get_selection(&record.time_slice)
-                .unwrap_input_err(file_path);
+        .map(|record| -> Result<_> {
+            let time_slice = time_slice_info.get_selection(&record.time_slice)?;
 
-            ProcessAvailability {
+            Ok(ProcessAvailability {
                 process_id: record.process_id,
                 limit_type: record.limit_type,
                 time_slice,
                 value: record.value,
-            }
+            })
         })
-        .into_id_map(process_ids)
-        .unwrap_input_err(file_path);
+        .process_results(|iter| iter.into_id_map(process_ids))??;
 
     ensure!(
         availabilities.len() >= process_ids.len(),
@@ -288,13 +286,8 @@ fn read_process_availabilities(
 ) -> Result<HashMap<Rc<str>, Vec<ProcessAvailability>>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let process_availabilities_csv = read_csv(&file_path)?;
-    read_process_availabilities_from_iter(
-        process_availabilities_csv,
-        &file_path,
-        process_ids,
-        time_slice_info,
-    )
-    .with_context(|| input_err_msg(&file_path))
+    read_process_availabilities_from_iter(process_availabilities_csv, process_ids, time_slice_info)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_process_flows_from_iter<I>(
@@ -385,27 +378,78 @@ fn read_process_pacs_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
 ) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>>
 where
     I: Iterator<Item = ProcessPAC>,
 {
     // Keep track of previous PACs so we can check for duplicates
-    let mut pacs = HashSet::new();
+    let mut existing_pacs = HashSet::new();
 
-    iter.map(|pac| {
-        let process_id = process_ids.get_id(&pac.process_id)?;
-        let commodity = commodities.get(pac.commodity_id.as_str());
+    // Build hashmap of process ID to PAC commodities
+    let pacs = iter
+        .map(|pac| {
+            let process_id = process_ids.get_id(&pac.process_id)?;
+            let commodity = commodities
+                .get(pac.commodity_id.as_str())
+                .with_context(|| format!("{} is not a valid commodity ID", &pac.commodity_id))?;
 
-        match commodity {
-            None => bail!("{} is not a valid commodity ID", &pac.commodity_id),
-            Some(commodity) => {
-                ensure!(pacs.insert(pac), "Duplicate PACs found");
+            // Check that commodity is valid and PAC is not a duplicate
+            ensure!(existing_pacs.insert(pac), "Duplicate PACs found");
+            Ok((process_id, Rc::clone(commodity)))
+        })
+        .process_results(|iter| iter.into_group_map())?;
 
-                Ok((process_id, Rc::clone(commodity)))
+    // Check that PACs for each process are either all inputs or all outputs
+    validate_pac_flows(&pacs, flows)?;
+
+    // Return result
+    Ok(pacs)
+}
+
+/// Validate that the PACs for each process are either all inputs or all outputs.
+///
+/// # Arguments
+///
+/// * `pacs` - A map of process IDs to PAC commodities
+/// * `flows` - A map of process IDs to process flows
+///
+/// # Returns
+/// An `Ok(())` if the check is successful, or an error.
+fn validate_pac_flows(
+    pacs: &HashMap<Rc<str>, Vec<Rc<Commodity>>>,
+    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
+) -> Result<()> {
+    for (process_id, pacs) in pacs.iter() {
+        // Get the flows for the process (unwrap is safe as every process has associated flows)
+        let flows = flows.get(process_id).unwrap();
+
+        let mut flow_sign: Option<bool> = None; // False for inputs, true for outputs
+        for pac in pacs.iter() {
+            // Find the flow associated with the PAC
+            let flow = flows
+                .iter()
+                .find(|item| *item.commodity.id == *pac.id)
+                .with_context(|| {
+                    format!(
+                        "PAC {} for process {} must have an associated flow",
+                        pac.id, process_id
+                    )
+                })?;
+
+            // Check that flow sign is consistent
+            let current_flow_sign = flow.flow > 0.0;
+            if let Some(flow_sign) = flow_sign {
+                ensure!(
+                    current_flow_sign == flow_sign,
+                    "PACs for process {} are a mix of inputs and outputs",
+                    process_id
+                );
             }
+            flow_sign = Some(current_flow_sign);
         }
-    })
-    .process_results(|iter| iter.into_group_map())
+    }
+    Ok(())
 }
 
 /// Read process Primary Activity Commodities (PACs) from the specified model directory.
@@ -419,10 +463,11 @@ fn read_process_pacs(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
 ) -> Result<HashMap<Rc<str>, Vec<Rc<Commodity>>>> {
     let file_path = model_dir.join(PROCESS_PACS_FILE_NAME);
     let process_pacs_csv = read_csv(&file_path)?;
-    read_process_pacs_from_iter(process_pacs_csv, process_ids, commodities)
+    read_process_pacs_from_iter(process_pacs_csv, process_ids, commodities, flows)
         .with_context(|| input_err_msg(&file_path))
 }
 
@@ -452,7 +497,7 @@ pub fn read_processes(
 
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
-    let mut pacs = read_process_pacs(model_dir, &process_ids, commodities)?;
+    let mut pacs = read_process_pacs(model_dir, &process_ids, commodities, &flows)?;
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     let mut regions =
@@ -895,8 +940,9 @@ mod tests {
 
     #[test]
     fn test_read_process_pacs_from_iter() {
+        // Prepare test data
         let process_ids = ["id1".into(), "id2".into()].into_iter().collect();
-        let commodities = ["commodity1", "commodity2"]
+        let commodities: HashMap<Rc<str>, Rc<Commodity>> = ["commodity1", "commodity2"]
             .into_iter()
             .map(|id| {
                 let commodity = Commodity {
@@ -907,8 +953,25 @@ mod tests {
                     costs: CommodityCostMap::new(),
                     demand_by_region: HashMap::new(),
                 };
-
                 (Rc::clone(&commodity.id), commodity.into())
+            })
+            .collect();
+        let flows: HashMap<Rc<str>, Vec<ProcessFlow>> = ["id1", "id2"]
+            .into_iter()
+            .map(|process_id| {
+                (
+                    process_id.into(),
+                    ["commodity1", "commodity2"]
+                        .into_iter()
+                        .map(|commodity_id| ProcessFlow {
+                            process_id: process_id.into(),
+                            commodity: commodities.get(commodity_id).unwrap().clone(),
+                            flow: 1.0,
+                            flow_type: FlowType::Fixed,
+                            flow_cost: 1.0,
+                        })
+                        .collect(),
+                )
             })
             .collect();
 
@@ -918,17 +981,25 @@ mod tests {
             commodity_id: "commodity1".into(),
         };
         let pacs = [pac.clone(), pac];
-        assert!(read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities).is_err());
+        assert!(
+            read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities, &flows)
+                .is_err()
+        );
 
         // invalid commodity ID
         let bad_pac = ProcessPAC {
             process_id: "id1".into(),
             commodity_id: "other_commodity".into(),
         };
-        assert!(
-            read_process_pacs_from_iter([bad_pac].into_iter(), &process_ids, &commodities).is_err()
-        );
+        assert!(read_process_pacs_from_iter(
+            [bad_pac].into_iter(),
+            &process_ids,
+            &commodities,
+            &flows
+        )
+        .is_err());
 
+        // Valid
         let pacs = [
             ProcessPAC {
                 process_id: "id1".into(),
@@ -965,8 +1036,29 @@ mod tests {
         .into_iter()
         .collect();
         assert!(
-            read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities).unwrap()
+            read_process_pacs_from_iter(
+                pacs.clone().into_iter(),
+                &process_ids,
+                &commodities,
+                &flows
+            )
+            .unwrap()
                 == expected
+        );
+
+        // Invalid flows
+        // Making commodity1 an input so the PACs for process id1 are a mix of inputs and outputs
+        let mut flows = flows.clone();
+        flows
+            .get_mut(&Rc::from("id1"))
+            .unwrap()
+            .iter_mut()
+            .find(|flow| flow.commodity.id == "commodity1".into())
+            .unwrap()
+            .flow = -1.0;
+        assert!(
+            read_process_pacs_from_iter(pacs.into_iter(), &process_ids, &commodities, &flows)
+                .is_err()
         );
     }
 }
