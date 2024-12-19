@@ -1,7 +1,6 @@
 //! Code for reading in agent-related data from CSV files.
 use super::*;
 use crate::agent::{Agent, SearchSpace};
-use crate::asset::read_assets;
 use crate::process::Process;
 use anyhow::{bail, ensure, Context, Result};
 use region::{define_region_id_getter, read_regions_for_entity};
@@ -12,6 +11,8 @@ use std::rc::Rc;
 
 pub mod objective;
 use objective::read_agent_objectives;
+pub mod asset;
+use asset::read_assets;
 
 const AGENT_FILE_NAME: &str = "agents.csv";
 const AGENT_REGIONS_FILE_NAME: &str = "agent_regions.csv";
