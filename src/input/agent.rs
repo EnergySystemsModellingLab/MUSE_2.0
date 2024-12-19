@@ -20,15 +20,12 @@ struct AgentRegion {
     /// The region to which an agent belongs.
     region_id: String,
 }
+define_region_id_getter!(AgentRegion);
 
-macro_rules! define_agent_id_getter {
-    ($t:ty) => {
-        impl HasID for $t {
-            fn get_id(&self) -> &str {
-                &self.agent_id
-            }
-        }
-    };
+impl HasID for AgentRegion {
+    fn get_id(&self) -> &str {
+        &self.agent_id
+    }
 }
 
 /// Read agents info from various CSV files.
@@ -47,9 +44,6 @@ pub fn read_agents(
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
 ) -> Result<HashMap<Rc<str>, Agent>> {
-    define_agent_id_getter!(AgentRegion);
-    define_region_id_getter!(AgentRegion);
-
     let process_ids = processes.keys().cloned().collect();
     let mut agents = read_agents_file(model_dir, &process_ids)?;
     let agent_ids = agents.keys().cloned().collect();
