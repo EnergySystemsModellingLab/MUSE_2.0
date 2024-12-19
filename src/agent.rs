@@ -112,13 +112,13 @@ pub enum ObjectiveType {
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct AgentObjective {
     /// Unique agent id identifying the agent this objective belongs to
-    agent_id: String,
+    pub agent_id: String,
     /// Acronym identifying the objective (e.g. LCOX)
-    objective_type: ObjectiveType,
+    pub objective_type: ObjectiveType,
     /// For the weighted sum objective, the set of weights to apply to each objective.
-    decision_weight: Option<f64>,
+    pub decision_weight: Option<f64>,
     /// The tolerance around the main objective to consider secondary objectives. This is an absolute value of maximum deviation in the units of the main objective.
-    decision_lexico_tolerance: Option<f64>,
+    pub decision_lexico_tolerance: Option<f64>,
 }
 define_agent_id_getter! {AgentObjective}
 
