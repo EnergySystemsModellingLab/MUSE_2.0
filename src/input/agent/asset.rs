@@ -1,6 +1,5 @@
-//! Code for working with [Asset]s.
-//!
-//! For a description of what assets are, please see the glossary.
+//! Code for reading [Asset]s from a CSV file.
+use crate::agent::Asset;
 use crate::input::*;
 use crate::process::Process;
 use anyhow::{ensure, Context, Result};
@@ -21,17 +20,28 @@ struct AssetRaw {
     commission_year: u32,
 }
 
-/// An asset controlled by an agent.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Asset {
-    /// The [Process] that this asset corresponds to
-    pub process: Rc<Process>,
-    /// The region in which the asset is located
-    pub region_id: Rc<str>,
-    /// Capacity of asset
-    pub capacity: f64,
-    /// The year the asset comes online
-    pub commission_year: u32,
+/// Read assets CSV file from model directory.
+///
+/// # Arguments
+///
+/// * `model_dir` - Folder containing model configuration files
+/// * `agent_ids` - All possible process IDs
+/// * `processes` - The model's processes
+/// * `region_ids` - All possible region IDs
+///
+/// # Returns
+///
+/// A `HashMap` containing assets grouped by agent ID.
+pub fn read_agent_assets(
+    model_dir: &Path,
+    agent_ids: &HashSet<Rc<str>>,
+    processes: &HashMap<Rc<str>, Rc<Process>>,
+    region_ids: &HashSet<Rc<str>>,
+) -> Result<HashMap<Rc<str>, Vec<Asset>>> {
+    let file_path = model_dir.join(ASSETS_FILE_NAME);
+    let assets_csv = read_csv(&file_path)?;
+    read_assets_from_iter(assets_csv, agent_ids, processes, region_ids)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 /// Process assets from an iterator.
@@ -81,37 +91,12 @@ where
     .process_results(|iter| iter.into_group_map())
 }
 
-/// Read assets CSV file from model directory.
-///
-/// # Arguments
-///
-/// * `model_dir` - Folder containing model configuration files
-/// * `agent_ids` - All possible process IDs
-/// * `processes` - The model's processes
-/// * `region_ids` - All possible region IDs
-///
-/// # Returns
-///
-/// A `HashMap` containing assets grouped by agent ID.
-pub fn read_assets(
-    model_dir: &Path,
-    agent_ids: &HashSet<Rc<str>>,
-    processes: &HashMap<Rc<str>, Rc<Process>>,
-    region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Vec<Asset>>> {
-    let file_path = model_dir.join(ASSETS_FILE_NAME);
-    let assets_csv = read_csv(&file_path)?;
-    read_assets_from_iter(assets_csv, agent_ids, processes, region_ids)
-        .with_context(|| input_err_msg(&file_path))
-}
-
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
-    use crate::process::ProcessParameter;
-
     use super::*;
+    use crate::process::ProcessParameter;
+    use crate::region::RegionSelection;
+    use std::vec;
 
     #[test]
     fn test_read_assets_from_iter() {
@@ -132,7 +117,7 @@ mod tests {
             flows: vec![],
             pacs: vec![],
             parameter: process_param.clone(),
-            regions: crate::region::RegionSelection::All,
+            regions: RegionSelection::All,
         });
         let processes = [(Rc::clone(&process.id), Rc::clone(&process))]
             .into_iter()
@@ -208,7 +193,7 @@ mod tests {
             flows: vec![],
             pacs: vec![],
             parameter: process_param,
-            regions: crate::region::RegionSelection::Some(["GBR".into()].into_iter().collect()),
+            regions: RegionSelection::Some(["GBR".into()].into_iter().collect()),
         });
         let asset_in = AssetRaw {
             agent_id: "agent1".into(),
