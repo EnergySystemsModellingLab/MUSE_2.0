@@ -290,6 +290,7 @@ fn read_process_availabilities(
         .with_context(|| input_err_msg(&file_path))
 }
 
+/// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.
 fn read_process_flows_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
@@ -311,9 +312,7 @@ where
             flow_cost: flow_raw.flow_cost,
         })
     })
-    .collect::<Result<Vec<_>>>()?
-    .into_iter()
-    .into_id_map(process_ids)
+    .process_results(|iter| iter.into_id_map(process_ids))?
 }
 
 fn read_process_flows(

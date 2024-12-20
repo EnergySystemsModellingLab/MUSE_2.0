@@ -166,28 +166,6 @@ where
     }
 }
 
-/// Read a CSV file, grouping the entries by ID
-///
-/// # Arguments
-///
-/// * `file_path` - Path to CSV file
-/// * `ids` - All possible IDs that will be encountered
-///
-/// # Returns
-///
-/// A HashMap with ID as a key and a vector of CSV data as a value or an error.
-pub fn read_csv_grouped_by_id<T>(
-    file_path: &Path,
-    ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Vec<T>>>
-where
-    T: HasID + DeserializeOwned,
-{
-    read_csv(file_path)?
-        .into_id_map(ids)
-        .with_context(|| input_err_msg(file_path))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -284,65 +262,5 @@ mod tests {
         assert!(deserialise_f64(2.0).is_err());
         assert!(deserialise_f64(f64::NAN).is_err());
         assert!(deserialise_f64(f64::INFINITY).is_err());
-    }
-
-    fn create_ids() -> HashSet<Rc<str>> {
-        HashSet::from(["A".into(), "B".into()])
-    }
-
-    #[test]
-    fn test_read_csv_grouped_by_id() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("data.csv");
-        {
-            let file_path: &Path = &file_path; // cast
-            let mut file = File::create(file_path).unwrap();
-            writeln!(file, "id,value\nA,1\nB,2\nA,3").unwrap();
-        }
-
-        let expected = HashMap::from([
-            (
-                "A".into(),
-                vec![
-                    Record {
-                        id: "A".to_string(),
-                        value: 1,
-                    },
-                    Record {
-                        id: "A".to_string(),
-                        value: 3,
-                    },
-                ],
-            ),
-            (
-                "B".into(),
-                vec![Record {
-                    id: "B".to_string(),
-                    value: 2,
-                }],
-            ),
-        ]);
-        let process_ids = create_ids();
-        let file_path = dir.path().join("data.csv");
-        let map = read_csv_grouped_by_id::<Record>(&file_path, &process_ids);
-        assert_eq!(expected, map.unwrap());
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_read_csv_grouped_by_id_duplicate() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("data.csv");
-        {
-            let file_path: &Path = &file_path; // cast
-            let mut file = File::create(file_path).unwrap();
-
-            // NB: Process ID "C" isn't valid
-            writeln!(file, "process_id,value\nA,1\nB,2\nC,3").unwrap();
-        }
-
-        // Check that it fails if a non-existent process ID is provided
-        let process_ids = create_ids();
-        read_csv_grouped_by_id::<Record>(&file_path, &process_ids).unwrap();
     }
 }
