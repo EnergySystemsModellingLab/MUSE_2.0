@@ -75,21 +75,33 @@ pub enum FlowType {
     Flexible,
 }
 
+#[derive(PartialEq, Debug, Deserialize)]
+struct ProcessFlowRaw {
+    process_id: String,
+    commodity_id: String,
+    flow: f64,
+    #[serde(default)]
+    flow_type: FlowType,
+    #[serde(deserialize_with = "deserialise_flow_cost")]
+    flow_cost: f64,
+}
+
+define_process_id_getter! {ProcessFlowRaw}
+
 #[derive(PartialEq, Debug, Deserialize, Clone)]
 pub struct ProcessFlow {
     /// A unique identifier for the process (typically uses a structured naming convention).
     pub process_id: String,
     /// Identifies the commodity for the specified flow
-    pub commodity_id: String,
+    pub commodity: Rc<Commodity>,
     /// Commodity flow quantity relative to other commodity flows. +ve value indicates flow out, -ve value indicates flow in.
     pub flow: f64,
-    #[serde(default)]
     /// Identifies if a flow is fixed or flexible.
     pub flow_type: FlowType,
-    #[serde(deserialize_with = "deserialise_flow_cost")]
     /// Cost per unit flow. For example, cost per unit of natural gas produced. Differs from var_opex because the user can apply it to any specified flow, whereas var_opex applies to pac flow.
     pub flow_cost: f64,
 }
+
 define_process_id_getter! {ProcessFlow}
 
 /// Custom deserialiser for flow cost - treat empty fields as 0.0
@@ -286,6 +298,42 @@ fn read_process_availabilities(
         .with_context(|| input_err_msg(&file_path))
 }
 
+/// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.
+fn read_process_flows_from_iter<I>(
+    iter: I,
+    process_ids: &HashSet<Rc<str>>,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+) -> Result<HashMap<Rc<str>, Vec<ProcessFlow>>>
+where
+    I: Iterator<Item = ProcessFlowRaw>,
+{
+    iter.map(|flow_raw| -> Result<ProcessFlow> {
+        let commodity = commodities
+            .get(flow_raw.commodity_id.as_str())
+            .with_context(|| format!("{} is not a valid commodity ID", &flow_raw.commodity_id))?;
+
+        Ok(ProcessFlow {
+            process_id: flow_raw.process_id,
+            commodity: Rc::clone(commodity),
+            flow: flow_raw.flow,
+            flow_type: flow_raw.flow_type,
+            flow_cost: flow_raw.flow_cost,
+        })
+    })
+    .process_results(|iter| iter.into_id_map(process_ids))?
+}
+
+fn read_process_flows(
+    model_dir: &Path,
+    process_ids: &HashSet<Rc<str>>,
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+) -> Result<HashMap<Rc<str>, Vec<ProcessFlow>>> {
+    let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
+    let process_flow_csv = read_csv(&file_path)?;
+    read_process_flows_from_iter(process_flow_csv, process_ids, commodities)
+        .with_context(|| input_err_msg(&file_path))
+}
+
 fn read_process_parameters_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
@@ -298,18 +346,15 @@ where
     for param in iter {
         let param = param.into_parameter(year_range)?;
         let id = process_ids.get_id(&param.process_id)?;
-
         ensure!(
             params.insert(Rc::clone(&id), param).is_none(),
             "More than one parameter provided for process {id}"
         );
     }
-
     ensure!(
         params.len() == process_ids.len(),
         "Each process must have an associated parameter"
     );
-
     Ok(params)
 }
 
@@ -391,7 +436,7 @@ fn validate_pac_flows(
             // Find the flow associated with the PAC
             let flow = flows
                 .iter()
-                .find(|item| *item.commodity_id.as_str() == *pac.id)
+                .find(|item| *item.commodity.id == *pac.id)
                 .with_context(|| {
                     format!(
                         "PAC {} for process {} must have an associated flow",
@@ -458,8 +503,7 @@ pub fn read_processes(
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
-    let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
-    let mut flows = read_csv_grouped_by_id(&file_path, &process_ids)?;
+    let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
     let mut pacs = read_process_pacs(model_dir, &process_ids, commodities, &flows)?;
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
@@ -493,6 +537,7 @@ pub fn read_processes(
 
 #[cfg(test)]
 mod tests {
+
     use crate::commodity::{CommodityCostMap, CommodityType};
     use crate::time_slice::TimeSliceLevel;
 
@@ -633,6 +678,129 @@ mod tests {
         assert!(
             create_param_raw(Some(2000), Some(2100), 0, Some(1.0), Some(-1.0))
                 .validate()
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_read_process_flows_from_iter_good() {
+        let process_ids = ["id1".into(), "id2".into()].into_iter().collect();
+        let commodities: HashMap<Rc<str>, Rc<Commodity>> = ["commodity1", "commodity2"]
+            .into_iter()
+            .map(|id| {
+                let commodity = Commodity {
+                    id: id.into(),
+                    description: "Some description".into(),
+                    kind: CommodityType::InputCommodity,
+                    time_slice_level: TimeSliceLevel::Annual,
+                    costs: CommodityCostMap::new(),
+                    demand_by_region: HashMap::new(),
+                };
+
+                (Rc::clone(&commodity.id), commodity.into())
+            })
+            .collect();
+
+        let flows_raw = [
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity2".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+            ProcessFlowRaw {
+                process_id: "id2".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+        ];
+
+        let expected = HashMap::from([
+            (
+                "id1".into(),
+                vec![
+                    ProcessFlow {
+                        process_id: "id1".into(),
+                        commodity: commodities.get("commodity1").unwrap().clone(),
+                        flow: 1.0,
+                        flow_type: FlowType::Fixed,
+                        flow_cost: 1.0,
+                    },
+                    ProcessFlow {
+                        process_id: "id1".into(),
+                        commodity: commodities.get("commodity2").unwrap().clone(),
+                        flow: 1.0,
+                        flow_type: FlowType::Fixed,
+                        flow_cost: 1.0,
+                    },
+                ],
+            ),
+            (
+                "id2".into(),
+                vec![ProcessFlow {
+                    process_id: "id2".into(),
+                    commodity: commodities.get("commodity1").unwrap().clone(),
+                    flow: 1.0,
+                    flow_type: FlowType::Fixed,
+                    flow_cost: 1.0,
+                }],
+            ),
+        ]);
+
+        let actual =
+            read_process_flows_from_iter(flows_raw.into_iter(), &process_ids, &commodities)
+                .unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_read_process_flows_from_iter_bad_commodity_id() {
+        let process_ids = ["id1".into(), "id2".into()].into_iter().collect();
+        let commodities = ["commodity1", "commodity2"]
+            .into_iter()
+            .map(|id| {
+                let commodity = Commodity {
+                    id: id.into(),
+                    description: "Some description".into(),
+                    kind: CommodityType::InputCommodity,
+                    time_slice_level: TimeSliceLevel::Annual,
+                    costs: CommodityCostMap::new(),
+                    demand_by_region: HashMap::new(),
+                };
+
+                (Rc::clone(&commodity.id), commodity.into())
+            })
+            .collect();
+
+        let flows_raw = [
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity3".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            },
+        ];
+
+        assert!(
+            read_process_flows_from_iter(flows_raw.into_iter(), &process_ids, &commodities)
                 .is_err()
         );
     }
@@ -781,7 +949,7 @@ mod tests {
     fn test_read_process_pacs_from_iter() {
         // Prepare test data
         let process_ids = ["id1".into(), "id2".into()].into_iter().collect();
-        let commodities = ["commodity1", "commodity2"]
+        let commodities: HashMap<Rc<str>, Rc<Commodity>> = ["commodity1", "commodity2"]
             .into_iter()
             .map(|id| {
                 let commodity = Commodity {
@@ -804,7 +972,7 @@ mod tests {
                         .into_iter()
                         .map(|commodity_id| ProcessFlow {
                             process_id: process_id.into(),
-                            commodity_id: commodity_id.into(),
+                            commodity: commodities.get(commodity_id).unwrap().clone(),
                             flow: 1.0,
                             flow_type: FlowType::Fixed,
                             flow_cost: 1.0,
@@ -892,7 +1060,7 @@ mod tests {
             .get_mut(&Rc::from("id1"))
             .unwrap()
             .iter_mut()
-            .find(|flow| flow.commodity_id == "commodity1")
+            .find(|flow| flow.commodity.id == "commodity1".into())
             .unwrap()
             .flow = -1.0;
         assert!(
