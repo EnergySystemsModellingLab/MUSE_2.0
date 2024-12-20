@@ -32,7 +32,7 @@ struct AssetRaw {
 /// # Returns
 ///
 /// A `HashMap` containing assets grouped by agent ID.
-pub fn read_assets(
+pub fn read_agent_assets(
     model_dir: &Path,
     agent_ids: &HashSet<Rc<str>>,
     processes: &HashMap<Rc<str>, Rc<Process>>,
