@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+//! Regions represent different geographical areas in which agents, processes, etc. are active.
 use crate::input::*;
 use anyhow::{ensure, Context, Result};
 use serde::de::DeserializeOwned;
@@ -19,19 +19,18 @@ pub struct Region {
 }
 define_id_getter! {Region}
 
-#[derive(PartialEq, Debug, Clone)]
+/// Represents multiple regions
+#[derive(PartialEq, Debug, Clone, Default)]
 pub enum RegionSelection {
+    /// All regions are covered
+    #[default]
     All,
+    /// Only some regions are covered
     Some(HashSet<Rc<str>>),
 }
 
-impl Default for RegionSelection {
-    fn default() -> Self {
-        Self::All
-    }
-}
-
 impl RegionSelection {
+    /// Returns true if the [`RegionSelection`] covers a given region
     pub fn contains(&self, region_id: &str) -> bool {
         match self {
             Self::All => true,
@@ -53,7 +52,9 @@ pub fn read_regions(model_dir: &Path) -> Result<HashMap<Rc<str>, Region>> {
     read_csv_id_file(&model_dir.join(REGIONS_FILE_NAME))
 }
 
+/// An object which is associated with a single region
 pub trait HasRegionID {
+    /// Get the associated region ID
     fn get_region_id(&self) -> &str;
 }
 
