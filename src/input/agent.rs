@@ -3,33 +3,18 @@ use super::*;
 use crate::agent::{Agent, SearchSpace};
 use crate::process::Process;
 use anyhow::{bail, ensure, Context, Result};
-use region::{define_region_id_getter, read_regions_for_entity};
-use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
-pub mod objective;
-use objective::read_agent_objectives;
 pub mod asset;
 use asset::read_assets;
+pub mod objective;
+use objective::read_agent_objectives;
+pub mod region;
+use region::read_agent_regions;
 
 const AGENT_FILE_NAME: &str = "agents.csv";
-const AGENT_REGIONS_FILE_NAME: &str = "agent_regions.csv";
-
-#[derive(Debug, Deserialize, PartialEq)]
-struct AgentRegion {
-    agent_id: String,
-    /// The region to which an agent belongs.
-    region_id: String,
-}
-define_region_id_getter!(AgentRegion);
-
-impl HasID for AgentRegion {
-    fn get_id(&self) -> &str {
-        &self.agent_id
-    }
-}
 
 /// Read agents info from various CSV files.
 ///
@@ -51,9 +36,7 @@ pub fn read_agents(
     let mut agents = read_agents_file(model_dir, &process_ids)?;
     let agent_ids = agents.keys().cloned().collect();
 
-    let file_path = model_dir.join(AGENT_REGIONS_FILE_NAME);
-    let mut agent_regions =
-        read_regions_for_entity::<AgentRegion>(&file_path, &agent_ids, region_ids)?;
+    let mut agent_regions = read_agent_regions(model_dir, &agent_ids, region_ids)?;
     let mut objectives = read_agent_objectives(model_dir, &agents)?;
     let mut assets = read_assets(model_dir, &agent_ids, processes, region_ids)?;
 
