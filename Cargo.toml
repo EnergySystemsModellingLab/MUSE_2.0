@@ -21,7 +21,7 @@ serde = {version = "1.0.216", features = ["derive", "rc"]}
 serde_string_enum = "0.2.1"
 tempfile = "3.10.1"
 toml = "0.8.13"
-unicase = "2.7.0"
+unicase = "2.8.1"
 fern = {version = "0.7.1", features = ["chrono", "colored"]}
 atty = "0.2"
 chrono = "0.4"
