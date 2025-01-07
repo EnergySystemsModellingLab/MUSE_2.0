@@ -5,7 +5,7 @@ use crate::input::*;
 use crate::process::{FlowType, ProcessFlow};
 use anyhow::{Context, Result};
 use itertools::Itertools;
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
@@ -21,22 +21,9 @@ struct ProcessFlowRaw {
     flow: f64,
     #[serde(default)]
     flow_type: FlowType,
-    #[serde(deserialize_with = "deserialise_flow_cost")]
-    flow_cost: f64,
+    flow_cost: Option<f64>,
 }
 define_process_id_getter! {ProcessFlowRaw}
-
-/// Custom deserialiser for flow cost - treat empty fields as 0.0
-fn deserialise_flow_cost<'de, D>(deserialiser: D) -> Result<f64, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value: Option<f64> = Deserialize::deserialize(deserialiser)?;
-    match value {
-        None => Ok(0.0),
-        Some(value) => Ok(value),
-    }
-}
 
 /// Read process flows from a CSV file
 pub fn read_process_flows(
@@ -69,7 +56,7 @@ where
             commodity: Rc::clone(commodity),
             flow: flow_raw.flow,
             flow_type: flow_raw.flow_type,
-            flow_cost: flow_raw.flow_cost,
+            flow_cost: flow_raw.flow_cost.unwrap_or(0.0),
         })
     })
     .process_results(|iter| iter.into_id_map(process_ids))?
@@ -106,21 +93,21 @@ mod test {
                 commodity_id: "commodity1".into(),
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
-                flow_cost: 1.0,
+                flow_cost: Some(1.0),
             },
             ProcessFlowRaw {
                 process_id: "id1".into(),
                 commodity_id: "commodity2".into(),
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
-                flow_cost: 1.0,
+                flow_cost: Some(1.0),
             },
             ProcessFlowRaw {
                 process_id: "id2".into(),
                 commodity_id: "commodity1".into(),
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
-                flow_cost: 1.0,
+                flow_cost: Some(1.0),
             },
         ];
 
@@ -187,14 +174,14 @@ mod test {
                 commodity_id: "commodity1".into(),
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
-                flow_cost: 1.0,
+                flow_cost: Some(1.0),
             },
             ProcessFlowRaw {
                 process_id: "id1".into(),
                 commodity_id: "commodity3".into(),
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
-                flow_cost: 1.0,
+                flow_cost: Some(1.0),
             },
         ];
 
