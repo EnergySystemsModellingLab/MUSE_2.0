@@ -3,7 +3,7 @@
 use crate::agent::Agent;
 use crate::commodity::Commodity;
 use crate::input::*;
-use crate::process::{read_processes, Process};
+use crate::process::Process;
 use crate::region::Region;
 use crate::time_slice::{read_time_slice_info, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
