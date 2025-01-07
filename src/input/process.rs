@@ -1,6 +1,5 @@
 //! Code for reading process-related information from CSV files.
 use crate::commodity::Commodity;
-use crate::input::region::{define_region_id_getter, read_regions_for_entity};
 use crate::input::*;
 use crate::process::Process;
 use crate::time_slice::TimeSliceInfo;
@@ -18,9 +17,10 @@ pub mod pac;
 use pac::read_process_pacs;
 pub mod parameter;
 use parameter::read_process_parameters;
+pub mod region;
+use region::read_process_regions;
 
 const PROCESSES_FILE_NAME: &str = "processes.csv";
-const PROCESS_REGIONS_FILE_NAME: &str = "process_regions.csv";
 
 macro_rules! define_process_id_getter {
     ($t:ty) => {
@@ -32,14 +32,6 @@ macro_rules! define_process_id_getter {
     };
 }
 use define_process_id_getter;
-
-#[derive(PartialEq, Debug, Deserialize)]
-struct ProcessRegion {
-    process_id: String,
-    region_id: String,
-}
-define_process_id_getter! {ProcessRegion}
-define_region_id_getter! {ProcessRegion}
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessDescription {
@@ -76,9 +68,7 @@ pub fn read_processes(
     let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
     let mut pacs = read_process_pacs(model_dir, &process_ids, commodities, &flows)?;
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
-    let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
-    let mut regions =
-        read_regions_for_entity::<ProcessRegion>(&file_path, &process_ids, region_ids)?;
+    let mut regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
     Ok(process_ids
         .into_iter()
