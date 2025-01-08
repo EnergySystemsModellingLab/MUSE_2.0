@@ -128,7 +128,7 @@ The result is used to discover commodity prices in the calibrated base year (*t<
     minimisation). The objective function is the cost of operating
     the system over a year, which must be minimised. The decision
     variables are the commodity inputs and outputs of each asset.
-    These are constrained by (a) the capacity of the asset. And (b)
+    These are constrained by (a) the capacity of the asset and (b)
     the capacity factor limits by time slice/season/year. Energy
     commodity supply/demand must balance for SED (supply equals
     demand) type commodities, and all service demands (SVD
