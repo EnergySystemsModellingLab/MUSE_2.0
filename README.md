@@ -22,8 +22,11 @@ For example Rust code showing how to solve a constrained optimisation, see the
 
 ## Getting started
 
-Please, refer to the [Developers Setup section of the Contributing Guidelines](CONTRIBUTING.md#developer-setup)
-to start using or developing MUSE 2.0.
+To start using MUSE 2.0, please refer to [the documentation]. If you wish to develop MUSE 2.0 or
+build it from source, please see [the developer guide].
+
+[the documentation]: https://energysystemsmodellinglab.github.io/MUSE_2.0/introduction.html
+[the developer guide]: https://energysystemsmodellinglab.github.io/MUSE_2.0/developer_guide.html
 
 ## Copyright
 
