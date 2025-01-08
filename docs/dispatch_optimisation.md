@@ -27,7 +27,7 @@ Where *cost* is a vector of cost coefficients representing the cost of
 each commodity flow.
 
 $$
-  cost_{r,a,c,ts} = var\\_ opex_{r,a,pacs,ts} + flow\\_ cost_{r,a,c,ts} + commodity.cost_{r,c,ts}
+  cost_{r,a,c,ts} = var\\_ opex_{r,a,pacs,ts} + flow\\_ cost_{r,a,c,ts} + commodity\\_ cost_{r,c,ts}
 $$
 
 Constraints.
