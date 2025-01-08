@@ -9,13 +9,13 @@ is a quantity flow (e.g. energy) as opposed to an intensity (e.g. power).
 
 where
 
-*r* = regions
+*r* = region
 
-*a* = assets
+*a* = asset
 
-*c* = commodities
+*c* = commodity
 
-*ts* = time_slices
+*ts* = time slice
 
 Objective function:
 
