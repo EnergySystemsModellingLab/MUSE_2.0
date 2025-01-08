@@ -30,4 +30,4 @@ build it from source, please see [the developer guide].
 
 ## Copyright
 
-Copyright © 2024 Imperial College London
+Copyright © 2025 Imperial College London
