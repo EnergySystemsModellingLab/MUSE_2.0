@@ -57,7 +57,7 @@ of an *Agent’s* demand for a year, considering the *Asset’s* entire lifetime
 
 **Input Commodity/ies:** The commodities that flow into a process.
 
-**Levelized Cost of X (LCOX):** An *Agent* objective, representing the expected cost of 1 unit of
+**Levelised Cost of X (LCOX):** An *Agent* objective, representing the expected cost of 1 unit of
 output commodity X from a process over its lifetime under a specified discount rate.
 
 **Lifetime:** The lifetime of a process, measured in years.
@@ -95,7 +95,7 @@ modelled system. For example, tonne-kilometers of road freight, PJ of useful hea
 
 **Technology Discount Rate:** The discount rate used to calculate any technology-specific agent
 economic objectives that require a discount rate. For example, Equivalent Annual Cost, Net Present
-Value, Levelized Cost of X, etc.
+Value, Levelised Cost of X, etc.
 
 **Time Horizon:** The overall period modelled. For example, 2025&ndash;2100.
 

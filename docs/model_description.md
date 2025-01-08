@@ -21,7 +21,7 @@ framework that is designed to enable users to create and apply an agent-based mo
 market equilibrium on a set of user-defined commodities, over a user-defined time period, for a
 user-specified region or set of regions.
 MUSE was developed to simulate approaches to climate change mitigation over a long time horizon
-(e.g. 5-year steps to 2050 or 2100), but the framework is generalized and can therefore simulate any
+(e.g. 5-year steps to 2050 or 2100), but the framework is generalised and can therefore simulate any
 market equilibrium.
 
 ## Overall Description
@@ -38,7 +38,7 @@ MUSE is classified as a recursive dynamic modelling framework in the sense that 
 single time period to find a market equilibrium, and then moves to the next time period.
 Agents in MUSE have limited foresight, reacting only to information available in the current time period.
 <!-- markdown-link-check-disable-next-line -->
-This is distinct from intertemporal optimization modelling frameworks (such as [TIMES](https://iea-etsap.org/index.php/etsap-tools/model-generators/times)
+This is distinct from intertemporal optimisation modelling frameworks (such as [TIMES](https://iea-etsap.org/index.php/etsap-tools/model-generators/times)
 and [MESSAGEix](https://docs.messageix.org/en/latest/)) which have perfect foresight over the whole
 modelled time horizon.
 
@@ -52,7 +52,7 @@ commodities, as opposed to a whole economy.
 
 MUSE 2.0 is data-driven in the sense that model processing and data are entirely independent, and
 user-defined data is at the heart of how the model behaves. It is also "bottom-up" in nature, which
-means that it requires users to characterize each individual process that produces or consumes each
+means that it requires users to characterise each individual process that produces or consumes each
 commodity, along with a range of other physical, economic and agent parameters.
 
 At a high level, the user defines:
@@ -85,7 +85,7 @@ At a high level, the user defines:
 The model takes this data, configures and self-checks, and then solves
 for a system change pathway:
 
-1) [Initialisation](#1-initialization)
+1) [Initialisation](#1-initialisation)
 2) [Base Year Price Discovery](#2-base-year-price-discovery)
 3) [Agent Investment](#3-agent-investment)
 4) [Carbon Budget Solution (or CO<sub>2</sub> Price Responsiveness)](#4-carbon-budget-solution-or-co2-price-responsiveness)
@@ -96,7 +96,7 @@ for a system change pathway:
 
 At a high level, the MUSE 2.0 iterative solution concept is as follows:
 
-### 1. Initialization
+### 1. Initialisation
 
 Read input data, performing basic temporal set up, commodity and process/asset information.
 Consistency check is performed.
@@ -125,8 +125,8 @@ The result is used to discover commodity prices in the calibrated base year (*t<
         by time slice, season or year.
 
 3. Price discovery is implemented via linear programming (cost
-    minimization). The objective function is the cost of operating
-    the system over a year, which must be minimized. The decision
+    minimisation). The objective function is the cost of operating
+    the system over a year, which must be minimised. The decision
     variables are the commodity inputs and outputs of each asset.
     These are constrained by (a) the capacity of the asset. And (b)
     the capacity factor limits by time slice/season/year. Energy
@@ -147,7 +147,7 @@ The result is used to discover commodity prices in the calibrated base year (*t<
     could be done by calculating the marginal price of the process
     producing the commodity in question with the best objective
     value, where objective values are calculated using the
-    utilization of the next most expensive (marginal cost) asset in
+    utilisation of the next most expensive (marginal cost) asset in
     the dispatch stack, and commodity prices from the price discovery
     at step 3 above.
 
@@ -162,29 +162,29 @@ The capacity investment of new assets required in the next milestone year are ca
     for each agent that is responsible for a portion of that demand:
 
     - For assets, calculate objective value/s assuming the
-        utilization observed from dispatch for that asset in
+        utilisation observed from dispatch for that asset in
         step (2) will persist. For assets this calculation does not
         include capital cost as this is sunk cost because the asset
         already exists.
 
     - For processes, calculate objective value/s assuming the
-        utilization observed from dispatch in step (2) for the asset
+        utilisation observed from dispatch in step (2) for the asset
         with the marginal cost immediately above the marginal cost
         of this process (and respecting the processes' availability
         constraints). If the process has lower marginal cost than
         any asset, then assume full dispatch (subject to its
         availability constraints). If the process has the same
-        marginal cost as an asset, assume the same utilization as
+        marginal cost as an asset, assume the same utilisation as
         that asset. If the process has marginal cost higher than any
-        asset, assume zero utilization.
+        asset, assume zero utilisation.
 
-        > **Note:** Could calculate utilization
-        using time slice level utilization of asset
+        > **Note:** Could calculate utilisation
+        using time slice level utilisation of asset
         with marginal cost immediately above the process, also
         taking into account capacity factor constraints -- would be
         more accurate in most cases (some complications, e.g. where
         asset/process has conflicting capacity factor
-        constraints/utilization).
+        constraints/utilisation).
 
     - Add assets/processes to the capacity mix starting with the
           one with the best objective value and keep adding them
@@ -196,7 +196,7 @@ The capacity investment of new assets required in the next milestone year are ca
         influence the dispatch of other assets, which in turn can
         influence objective values, which in turn can influence
         asset choices. An incomplete solution is to run dispatch
-        again, update utilizations of assets and proposed new
+        again, update utilisations of assets and proposed new
         assets, and repeat step 3.2 again, to see if
         any asset's objective has deteriorated to the point where it
         can be replaced, and keep going around this loop until
