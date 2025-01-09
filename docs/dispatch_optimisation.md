@@ -106,7 +106,7 @@ The sum of all PACs must be within the assets' availability bounds. Similar cons
 limit output of PACs to respect the availability constraints at time slice, seasonal or annual
 levels. With appropriate selection of *q* on the LHS to match RHS temporal granularity.
 
-Note: Where availability is specified for a process at `DAYNIGHT` time slice level, it supersedes
+Note: Where availability is specified for a process at `daynight` time slice level, it supersedes
 the capacity limit constraint (i.e. you don't need both).
 
 ### Commodity balance constraints
