@@ -79,7 +79,7 @@ Primary activity commodity/ies output must not exceed asset capacity or any othe
 defined by availability factor constraint user inputs.
 
 For the capacity limits, for each *r*, *a*, *c*, *ts*. The sum of all PACs must be less than the
-assets’ capacity:
+assets' capacity:
 
 $$
 \sum_{pacs} \frac{q_{r,a,c,ts}}{capacity\\_ a_{a} * time\\_ slice\\_ length_{ts}} \leq 1
@@ -107,7 +107,7 @@ limit output of PACs to respect the availability constraints at time slice, seas
 levels. With appropriate selection of *q* on the LHS to match RHS temporal granularity.
 
 Note: Where availability is specified for a process at `DAYNIGHT` time slice level, it supersedes
-the capacity limit constraint (i.e. you don’t need both).
+the capacity limit constraint (i.e. you don't need both).
 
 ### Commodity balance constraints
 

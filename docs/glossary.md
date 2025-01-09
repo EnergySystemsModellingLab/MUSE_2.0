@@ -51,7 +51,7 @@ dispatch, subject to capacity factor constraints that can be defined by the user
 **End Year:** The final year in the model time horizon.
 
 **Equivalent Annual Cost (EAC):** An *Agent* objective, representing the cost of serving all or part
-of an *Agent’s* demand for a year, considering the *Asset’s* entire lifetime.
+of an *Agent's* demand for a year, considering the *Asset's* entire lifetime.
 
 **Fixed Operating Cost:** The annual operating cost charged per unit of capacity.
 
@@ -72,7 +72,7 @@ the next most expensive, etc, until demand is served. Also called “unit commit
 **Output Commodity/ies:** The commodities that flow out of a process.
 
 **Primary Activity Commodity (PAC):** The PACs specify which output/s are linked to the process
-capacity. The combined output of all PACs cannot exceed the *Asset’s* capacity. A user can define
+capacity. The combined output of all PACs cannot exceed the *Asset's* capacity. A user can define
 which output/s are PACs.
 
 **Process/Technology:** An available process that converts input commodities to output commodities.
