@@ -85,6 +85,7 @@ where
                 process: Rc::clone(process),
                 region_id,
                 capacity: asset.capacity,
+                capacity_a: asset.capacity * process.parameter.cap2act,
                 commission_year: asset.commission_year,
             },
         ))
@@ -139,6 +140,7 @@ mod tests {
             process: Rc::clone(&process),
             region_id: "GBR".into(),
             capacity: 1.0,
+            capacity_a: 1.0,
             commission_year: 2010,
         };
         let expected = [("agent1".into(), vec![asset_out])].into_iter().collect();
