@@ -16,6 +16,13 @@ Once you have done so, select the `stable` toolchain (used by this project) as y
 rustup default stable
 ```
 
+As the project uses the latest stable toolchain, you may see build errors if your toolchain is out
+of date. You can update to the latest version with:
+
+```sh
+rustup update stable
+```
+
 ## Working with the project
 
 To build the project, run:
