@@ -54,6 +54,7 @@ fn perform_dispatch(model: &Model, year: u32) {
     let vars = add_variables(&mut problem, model, year);
 
     add_fixed_asset_constraints(&mut problem, &vars, model, year);
+    add_asset_capacity_constraints(&mut problem, &vars, model, year);
 
     let solved = problem.optimise(highs::Sense::Minimise).solve();
     let status = solved.status();
@@ -175,4 +176,27 @@ fn add_fixed_asset_constraints(
             }
         }
     }
+}
+
+fn add_asset_capacity_constraints(
+    problem: &mut RowProblem,
+    vars: &VariableMap,
+    model: &Model,
+    year: u32,
+) {
+    let mut terms = Vec::new();
+    for region_id in model.iter_regions() {
+        for asset in model.get_assets(year, region_id) {
+            // Just calculate for one time slice for now
+            let (time_slice, ts_length) = model.time_slice_info.fractions.iter().next().unwrap();
+
+            let pac = asset.process.pacs.first().unwrap();
+            let key = VariableMapKey::new(region_id, &asset.process.id, &pac.id, time_slice);
+            let var = *vars.get(&key).unwrap();
+            let coeff = 1.0 / (asset.capacity_a * ts_length);
+            terms.push((var, coeff));
+        }
+    }
+
+    problem.add_row(..=1.0, terms);
 }
