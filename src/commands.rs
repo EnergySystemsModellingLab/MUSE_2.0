@@ -1,3 +1,4 @@
+//! The command line interface for the simulation.
 use crate::log;
 use crate::model::Model;
 use crate::settings::Settings;
