@@ -5,10 +5,11 @@ use crate::time_slice::TimeSliceID;
 use highs::{HighsModelStatus, RowProblem};
 use itertools::Itertools;
 use log::*;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-#[derive(Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 struct VariableMapKey {
     region_id: Rc<str>,
     process_id: Rc<str>,
@@ -33,7 +34,10 @@ impl VariableMapKey {
 }
 
 /// A map for easy lookup of variables in the optimisation.
-struct VariableMap(HashMap<VariableMapKey, highs::Col>);
+struct VariableMap {
+    map: HashMap<VariableMapKey, highs::Col>,
+    touched: RefCell<HashMap<VariableMapKey, bool>>,
+}
 
 impl VariableMap {
     fn get(
@@ -44,7 +48,9 @@ impl VariableMap {
         time_slice: &TimeSliceID,
     ) -> highs::Col {
         let key = VariableMapKey::new(region_id, process_id, commodity_id, time_slice);
-        *self.0.get(&key).unwrap()
+        self.touched.borrow_mut().insert(key.clone(), true);
+
+        *self.map.get(&key).unwrap()
     }
 }
 
@@ -69,6 +75,8 @@ fn perform_dispatch(model: &Model, year: u32) {
     add_asset_capacity_constraints(&mut problem, &vars, model, year);
     add_sed_commodity_balance_constraints(&mut problem, &vars, model, year);
 
+    find_untouched(&vars);
+
     let solved = problem.optimise(highs::Sense::Minimise).solve();
     let status = solved.status();
     if status != HighsModelStatus::Optimal {
@@ -80,7 +88,10 @@ fn perform_dispatch(model: &Model, year: u32) {
 }
 
 fn add_variables(problem: &mut RowProblem, model: &Model, year: u32) -> VariableMap {
-    let mut vars = VariableMap(HashMap::new());
+    let mut vars = VariableMap {
+        map: HashMap::new(),
+        touched: RefCell::new(HashMap::new()),
+    };
     for region_id in model.iter_regions() {
         info!("** Region: {region_id}");
         for asset in model.get_assets(year, region_id) {
@@ -108,8 +119,10 @@ fn add_variables(problem: &mut RowProblem, model: &Model, year: u32) -> Variable
                     time_slice,
                 );
 
-                let existing = vars.0.insert(key, var).is_some();
+                let existing = vars.map.insert(key.clone(), var).is_some();
                 assert!(!existing, "Duplicate entry for var");
+
+                vars.touched.get_mut().insert(key, false);
             }
         }
     }
@@ -235,5 +248,20 @@ fn add_sed_commodity_balance_constraints(
             let terms = vars.map(|var| (var, 1.0)).collect_vec();
             problem.add_row(0.0..=0.0, terms);
         }
+    }
+}
+
+fn find_untouched(vars: &VariableMap) {
+    let binding = vars.touched.borrow();
+    let (touched, untouched): (Vec<_>, Vec<_>) = binding
+        .keys()
+        .partition(|key| *vars.touched.borrow().get(key).unwrap());
+
+    for key in touched {
+        info!("TOUCHED: {key:?}");
+    }
+    info!("!!!!!!!!!!!!!!!!!!!!!!!!");
+    for key in untouched {
+        info!("UNTOUCHED: {key:?}");
     }
 }
