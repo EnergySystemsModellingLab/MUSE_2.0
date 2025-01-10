@@ -64,6 +64,13 @@ where
             "Commodity flexible assets are not currently supported"
         );
 
+        if let Some(flow_cost) = flow.flow_cost {
+            ensure!(
+                (0.0..f64::INFINITY).contains(&flow_cost),
+                "Invalid value for flow cost ({flow_cost}). Must be >=0."
+            )
+        }
+
         Ok(ProcessFlow {
             process_id: flow.process_id,
             commodity: Rc::clone(commodity),
@@ -239,5 +246,41 @@ mod test {
         check_bad_flow!(f64::NEG_INFINITY);
         check_bad_flow!(f64::INFINITY);
         check_bad_flow!(f64::NAN);
+    }
+
+    #[test]
+    fn test_read_process_flows_from_iter_flow_cost() {
+        let process_ids = iter::once("id1".into()).collect();
+        let commodities = iter::once(Commodity {
+            id: "commodity1".into(),
+            description: "Some description".into(),
+            kind: CommodityType::InputCommodity,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand_by_region: HashMap::new(),
+        })
+        .map(|c| (c.id.clone(), Rc::new(c)))
+        .collect();
+
+        macro_rules! is_flow_cost_ok {
+            ($flow_cost:expr) => {{
+                let flow = ProcessFlowRaw {
+                    process_id: "id1".into(),
+                    commodity_id: "commodity1".into(),
+                    flow: 1.0,
+                    flow_type: FlowType::Fixed,
+                    flow_cost: Some($flow_cost),
+                };
+
+                read_process_flows_from_iter(iter::once(flow), &process_ids, &commodities).is_ok()
+            }};
+        }
+
+        assert!(is_flow_cost_ok!(0.0));
+        assert!(is_flow_cost_ok!(1.0));
+        assert!(is_flow_cost_ok!(100.0));
+        assert!(!is_flow_cost_ok!(f64::NEG_INFINITY));
+        assert!(!is_flow_cost_ok!(f64::INFINITY));
+        assert!(!is_flow_cost_ok!(f64::NAN));
     }
 }
