@@ -3,7 +3,7 @@ use super::define_process_id_getter;
 use crate::commodity::Commodity;
 use crate::input::*;
 use crate::process::{FlowType, ProcessFlow};
-use anyhow::{Context, Result};
+use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -51,6 +51,13 @@ where
             .get(flow.commodity_id.as_str())
             .with_context(|| format!("{} is not a valid commodity ID", &flow.commodity_id))?;
 
+        // Check that flow is not zero, infinity, etc.
+        ensure!(
+            flow.flow.is_normal(),
+            "Invalid value for flow: {}",
+            flow.flow
+        );
+
         Ok(ProcessFlow {
             process_id: flow.process_id,
             commodity: Rc::clone(commodity),
@@ -67,6 +74,7 @@ mod test {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType};
     use crate::time_slice::TimeSliceLevel;
+    use std::iter;
 
     #[test]
     fn test_read_process_flows_from_iter_good() {
@@ -189,5 +197,41 @@ mod test {
             read_process_flows_from_iter(flows_raw.into_iter(), &process_ids, &commodities)
                 .is_err()
         );
+    }
+
+    #[test]
+    fn test_read_process_flows_from_iter_bad_flow() {
+        let process_ids = iter::once("id1".into()).collect();
+        let commodities = iter::once(Commodity {
+            id: "commodity1".into(),
+            description: "Some description".into(),
+            kind: CommodityType::InputCommodity,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand_by_region: HashMap::new(),
+        })
+        .map(|c| (c.id.clone(), Rc::new(c)))
+        .collect();
+
+        macro_rules! check_bad_flow {
+            ($flow:expr) => {
+                let flow = ProcessFlowRaw {
+                    process_id: "id1".into(),
+                    commodity_id: "commodity1".into(),
+                    flow: $flow,
+                    flow_type: FlowType::Fixed,
+                    flow_cost: Some(1.0),
+                };
+                assert!(
+                    read_process_flows_from_iter(iter::once(flow), &process_ids, &commodities)
+                        .is_err()
+                );
+            };
+        }
+
+        check_bad_flow!(0.0);
+        check_bad_flow!(f64::NEG_INFINITY);
+        check_bad_flow!(f64::INFINITY);
+        check_bad_flow!(f64::NAN);
     }
 }
