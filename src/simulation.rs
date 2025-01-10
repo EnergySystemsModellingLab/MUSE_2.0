@@ -51,21 +51,9 @@ pub fn run(model: &Model) {
 fn perform_dispatch(model: &Model, year: u32) {
     let mut problem = RowProblem::default();
 
-    let _ = add_variables(&mut problem, model, year);
+    let vars = add_variables(&mut problem, model, year);
 
-    // // Add constraints
-    // for constraint in constraints.iter() {
-    //     if constraint.coefficients.len() != vars.len() {
-    //         panic!("Wrong number of variables specified for constraint");
-    //     }
-
-    //     let mut coeffs = Vec::with_capacity(vars.len());
-    //     for (var, coeff) in vars.iter().zip(constraint.coefficients.iter()) {
-    //         coeffs.push((*var, *coeff));
-    //     }
-
-    //     problem.add_row(constraint.min..=constraint.max, coeffs);
-    // }
+    add_fixed_asset_constraints(&mut problem, &vars, model, year);
 
     let solved = problem.optimise(highs::Sense::Minimise).solve();
     let status = solved.status();
@@ -161,4 +149,44 @@ fn calculate_cost_coeff(
     // Calculation from dispatch optimisation formulation (with the caveat that each of these values
     // is probably wrong :-))
     var_opex + flow_cost + commodity_cost
+}
+
+fn add_fixed_asset_constraints(
+    problem: &mut RowProblem,
+    vars: &VariableMap,
+    model: &Model,
+    year: u32,
+) {
+    for region_id in model.iter_regions() {
+        for asset in model.get_assets(year, region_id) {
+            // Just calculate for one time slice for now
+            let time_slice = model.time_slice_info.iter().next().unwrap();
+
+            let pac = asset.process.pacs.first().unwrap();
+            let pac_flow = asset
+                .process
+                .flows
+                .iter()
+                .find(|flow| flow.commodity.id == pac.id)
+                .unwrap()
+                .flow;
+            let key = VariableMapKey::new(region_id, &asset.process.id, &pac.id, time_slice);
+            let pac_var = *vars.get(&key).unwrap();
+            let pac_term = (pac_var, -1.0 / pac_flow);
+            for flow in asset.process.flows.iter() {
+                if flow.commodity.id == pac.id {
+                    continue;
+                }
+
+                let key = VariableMapKey::new(
+                    region_id,
+                    &asset.process.id,
+                    &flow.commodity.id,
+                    time_slice,
+                );
+                let var = *vars.get(&key).unwrap();
+                problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
+            }
+        }
+    }
 }
