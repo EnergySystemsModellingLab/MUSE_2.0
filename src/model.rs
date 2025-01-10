@@ -123,6 +123,11 @@ impl Model {
     pub fn iter_years(&self) -> impl Iterator<Item = u32> + '_ {
         self.milestone_years.iter().copied()
     }
+
+    /// Iterate over the model's regions (region IDs).
+    pub fn iter_regions(&self) -> impl Iterator<Item = &Rc<str>> + '_ {
+        self.regions.keys()
+    }
 }
 
 #[cfg(test)]
