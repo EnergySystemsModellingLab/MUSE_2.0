@@ -98,6 +98,8 @@ pub enum ObjectiveType {
 /// An asset controlled by an agent.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Asset {
+    /// A unique identifier for the agent
+    pub agent_id: Rc<str>,
     /// The [`Process`] that this asset corresponds to
     pub process: Rc<Process>,
     /// The region in which the asset is located
