@@ -69,6 +69,9 @@ fn perform_dispatch(model: &Model, year: u32) {
     add_asset_capacity_constraints(&mut problem, &vars, model, year);
     add_sed_commodity_balance_constraints(&mut problem, &vars, model, year);
 
+    info!("Solving for {} variables", vars.0.len());
+    info!("Num constraints: {}", problem.num_rows());
+
     let solved = problem.optimise(highs::Sense::Minimise).solve();
     let status = solved.status();
     if status != HighsModelStatus::Optimal {
@@ -84,24 +87,25 @@ fn add_variables(problem: &mut RowProblem, model: &Model, year: u32) -> Variable
     for region_id in model.iter_regions() {
         for asset in model.get_assets(year, region_id) {
             for flow in asset.process.flows.iter() {
-                // Just calculate for one time slice for now
-                let time_slice = model.time_slice_info.iter().next().unwrap();
-                let coeff = calculate_cost_coeff(year, region_id, &asset.process, flow, time_slice);
+                for time_slice in model.time_slice_info.iter() {
+                    let coeff =
+                        calculate_cost_coeff(year, region_id, &asset.process, flow, time_slice);
 
-                // **HACK**: We need bounds, so just make some up for now
-                let bounds = -100..=100;
+                    // **HACK**: We need bounds, so just make some up for now
+                    let bounds = -100..=100;
 
-                let var = problem.add_column(coeff, bounds);
+                    let var = problem.add_column(coeff, bounds);
 
-                let key = VariableMapKey::new(
-                    region_id,
-                    &asset.process.id,
-                    &flow.commodity.id,
-                    time_slice,
-                );
+                    let key = VariableMapKey::new(
+                        region_id,
+                        &asset.process.id,
+                        &flow.commodity.id,
+                        time_slice,
+                    );
 
-                let existing = vars.0.insert(key, var).is_some();
-                assert!(!existing, "Duplicate entry for var");
+                    let existing = vars.0.insert(key, var).is_some();
+                    assert!(!existing, "Duplicate entry for var");
+                }
             }
         }
     }
@@ -150,9 +154,6 @@ fn add_fixed_asset_constraints(
 ) {
     for region_id in model.iter_regions() {
         for asset in model.get_assets(year, region_id) {
-            // Just calculate for one time slice for now
-            let time_slice = model.time_slice_info.iter().next().unwrap();
-
             let pac = asset.process.pacs.first().unwrap();
             let pac_flow = asset
                 .process
@@ -161,15 +162,18 @@ fn add_fixed_asset_constraints(
                 .find(|flow| flow.commodity.id == pac.id)
                 .unwrap()
                 .flow;
-            let pac_var = vars.get(region_id, &asset.process.id, &pac.id, time_slice);
-            let pac_term = (pac_var, -1.0 / pac_flow);
-            for flow in asset.process.flows.iter() {
-                if flow.commodity.id == pac.id {
-                    continue;
-                }
+            for time_slice in model.time_slice_info.iter() {
+                let pac_var = vars.get(region_id, &asset.process.id, &pac.id, time_slice);
+                let pac_term = (pac_var, -1.0 / pac_flow);
+                for flow in asset.process.flows.iter() {
+                    if flow.commodity.id == pac.id {
+                        continue;
+                    }
 
-                let var = vars.get(region_id, &asset.process.id, &flow.commodity.id, time_slice);
-                problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
+                    let var =
+                        vars.get(region_id, &asset.process.id, &flow.commodity.id, time_slice);
+                    problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
+                }
             }
         }
     }
@@ -184,13 +188,12 @@ fn add_asset_capacity_constraints(
     let mut terms = Vec::new();
     for region_id in model.iter_regions() {
         for asset in model.get_assets(year, region_id) {
-            // Just calculate for one time slice for now
-            let (time_slice, ts_length) = model.time_slice_info.fractions.iter().next().unwrap();
-
             let pac = asset.process.pacs.first().unwrap();
-            let var = vars.get(region_id, &asset.process.id, &pac.id, time_slice);
-            let coeff = 1.0 / (asset.capacity_a * ts_length);
-            terms.push((var, coeff));
+            for (time_slice, ts_length) in model.time_slice_info.fractions.iter() {
+                let var = vars.get(region_id, &asset.process.id, &pac.id, time_slice);
+                let coeff = 1.0 / (asset.capacity_a * ts_length);
+                terms.push((var, coeff));
+            }
         }
     }
 
@@ -210,21 +213,22 @@ fn add_sed_commodity_balance_constraints(
     model: &Model,
     year: u32,
 ) {
+    let mut cur_vars = Vec::new();
     for region_id in model.iter_regions() {
         for commodity_id in model.commodities.keys() {
-            // Just calculate for one time slice for now
-            let time_slice = model.time_slice_info.iter().next().unwrap();
-
             let process_ids = model
                 .get_assets(year, region_id)
                 .map(|asset| &asset.process)
                 .filter(|process| process_affects_commodity(process, commodity_id))
                 .map(|process| &process.id);
 
-            let vars = process_ids
-                .map(|process_id| vars.get(region_id, process_id, commodity_id, time_slice));
+            for process_id in process_ids {
+                for time_slice in model.time_slice_info.iter() {
+                    cur_vars.push(vars.get(region_id, process_id, commodity_id, time_slice));
+                }
+            }
 
-            let terms = vars.map(|var| (var, 1.0));
+            let terms = cur_vars.drain(0..).map(|var| (var, 1.0));
             problem.add_row(0.0..=0.0, terms);
         }
     }
