@@ -110,45 +110,30 @@ fn calculate_cost_coeff(
     flow: &ProcessFlow,
     time_slice: &TimeSliceID,
 ) -> f64 {
-    // NB: Whether this cost applies or not will depend on what kind of flow this is, so this is
-    // also wrong
-    let flow_cost = flow.flow_cost;
+    let mut coeff = flow.flow_cost;
 
     let commodity = &flow.commodity;
 
     // Only applies if commodity is PAC
-    let var_opex = if process
+    if process
         .pacs
         .iter()
         .map(|pac| &pac.id)
         .contains(&commodity.id)
     {
-        info!("It's a PAC");
-        process.parameter.variable_operating_cost
-    } else {
-        info!("It's NOT a PAC");
-        0.0
-    };
+        coeff += process.parameter.variable_operating_cost
+    }
 
-    // NB: Need to check balance type
-    let commodity_cost = match flow
-        .commodity
-        .costs
-        .get(region_id.clone(), year, time_slice.clone())
+    // Should this be conditional?!
+    if let Some(commodity_cost) =
+        flow.commodity
+            .costs
+            .get(region_id.clone(), year, time_slice.clone())
     {
-        None => {
-            warn!("Commodity cost not found");
-            0.0
-        }
-        Some(cost) => {
-            info!("Commodity cost found :-D");
-            cost.value
-        }
-    };
+        coeff += commodity_cost.value;
+    }
 
-    // Calculation from dispatch optimisation formulation (with the caveat that each of these values
-    // is probably wrong :-))
-    var_opex + flow_cost + commodity_cost
+    coeff
 }
 
 fn add_fixed_asset_constraints(
