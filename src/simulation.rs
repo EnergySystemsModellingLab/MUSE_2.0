@@ -1,13 +1,12 @@
 //! Functionality for running the MUSE 2.0 simulation.
-use std::collections::HashMap;
-use std::rc::Rc;
-
 use crate::model::Model;
 use crate::process::{Process, ProcessFlow};
 use crate::time_slice::TimeSliceID;
 use highs::{HighsModelStatus, RowProblem};
 use itertools::Itertools;
 use log::*;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Eq, PartialEq, Hash)]
 struct VariableMapKey {
@@ -34,7 +33,20 @@ impl VariableMapKey {
 }
 
 /// A map for easy lookup of variables in the optimisation.
-type VariableMap = HashMap<VariableMapKey, highs::Col>;
+struct VariableMap(HashMap<VariableMapKey, highs::Col>);
+
+impl VariableMap {
+    fn get(
+        &self,
+        region_id: &Rc<str>,
+        process_id: &Rc<str>,
+        commodity_id: &Rc<str>,
+        time_slice: &TimeSliceID,
+    ) -> highs::Col {
+        let key = VariableMapKey::new(region_id, process_id, commodity_id, time_slice);
+        *self.0.get(&key).unwrap()
+    }
+}
 
 /// Run the simulation.
 ///
@@ -67,7 +79,7 @@ fn perform_dispatch(model: &Model, year: u32) {
 }
 
 fn add_variables(problem: &mut RowProblem, model: &Model, year: u32) -> VariableMap {
-    let mut vars = VariableMap::new();
+    let mut vars = VariableMap(HashMap::new());
     for region_id in model.iter_regions() {
         info!("** Region: {region_id}");
         for asset in model.get_assets(year, region_id) {
@@ -96,7 +108,7 @@ fn add_variables(problem: &mut RowProblem, model: &Model, year: u32) -> Variable
                     time_slice,
                 );
 
-                let existing = vars.insert(key, var).is_some();
+                let existing = vars.0.insert(key, var).is_some();
                 assert!(!existing, "Duplicate entry for var");
             }
         }
@@ -157,21 +169,14 @@ fn add_fixed_asset_constraints(
                 .find(|flow| flow.commodity.id == pac.id)
                 .unwrap()
                 .flow;
-            let key = VariableMapKey::new(region_id, &asset.process.id, &pac.id, time_slice);
-            let pac_var = *vars.get(&key).unwrap();
+            let pac_var = vars.get(region_id, &asset.process.id, &pac.id, time_slice);
             let pac_term = (pac_var, -1.0 / pac_flow);
             for flow in asset.process.flows.iter() {
                 if flow.commodity.id == pac.id {
                     continue;
                 }
 
-                let key = VariableMapKey::new(
-                    region_id,
-                    &asset.process.id,
-                    &flow.commodity.id,
-                    time_slice,
-                );
-                let var = *vars.get(&key).unwrap();
+                let var = vars.get(region_id, &asset.process.id, &flow.commodity.id, time_slice);
                 problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
             }
         }
@@ -191,8 +196,7 @@ fn add_asset_capacity_constraints(
             let (time_slice, ts_length) = model.time_slice_info.fractions.iter().next().unwrap();
 
             let pac = asset.process.pacs.first().unwrap();
-            let key = VariableMapKey::new(region_id, &asset.process.id, &pac.id, time_slice);
-            let var = *vars.get(&key).unwrap();
+            let var = vars.get(region_id, &asset.process.id, &pac.id, time_slice);
             let coeff = 1.0 / (asset.capacity_a * ts_length);
             terms.push((var, coeff));
         }
