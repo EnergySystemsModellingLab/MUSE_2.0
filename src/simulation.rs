@@ -55,7 +55,7 @@ impl VariableMap {
 /// * `model` - The model to run
 pub fn run(model: &Model) {
     for year in model.iter_years() {
-        info!("* Milestone year: {year}");
+        info!("Milestone year: {year}");
         perform_dispatch(model, year);
     }
 }
@@ -82,20 +82,11 @@ fn perform_dispatch(model: &Model, year: u32) {
 fn add_variables(problem: &mut RowProblem, model: &Model, year: u32) -> VariableMap {
     let mut vars = VariableMap(HashMap::new());
     for region_id in model.iter_regions() {
-        info!("** Region: {region_id}");
         for asset in model.get_assets(year, region_id) {
-            info!(
-                "*** Agent {} has asset {} (commissioned in {})",
-                asset.agent_id, asset.process.id, asset.commission_year
-            );
-
             for flow in asset.process.flows.iter() {
-                info!("**** Commodity: {}", flow.commodity.id);
-
                 // Just calculate for one time slice for now
                 let time_slice = model.time_slice_info.iter().next().unwrap();
                 let coeff = calculate_cost_coeff(year, region_id, &asset.process, flow, time_slice);
-                info!("**** Coefficient: {coeff}");
 
                 // **HACK**: We need bounds, so just make some up for now
                 let bounds = -100..=100;
