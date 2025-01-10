@@ -67,6 +67,7 @@ fn perform_dispatch(model: &Model, year: u32) {
 
     add_fixed_asset_constraints(&mut problem, &vars, model, year);
     add_asset_capacity_constraints(&mut problem, &vars, model, year);
+    add_sed_commodity_balance_constraints(&mut problem, &vars, model, year);
 
     let solved = problem.optimise(highs::Sense::Minimise).solve();
     let status = solved.status();
@@ -202,4 +203,37 @@ fn add_asset_capacity_constraints(
     }
 
     problem.add_row(..=1.0, terms);
+}
+
+fn process_affects_commodity(process: &Process, commodity_id: &Rc<str>) -> bool {
+    process
+        .flows
+        .iter()
+        .any(|flow| flow.commodity.id == *commodity_id)
+}
+
+fn add_sed_commodity_balance_constraints(
+    problem: &mut RowProblem,
+    vars: &VariableMap,
+    model: &Model,
+    year: u32,
+) {
+    for region_id in model.iter_regions() {
+        for commodity_id in model.commodities.keys() {
+            // Just calculate for one time slice for now
+            let time_slice = model.time_slice_info.iter().next().unwrap();
+
+            let process_ids = model
+                .get_assets(year, region_id)
+                .map(|asset| &asset.process)
+                .filter(|process| process_affects_commodity(process, commodity_id))
+                .map(|process| &process.id);
+
+            let vars = process_ids
+                .map(|process_id| vars.get(region_id, process_id, commodity_id, time_slice));
+
+            let terms = vars.map(|var| (var, 1.0)).collect_vec();
+            problem.add_row(0.0..=0.0, terms);
+        }
+    }
 }
