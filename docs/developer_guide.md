@@ -31,6 +31,9 @@ To build the project, run:
 cargo build
 ```
 
+Note that if you just want to build-test the project (i.e. check for errors and warnings) without
+building an executable, you can use the `cargo check` command, which is much faster.
+
 To run MUSE 2.0 with the "simple" example, you can run:
 
 ```sh
