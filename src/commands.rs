@@ -23,14 +23,12 @@ pub struct Cli {
 #[derive(Subcommand)]
 /// The available commands.
 pub enum Commands {
-    #[command(about = "Run a simulation model.")]
     /// Run a simulation model.
     Run {
         #[arg(help = "Path to the model directory")]
         /// Path to the model directory.
         model_dir: PathBuf,
     },
-    #[command(about = "Manage example models.")]
     /// Manage example models.
     Example {
         #[command(subcommand)]
@@ -42,7 +40,6 @@ pub enum Commands {
 #[derive(Subcommand)]
 /// The available subcommands for managing example models.
 pub enum ExampleSubcommands {
-    #[command(about = "List available examples.")]
     /// List available examples.
     List,
 }
