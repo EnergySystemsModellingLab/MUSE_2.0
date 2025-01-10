@@ -1,4 +1,5 @@
 //! Functionality for running the MUSE 2.0 simulation.
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::model::Model;
@@ -7,6 +8,33 @@ use crate::time_slice::TimeSliceID;
 use highs::{HighsModelStatus, RowProblem};
 use itertools::Itertools;
 use log::*;
+
+#[derive(Eq, PartialEq, Hash)]
+struct VariableMapKey {
+    region_id: Rc<str>,
+    process_id: Rc<str>,
+    commodity_id: Rc<str>,
+    time_slice: TimeSliceID,
+}
+
+impl VariableMapKey {
+    fn new(
+        region_id: &Rc<str>,
+        process_id: &Rc<str>,
+        commodity_id: &Rc<str>,
+        time_slice: &TimeSliceID,
+    ) -> Self {
+        VariableMapKey {
+            region_id: Rc::clone(region_id),
+            process_id: Rc::clone(process_id),
+            commodity_id: Rc::clone(commodity_id),
+            time_slice: time_slice.clone(),
+        }
+    }
+}
+
+/// A map for easy lookup of variables in the optimisation.
+type VariableMap = HashMap<VariableMapKey, highs::Col>;
 
 /// Run the simulation.
 ///
@@ -49,8 +77,8 @@ fn perform_dispatch(model: &Model, year: u32) {
     info!("Solution: {:?}", solution.columns());
 }
 
-fn add_variables(problem: &mut RowProblem, model: &Model, year: u32) -> Vec<highs::Col> {
-    let mut vars = Vec::new();
+fn add_variables(problem: &mut RowProblem, model: &Model, year: u32) -> VariableMap {
+    let mut vars = VariableMap::new();
     for region_id in model.iter_regions() {
         info!("** Region: {region_id}");
         for asset in model.get_assets(year, region_id) {
@@ -69,7 +97,18 @@ fn add_variables(problem: &mut RowProblem, model: &Model, year: u32) -> Vec<high
 
                 // **HACK**: We need bounds, so just make some up for now
                 let bounds = -100..=100;
-                vars.push(problem.add_column(coeff, bounds));
+
+                let var = problem.add_column(coeff, bounds);
+
+                let key = VariableMapKey::new(
+                    region_id,
+                    &asset.process.id,
+                    &flow.commodity.id,
+                    time_slice,
+                );
+
+                let existing = vars.insert(key, var).is_some();
+                assert!(!existing, "Duplicate entry for var");
             }
         }
     }
