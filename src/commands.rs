@@ -65,7 +65,14 @@ pub fn handle_example_list_command() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
     use std::path::{Path, PathBuf};
+
+    /// Disable program logger so we don't obscure test output with log spam
+    fn disable_logging() {
+        env::set_var("MUSE2_LOG_LEVEL", "off");
+    }
+
     /// Get the path to the example model.
     fn get_model_dir() -> PathBuf {
         Path::new(file!())
@@ -76,9 +83,12 @@ mod tests {
             .join("examples")
             .join("simple")
     }
+
     /// An integration test for the `run` command.
     #[test]
     fn test_handle_run_command() {
+        disable_logging();
+
         handle_run_command(&get_model_dir()).unwrap();
 
         // Second time will fail because the logging is already initialised
