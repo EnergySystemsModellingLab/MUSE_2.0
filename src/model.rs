@@ -118,6 +118,11 @@ impl Model {
             regions,
         })
     }
+
+    /// Iterate over the model's milestone years.
+    pub fn iter_years(&self) -> impl Iterator<Item = u32> + '_ {
+        self.milestone_years.iter().copied()
+    }
 }
 
 #[cfg(test)]
