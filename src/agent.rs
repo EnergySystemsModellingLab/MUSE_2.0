@@ -106,6 +106,8 @@ pub struct Asset {
     pub region_id: Rc<str>,
     /// Capacity of asset
     pub capacity: f64,
+    /// Capacity multiplied by cap2act
+    pub capacity_a: f64,
     /// The year the asset comes online
     pub commission_year: u32,
 }
