@@ -58,6 +58,12 @@ where
             flow.flow
         );
 
+        // **TODO**: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/300
+        ensure!(
+            flow.flow_type == FlowType::Fixed,
+            "Commodity flexible assets are not currently supported"
+        );
+
         Ok(ProcessFlow {
             process_id: flow.process_id,
             commodity: Rc::clone(commodity),
