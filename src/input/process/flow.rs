@@ -46,17 +46,17 @@ fn read_process_flows_from_iter<I>(
 where
     I: Iterator<Item = ProcessFlowRaw>,
 {
-    iter.map(|flow_raw| -> Result<ProcessFlow> {
+    iter.map(|flow| -> Result<ProcessFlow> {
         let commodity = commodities
-            .get(flow_raw.commodity_id.as_str())
-            .with_context(|| format!("{} is not a valid commodity ID", &flow_raw.commodity_id))?;
+            .get(flow.commodity_id.as_str())
+            .with_context(|| format!("{} is not a valid commodity ID", &flow.commodity_id))?;
 
         Ok(ProcessFlow {
-            process_id: flow_raw.process_id,
+            process_id: flow.process_id,
             commodity: Rc::clone(commodity),
-            flow: flow_raw.flow,
-            flow_type: flow_raw.flow_type,
-            flow_cost: flow_raw.flow_cost.unwrap_or(0.0),
+            flow: flow.flow,
+            flow_type: flow.flow_type,
+            flow_cost: flow.flow_cost.unwrap_or(0.0),
         })
     })
     .process_results(|iter| iter.into_id_map(process_ids))?
