@@ -31,11 +31,14 @@ To build the project, run:
 cargo build
 ```
 
-To run MUSE with the example input files, you can run:
+To run MUSE 2.0 with the "simple" example, you can run:
 
 ```sh
-cargo run examples/simple
+cargo run run examples/simple
 ```
+
+(Note the two `run`s. The first is for `cargo` and the second is passed as an argument to the built
+`muse2` program.)
 
 Tests can be run with:
 
