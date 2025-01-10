@@ -39,6 +39,7 @@ pub fn init(log_level_from_settings: Option<&str>) -> Result<()> {
 
     // Convert the log level string to a log::LevelFilter
     let log_level = match log_level.to_lowercase().as_str() {
+        "off" => log::LevelFilter::Off,
         "error" => log::LevelFilter::Error,
         "warn" => log::LevelFilter::Warn,
         "info" => log::LevelFilter::Info,
