@@ -1,6 +1,7 @@
 //! High level functionality for launching the simulation.
 #![warn(missing_docs)]
 pub mod agent;
+pub mod commands;
 pub mod commodity;
 pub mod demand;
 pub mod input;
