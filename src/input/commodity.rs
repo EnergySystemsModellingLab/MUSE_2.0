@@ -1,6 +1,5 @@
 //! Code for reading in commodity-related data from CSV files.
 use crate::commodity::Commodity;
-use crate::demand::read_demand;
 use crate::input::*;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
@@ -10,6 +9,8 @@ use std::rc::Rc;
 
 pub mod cost;
 use cost::read_commodity_costs;
+pub mod demand;
+use demand::read_demand;
 
 const COMMODITY_FILE_NAME: &str = "commodities.csv";
 

@@ -131,8 +131,7 @@ fn validate_pac_flows(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::commodity::{CommodityCostMap, CommodityType};
-    use crate::demand::DemandMap;
+    use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
     use crate::process::FlowType;
     use crate::time_slice::TimeSliceLevel;
 

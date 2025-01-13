@@ -65,8 +65,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::commodity::{CommodityCostMap, CommodityType};
-    use crate::demand::DemandMap;
+    use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
 
     #[test]

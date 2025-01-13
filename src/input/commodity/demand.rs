@@ -1,5 +1,6 @@
 //! Code for working with demand for a given commodity. Demand can vary by region, year and time
 //! slice.
+use crate::commodity::DemandMap;
 use crate::input::*;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
@@ -11,39 +12,6 @@ use std::rc::Rc;
 
 const DEMAND_FILE_NAME: &str = "demand.csv";
 const DEMAND_SLICES_FILE_NAME: &str = "demand_slicing.csv";
-
-/// A map relating region, year and time slice to demand (in real units, not a fraction).
-///
-/// This data type is exported as this is the way in we want to look up demand outside of this
-/// module.
-#[derive(PartialEq, Debug, Clone, Default)]
-pub struct DemandMap(HashMap<DemandMapKey, f64>);
-
-/// The key for a [`DemandMap`]
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
-struct DemandMapKey {
-    region_id: Rc<str>,
-    year: u32,
-    time_slice: TimeSliceID,
-}
-
-impl DemandMap {
-    /// Create a new, empty [`DemandMap`]
-    pub fn new() -> DemandMap {
-        DemandMap::default()
-    }
-
-    /// Retrieve the demand for the specified region, year and time slice
-    pub fn get(&self, region_id: Rc<str>, year: u32, time_slice: TimeSliceID) -> Option<f64> {
-        self.0
-            .get(&DemandMapKey {
-                region_id,
-                year,
-                time_slice,
-            })
-            .copied()
-    }
-}
 
 /// Represents a single demand entry in the dataset.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -370,12 +338,10 @@ fn compute_demand_map(
                 .or_insert_with(DemandMap::new);
 
             // Add a new demand entry
-            map.0.insert(
-                DemandMapKey {
-                    region_id: Rc::clone(region_id),
-                    year: demand_key.year,
-                    time_slice: time_slice.clone(),
-                },
+            map.insert(
+                Rc::clone(region_id),
+                demand_key.year,
+                time_slice.clone(),
                 annual_demand * demand_fraction,
             );
         }
@@ -395,23 +361,6 @@ mod tests {
     use std::iter;
     use std::path::Path;
     use tempfile::tempdir;
-
-    #[test]
-    fn test_demand_map_get() {
-        let time_slice = TimeSliceID {
-            season: "all-year".into(),
-            time_of_day: "all-day".into(),
-        };
-        let key = DemandMapKey {
-            region_id: "North".into(),
-            year: 2020,
-            time_slice: time_slice.clone(),
-        };
-        let value = 0.2;
-
-        let map = DemandMap(HashMap::from_iter(iter::once((key, value))));
-        assert_eq!(map.get("North".into(), 2020, time_slice).unwrap(), value)
-    }
 
     /// Create an example demand file in dir_path
     fn create_demand_file(dir_path: &Path) {
