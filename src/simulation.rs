@@ -1,4 +1,5 @@
 //! Functionality for running the MUSE 2.0 simulation.
+use crate::commodity::BalanceType;
 use crate::model::Model;
 use crate::process::{Process, ProcessFlow};
 use crate::time_slice::TimeSliceID;
@@ -140,13 +141,17 @@ fn calculate_cost_coeff(
         coeff += process.parameter.variable_operating_cost
     }
 
-    // Should this be conditional?!
-    if let Some(commodity_cost) =
-        flow.commodity
-            .costs
-            .get(region_id.clone(), year, time_slice.clone())
+    if let Some(cost) = flow
+        .commodity
+        .costs
+        .get(region_id.clone(), year, time_slice.clone())
     {
-        coeff += commodity_cost.value;
+        if cost.balance_type == BalanceType::Net
+            || (cost.balance_type == BalanceType::Consumption && flow.flow < 0.0)
+            || (cost.balance_type == BalanceType::Production && flow.flow > 0.0)
+        {
+            coeff += cost.value;
+        }
     }
 
     coeff
