@@ -79,6 +79,9 @@ pub fn read_processes(
             let flows = flows
                 .remove(&id)
                 .with_context(|| format!("No commodity flows defined for process {id}"))?;
+            let pacs = pacs
+                .remove(&id)
+                .with_context(|| format!("No PACs defined for process {id}"))?;
 
             // We've already checked that these exist for each process
             let parameter = parameters.remove(&id).unwrap();
@@ -89,7 +92,7 @@ pub fn read_processes(
                 description: desc.description,
                 availabilities: availabilities.remove(&id).unwrap_or_default(),
                 flows,
-                pacs: pacs.remove(&id).unwrap_or_default(),
+                pacs,
                 parameter,
                 regions,
             };
