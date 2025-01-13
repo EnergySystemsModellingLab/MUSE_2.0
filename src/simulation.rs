@@ -122,6 +122,12 @@ fn calculate_cost_coeff(
 ) -> f64 {
     let mut coeff = flow.flow_cost;
 
+    // If flow is negative (representing an input), we multiply by -1 to ensure impact on objective
+    // function is a positive cost
+    if flow.flow < 0.0 {
+        coeff = -coeff;
+    }
+
     let commodity = &flow.commodity;
 
     // Only applies if commodity is PAC
