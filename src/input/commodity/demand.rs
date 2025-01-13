@@ -72,7 +72,7 @@ pub fn read_demand(
         time_slice_info,
     )?;
 
-    Ok(compute_demand_map(&demand, &slices, time_slice_info))
+    Ok(compute_demand_maps(&demand, &slices, time_slice_info))
 }
 
 /// Read the demand.csv file.
@@ -189,7 +189,7 @@ where
 ///
 /// [`DemandMap`]s for combinations of region, year and time slice, grouped by the commodity to
 /// which the demand applies.
-fn compute_demand_map(
+fn compute_demand_maps(
     demand: &AnnualDemandMap,
     slices: &DemandSliceMap,
     time_slice_info: &TimeSliceInfo,
