@@ -177,7 +177,18 @@ where
     Ok((map, commodity_regions))
 }
 
-/// Calculate the demand for each combination of commodity, region, year and time slice
+/// Calculate the demand for each combination of commodity, region, year and time slice.
+///
+/// # Arguments
+///
+/// * `demand` - Total annual demand for combinations of commodity, region and year
+/// * `slices` - How annual demand is shared between time slices
+/// * `time_slice_info` - Information about time slices
+///
+/// # Returns
+///
+/// [`DemandMap`]s for combinations of region, year and time slice, grouped by the commodity to
+/// which the demand applies.
 fn compute_demand_map(
     demand: &AnnualDemandMap,
     slices: &DemandSliceMap,
