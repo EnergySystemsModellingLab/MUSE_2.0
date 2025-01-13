@@ -9,7 +9,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
-const DEMAND_SLICES_FILE_NAME: &str = "demand_slicing.csv";
+const DEMAND_SLICING_FILE_NAME: &str = "demand_slicing.csv";
 
 #[derive(Clone, Deserialize)]
 struct DemandSlice {
@@ -50,7 +50,7 @@ pub fn read_demand_slices(
     commodity_regions: &CommodityRegionPairs,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap> {
-    let file_path = model_dir.join(DEMAND_SLICES_FILE_NAME);
+    let file_path = model_dir.join(DEMAND_SLICING_FILE_NAME);
     let demand_slices_csv = read_csv(&file_path)?;
     read_demand_slices_from_iter(
         demand_slices_csv,
