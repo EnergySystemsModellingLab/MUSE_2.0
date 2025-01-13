@@ -2,7 +2,6 @@
 use crate::commodity::Commodity;
 use crate::process::Process;
 use crate::region::RegionSelection;
-use anyhow::Result;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashSet;
@@ -19,7 +18,7 @@ pub struct Agent {
     pub commodity: Rc<Commodity>,
     /// The proportion of the commodity production that the agent is responsible for.
     pub commodity_portion: f64,
-    /// The list of processes that the agent will consider investing in.
+    /// The processes that the agent will consider investing in.
     pub search_space: SearchSpace,
     /// The decision rule that the agent uses to decide investment.
     pub decision_rule: DecisionRule,
@@ -39,23 +38,7 @@ pub struct Agent {
 #[derive(Debug, Clone, PartialEq)]
 pub enum SearchSpace {
     AllProcesses,
-    Some(HashSet<String>),
-}
-
-impl<'de> Deserialize<'de> for SearchSpace {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let value = Option::<&str>::deserialize(deserializer)?;
-        match value {
-            None => Ok(SearchSpace::AllProcesses),
-            Some(processes_str) => {
-                let processes = HashSet::from_iter(processes_str.split(';').map(String::from));
-                Ok(SearchSpace::Some(processes))
-            }
-        }
-    }
+    Some(HashSet<Rc<str>>),
 }
 
 /// The decision rule for a particular objective

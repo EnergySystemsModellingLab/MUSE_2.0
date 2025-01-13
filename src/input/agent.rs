@@ -4,7 +4,7 @@ use crate::agent::{Agent, DecisionRule, SearchSpace};
 use crate::commodity::Commodity;
 use crate::process::Process;
 use crate::region::RegionSelection;
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -31,8 +31,9 @@ struct AgentRaw {
     /// The proportion of the commodity production that the agent is responsible for.
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     commodity_portion: f64,
-    /// The list of processes that the agent will consider investing in.
-    search_space: SearchSpace,
+    /// The processes that the agent will consider investing in. Expressed as process IDs separated
+    /// by semicolons or `None`, meaning all processes.
+    search_space: Option<String>,
     /// The decision rule that the agent uses to decide investment.
     decision_rule: DecisionRule,
     /// The maximum capital cost the agent will pay.
@@ -110,26 +111,29 @@ where
 {
     let mut agents = HashMap::new();
     for agent_raw in iter {
-        if let SearchSpace::Some(ref search_space) = agent_raw.search_space {
-            // Check process IDs are all valid
-            if !search_space
-                .iter()
-                .all(|id| process_ids.contains(id.as_str()))
-            {
-                bail!("Invalid process ID");
-            }
-        }
-
         let commodity = commodities
             .get(agent_raw.commodity_id.as_str())
             .context("Invalid commodity ID")?;
+
+        // Parse search space string
+        let search_space = match agent_raw.search_space {
+            None => SearchSpace::AllProcesses,
+            Some(processes) => {
+                let mut set = HashSet::new();
+                for id in processes.split(';') {
+                    set.insert(process_ids.get_id(id)?);
+                }
+
+                SearchSpace::Some(set)
+            }
+        };
 
         let agent = Agent {
             id: Rc::clone(&agent_raw.id),
             description: agent_raw.description,
             commodity: Rc::clone(commodity),
             commodity_portion: agent_raw.commodity_portion,
-            search_space: agent_raw.search_space,
+            search_space,
             decision_rule: agent_raw.decision_rule,
             capex_limit: agent_raw.capex_limit,
             annual_cost_limit: agent_raw.annual_cost_limit,
@@ -159,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_read_agents_file_from_iter() {
-        let process_ids = ["A".into(), "B".into()].into_iter().collect();
+        let process_ids = ["A".into(), "B".into(), "C".into()].into_iter().collect();
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
             description: "A commodity".into(),
@@ -171,13 +175,13 @@ mod tests {
         let commodities = iter::once(("commodity1".into(), Rc::clone(&commodity))).collect();
 
         // Valid case
-        let search_space = HashSet::from_iter(["A".into()]);
+        let search_space = HashSet::from_iter(["A".into(), "B".into()]);
         let agent = AgentRaw {
             id: "agent".into(),
             description: "".into(),
             commodity_id: "commodity1".into(),
             commodity_portion: 1.0,
-            search_space: SearchSpace::Some(search_space.clone()),
+            search_space: Some("A;B".into()),
             decision_rule: DecisionRule::Single,
             capex_limit: None,
             annual_cost_limit: None,
@@ -206,7 +210,7 @@ mod tests {
             description: "".into(),
             commodity_id: "made_up_commodity".into(),
             commodity_portion: 1.0,
-            search_space: SearchSpace::AllProcesses,
+            search_space: None,
             decision_rule: DecisionRule::Single,
             capex_limit: None,
             annual_cost_limit: None,
@@ -214,13 +218,12 @@ mod tests {
         assert!(read_agents_file_from_iter(iter::once(agent), &commodities, &process_ids).is_err());
 
         // Invalid process ID
-        let search_space = iter::once("C".into()).collect();
         let agent = AgentRaw {
             id: "agent".into(),
             description: "".into(),
             commodity_id: "commodity1".into(),
             commodity_portion: 1.0,
-            search_space: SearchSpace::Some(search_space),
+            search_space: Some("A;D".into()),
             decision_rule: DecisionRule::Single,
             capex_limit: None,
             annual_cost_limit: None,
@@ -234,7 +237,7 @@ mod tests {
                 description: "".into(),
                 commodity_id: "commodity1".into(),
                 commodity_portion: 1.0,
-                search_space: SearchSpace::AllProcesses,
+                search_space: None,
                 decision_rule: DecisionRule::Single,
                 capex_limit: None,
                 annual_cost_limit: None,
@@ -244,7 +247,7 @@ mod tests {
                 description: "".into(),
                 commodity_id: "commodity1".into(),
                 commodity_portion: 1.0,
-                search_space: SearchSpace::AllProcesses,
+                search_space: None,
                 decision_rule: DecisionRule::Single,
                 capex_limit: None,
                 annual_cost_limit: None,
