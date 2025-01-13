@@ -25,5 +25,5 @@ unicase = "2.8.1"
 fern = {version = "0.7.1", features = ["chrono", "colored"]}
 atty = "0.2"
 chrono = "0.4"
-clap = {version = "4.5.23", features = ["cargo", "derive"]}
+clap = {version = "4.5.26", features = ["cargo", "derive"]}
 include_dir = "0.7.4"
