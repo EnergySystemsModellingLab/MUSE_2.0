@@ -9,13 +9,13 @@ is a quantity flow (e.g. energy) as opposed to an intensity (e.g. power).
 
 where
 
-*r* = regions
+*r* = region
 
-*a* = assets
+*a* = asset
 
-*c* = commodities
+*c* = commodity
 
-*ts* = time_slices
+*ts* = time slice
 
 Objective function:
 
@@ -27,7 +27,7 @@ Where *cost* is a vector of cost coefficients representing the cost of
 each commodity flow.
 
 $$
-  cost_{r,a,c,ts} = var\\_ opex_{r,a,pacs,ts} + flow\\_ cost_{r,a,c,ts} + commodity.cost_{r,c,ts}
+  cost_{r,a,c,ts} = var\\_ opex_{r,a,pacs,ts} + flow\\_ cost_{r,a,c,ts} + commodity\\_ cost_{r,c,ts}
 $$
 
 Constraints.
@@ -79,7 +79,7 @@ Primary activity commodity/ies output must not exceed asset capacity or any othe
 defined by availability factor constraint user inputs.
 
 For the capacity limits, for each *r*, *a*, *c*, *ts*. The sum of all PACs must be less than the
-assets’ capacity:
+assets' capacity:
 
 $$
 \sum_{pacs} \frac{q_{r,a,c,ts}}{capacity\\_ a_{a} * time\\_ slice\\_ length_{ts}} \leq 1
@@ -106,8 +106,8 @@ The sum of all PACs must be within the assets' availability bounds. Similar cons
 limit output of PACs to respect the availability constraints at time slice, seasonal or annual
 levels. With appropriate selection of *q* on the LHS to match RHS temporal granularity.
 
-Note: Where availability is specified for a process at `DAYNIGHT` time slice level, it supersedes
-the capacity limit constraint (i.e. you don’t need both).
+Note: Where availability is specified for a process at `daynight` time slice level, it supersedes
+the capacity limit constraint (i.e. you don't need both).
 
 ### Commodity balance constraints
 

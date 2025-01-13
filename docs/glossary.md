@@ -51,13 +51,13 @@ dispatch, subject to capacity factor constraints that can be defined by the user
 **End Year:** The final year in the model time horizon.
 
 **Equivalent Annual Cost (EAC):** An *Agent* objective, representing the cost of serving all or part
-of an *Agent’s* demand for a year, considering the *Asset’s* entire lifetime.
+of an *Agent's* demand for a year, considering the *Asset's* entire lifetime.
 
 **Fixed Operating Cost:** The annual operating cost charged per unit of capacity.
 
 **Input Commodity/ies:** The commodities that flow into a process.
 
-**Levelized Cost of X (LCOX):** An *Agent* objective, representing the expected cost of 1 unit of
+**Levelised Cost of X (LCOX):** An *Agent* objective, representing the expected cost of 1 unit of
 output commodity X from a process over its lifetime under a specified discount rate.
 
 **Lifetime:** The lifetime of a process, measured in years.
@@ -72,7 +72,7 @@ the next most expensive, etc, until demand is served. Also called “unit commit
 **Output Commodity/ies:** The commodities that flow out of a process.
 
 **Primary Activity Commodity (PAC):** The PACs specify which output/s are linked to the process
-capacity. The combined output of all PACs cannot exceed the *Asset’s* capacity. A user can define
+capacity. The combined output of all PACs cannot exceed the *Asset's* capacity. A user can define
 which output/s are PACs.
 
 **Process/Technology:** An available process that converts input commodities to output commodities.
@@ -95,7 +95,7 @@ modelled system. For example, tonne-kilometers of road freight, PJ of useful hea
 
 **Technology Discount Rate:** The discount rate used to calculate any technology-specific agent
 economic objectives that require a discount rate. For example, Equivalent Annual Cost, Net Present
-Value, Levelized Cost of X, etc.
+Value, Levelised Cost of X, etc.
 
 **Time Horizon:** The overall period modelled. For example, 2025&ndash;2100.
 

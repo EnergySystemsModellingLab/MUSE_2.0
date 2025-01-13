@@ -1,14 +1,21 @@
 //! Common routines for handling input data.
-#![allow(missing_docs)]
 use anyhow::{ensure, Context, Result};
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
-use serde_string_enum::{DeserializeLabeledStringEnum, SerializeLabeledStringEnum};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use std::rc::Rc;
+
+pub mod agent;
+pub use agent::read_agents;
+pub mod commodity;
+pub use commodity::read_commodities;
+pub mod process;
+pub use process::read_processes;
+pub mod region;
+pub use region::read_regions;
 
 /// Read a series of type `T`s from a CSV file.
 ///
@@ -55,16 +62,6 @@ where
     Ok(value)
 }
 
-#[derive(PartialEq, Debug, SerializeLabeledStringEnum, DeserializeLabeledStringEnum)]
-pub enum LimitType {
-    #[string = "lo"]
-    LowerBound,
-    #[string = "up"]
-    UpperBound,
-    #[string = "fx"]
-    Equality,
-}
-
 /// Format an error message to include the file path. To be used with `anyhow::Context`.
 pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
     format!("Error reading {}", file_path.as_ref().to_string_lossy())
@@ -89,6 +86,7 @@ macro_rules! define_id_getter {
 
 pub(crate) use define_id_getter;
 
+/// A data structure containing a set of IDs
 pub trait IDCollection {
     /// Get the ID after checking that it exists this collection.
     ///
@@ -139,7 +137,9 @@ where
     fill_and_validate_map(file_path).with_context(|| input_err_msg(file_path))
 }
 
+/// Trait for converting an iterator into a [`HashMap`] grouped by IDs.
 pub trait IntoIDMap<T> {
+    /// Convert into a [`HashMap`] grouped by IDs.
     fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>>;
 }
 
@@ -165,28 +165,6 @@ where
 
         Ok(map)
     }
-}
-
-/// Read a CSV file, grouping the entries by ID
-///
-/// # Arguments
-///
-/// * `file_path` - Path to CSV file
-/// * `ids` - All possible IDs that will be encountered
-///
-/// # Returns
-///
-/// A HashMap with ID as a key and a vector of CSV data as a value or an error.
-pub fn read_csv_grouped_by_id<T>(
-    file_path: &Path,
-    ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Vec<T>>>
-where
-    T: HasID + DeserializeOwned,
-{
-    read_csv(file_path)?
-        .into_id_map(ids)
-        .with_context(|| input_err_msg(file_path))
 }
 
 /// Check that fractions sum to (approximately) one
@@ -300,66 +278,6 @@ mod tests {
         assert!(deserialise_f64(2.0).is_err());
         assert!(deserialise_f64(f64::NAN).is_err());
         assert!(deserialise_f64(f64::INFINITY).is_err());
-    }
-
-    fn create_ids() -> HashSet<Rc<str>> {
-        HashSet::from(["A".into(), "B".into()])
-    }
-
-    #[test]
-    fn test_read_csv_grouped_by_id() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("data.csv");
-        {
-            let file_path: &Path = &file_path; // cast
-            let mut file = File::create(file_path).unwrap();
-            writeln!(file, "id,value\nA,1\nB,2\nA,3").unwrap();
-        }
-
-        let expected = HashMap::from([
-            (
-                "A".into(),
-                vec![
-                    Record {
-                        id: "A".to_string(),
-                        value: 1,
-                    },
-                    Record {
-                        id: "A".to_string(),
-                        value: 3,
-                    },
-                ],
-            ),
-            (
-                "B".into(),
-                vec![Record {
-                    id: "B".to_string(),
-                    value: 2,
-                }],
-            ),
-        ]);
-        let process_ids = create_ids();
-        let file_path = dir.path().join("data.csv");
-        let map = read_csv_grouped_by_id::<Record>(&file_path, &process_ids);
-        assert_eq!(expected, map.unwrap());
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_read_csv_grouped_by_id_duplicate() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("data.csv");
-        {
-            let file_path: &Path = &file_path; // cast
-            let mut file = File::create(file_path).unwrap();
-
-            // NB: Process ID "C" isn't valid
-            writeln!(file, "process_id,value\nA,1\nB,2\nC,3").unwrap();
-        }
-
-        // Check that it fails if a non-existent process ID is provided
-        let process_ids = create_ids();
-        read_csv_grouped_by_id::<Record>(&file_path, &process_ids).unwrap();
     }
 
     #[test]
