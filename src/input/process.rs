@@ -70,11 +70,15 @@ pub fn read_processes(
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
     let mut regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
-    Ok(process_ids
+    process_ids
         .into_iter()
         .map(|id| {
             // We know entry is present
             let desc = descriptions.remove(&id).unwrap();
+
+            let flows = flows
+                .remove(&id)
+                .with_context(|| format!("No commodity flows defined for process {id}"))?;
 
             // We've already checked that these exist for each process
             let parameter = parameters.remove(&id).unwrap();
@@ -84,13 +88,13 @@ pub fn read_processes(
                 id: desc.id,
                 description: desc.description,
                 availabilities: availabilities.remove(&id).unwrap_or_default(),
-                flows: flows.remove(&id).unwrap_or_default(),
+                flows,
                 pacs: pacs.remove(&id).unwrap_or_default(),
                 parameter,
                 regions,
             };
 
-            (id, process.into())
+            Ok((id, process.into()))
         })
-        .collect())
+        .process_results(|iter| iter.collect())
 }
