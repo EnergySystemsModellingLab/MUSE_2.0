@@ -11,6 +11,7 @@ pub mod cost;
 use cost::read_commodity_costs;
 pub mod demand;
 use demand::read_demand;
+pub mod demand_slicing;
 
 const COMMODITY_FILE_NAME: &str = "commodities.csv";
 
