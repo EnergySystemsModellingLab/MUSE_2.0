@@ -1,4 +1,5 @@
-#![allow(missing_docs)]
+//! Agents drive the economy of the MUSE 2.0 simulation, through relative investment in different
+//! assets.
 use crate::commodity::Commodity;
 use crate::process::Process;
 use crate::region::RegionSelection;
@@ -37,17 +38,22 @@ pub struct Agent {
 /// Which processes apply to this agent
 #[derive(Debug, Clone, PartialEq)]
 pub enum SearchSpace {
+    /// All processes are considered
     AllProcesses,
+    /// Only these specific processes are considered
     Some(HashSet<Rc<str>>),
 }
 
 /// The decision rule for a particular objective
 #[derive(Debug, Clone, PartialEq, DeserializeLabeledStringEnum)]
 pub enum DecisionRule {
+    /// Used when there is only a single objective
     #[string = "single"]
     Single,
+    /// A simple weighting of objectives
     #[string = "weighted"]
     Weighted,
+    /// Objectives are considered in a specific order
     #[string = "lexico"]
     Lexicographical,
 }
@@ -70,8 +76,10 @@ pub struct AgentObjective {
 /// **TODO** Add more objective types
 #[derive(Debug, Clone, PartialEq, DeserializeLabeledStringEnum)]
 pub enum ObjectiveType {
+    /// Average cost of one unit of output commodity over its lifetime
     #[string = "lcox"]
     LevelisedCostOfX,
+    /// Cost of serving agent's demand for a year, considering the asset's entire lifetime
     #[string = "eac"]
     EquivalentAnnualCost,
 }
