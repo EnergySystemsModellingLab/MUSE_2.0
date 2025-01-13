@@ -127,8 +127,6 @@ fn validate_demand_slices(
     demand_slices: &DemandSliceMap,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
-    ensure!(!demand_slices.is_empty(), "Empty demand slices file");
-
     for (commodity_id, region_id) in commodity_regions {
         time_slice_info
             .iter()
