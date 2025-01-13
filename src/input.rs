@@ -109,10 +109,7 @@ impl IDCollection for HashSet<Rc<str>> {
     }
 }
 
-/// Read a CSV file of items with IDs.
-///
-/// This is like `read_csv_grouped_by_id`, with the difference that it is to be used on the "main"
-/// CSV file for a record type, so it assumes that all IDs encountered are valid.
+/// Read a CSV file of items with IDs
 pub fn read_csv_id_file<T>(file_path: &Path) -> Result<HashMap<Rc<str>, T>>
 where
     T: HasID + DeserializeOwned,
