@@ -10,7 +10,10 @@ use fern::colors::{Color, ColoredLevelConfig};
 use fern::Dispatch;
 use std::env;
 
-pub(crate) const DEFAULT_LOG_LEVEL: &str = "info";
+/// The default log level for the program.
+///
+/// Note that we disable logging when running tests.
+const DEFAULT_LOG_LEVEL: &str = if cfg!(test) { "off" } else { "info" };
 
 /// Initialise the program logger using the `fern` logging library with colourised output.
 ///
