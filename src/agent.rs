@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use crate::input::deserialise_proportion_nonzero;
+use crate::commodity::Commodity;
 use crate::process::Process;
 use crate::region::RegionSelection;
 use anyhow::Result;
@@ -9,15 +9,14 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 /// An agent in the simulation
-#[derive(Debug, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Agent {
     /// A unique identifier for the agent.
     pub id: Rc<str>,
     /// A text description of the agent.
     pub description: String,
     /// The commodity that the agent produces (could be a service demand too).
-    pub commodity_id: String,
-    #[serde(deserialize_with = "deserialise_proportion_nonzero")]
+    pub commodity: Rc<Commodity>,
     /// The proportion of the commodity production that the agent is responsible for.
     pub commodity_portion: f64,
     /// The list of processes that the agent will consider investing in.
@@ -28,12 +27,11 @@ pub struct Agent {
     pub capex_limit: Option<f64>,
     /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
     pub annual_cost_limit: Option<f64>,
-
-    #[serde(skip)]
+    /// The regions in which this agent operates.
     pub regions: RegionSelection,
-    #[serde(skip)]
+    /// The agent's objectives.
     pub objectives: Vec<AgentObjective>,
-    #[serde(skip)]
+    /// Assets controlled by this agent.
     pub assets: Vec<Asset>,
 }
 

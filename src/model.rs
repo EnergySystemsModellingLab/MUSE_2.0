@@ -107,7 +107,7 @@ impl Model {
             &time_slice_info,
             &year_range,
         )?;
-        let agents = read_agents(model_dir.as_ref(), &processes, &region_ids)?;
+        let agents = read_agents(model_dir.as_ref(), &commodities, &processes, &region_ids)?;
 
         Ok(Model {
             milestone_years: model_file.milestone_years.years,

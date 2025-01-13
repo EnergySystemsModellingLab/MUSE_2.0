@@ -109,7 +109,9 @@ fn check_objective_parameter(
 mod tests {
     use super::*;
     use crate::agent::{ObjectiveType, SearchSpace};
+    use crate::commodity::{Commodity, CommodityCostMap, CommodityType};
     use crate::region::RegionSelection;
+    use crate::time_slice::TimeSliceLevel;
 
     #[test]
     fn test_check_objective_parameter() {
@@ -154,12 +156,20 @@ mod tests {
 
     #[test]
     fn test_read_agent_objectives_from_iter() {
+        let commodity = Rc::new(Commodity {
+            id: "commodity1".into(),
+            description: "A commodity".into(),
+            kind: CommodityType::SupplyEqualsDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand_by_region: HashMap::new(),
+        });
         let agents: HashMap<_, _> = [(
             "agent".into(),
             Agent {
                 id: "agent".into(),
                 description: "".into(),
-                commodity_id: "".into(),
+                commodity,
                 commodity_portion: 1.0,
                 search_space: SearchSpace::AllProcesses,
                 decision_rule: DecisionRule::Single,
