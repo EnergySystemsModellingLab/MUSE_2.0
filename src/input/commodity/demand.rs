@@ -198,7 +198,7 @@ fn compute_demand_maps(
     for (demand_key, annual_demand) in demand.iter() {
         let commodity_id = &demand_key.commodity_id;
         let region_id = &demand_key.region_id;
-        for time_slice in time_slice_info.iter() {
+        for time_slice in time_slice_info.iter_ids() {
             let slice_key = DemandSliceMapKey {
                 commodity_id: Rc::clone(commodity_id),
                 region_id: Rc::clone(region_id),

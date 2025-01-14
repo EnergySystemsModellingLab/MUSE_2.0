@@ -89,9 +89,10 @@ where
         // how long they are relative to one another so that we can divide up the demand for this
         // entry appropriately
         let ts_selection = time_slice_info.get_selection(&slice.time_slice)?;
-        let ts_iter = time_slice_info.iter_selection(&ts_selection);
-        time_slices
-            .extend(ts_iter.map(|ts| (ts.clone(), time_slice_info.fractions.get(ts).unwrap())));
+        let ts_iter = time_slice_info
+            .iter_selection(&ts_selection)
+            .map(|(ts, fraction)| (ts.clone(), fraction));
+        time_slices.extend(ts_iter);
         let time_total: f64 = time_slices.iter().map(|(_, fraction)| *fraction).sum();
         for (time_slice, time_fraction) in time_slices.drain(0..) {
             let key = DemandSliceMapKey {
@@ -129,7 +130,7 @@ fn validate_demand_slices(
 ) -> Result<()> {
     for (commodity_id, region_id) in commodity_regions {
         time_slice_info
-            .iter()
+            .iter_ids()
             .map(|time_slice| {
                 let key = DemandSliceMapKey {
                     commodity_id: Rc::clone(commodity_id),

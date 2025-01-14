@@ -115,24 +115,34 @@ impl TimeSliceInfo {
     ///
     /// The order will be consistent each time this is called, but not every time the program is
     /// run.
-    pub fn iter(&self) -> impl Iterator<Item = &TimeSliceID> {
+    pub fn iter_ids(&self) -> impl Iterator<Item = &TimeSliceID> {
         self.fractions.keys()
     }
 
-    /// Iterate over the subset of [`TimeSliceID`] indicated by `selection`.
+    /// Iterate over all time slices.
+    ///
+    /// The order will be consistent each time this is called, but not every time the program is
+    /// run.
+    pub fn iter(&self) -> impl Iterator<Item = (&TimeSliceID, f64)> {
+        self.fractions.iter().map(|(ts, fraction)| (ts, *fraction))
+    }
+
+    /// Iterate over the subset of time slices indicated by `selection`.
     ///
     /// The order will be consistent each time this is called, but not every time the program is
     /// run.
     pub fn iter_selection<'a>(
         &'a self,
         selection: &'a TimeSliceSelection,
-    ) -> Box<dyn Iterator<Item = &'a TimeSliceID> + 'a> {
+    ) -> Box<dyn Iterator<Item = (&'a TimeSliceID, f64)> + 'a> {
         match selection {
             TimeSliceSelection::Annual => Box::new(self.iter()),
             TimeSliceSelection::Season(season) => {
-                Box::new(self.iter().filter(move |ts| ts.season == *season))
+                Box::new(self.iter().filter(move |(ts, _)| ts.season == *season))
             }
-            TimeSliceSelection::Single(ts) => Box::new(iter::once(ts)),
+            TimeSliceSelection::Single(ts) => {
+                Box::new(iter::once((ts, *self.fractions.get(ts).unwrap())))
+            }
         }
     }
 }
@@ -334,16 +344,24 @@ autumn,evening,0.25"
         };
 
         assert_eq!(
-            HashSet::<&TimeSliceID>::from_iter(ts_info.iter_selection(&TimeSliceSelection::Annual)),
+            HashSet::<&TimeSliceID>::from_iter(
+                ts_info
+                    .iter_selection(&TimeSliceSelection::Annual)
+                    .map(|(ts, _)| ts)
+            ),
             HashSet::from_iter(slices.iter())
         );
         itertools::assert_equal(
-            ts_info.iter_selection(&TimeSliceSelection::Season("winter".into())),
+            ts_info
+                .iter_selection(&TimeSliceSelection::Season("winter".into()))
+                .map(|(ts, _)| ts),
             iter::once(&slices[0]),
         );
         let ts = ts_info.get_time_slice_id_from_str("summer.night").unwrap();
         itertools::assert_equal(
-            ts_info.iter_selection(&TimeSliceSelection::Single(ts)),
+            ts_info
+                .iter_selection(&TimeSliceSelection::Single(ts))
+                .map(|(ts, _)| ts),
             iter::once(&slices[1]),
         );
     }
