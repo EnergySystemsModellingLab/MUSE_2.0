@@ -92,10 +92,12 @@ fn add_variables(problem: &mut RowProblem, model: &Model, year: u32) -> Variable
                     let coeff =
                         calculate_cost_coeff(year, region_id, &asset.process, flow, time_slice);
 
-                    // **HACK**: We need bounds, so just make some up for now
-                    let bounds = -100..=100;
-
-                    let var = problem.add_column(coeff, bounds);
+                    // var's value must be <= 0 for inputs and >= 0 for outputs
+                    let var = if flow.flow < 0.0 {
+                        problem.add_column(coeff, ..=0.0)
+                    } else {
+                        problem.add_column(coeff, 0.0..)
+                    };
 
                     let key = VariableMapKey::new(
                         region_id,
