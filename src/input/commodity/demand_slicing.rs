@@ -75,7 +75,6 @@ where
 {
     let mut demand_slices = DemandSliceMap::new();
 
-    let mut time_slices = Vec::new();
     for slice in iter {
         let commodity_id = commodity_ids.get_id(&slice.commodity_id)?;
         let region_id = region_ids.get_id(&slice.region_id)?;
@@ -89,23 +88,18 @@ where
         // how long they are relative to one another so that we can divide up the demand for this
         // entry appropriately
         let ts_selection = time_slice_info.get_selection(&slice.time_slice)?;
-        let ts_iter = time_slice_info
-            .iter_selection(&ts_selection)
-            .map(|(ts, fraction)| (ts.clone(), fraction));
-        time_slices.extend(ts_iter);
-        let time_total: f64 = time_slices.iter().map(|(_, fraction)| *fraction).sum();
-        for (time_slice, time_fraction) in time_slices.drain(0..) {
+        for (ts, demand_fraction) in time_slice_info.calculate_share(&ts_selection, slice.fraction)
+        {
             let key = DemandSliceMapKey {
                 commodity_id: Rc::clone(&commodity_id),
                 region_id: Rc::clone(&region_id),
-                time_slice: time_slice.clone(),
+                time_slice: ts.clone(),
             };
 
             // Share demand between the time slices in proportion to duration
-            let demand_fraction = slice.fraction * time_fraction / time_total;
             ensure!(demand_slices.insert(key, demand_fraction).is_none(),
                 "Duplicate demand slicing entry (or same time slice covered by more than one entry) \
-                (commodity: {commodity_id}, region: {region_id}, time slice: {time_slice})"
+                (commodity: {commodity_id}, region: {region_id}, time slice: {ts})"
             );
         }
     }
