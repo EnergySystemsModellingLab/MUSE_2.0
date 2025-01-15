@@ -4,9 +4,9 @@ use crate::model::Model;
 use crate::process::{Process, ProcessFlow};
 use crate::time_slice::TimeSliceID;
 use highs::{HighsModelStatus, RowProblem};
+use indexmap::IndexMap;
 use itertools::Itertools;
 use log::*;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 #[derive(Eq, PartialEq, Hash)]
@@ -34,7 +34,7 @@ impl VariableMapKey {
 }
 
 /// A map for easy lookup of variables in the optimisation.
-struct VariableMap(HashMap<VariableMapKey, highs::Col>);
+struct VariableMap(IndexMap<VariableMapKey, highs::Col>);
 
 impl VariableMap {
     fn get(
@@ -57,11 +57,17 @@ impl VariableMap {
 pub fn run(model: &Model) {
     for year in model.iter_years() {
         info!("Milestone year: {year}");
-        perform_dispatch(model, year);
+        let output = perform_dispatch(model, year);
+        for (key, flow) in output {
+            info!(
+                "OUT: {} {} {} {}: {}",
+                key.region_id, key.process_id, key.commodity_id, key.time_slice, flow
+            )
+        }
     }
 }
 
-fn perform_dispatch(model: &Model, year: u32) {
+fn perform_dispatch(model: &Model, year: u32) -> impl Iterator<Item = (VariableMapKey, f64)> {
     let mut problem = RowProblem::default();
 
     let vars = add_variables(&mut problem, model, year);
@@ -80,11 +86,13 @@ fn perform_dispatch(model: &Model, year: u32) {
     }
 
     let solution = solved.get_solution();
-    info!("Solution: {:?}", solution.columns());
+
+    // Columns of solution are in same order as vars' keys
+    vars.0.into_keys().zip(solution.columns().to_vec())
 }
 
 fn add_variables(problem: &mut RowProblem, model: &Model, year: u32) -> VariableMap {
-    let mut vars = VariableMap(HashMap::new());
+    let mut vars = VariableMap(IndexMap::new());
     for region_id in model.iter_regions() {
         for asset in model.get_assets(year, region_id) {
             for flow in asset.process.flows.iter() {
