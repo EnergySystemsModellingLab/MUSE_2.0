@@ -1,4 +1,5 @@
 //! Common routines for handling input data.
+use crate::agent::AssetMap;
 use crate::model::{Model, ModelFile};
 use crate::time_slice::read_time_slice_info;
 use anyhow::{ensure, Context, Result};
@@ -12,6 +13,8 @@ use std::rc::Rc;
 
 pub mod agent;
 pub use agent::read_agents;
+pub mod asset;
+use asset::read_assets;
 pub mod commodity;
 pub use commodity::read_commodities;
 pub mod process;
@@ -190,7 +193,7 @@ where
 /// # Returns
 ///
 /// The model contents as a `Model` struct or an error if the model is invalid
-pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<Model> {
+pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetMap)> {
     let model_file = ModelFile::from_path(&model_dir)?;
 
     let time_slice_info = read_time_slice_info(model_dir.as_ref())?;
@@ -208,15 +211,18 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<Model> {
         &year_range,
     )?;
     let agents = read_agents(model_dir.as_ref(), &commodities, &processes, &region_ids)?;
+    let agent_ids = agents.keys().cloned().collect();
+    let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
 
-    Ok(Model {
+    let model = Model {
         milestone_years: model_file.milestone_years.years,
         agents,
         commodities,
         processes,
         time_slice_info,
         regions,
-    })
+    };
+    Ok((model, assets))
 }
 
 #[cfg(test)]

@@ -32,12 +32,12 @@ struct AssetRaw {
 /// # Returns
 ///
 /// A `HashMap` containing assets grouped by agent ID.
-pub fn read_agent_assets(
+pub fn read_assets(
     model_dir: &Path,
     agent_ids: &HashSet<Rc<str>>,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Vec<Asset>>> {
+) -> Result<AssetMap> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
     let assets_csv = read_csv(&file_path)?;
     read_assets_from_iter(assets_csv, agent_ids, processes, region_ids)
@@ -61,7 +61,7 @@ fn read_assets_from_iter<I>(
     agent_ids: &HashSet<Rc<str>>,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Vec<Asset>>>
+) -> Result<AssetMap>
 where
     I: Iterator<Item = AssetRaw>,
 {
