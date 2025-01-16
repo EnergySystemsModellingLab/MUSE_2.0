@@ -86,11 +86,12 @@ pub fn read_processes(
             // We've already checked that these exist for each process
             let parameter = parameters.remove(&id).unwrap();
             let regions = regions.remove(&id).unwrap();
+            let availabilities = availabilities.remove(&id).unwrap();
 
             let process = Process {
                 id: desc.id,
                 description: desc.description,
-                availabilities: availabilities.remove(&id).unwrap_or_default(),
+                availabilities,
                 flows,
                 pacs,
                 parameter,
