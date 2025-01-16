@@ -33,3 +33,4 @@ repos:
     hooks:
       - id: codespell
         args: [--ignore-words, .codespell_ignore.txt]
+        exclude: \.svg$
