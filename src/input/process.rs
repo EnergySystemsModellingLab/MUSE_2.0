@@ -61,7 +61,7 @@ pub fn read_processes(
     year_range: &RangeInclusive<u32>,
 ) -> Result<HashMap<Rc<str>, Rc<Process>>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let mut descriptions = read_csv_id_file::<ProcessDescription>(&file_path)?;
+    let descriptions = read_csv_id_file::<ProcessDescription>(&file_path)?;
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
@@ -70,12 +70,9 @@ pub fn read_processes(
     let mut parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
     let mut regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
-    process_ids
+    descriptions
         .into_iter()
-        .map(|id| {
-            // We know entry is present
-            let desc = descriptions.remove(&id).unwrap();
-
+        .map(|(id, description)| {
             let flows = flows
                 .remove(&id)
                 .with_context(|| format!("No commodity flows defined for process {id}"))?;
@@ -89,8 +86,8 @@ pub fn read_processes(
             let availabilities = availabilities.remove(&id).unwrap();
 
             let process = Process {
-                id: desc.id,
-                description: desc.description,
+                id: description.id,
+                description: description.description,
                 availabilities,
                 flows,
                 pacs,
