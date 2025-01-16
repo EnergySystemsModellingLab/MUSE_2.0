@@ -5,7 +5,7 @@ use crate::commodity::Commodity;
 use crate::input::*;
 use crate::process::Process;
 use crate::region::Region;
-use crate::time_slice::{read_time_slice_info, TimeSliceInfo};
+use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -26,13 +26,13 @@ pub struct Model {
 
 /// Represents the contents of the entire model file.
 #[derive(Debug, Deserialize, PartialEq)]
-struct ModelFile {
-    milestone_years: MilestoneYears,
+pub struct ModelFile {
+    pub milestone_years: MilestoneYears,
 }
 
 /// Represents the "milestone_years" section of the model file.
 #[derive(Debug, Deserialize, PartialEq)]
-struct MilestoneYears {
+pub struct MilestoneYears {
     pub years: Vec<u32>,
 }
 
@@ -80,45 +80,6 @@ impl ModelFile {
 }
 
 impl Model {
-    /// Read a model from the specified directory.
-    ///
-    /// # Arguments
-    ///
-    /// * `model_dir` - Folder containing model configuration files
-    ///
-    /// # Returns
-    ///
-    /// The model contents as a `Model` struct or an error if the model is invalid
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<Model> {
-        let model_file = ModelFile::from_path(&model_dir)?;
-
-        let time_slice_info = read_time_slice_info(model_dir.as_ref())?;
-        let regions = read_regions(model_dir.as_ref())?;
-        let region_ids = regions.keys().cloned().collect();
-        let years = &model_file.milestone_years.years;
-        let year_range = *years.first().unwrap()..=*years.last().unwrap();
-
-        let commodities =
-            read_commodities(model_dir.as_ref(), &region_ids, &time_slice_info, years)?;
-        let processes = read_processes(
-            model_dir.as_ref(),
-            &commodities,
-            &region_ids,
-            &time_slice_info,
-            &year_range,
-        )?;
-        let agents = read_agents(model_dir.as_ref(), &commodities, &processes, &region_ids)?;
-
-        Ok(Model {
-            milestone_years: model_file.milestone_years.years,
-            agents,
-            commodities,
-            processes,
-            time_slice_info,
-            regions,
-        })
-    }
-
     /// Iterate over the model's milestone years.
     pub fn iter_years(&self) -> impl Iterator<Item = u32> + '_ {
         self.milestone_years.iter().copied()
