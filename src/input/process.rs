@@ -111,9 +111,11 @@ where
             let pacs = pacs
                 .remove(id)
                 .with_context(|| format!("No PACs defined for process {id}"))?;
+            let parameter = parameters
+                .remove(id)
+                .with_context(|| format!("No parameters defined for process {id}"))?;
 
             // We've already checked that these exist for each process
-            let parameter = parameters.remove(id).unwrap();
             let regions = regions.remove(id).unwrap();
             let availabilities = availabilities.remove(id).unwrap();
 
@@ -250,5 +252,10 @@ mod tests {
     #[test]
     fn test_create_process_map_missing_flows() {
         test_missing!(flows);
+    }
+
+    #[test]
+    fn test_create_process_map_missing_parameters() {
+        test_missing!(parameters);
     }
 }
