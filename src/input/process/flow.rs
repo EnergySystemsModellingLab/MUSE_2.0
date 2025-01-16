@@ -51,10 +51,12 @@ where
             .get(flow.commodity_id.as_str())
             .with_context(|| format!("{} is not a valid commodity ID", &flow.commodity_id))?;
 
-        // Check that flow is not zero, infinity, etc.
+        ensure!(flow.flow != 0.0, "Flow cannot be zero");
+
+        // Check that flow is not infinity, nan, etc.
         ensure!(
             flow.flow.is_normal(),
-            "Invalid value for flow: {}",
+            "Invalid value for flow ({})",
             flow.flow
         );
 
