@@ -3,7 +3,7 @@ use super::define_process_id_getter;
 use crate::input::*;
 use crate::process::{LimitType, ProcessAvailability};
 use crate::time_slice::TimeSliceInfo;
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -44,23 +44,15 @@ fn read_process_availabilities_from_iter<I>(
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
-    let availabilities = iter
-        .map(|record| -> Result<_> {
-            let time_slice = time_slice_info.get_selection(&record.time_slice)?;
+    iter.map(|record| -> Result<_> {
+        let time_slice = time_slice_info.get_selection(&record.time_slice)?;
 
-            Ok(ProcessAvailability {
-                process_id: record.process_id,
-                limit_type: record.limit_type,
-                time_slice,
-                value: record.value,
-            })
+        Ok(ProcessAvailability {
+            process_id: record.process_id,
+            limit_type: record.limit_type,
+            time_slice,
+            value: record.value,
         })
-        .process_results(|iter| iter.into_id_map(process_ids))??;
-
-    ensure!(
-        availabilities.len() >= process_ids.len(),
-        "Every process must have at least one availability period"
-    );
-
-    Ok(availabilities)
+    })
+    .process_results(|iter| iter.into_id_map(process_ids))?
 }

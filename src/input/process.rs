@@ -105,6 +105,9 @@ where
     descriptions
         .map(|description| {
             let id = &description.id;
+            let availabilities = availabilities
+                .remove(id)
+                .with_context(|| format!("No availabilities defined for process {id}"))?;
             let flows = flows
                 .remove(id)
                 .with_context(|| format!("No commodity flows defined for process {id}"))?;
@@ -115,9 +118,8 @@ where
                 .remove(id)
                 .with_context(|| format!("No parameters defined for process {id}"))?;
 
-            // We've already checked that these exist for each process
+            // We've already checked that regions are defined for each process
             let regions = regions.remove(id).unwrap();
-            let availabilities = availabilities.remove(id).unwrap();
 
             let process = Process {
                 id: Rc::clone(id),
@@ -242,6 +244,11 @@ mod tests {
             );
             assert!(result.is_err());
         };
+    }
+
+    #[test]
+    fn test_create_process_map_missing_availabilities() {
+        test_missing!(availabilities);
     }
 
     #[test]
