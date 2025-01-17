@@ -19,7 +19,7 @@ pub fn run(model: &Model, assets: &mut AssetPool) {
         for asset in assets.iter() {
             info!(
                 "├── Agent: {}; region: {}; process: {} (commissioned {})",
-                asset.agent_id, asset.region_id, asset.process.id, asset.commission_year
+                asset.agent.id, asset.region_id, asset.process.id, asset.commission_year
             );
 
             for flow in asset.process.flows.iter() {

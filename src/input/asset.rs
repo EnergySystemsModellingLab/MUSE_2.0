@@ -1,5 +1,5 @@
 //! Code for reading [Asset]s from a CSV file.
-use crate::agent::Asset;
+use crate::agent::{Agent, Asset};
 use crate::input::*;
 use crate::process::Process;
 use anyhow::{ensure, Context, Result};
@@ -25,7 +25,7 @@ struct AssetRaw {
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
-/// * `agent_ids` - All possible process IDs
+/// * `agents` - All agents
 /// * `processes` - The model's processes
 /// * `region_ids` - All possible region IDs
 ///
@@ -34,14 +34,14 @@ struct AssetRaw {
 /// A `HashMap` containing assets grouped by agent ID.
 pub fn read_assets(
     model_dir: &Path,
-    agent_ids: &HashSet<Rc<str>>,
+    agents: &HashMap<Rc<str>, Rc<Agent>>,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
     milestone_years: &[u32],
 ) -> Result<HashMap<u32, Vec<Asset>>> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
     let assets_csv = read_csv(&file_path)?;
-    let assets = read_assets_from_iter(assets_csv, agent_ids, processes, region_ids)
+    let assets = read_assets_from_iter(assets_csv, agents, processes, region_ids)
         .with_context(|| input_err_msg(&file_path))?;
 
     Ok(group_assets_by_milestone_year(assets, milestone_years))
@@ -52,7 +52,7 @@ pub fn read_assets(
 /// # Arguments
 ///
 /// * `iter` - Iterator of `AssetRaw`s
-/// * `agent_ids` - All possible process IDs
+/// * `agents` - All agents
 /// * `processes` - The model's processes
 /// * `region_ids` - All possible region IDs
 ///
@@ -61,7 +61,7 @@ pub fn read_assets(
 /// A [`Vec`] of [`Asset`]s or an error.
 fn read_assets_from_iter<I>(
     iter: I,
-    agent_ids: &HashSet<Rc<str>>,
+    agents: &HashMap<Rc<str>, Rc<Agent>>,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
 ) -> Result<Vec<Asset>>
@@ -69,7 +69,9 @@ where
     I: Iterator<Item = AssetRaw>,
 {
     iter.map(|asset| -> Result<_> {
-        let agent_id = agent_ids.get_id(&asset.agent_id)?;
+        let agent = agents
+            .get(asset.agent_id.as_str())
+            .with_context(|| format!("{} is not a valid agent ID", asset.agent_id))?;
         let process = processes
             .get(asset.process_id.as_str())
             .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
@@ -82,7 +84,7 @@ where
         );
 
         Ok(Asset {
-            agent_id,
+            agent: Rc::clone(agent),
             process: Rc::clone(process),
             region_id,
             capacity: asset.capacity,
@@ -129,8 +131,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent::{DecisionRule, SearchSpace};
+    use crate::commodity::{Commodity, CommodityCostMap, CommodityType};
     use crate::process::ProcessParameter;
     use crate::region::RegionSelection;
+    use crate::time_slice::TimeSliceLevel;
     use itertools::assert_equal;
     use std::iter;
 
@@ -158,7 +163,27 @@ mod tests {
         let processes = [(Rc::clone(&process.id), Rc::clone(&process))]
             .into_iter()
             .collect();
-        let agent_ids = ["agent1".into()].into_iter().collect();
+        let commodity = Rc::new(Commodity {
+            id: "commodity1".into(),
+            description: "A commodity".into(),
+            kind: CommodityType::SupplyEqualsDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand_by_region: HashMap::new(),
+        });
+        let agent = Rc::new(Agent {
+            id: "agent1".into(),
+            description: "".into(),
+            commodity,
+            commodity_portion: 1.0,
+            search_space: SearchSpace::AllProcesses,
+            decision_rule: DecisionRule::Single,
+            capex_limit: None,
+            annual_cost_limit: None,
+            regions: RegionSelection::default(),
+            objectives: Vec::new(),
+        });
+        let agents = iter::once(("agent1".into(), agent.clone())).collect();
         let region_ids = ["GBR".into(), "USA".into()].into_iter().collect();
 
         // Valid
@@ -170,14 +195,14 @@ mod tests {
             commission_year: 2010,
         };
         let asset_out = Asset {
-            agent_id: "agent1".into(),
+            agent,
             process: Rc::clone(&process),
             region_id: "GBR".into(),
             capacity: 1.0,
             commission_year: 2010,
         };
         assert_equal(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
+            read_assets_from_iter([asset_in].into_iter(), &agents, &processes, &region_ids)
                 .unwrap(),
             iter::once(asset_out),
         );
@@ -191,7 +216,7 @@ mod tests {
             commission_year: 2010,
         };
         assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
+            read_assets_from_iter([asset_in].into_iter(), &agents, &processes, &region_ids)
                 .is_err()
         );
 
@@ -204,7 +229,7 @@ mod tests {
             commission_year: 2010,
         };
         assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
+            read_assets_from_iter([asset_in].into_iter(), &agents, &processes, &region_ids)
                 .is_err()
         );
 
@@ -217,7 +242,7 @@ mod tests {
             commission_year: 2010,
         };
         assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
+            read_assets_from_iter([asset_in].into_iter(), &agents, &processes, &region_ids)
                 .is_err()
         );
 
@@ -242,7 +267,7 @@ mod tests {
             .into_iter()
             .collect();
         assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
+            read_assets_from_iter([asset_in].into_iter(), &agents, &processes, &region_ids)
                 .is_err()
         );
     }
