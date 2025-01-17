@@ -65,7 +65,6 @@ pub fn read_agents(
     let mut agent_regions = read_agent_regions(model_dir, &agent_ids, region_ids)?;
     let mut objectives = read_agent_objectives(model_dir, &agents)?;
 
-    // Populate each Agent's Vecs
     for (id, agent) in agents.iter_mut() {
         agent.regions = agent_regions.remove(id).unwrap();
         agent.objectives = objectives.remove(id).unwrap();

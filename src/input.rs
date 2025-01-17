@@ -1,5 +1,5 @@
 //! Common routines for handling input data.
-use crate::agent::AssetMap;
+use crate::agent::AssetPool;
 use crate::model::{Model, ModelFile};
 use crate::time_slice::read_time_slice_info;
 use anyhow::{ensure, Context, Result};
@@ -193,7 +193,7 @@ where
 /// # Returns
 ///
 /// The model contents as a `Model` struct or an error if the model is invalid
-pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetMap)> {
+pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let model_file = ModelFile::from_path(&model_dir)?;
 
     let time_slice_info = read_time_slice_info(model_dir.as_ref())?;

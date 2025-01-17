@@ -1,18 +1,17 @@
 //! Functionality for running the MUSE 2.0 simulation.
-use crate::agent::{Asset, AssetMap};
+use crate::agent::{Asset, AssetPool};
 use crate::model::Model;
 use log::info;
 use std::rc::Rc;
 
 /// Get an iterator of active [`Asset`]s for the specified milestone year in a given region.
 fn filter_assets<'a>(
-    assets: &'a AssetMap,
+    assets: &'a AssetPool,
     year: u32,
     region_id: &'a Rc<str>,
 ) -> impl Iterator<Item = &'a Asset> {
     assets
-        .values()
-        .flatten()
+        .iter()
         .filter(move |asset| asset.commission_year >= year && asset.region_id == *region_id)
 }
 
@@ -22,7 +21,7 @@ fn filter_assets<'a>(
 ///
 /// * `model` - The model to run
 /// * `assets` - The asset pool
-pub fn run(model: &Model, assets: &AssetMap) {
+pub fn run(model: &Model, assets: &AssetPool) {
     for year in model.iter_years() {
         info!("Milestone year: {year}");
         for region_id in model.iter_regions() {

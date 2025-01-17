@@ -5,7 +5,7 @@ use crate::process::Process;
 use crate::region::RegionSelection;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::rc::Rc;
 
 /// An agent in the simulation
@@ -97,5 +97,5 @@ pub struct Asset {
     pub commission_year: u32,
 }
 
-/// A map of assets where the key is an agent ID
-pub type AssetMap = HashMap<Rc<str>, Vec<Asset>>;
+/// A pool of [`Asset`]s
+pub type AssetPool = Vec<Asset>;
