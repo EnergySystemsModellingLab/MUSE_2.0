@@ -1,6 +1,6 @@
 //! Code for simulation models.
 #![allow(missing_docs)]
-use crate::agent::Agent;
+use crate::agent::{Agent, Asset};
 use crate::commodity::Commodity;
 use crate::input::*;
 use crate::process::Process;
@@ -117,6 +117,37 @@ impl Model {
             time_slice_info,
             regions,
         })
+    }
+
+    /// Iterate over the model's milestone years.
+    pub fn iter_years(&self) -> impl Iterator<Item = u32> + '_ {
+        self.milestone_years.iter().copied()
+    }
+
+    /// Iterate over the model's regions (region IDs).
+    pub fn iter_regions(&self) -> impl Iterator<Item = &Rc<str>> + '_ {
+        self.regions.keys()
+    }
+
+    /// Get an iterator of [`Agent`]s for the specified region.
+    pub fn get_agents_for_region<'a>(
+        &'a self,
+        region_id: &'a str,
+    ) -> impl Iterator<Item = &'a Agent> {
+        self.agents
+            .values()
+            .filter(|agent| agent.regions.contains(region_id))
+    }
+
+    /// Get an iterator of active [`Asset`]s for the specified milestone year in a given region.
+    pub fn get_assets<'a>(
+        &'a self,
+        year: u32,
+        region_id: &'a str,
+    ) -> impl Iterator<Item = &'a Asset> {
+        self.get_agents_for_region(region_id)
+            .flat_map(|agent| agent.assets.iter())
+            .filter(move |asset| year >= asset.commission_year)
     }
 }
 

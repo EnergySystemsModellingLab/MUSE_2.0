@@ -79,8 +79,9 @@ where
         );
 
         Ok((
-            agent_id,
+            Rc::clone(&agent_id),
             Asset {
+                agent_id,
                 process: Rc::clone(process),
                 region_id,
                 capacity: asset.capacity,
@@ -134,6 +135,7 @@ mod tests {
             commission_year: 2010,
         };
         let asset_out = Asset {
+            agent_id: "agent1".into(),
             process: Rc::clone(&process),
             region_id: "GBR".into(),
             capacity: 1.0,
