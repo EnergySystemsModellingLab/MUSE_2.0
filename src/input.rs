@@ -212,7 +212,13 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     )?;
     let agents = read_agents(model_dir.as_ref(), &commodities, &processes, &region_ids)?;
     let agent_ids = agents.keys().cloned().collect();
-    let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
+    let assets = read_assets(
+        model_dir.as_ref(),
+        &agent_ids,
+        &processes,
+        &region_ids,
+        years,
+    )?;
 
     let model = Model {
         milestone_years: model_file.milestone_years.years,

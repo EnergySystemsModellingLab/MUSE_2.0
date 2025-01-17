@@ -37,11 +37,14 @@ pub fn read_assets(
     agent_ids: &HashSet<Rc<str>>,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
-) -> Result<Vec<Asset>> {
+    milestone_years: &[u32],
+) -> Result<HashMap<u32, Vec<Asset>>> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
     let assets_csv = read_csv(&file_path)?;
-    read_assets_from_iter(assets_csv, agent_ids, processes, region_ids)
-        .with_context(|| input_err_msg(&file_path))
+    let assets = read_assets_from_iter(assets_csv, agent_ids, processes, region_ids)
+        .with_context(|| input_err_msg(&file_path))?;
+
+    Ok(group_assets_by_milestone_year(assets, milestone_years))
 }
 
 /// Process assets from an iterator.
@@ -87,6 +90,40 @@ where
         })
     })
     .try_collect()
+}
+
+/// Group assets according to the milestone year in which they should be commissioned.
+///
+/// As the simulation only considers milestone years, assets should be "commissioned" (i.e. added to
+/// the pool of active assets) in the first milestone year after their specified commission year.
+///
+/// Assets whose commission year is after the time horizon will be discarded.
+///
+/// # Arguments
+///
+/// * `assets` - Iterator of [`Asset`]s
+/// * `milestone_years` - All milestone years
+fn group_assets_by_milestone_year<I>(assets: I, milestone_years: &[u32]) -> HashMap<u32, Vec<Asset>>
+where
+    I: IntoIterator<Item = Asset>,
+{
+    let mut map = HashMap::new();
+
+    for asset in assets {
+        // Find the first milestone year in which this asset can be commissioned
+        let year = milestone_years
+            .iter()
+            .copied()
+            .find(|milestone_year| asset.commission_year <= *milestone_year);
+
+        // year will be `Some` unless commission year is after time horizon
+        if let Some(year) = year {
+            let vec = map.entry(year).or_insert_with(|| Vec::with_capacity(1));
+            vec.push(asset);
+        }
+    }
+
+    map
 }
 
 #[cfg(test)]

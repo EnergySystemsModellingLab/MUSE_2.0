@@ -5,7 +5,7 @@ use crate::process::Process;
 use crate::region::RegionSelection;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// An agent in the simulation
@@ -98,15 +98,29 @@ pub struct Asset {
 }
 
 /// A pool of [`Asset`]s
-pub struct AssetPool(Vec<Asset>);
+pub struct AssetPool {
+    user_assets: HashMap<u32, Vec<Asset>>,
+    active_assets: Vec<Asset>,
+}
 
 impl AssetPool {
     /// Create a new [`AssetPool`]
-    pub fn new(assets: Vec<Asset>) -> Self {
-        Self(assets)
+    pub fn new(user_assets: HashMap<u32, Vec<Asset>>) -> Self {
+        Self {
+            user_assets,
+            active_assets: Vec::new(),
+        }
     }
+
+    /// Commission new assets from the user-supplied pool
+    pub fn commission_new(&mut self, year: u32) {
+        if let Some(new_assets) = self.user_assets.remove(&year) {
+            self.active_assets.extend(new_assets);
+        }
+    }
+
     /// Iterate over active assets
     pub fn iter(&self) -> impl Iterator<Item = &Asset> {
-        self.0.iter()
+        self.active_assets.iter()
     }
 }
