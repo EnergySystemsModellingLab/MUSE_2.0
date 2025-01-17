@@ -223,7 +223,7 @@ mod tests {
             kind: CommodityType::InputCommodity,
             time_slice_level: TimeSliceLevel::Annual,
             costs: CommodityCostMap::new(),
-            demand_by_region: HashMap::new(),
+            demand: DemandMap::new(),
         })
         .map(|c| (c.id.clone(), Rc::new(c)))
         .collect();
@@ -259,7 +259,7 @@ mod tests {
             kind: CommodityType::InputCommodity,
             time_slice_level: TimeSliceLevel::Annual,
             costs: CommodityCostMap::new(),
-            demand_by_region: HashMap::new(),
+            demand: DemandMap::new(),
         })
         .map(|c| (c.id.clone(), Rc::new(c)))
         .collect();
