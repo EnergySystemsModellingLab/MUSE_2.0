@@ -113,7 +113,19 @@ impl Asset {
 }
 
 /// A pool of [`Asset`]s
-pub type AssetPool = Vec<Asset>;
+pub struct AssetPool(Vec<Asset>);
+
+impl AssetPool {
+    /// Create a new [`AssetPool`]
+    pub fn new(assets: Vec<Asset>) -> Self {
+        Self(assets)
+    }
+
+    /// Iterate over active assets
+    pub fn iter(&self) -> impl Iterator<Item = &Asset> {
+        self.0.iter()
+    }
+}
 
 #[cfg(test)]
 mod tests {
