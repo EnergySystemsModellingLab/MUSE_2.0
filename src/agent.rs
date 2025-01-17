@@ -1,26 +1,25 @@
-#![allow(missing_docs)]
-use crate::input::deserialise_proportion_nonzero;
+//! Agents drive the economy of the MUSE 2.0 simulation, through relative investment in different
+//! assets.
+use crate::commodity::Commodity;
 use crate::process::Process;
 use crate::region::RegionSelection;
-use anyhow::Result;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashSet;
 use std::rc::Rc;
 
 /// An agent in the simulation
-#[derive(Debug, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Agent {
     /// A unique identifier for the agent.
     pub id: Rc<str>,
     /// A text description of the agent.
     pub description: String,
     /// The commodity that the agent produces (could be a service demand too).
-    pub commodity_id: String,
-    #[serde(deserialize_with = "deserialise_proportion_nonzero")]
+    pub commodity: Rc<Commodity>,
     /// The proportion of the commodity production that the agent is responsible for.
     pub commodity_portion: f64,
-    /// The list of processes that the agent will consider investing in.
+    /// The processes that the agent will consider investing in.
     pub search_space: SearchSpace,
     /// The decision rule that the agent uses to decide investment.
     pub decision_rule: DecisionRule,
@@ -28,45 +27,33 @@ pub struct Agent {
     pub capex_limit: Option<f64>,
     /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
     pub annual_cost_limit: Option<f64>,
-
-    #[serde(skip)]
+    /// The regions in which this agent operates.
     pub regions: RegionSelection,
-    #[serde(skip)]
+    /// The agent's objectives.
     pub objectives: Vec<AgentObjective>,
-    #[serde(skip)]
+    /// Assets controlled by this agent.
     pub assets: Vec<Asset>,
 }
 
 /// Which processes apply to this agent
 #[derive(Debug, Clone, PartialEq)]
 pub enum SearchSpace {
+    /// All processes are considered
     AllProcesses,
-    Some(HashSet<String>),
-}
-
-impl<'de> Deserialize<'de> for SearchSpace {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let value = Option::<&str>::deserialize(deserializer)?;
-        match value {
-            None => Ok(SearchSpace::AllProcesses),
-            Some(processes_str) => {
-                let processes = HashSet::from_iter(processes_str.split(';').map(String::from));
-                Ok(SearchSpace::Some(processes))
-            }
-        }
-    }
+    /// Only these specific processes are considered
+    Some(HashSet<Rc<str>>),
 }
 
 /// The decision rule for a particular objective
 #[derive(Debug, Clone, PartialEq, DeserializeLabeledStringEnum)]
 pub enum DecisionRule {
+    /// Used when there is only a single objective
     #[string = "single"]
     Single,
+    /// A simple weighting of objectives
     #[string = "weighted"]
     Weighted,
+    /// Objectives are considered in a specific order
     #[string = "lexico"]
     Lexicographical,
 }
@@ -89,8 +76,10 @@ pub struct AgentObjective {
 /// **TODO** Add more objective types
 #[derive(Debug, Clone, PartialEq, DeserializeLabeledStringEnum)]
 pub enum ObjectiveType {
+    /// Average cost of one unit of output commodity over its lifetime
     #[string = "lcox"]
     LevelisedCostOfX,
+    /// Cost of serving agent's demand for a year, considering the asset's entire lifetime
     #[string = "eac"]
     EquivalentAnnualCost,
 }
