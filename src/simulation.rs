@@ -1,6 +1,6 @@
 //! Functionality for running the MUSE 2.0 simulation.
 use crate::agent::{Asset, AssetPool};
-use crate::dispatch::perform_dispatch;
+use crate::dispatch::{perform_dispatch, Solution};
 use crate::model::Model;
 use log::info;
 use std::collections::{HashMap, HashSet};
@@ -22,8 +22,12 @@ pub fn run(model: Model, mut assets: AssetPool) {
     for year in model.iter_years() {
         info!("Milestone year: {year}");
 
-        let remaining_commodities = perform_dispatch(&model, &assets, year, &mut prices);
-        update_remaining_commodity_prices(&remaining_commodities, &mut prices);
+        // Dispatch optimisation
+        let solution = perform_dispatch(&model, &assets, year);
+        update_commodity_flows(&solution, &mut assets);
+        update_commodity_prices(&solution, &mut prices);
+
+        // Agent investment
         perform_agent_investment(&model, &mut assets);
     }
 }
@@ -33,6 +37,26 @@ pub fn filter_assets(assets: &AssetPool, year: u32) -> impl Iterator<Item = &Ass
     assets
         .iter()
         .filter(move |asset| asset.commission_year >= year)
+}
+
+fn update_commodity_flows(_solution: &Solution, _assets: &mut AssetPool) {
+    info!("Updating commodity flows...");
+}
+
+fn update_commodity_prices(solution: &Solution, prices: &mut CommodityPrices) {
+    info!("Updating commodity prices...");
+    let remaining_commodities = update_commodity_prices_from_solution(solution, prices);
+    update_remaining_commodity_prices(&remaining_commodities, prices);
+}
+
+fn update_commodity_prices_from_solution(
+    _solution: &Solution,
+    _prices: &mut CommodityPrices,
+) -> HashSet<Rc<str>> {
+    info!("Updating commodity prices...");
+
+    // **PLACEHOLDER**: Should return IDs of commodities not updated
+    HashSet::new()
 }
 
 /// Update prices for any commodity not updated by the dispatch step.
