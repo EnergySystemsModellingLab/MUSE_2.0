@@ -3,6 +3,7 @@
 pub mod agent;
 pub mod commands;
 pub mod commodity;
+pub mod dispatch;
 pub mod input;
 pub mod log;
 pub mod model;
