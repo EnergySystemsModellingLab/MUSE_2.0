@@ -57,20 +57,24 @@ pub fn read_agents(
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Agent>> {
+) -> Result<HashMap<Rc<str>, Rc<Agent>>> {
     let process_ids = processes.keys().cloned().collect();
-    let mut agents = read_agents_file(model_dir, commodities, &process_ids)?;
+    let agents = read_agents_file(model_dir, commodities, &process_ids)?;
     let agent_ids = agents.keys().cloned().collect();
 
     let mut agent_regions = read_agent_regions(model_dir, &agent_ids, region_ids)?;
     let mut objectives = read_agent_objectives(model_dir, &agents)?;
 
-    for (id, agent) in agents.iter_mut() {
-        agent.regions = agent_regions.remove(id).unwrap();
-        agent.objectives = objectives.remove(id).unwrap();
-    }
+    // Assign regions and objectives and convert `Agent`s to `Rc<Agent>`s
+    Ok(agents
+        .into_iter()
+        .map(|(id, mut agent)| {
+            agent.regions = agent_regions.remove(&id).unwrap();
+            agent.objectives = objectives.remove(&id).unwrap();
 
-    Ok(agents)
+            (id, agent.into())
+        })
+        .collect())
 }
 
 /// Read agents info from the agents.csv file.
