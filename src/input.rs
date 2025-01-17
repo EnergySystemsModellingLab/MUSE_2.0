@@ -223,7 +223,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
         time_slice_info,
         regions,
     };
-    Ok((model, assets))
+    Ok((model, AssetPool::new(assets)))
 }
 
 #[cfg(test)]
