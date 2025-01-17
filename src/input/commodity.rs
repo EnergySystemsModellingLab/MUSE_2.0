@@ -1,6 +1,5 @@
 //! Code for reading in commodity-related data from CSV files.
 use crate::commodity::Commodity;
-use crate::demand::read_demand;
 use crate::input::*;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
@@ -10,6 +9,9 @@ use std::rc::Rc;
 
 pub mod cost;
 use cost::read_commodity_costs;
+pub mod demand;
+use demand::read_demand;
+pub mod demand_slicing;
 
 const COMMODITY_FILE_NAME: &str = "commodities.csv";
 
@@ -41,13 +43,12 @@ pub fn read_commodities(
         milestone_years,
     )?;
 
-    let year_range = *milestone_years.first().unwrap()..=*milestone_years.last().unwrap();
     let mut demand = read_demand(
         model_dir,
         &commodity_ids,
         region_ids,
         time_slice_info,
-        &year_range,
+        milestone_years,
     )?;
 
     // Populate Vecs for each Commodity
@@ -58,7 +59,7 @@ pub fn read_commodities(
                 commodity.costs = costs;
             }
             if let Some(demand) = demand.remove(&id) {
-                commodity.demand_by_region = demand;
+                commodity.demand = demand;
             }
 
             (id, commodity.into())

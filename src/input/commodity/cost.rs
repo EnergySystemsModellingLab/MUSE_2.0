@@ -93,7 +93,7 @@ where
             .entry(commodity_id.clone())
             .or_insert_with(CommodityCostMap::new);
 
-        for time_slice in time_slice_info.iter_selection(&ts_selection) {
+        for (time_slice, _) in time_slice_info.iter_selection(&ts_selection) {
             let value = CommodityCost {
                 balance_type: cost.balance_type.clone(),
                 value: cost.value,

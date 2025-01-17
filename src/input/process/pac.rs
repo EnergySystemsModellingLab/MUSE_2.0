@@ -129,9 +129,9 @@ fn validate_pac_flows(
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
-    use crate::commodity::{CommodityCostMap, CommodityType};
+    use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
     use crate::process::FlowType;
     use crate::time_slice::TimeSliceLevel;
 
@@ -148,7 +148,7 @@ mod test {
                     kind: CommodityType::InputCommodity,
                     time_slice_level: TimeSliceLevel::Annual,
                     costs: CommodityCostMap::new(),
-                    demand_by_region: HashMap::new(),
+                    demand: DemandMap::new(),
                 };
                 (Rc::clone(&commodity.id), commodity.into())
             })

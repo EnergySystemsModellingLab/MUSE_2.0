@@ -5,7 +5,6 @@
 #![allow(missing_docs)]
 use crate::input::*;
 use anyhow::{ensure, Context, Result};
-use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -33,7 +32,7 @@ impl Display for TimeSliceID {
 }
 
 /// Represents a time slice read from an input file, which can be all
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum TimeSliceSelection {
     /// All year and all day
     Annual,
@@ -116,25 +115,85 @@ impl TimeSliceInfo {
     ///
     /// The order will be consistent each time this is called, but not every time the program is
     /// run.
-    pub fn iter(&self) -> impl Iterator<Item = &TimeSliceID> {
+    pub fn iter_ids(&self) -> impl Iterator<Item = &TimeSliceID> {
         self.fractions.keys()
     }
 
-    /// Iterate over the subset of [`TimeSliceID`] indicated by `selection`.
+    /// Iterate over all time slices.
+    ///
+    /// The order will be consistent each time this is called, but not every time the program is
+    /// run.
+    pub fn iter(&self) -> impl Iterator<Item = (&TimeSliceID, f64)> {
+        self.fractions.iter().map(|(ts, fraction)| (ts, *fraction))
+    }
+
+    /// Iterate over the subset of time slices indicated by `selection`.
     ///
     /// The order will be consistent each time this is called, but not every time the program is
     /// run.
     pub fn iter_selection<'a>(
         &'a self,
         selection: &'a TimeSliceSelection,
-    ) -> Box<dyn Iterator<Item = &'a TimeSliceID> + 'a> {
+    ) -> Box<dyn Iterator<Item = (&'a TimeSliceID, f64)> + 'a> {
         match selection {
             TimeSliceSelection::Annual => Box::new(self.iter()),
             TimeSliceSelection::Season(season) => {
-                Box::new(self.iter().filter(move |ts| ts.season == *season))
+                Box::new(self.iter().filter(move |(ts, _)| ts.season == *season))
             }
-            TimeSliceSelection::Single(ts) => Box::new(iter::once(ts)),
+            TimeSliceSelection::Single(ts) => {
+                Box::new(iter::once((ts, *self.fractions.get(ts).unwrap())))
+            }
         }
+    }
+
+    /// Iterate over a subset of time slices calculating the relative duration of each.
+    ///
+    /// The relative duration is specified as a fraction of the total time (proportion of year)
+    /// covered by `selection`.
+    ///
+    /// # Arguments
+    ///
+    /// * `selection` - A subset of time slices
+    ///
+    /// # Returns
+    ///
+    /// An iterator of time slices along with the fraction of the total selection.
+    pub fn iterate_selection_share<'a>(
+        &'a self,
+        selection: &'a TimeSliceSelection,
+    ) -> impl Iterator<Item = (&'a TimeSliceID, f64)> {
+        // Store time slices as we have to iterate over selection twice
+        let time_slices = self.iter_selection(selection).collect_vec();
+
+        // Total fraction of year covered by selection
+        let time_total: f64 = time_slices.iter().map(|(_, fraction)| *fraction).sum();
+
+        // Calculate share
+        time_slices
+            .into_iter()
+            .map(move |(ts, time_fraction)| (ts, time_fraction / time_total))
+    }
+
+    /// Share a value between a subset of time slices in proportion to their lengths.
+    ///
+    /// For instance, you could use this function to compute how demand is distributed between the
+    /// different time slices of winter.
+    ///
+    /// # Arguments
+    ///
+    /// * `selection` - A subset of time slices
+    /// * `value` - The value to be shared between the time slices
+    ///
+    /// # Returns
+    ///
+    /// An iterator of time slices along with a fraction of `value`.
+    pub fn calculate_share<'a>(
+        &'a self,
+        selection: &'a TimeSliceSelection,
+        value: f64,
+    ) -> impl Iterator<Item = (&'a TimeSliceID, f64)> {
+        self.iterate_selection_share(selection)
+            .map(move |(ts, share)| (ts, value * share))
     }
 }
 
@@ -183,7 +242,8 @@ where
     }
 
     // Validate data
-    check_time_slice_fractions_sum_to_one(fractions.values().cloned())?;
+    check_fractions_sum_to_one(fractions.values().cloned())
+        .context("Invalid time slice fractions")?;
 
     Ok(TimeSliceInfo {
         seasons,
@@ -223,23 +283,10 @@ pub fn read_time_slice_info(model_dir: &Path) -> Result<TimeSliceInfo> {
     read_time_slice_info_from_iter(time_slices_csv).with_context(|| input_err_msg(file_path))
 }
 
-/// Check that time slice fractions sum to (approximately) one
-fn check_time_slice_fractions_sum_to_one<I>(fractions: I) -> Result<()>
-where
-    I: Iterator<Item = f64>,
-{
-    let sum = fractions.sum();
-    ensure!(
-        approx_eq!(f64, sum, 1.0, epsilon = 1e-5),
-        "Sum of time slice fractions does not equal one (actual: {sum})"
-    );
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use float_cmp::assert_approx_eq;
     use std::fs::File;
     use std::io::Write;
     use std::path::Path;
@@ -348,36 +395,86 @@ autumn,evening,0.25"
         };
 
         assert_eq!(
-            HashSet::<&TimeSliceID>::from_iter(ts_info.iter_selection(&TimeSliceSelection::Annual)),
+            HashSet::<&TimeSliceID>::from_iter(
+                ts_info
+                    .iter_selection(&TimeSliceSelection::Annual)
+                    .map(|(ts, _)| ts)
+            ),
             HashSet::from_iter(slices.iter())
         );
         itertools::assert_equal(
-            ts_info.iter_selection(&TimeSliceSelection::Season("winter".into())),
+            ts_info
+                .iter_selection(&TimeSliceSelection::Season("winter".into()))
+                .map(|(ts, _)| ts),
             iter::once(&slices[0]),
         );
         let ts = ts_info.get_time_slice_id_from_str("summer.night").unwrap();
         itertools::assert_equal(
-            ts_info.iter_selection(&TimeSliceSelection::Single(ts)),
+            ts_info
+                .iter_selection(&TimeSliceSelection::Single(ts))
+                .map(|(ts, _)| ts),
             iter::once(&slices[1]),
         );
     }
 
     #[test]
-    fn test_check_time_slice_fractions_sum_to_one() {
-        // Single input, valid
-        assert!(check_time_slice_fractions_sum_to_one([1.0].into_iter()).is_ok());
+    fn test_calculate_share() {
+        let slices = [
+            TimeSliceID {
+                season: "winter".into(),
+                time_of_day: "day".into(),
+            },
+            TimeSliceID {
+                season: "winter".into(),
+                time_of_day: "night".into(),
+            },
+            TimeSliceID {
+                season: "summer".into(),
+                time_of_day: "day".into(),
+            },
+            TimeSliceID {
+                season: "summer".into(),
+                time_of_day: "night".into(),
+            },
+        ];
+        let ts_info = TimeSliceInfo {
+            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            times_of_day: ["day".into(), "night".into()].into_iter().collect(),
+            fractions: slices.iter().map(|ts| (ts.clone(), 0.25)).collect(),
+        };
 
-        // Multiple inputs, valid
-        assert!(check_time_slice_fractions_sum_to_one([0.4, 0.6].into_iter()).is_ok());
+        macro_rules! check_share {
+            ($selection:expr, $expected:expr) => {
+                let expected = $expected;
+                let actual: HashMap<_, _> = HashMap::from_iter(
+                    ts_info
+                        .calculate_share(&$selection, 8.0)
+                        .map(|(ts, share)| (ts.clone(), share)),
+                );
+                assert!(actual.len() == expected.len());
+                for (k, v) in actual {
+                    assert_approx_eq!(f64, v, *expected.get(&k).unwrap());
+                }
+            };
+        }
 
-        // Single input, invalid
-        assert!(check_time_slice_fractions_sum_to_one([0.5].into_iter()).is_err());
+        // Whole year
+        let expected: HashMap<_, _> = HashMap::from_iter(slices.iter().map(|ts| (ts.clone(), 2.0)));
+        check_share!(TimeSliceSelection::Annual, expected);
 
-        // Multiple inputs, invalid
-        assert!(check_time_slice_fractions_sum_to_one([0.4, 0.3].into_iter()).is_err());
+        // One season
+        let selection = TimeSliceSelection::Season("winter".into());
+        let expected: HashMap<_, _> = HashMap::from_iter(
+            ts_info
+                .iter_selection(&selection)
+                .map(|(ts, _)| (ts.clone(), 4.0)),
+        );
+        check_share!(selection, expected);
 
-        // Edge cases
-        assert!(check_time_slice_fractions_sum_to_one([f64::INFINITY].into_iter()).is_err());
-        assert!(check_time_slice_fractions_sum_to_one([f64::NAN].into_iter()).is_err());
+        // Single time slice
+        let time_slice = ts_info.get_time_slice_id_from_str("winter.day").unwrap();
+        let selection = TimeSliceSelection::Single(time_slice.clone());
+        let expected: HashMap<_, _> = HashMap::from_iter(iter::once((time_slice, 8.0)));
+        check_share!(selection, expected);
     }
 }

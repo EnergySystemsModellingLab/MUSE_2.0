@@ -1,5 +1,6 @@
 //! Common routines for handling input data.
 use anyhow::{ensure, Context, Result};
+use float_cmp::approx_eq;
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use std::collections::{HashMap, HashSet};
@@ -108,10 +109,7 @@ impl IDCollection for HashSet<Rc<str>> {
     }
 }
 
-/// Read a CSV file of items with IDs.
-///
-/// This is like `read_csv_grouped_by_id`, with the difference that it is to be used on the "main"
-/// CSV file for a record type, so it assumes that all IDs encountered are valid.
+/// Read a CSV file of items with IDs
 pub fn read_csv_id_file<T>(file_path: &Path) -> Result<HashMap<Rc<str>, T>>
 where
     T: HasID + DeserializeOwned,
@@ -164,6 +162,21 @@ where
 
         Ok(map)
     }
+}
+
+/// Check that fractions sum to (approximately) one
+pub fn check_fractions_sum_to_one<I>(fractions: I) -> Result<()>
+where
+    I: Iterator<Item = f64>,
+{
+    let sum = fractions.sum();
+    ensure!(
+        approx_eq!(f64, sum, 1.0, epsilon = 1e-5),
+        "Sum of fractions does not equal one (actual: {})",
+        sum
+    );
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -262,5 +275,24 @@ mod tests {
         assert!(deserialise_f64(2.0).is_err());
         assert!(deserialise_f64(f64::NAN).is_err());
         assert!(deserialise_f64(f64::INFINITY).is_err());
+    }
+
+    #[test]
+    fn test_check_fractions_sum_to_one() {
+        // Single input, valid
+        assert!(check_fractions_sum_to_one([1.0].into_iter()).is_ok());
+
+        // Multiple inputs, valid
+        assert!(check_fractions_sum_to_one([0.4, 0.6].into_iter()).is_ok());
+
+        // Single input, invalid
+        assert!(check_fractions_sum_to_one([0.5].into_iter()).is_err());
+
+        // Multiple inputs, invalid
+        assert!(check_fractions_sum_to_one([0.4, 0.3].into_iter()).is_err());
+
+        // Edge cases
+        assert!(check_fractions_sum_to_one([f64::INFINITY].into_iter()).is_err());
+        assert!(check_fractions_sum_to_one([f64::NAN].into_iter()).is_err());
     }
 }

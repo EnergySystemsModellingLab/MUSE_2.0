@@ -63,9 +63,9 @@ where
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
-    use crate::commodity::{CommodityCostMap, CommodityType};
+    use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
 
     #[test]
@@ -80,7 +80,7 @@ mod test {
                     kind: CommodityType::InputCommodity,
                     time_slice_level: TimeSliceLevel::Annual,
                     costs: CommodityCostMap::new(),
-                    demand_by_region: HashMap::new(),
+                    demand: DemandMap::new(),
                 };
 
                 (Rc::clone(&commodity.id), commodity.into())
@@ -161,7 +161,7 @@ mod test {
                     kind: CommodityType::InputCommodity,
                     time_slice_level: TimeSliceLevel::Annual,
                     costs: CommodityCostMap::new(),
-                    demand_by_region: HashMap::new(),
+                    demand: DemandMap::new(),
                 };
 
                 (Rc::clone(&commodity.id), commodity.into())

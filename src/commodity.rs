@@ -1,5 +1,4 @@
 #![allow(missing_docs)]
-use crate::demand::Demand;
 use crate::input::*;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
 use serde::Deserialize;
@@ -23,7 +22,7 @@ pub struct Commodity {
     #[serde(skip)]
     pub costs: CommodityCostMap,
     #[serde(skip)]
-    pub demand_by_region: HashMap<Rc<str>, Demand>,
+    pub demand: DemandMap,
 }
 define_id_getter! {Commodity}
 
@@ -110,9 +109,67 @@ pub enum CommodityType {
     OutputCommodity,
 }
 
+/// A map relating region, year and time slice to demand (in real units, not a fraction).
+///
+/// This data type is exported as this is the way in we want to look up demand outside of this
+/// module.
+#[derive(PartialEq, Debug, Clone, Default)]
+pub struct DemandMap(HashMap<DemandMapKey, f64>);
+
+/// The key for a [`DemandMap`]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
+struct DemandMapKey {
+    region_id: Rc<str>,
+    year: u32,
+    time_slice: TimeSliceID,
+}
+
+impl DemandMap {
+    /// Create a new, empty [`DemandMap`]
+    pub fn new() -> DemandMap {
+        DemandMap::default()
+    }
+
+    /// Retrieve the demand for the specified region, year and time slice
+    pub fn get(&self, region_id: Rc<str>, year: u32, time_slice: TimeSliceID) -> Option<f64> {
+        self.0
+            .get(&DemandMapKey {
+                region_id,
+                year,
+                time_slice,
+            })
+            .copied()
+    }
+
+    /// Insert a new demand entry for the specified region, year and time slice
+    pub fn insert(&mut self, region_id: Rc<str>, year: u32, time_slice: TimeSliceID, demand: f64) {
+        self.0.insert(
+            DemandMapKey {
+                region_id,
+                year,
+                time_slice,
+            },
+            demand,
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_demand_map() {
+        let time_slice = TimeSliceID {
+            season: "all-year".into(),
+            time_of_day: "all-day".into(),
+        };
+        let value = 0.25;
+        let mut map = DemandMap::new();
+        map.insert("North".into(), 2020, time_slice.clone(), value);
+
+        assert_eq!(map.get("North".into(), 2020, time_slice).unwrap(), value)
+    }
 
     #[test]
     fn test_commodity_cost_map() {
