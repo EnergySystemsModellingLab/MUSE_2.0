@@ -3,7 +3,7 @@ use super::define_process_id_getter;
 use crate::commodity::Commodity;
 use crate::input::*;
 use crate::process::{FlowType, ProcessFlow};
-use anyhow::{Context, Result};
+use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -46,17 +46,39 @@ fn read_process_flows_from_iter<I>(
 where
     I: Iterator<Item = ProcessFlowRaw>,
 {
-    iter.map(|flow_raw| -> Result<ProcessFlow> {
+    iter.map(|flow| -> Result<ProcessFlow> {
         let commodity = commodities
-            .get(flow_raw.commodity_id.as_str())
-            .with_context(|| format!("{} is not a valid commodity ID", &flow_raw.commodity_id))?;
+            .get(flow.commodity_id.as_str())
+            .with_context(|| format!("{} is not a valid commodity ID", &flow.commodity_id))?;
+
+        ensure!(flow.flow != 0.0, "Flow cannot be zero");
+
+        // Check that flow is not infinity, nan, etc.
+        ensure!(
+            flow.flow.is_normal(),
+            "Invalid value for flow ({})",
+            flow.flow
+        );
+
+        // **TODO**: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/300
+        ensure!(
+            flow.flow_type == FlowType::Fixed,
+            "Commodity flexible assets are not currently supported"
+        );
+
+        if let Some(flow_cost) = flow.flow_cost {
+            ensure!(
+                (0.0..f64::INFINITY).contains(&flow_cost),
+                "Invalid value for flow cost ({flow_cost}). Must be >=0."
+            )
+        }
 
         Ok(ProcessFlow {
-            process_id: flow_raw.process_id,
+            process_id: flow.process_id,
             commodity: Rc::clone(commodity),
-            flow: flow_raw.flow,
-            flow_type: flow_raw.flow_type,
-            flow_cost: flow_raw.flow_cost.unwrap_or(0.0),
+            flow: flow.flow,
+            flow_type: flow.flow_type,
+            flow_cost: flow.flow_cost.unwrap_or(0.0),
         })
     })
     .process_results(|iter| iter.into_id_map(process_ids))?
@@ -67,6 +89,7 @@ mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
+    use std::iter;
 
     #[test]
     fn test_read_process_flows_from_iter_good() {
@@ -189,5 +212,77 @@ mod tests {
             read_process_flows_from_iter(flows_raw.into_iter(), &process_ids, &commodities)
                 .is_err()
         );
+    }
+
+    #[test]
+    fn test_read_process_flows_from_iter_bad_flow() {
+        let process_ids = iter::once("id1".into()).collect();
+        let commodities = iter::once(Commodity {
+            id: "commodity1".into(),
+            description: "Some description".into(),
+            kind: CommodityType::InputCommodity,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand_by_region: HashMap::new(),
+        })
+        .map(|c| (c.id.clone(), Rc::new(c)))
+        .collect();
+
+        macro_rules! check_bad_flow {
+            ($flow:expr) => {
+                let flow = ProcessFlowRaw {
+                    process_id: "id1".into(),
+                    commodity_id: "commodity1".into(),
+                    flow: $flow,
+                    flow_type: FlowType::Fixed,
+                    flow_cost: Some(1.0),
+                };
+                assert!(
+                    read_process_flows_from_iter(iter::once(flow), &process_ids, &commodities)
+                        .is_err()
+                );
+            };
+        }
+
+        check_bad_flow!(0.0);
+        check_bad_flow!(f64::NEG_INFINITY);
+        check_bad_flow!(f64::INFINITY);
+        check_bad_flow!(f64::NAN);
+    }
+
+    #[test]
+    fn test_read_process_flows_from_iter_flow_cost() {
+        let process_ids = iter::once("id1".into()).collect();
+        let commodities = iter::once(Commodity {
+            id: "commodity1".into(),
+            description: "Some description".into(),
+            kind: CommodityType::InputCommodity,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand_by_region: HashMap::new(),
+        })
+        .map(|c| (c.id.clone(), Rc::new(c)))
+        .collect();
+
+        macro_rules! is_flow_cost_ok {
+            ($flow_cost:expr) => {{
+                let flow = ProcessFlowRaw {
+                    process_id: "id1".into(),
+                    commodity_id: "commodity1".into(),
+                    flow: 1.0,
+                    flow_type: FlowType::Fixed,
+                    flow_cost: Some($flow_cost),
+                };
+
+                read_process_flows_from_iter(iter::once(flow), &process_ids, &commodities).is_ok()
+            }};
+        }
+
+        assert!(is_flow_cost_ok!(0.0));
+        assert!(is_flow_cost_ok!(1.0));
+        assert!(is_flow_cost_ok!(100.0));
+        assert!(!is_flow_cost_ok!(f64::NEG_INFINITY));
+        assert!(!is_flow_cost_ok!(f64::INFINITY));
+        assert!(!is_flow_cost_ok!(f64::NAN));
     }
 }

@@ -134,10 +134,6 @@ where
             "More than one parameter provided for process {id}"
         );
     }
-    ensure!(
-        params.len() == process_ids.len(),
-        "Each process must have an associated parameter"
-    );
     Ok(params)
 }
 
@@ -390,31 +386,6 @@ mod tests {
                 cap2act: Some(1.0),
             },
         ];
-
-        assert!(read_process_parameters_from_iter(
-            params_raw.into_iter(),
-            &process_ids,
-            &year_range
-        )
-        .is_err());
-    }
-
-    #[test]
-    fn test_read_process_parameters_from_iter_bad_process_missing_param() {
-        let year_range = 2000..=2100;
-        let process_ids = ["A".into(), "B".into()].into_iter().collect();
-
-        let params_raw = [ProcessParameterRaw {
-            process_id: "A".into(),
-            start_year: Some(2010),
-            end_year: Some(2020),
-            capital_cost: 1.0,
-            fixed_operating_cost: 1.0,
-            variable_operating_cost: 1.0,
-            lifetime: 10,
-            discount_rate: Some(1.0),
-            cap2act: Some(1.0),
-        }];
 
         assert!(read_process_parameters_from_iter(
             params_raw.into_iter(),
