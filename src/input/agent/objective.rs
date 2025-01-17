@@ -109,7 +109,7 @@ fn check_objective_parameter(
 mod tests {
     use super::*;
     use crate::agent::{ObjectiveType, SearchSpace};
-    use crate::commodity::{Commodity, CommodityCostMap, CommodityType};
+    use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
 
@@ -162,7 +162,7 @@ mod tests {
             kind: CommodityType::SupplyEqualsDemand,
             time_slice_level: TimeSliceLevel::Annual,
             costs: CommodityCostMap::new(),
-            demand_by_region: HashMap::new(),
+            demand: DemandMap::new(),
         });
         let agents: HashMap<_, _> = [(
             "agent".into(),

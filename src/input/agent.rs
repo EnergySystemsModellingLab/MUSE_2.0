@@ -153,13 +153,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::iter;
-
     use super::*;
     use crate::agent::DecisionRule;
-    use crate::commodity::{CommodityCostMap, CommodityType};
+    use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
+    use std::iter;
 
     #[test]
     fn test_read_agents_file_from_iter() {
@@ -170,7 +169,7 @@ mod tests {
             kind: CommodityType::SupplyEqualsDemand,
             time_slice_level: TimeSliceLevel::Annual,
             costs: CommodityCostMap::new(),
-            demand_by_region: HashMap::new(),
+            demand: DemandMap::new(),
         });
         let commodities = iter::once(("commodity1".into(), Rc::clone(&commodity))).collect();
 
