@@ -87,8 +87,8 @@ pub enum ObjectiveType {
 pub struct Asset {
     /// A unique identifier for the asset
     pub id: u32,
-    /// A unique identifier for the agent
-    pub agent_id: Rc<str>,
+    /// The [`Agent`] which owns this asset
+    pub agent: Rc<Agent>,
     /// The [`Process`] that this asset corresponds to
     pub process: Rc<Process>,
     /// The region in which the asset is located
