@@ -31,7 +31,7 @@ pub fn run(model: Model, mut assets: AssetPool) {
         // Dispatch optimisation
         let solution = perform_dispatch(&model, &assets, year);
         update_commodity_flows(&solution, &mut assets);
-        update_commodity_prices(&solution, &mut prices);
+        update_commodity_prices(&model.commodities, &solution, &mut prices);
 
         // Agent investment
         perform_agent_investment(&model, &mut assets);
