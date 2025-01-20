@@ -93,7 +93,8 @@ fn calculate_cost_coefficient(
     _flow: &ProcessFlow,
     _time_slice: &TimeSliceID,
 ) -> f64 {
-    f64::NAN
+    // **PLACEHOLDER**
+    1.0
 }
 
 /// Add asset-level input-output commodity balances
