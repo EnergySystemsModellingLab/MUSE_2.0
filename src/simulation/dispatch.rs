@@ -26,8 +26,6 @@ struct VariableMap;
 
 /// Perform the dispatch optimisation.
 ///
-/// Updates commodity flows for assets and commodity prices.
-///
 /// # Arguments
 ///
 /// * `model` - The model
@@ -36,7 +34,7 @@ struct VariableMap;
 ///
 /// # Returns
 ///
-/// A set of IDs for commodities whose prices weren't updated.
+/// A solution containing new commodity flows for assets and prices for (some) commodities.
 pub fn perform_dispatch(model: &Model, assets: &AssetPool, year: u32) -> Solution {
     info!("Performing dispatch optimisation...");
 
