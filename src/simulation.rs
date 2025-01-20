@@ -1,10 +1,12 @@
 //! Functionality for running the MUSE 2.0 simulation.
 use crate::agent::{Asset, AssetPool};
-use crate::dispatch::{perform_dispatch, Solution};
 use crate::model::Model;
 use log::info;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+
+pub mod dispatch;
+use dispatch::{perform_dispatch, Solution};
 
 /// A map relating commodity ID to current price (endogenous)
 pub type CommodityPrices = HashMap<Rc<str>, f64>;
