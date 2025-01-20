@@ -1,5 +1,5 @@
 //! Code for updating the simulation state.
-use super::dispatch::Solution;
+use super::optimisation::Solution;
 use super::CommodityPrices;
 use crate::agent::AssetPool;
 use crate::commodity::Commodity;

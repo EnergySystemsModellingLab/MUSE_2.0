@@ -35,7 +35,7 @@ struct VariableMap;
 /// # Returns
 ///
 /// A solution containing new commodity flows for assets and prices for (some) commodities.
-pub fn perform_dispatch(model: &Model, assets: &AssetPool, year: u32) -> Solution {
+pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u32) -> Solution {
     info!("Performing dispatch optimisation...");
 
     // Set up problem

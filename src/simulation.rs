@@ -5,8 +5,8 @@ use log::info;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub mod dispatch;
-use dispatch::perform_dispatch;
+pub mod optimisation;
+use optimisation::perform_dispatch_optimisation;
 pub mod investment;
 use investment::perform_agent_investment;
 pub mod update;
@@ -29,7 +29,7 @@ pub fn run(model: Model, mut assets: AssetPool) {
         info!("Milestone year: {year}");
 
         // Dispatch optimisation
-        let solution = perform_dispatch(&model, &assets, year);
+        let solution = perform_dispatch_optimisation(&model, &assets, year);
         update_commodity_flows(&solution, &mut assets);
         update_commodity_prices(&model.commodities, &solution, &mut prices);
 
