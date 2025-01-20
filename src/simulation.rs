@@ -7,6 +7,8 @@ use std::rc::Rc;
 
 pub mod dispatch;
 use dispatch::perform_dispatch;
+pub mod investment;
+use investment::perform_agent_investment;
 pub mod update;
 use update::{update_commodity_flows, update_commodity_prices};
 
@@ -41,16 +43,4 @@ pub fn filter_assets(assets: &AssetPool, year: u32) -> impl Iterator<Item = &Ass
     assets
         .iter()
         .filter(move |asset| asset.commission_year >= year)
-}
-
-/// Perform agent investment to determine capacity investment of new assets for next milestone year.
-///
-/// # Arguments
-///
-/// * `model` - The model
-/// * `assets` - The asset pool
-/// * `year` - Current milestone year
-/// * `prices` - Commodity prices
-fn perform_agent_investment(_model: &Model, _assets: &mut AssetPool) {
-    info!("Performing agent investment...");
 }
