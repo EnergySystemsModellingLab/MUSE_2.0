@@ -54,8 +54,11 @@ pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u3
 
     // Set up problem
     let mut problem = Problem::default();
-    let variables = add_variables(&mut problem, model, assets, year);
-    add_commodity_balance_constraints(&mut problem, &variables, model, assets, year);
+    let mut variables = VariableMap::new();
+    for asset in filter_assets(assets, year) {
+        add_variables(&mut problem, &mut variables, model, asset, year);
+        add_commodity_balance_constraints(&mut problem, &variables, model, asset);
+    }
 
     // Solve problem
     let solution = problem.optimise(Sense::Minimise).solve();
@@ -84,38 +87,31 @@ pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u3
 /// A [`VariableMap`] with the problem's variables as values.
 fn add_variables(
     problem: &mut Problem,
+    variables: &mut VariableMap,
     model: &Model,
-    assets: &AssetPool,
+    asset: &Asset,
     year: u32,
-) -> VariableMap {
+) {
     info!("Adding variables to problem...");
-    let mut variables = VariableMap::new();
 
-    for asset in filter_assets(assets, year) {
-        for flow in asset.process.flows.iter() {
-            for time_slice in model.time_slice_info.iter_ids() {
-                let coeff = calculate_cost_coefficient(year, asset, flow, time_slice);
+    for flow in asset.process.flows.iter() {
+        for time_slice in model.time_slice_info.iter_ids() {
+            let coeff = calculate_cost_coefficient(year, asset, flow, time_slice);
 
-                // var's value must be <= 0 for inputs and >= 0 for outputs
-                let var = if flow.flow < 0.0 {
-                    problem.add_column(coeff, ..=0.0)
-                } else {
-                    problem.add_column(coeff, 0.0..)
-                };
+            // var's value must be <= 0 for inputs and >= 0 for outputs
+            let var = if flow.flow < 0.0 {
+                problem.add_column(coeff, ..=0.0)
+            } else {
+                problem.add_column(coeff, 0.0..)
+            };
 
-                let key = VariableMapKey::new(
-                    asset.id,
-                    Rc::clone(&flow.commodity.id),
-                    time_slice.clone(),
-                );
+            let key =
+                VariableMapKey::new(asset.id, Rc::clone(&flow.commodity.id), time_slice.clone());
 
-                let existing = variables.insert(key, var).is_some();
-                assert!(!existing, "Duplicate entry for var");
-            }
+            let existing = variables.insert(key, var).is_some();
+            assert!(!existing, "Duplicate entry for var");
         }
     }
-
-    variables
 }
 
 /// Calculate the cost coefficient for a decision variable
@@ -134,24 +130,21 @@ fn add_commodity_balance_constraints(
     _problem: &mut Problem,
     _variables: &VariableMap,
     model: &Model,
-    assets: &AssetPool,
-    year: u32,
+    asset: &Asset,
 ) {
     info!("Adding commodity balance constraints...");
 
-    for asset in filter_assets(assets, year) {
-        for _flow in asset.process.flows.iter() {
-            for _time_slice in model.time_slice_info.iter_ids() {
-                // TODO: Add constraints
+    for _flow in asset.process.flows.iter() {
+        for _time_slice in model.time_slice_info.iter_ids() {
+            // TODO: Add constraints
 
-                // You add constraints as rows to the problem, like so;
-                //
-                // let var = variables.get(asset.id, &flow.commodity.id, &time_slice);
-                // problem.add_row(-1..=1, &[(var, 1.0)]);
-                //
-                // This means "var must be >= -1 and <= 1". See highs documentation for more
-                // examples.
-            }
+            // You add constraints as rows to the problem, like so;
+            //
+            // let var = variables.get(asset.id, &flow.commodity.id, &time_slice);
+            // problem.add_row(-1..=1, &[(var, 1.0)]);
+            //
+            // This means "var must be >= -1 and <= 1". See highs documentation for more
+            // examples.
         }
     }
 }
