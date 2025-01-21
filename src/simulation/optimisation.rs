@@ -40,7 +40,7 @@ impl Solution {
 type Variable = highs::Col;
 
 /// A map for easy lookup of variables in the optimisation.
-type VariableMap = IndexMap<VariableMapKey, Variable>;
+pub type VariableMap = IndexMap<VariableMapKey, Variable>;
 
 /// A key for a [`VariableMap`]
 #[derive(Eq, PartialEq, Hash)]
