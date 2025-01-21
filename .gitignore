@@ -12,3 +12,8 @@ target/
 # mdBook output
 book/
 index.html
+
+# Ignore virtual environment directories
+venv/
+.venv/
+.env/
