@@ -29,14 +29,21 @@ pub fn update_commodity_prices(
     update_remaining_commodity_prices(remaining_commodities, prices);
 }
 
+/// Update the commodity prices for which there are values in the solution
 fn update_commodity_prices_from_solution(
-    _solution: &Solution,
-    _prices: &mut CommodityPrices,
+    solution: &Solution,
+    prices: &mut CommodityPrices,
 ) -> HashSet<Rc<str>> {
     info!("Updating commodity prices...");
 
-    // **PLACEHOLDER**: Should return IDs of commodities that were updated
-    HashSet::new()
+    let mut commodities_updated = HashSet::new();
+
+    for (commodity_id, price) in solution.iter_commodity_prices() {
+        prices.insert(Rc::clone(commodity_id), price);
+        commodities_updated.insert(Rc::clone(commodity_id));
+    }
+
+    commodities_updated
 }
 
 /// Update prices for any commodity not updated by the dispatch step.

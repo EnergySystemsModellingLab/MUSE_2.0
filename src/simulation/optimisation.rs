@@ -9,10 +9,22 @@ use crate::time_slice::TimeSliceID;
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use log::{error, info};
+use std::iter;
 use std::rc::Rc;
 
 /// The solution to the dispatch optimisation problem (PLACEHOLDER)
 pub struct Solution;
+
+impl Solution {
+    /// Iterate over the newly calculated commodity prices.
+    ///
+    /// Note that there may only be prices for a subset of the commodities; the rest will needed to
+    /// be calculated in another way.
+    pub fn iter_commodity_prices(&self) -> impl Iterator<Item = (&Rc<str>, f64)> {
+        // **PLACEHOLDER**
+        iter::empty()
+    }
+}
 
 // A decision variable in the optimisation
 type Variable = highs::Col;
