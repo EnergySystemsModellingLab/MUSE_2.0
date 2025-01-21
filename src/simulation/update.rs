@@ -21,6 +21,7 @@ pub fn update_commodity_prices(
     info!("Updating commodity prices...");
     let commodities_updated = update_commodity_prices_from_solution(solution, prices);
 
+    // Find commodities not updated in last step
     let remaining_commodities = commodities
         .keys()
         .filter(|id| !commodities_updated.contains(*id))
