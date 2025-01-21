@@ -1,5 +1,5 @@
 //! Code for reading process-related information from CSV files.
-use crate::commodity::Commodity;
+use crate::commodity::{Commodity, CommodityType};
 use crate::input::*;
 use crate::process::{Process, ProcessAvailability, ProcessFlow, ProcessParameter};
 use crate::region::RegionSelection;
@@ -74,6 +74,9 @@ pub fn read_processes(
     let parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
     let regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
+    // Validate commodities after the flows have been read
+    validate_commodities(commodities, &flows)?;
+
     create_process_map(
         descriptions.into_values(),
         availabilities,
@@ -82,6 +85,37 @@ pub fn read_processes(
         parameters,
         regions,
     )
+}
+
+fn validate_commodities(
+    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
+) -> Result<()> {
+    for (commodity_id, commodity) in commodities {
+        if commodity.kind == CommodityType::SupplyEqualsDemand {
+            let mut has_producer = false;
+            let mut has_consumer = false;
+
+            for process_flows in flows.values() {
+                for flow in process_flows {
+                    if Rc::ptr_eq(&flow.commodity, commodity) {
+                        if flow.flow > 0.0 {
+                            has_producer = true;
+                        } else if flow.flow < 0.0 {
+                            has_consumer = true;
+                        }
+                    }
+                }
+            }
+
+            ensure!(
+                has_producer && has_consumer,
+                "Commodity {} of 'SED' type must have both producer and consumer processes",
+                commodity_id
+            );
+        }
+    }
+    Ok(())
 }
 
 fn create_process_map<I>(
@@ -138,6 +172,10 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::commodity::{CommodityCostMap, DemandMap};
+    use crate::process::FlowType;
+    use crate::time_slice::TimeSliceLevel;
+
     use super::*;
 
     struct ProcessData {
@@ -264,5 +302,92 @@ mod tests {
     #[test]
     fn test_create_process_map_missing_parameters() {
         test_missing!(parameters);
+    }
+
+    #[test]
+    fn test_validate_commodities() {
+        // Create mock commodities
+        let commodity_sed = Rc::new(Commodity {
+            id: "commodity_sed".into(),
+            description: "SED commodity".into(),
+            kind: CommodityType::SupplyEqualsDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand: DemandMap::new(),
+        });
+
+        let commodity_non_sed = Rc::new(Commodity {
+            id: "commodity_non_sed".into(),
+            description: "Non-SED commodity".into(),
+            kind: CommodityType::ServiceDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand: DemandMap::new(),
+        });
+
+        let commodities: HashMap<Rc<str>, Rc<Commodity>> = vec![
+            (Rc::clone(&commodity_sed.id), Rc::clone(&commodity_sed)),
+            (
+                Rc::clone(&commodity_non_sed.id),
+                Rc::clone(&commodity_non_sed),
+            ),
+        ]
+        .into_iter()
+        .collect();
+
+        // Create mock flows
+        let process_flows: HashMap<Rc<str>, Vec<ProcessFlow>> = vec![
+            (
+                "process1".into(),
+                vec![
+                    ProcessFlow {
+                        process_id: "process1".into(),
+                        commodity: Rc::clone(&commodity_sed),
+                        flow: 10.0,
+                        flow_type: FlowType::Fixed,
+                        flow_cost: 1.0,
+                    },
+                    ProcessFlow {
+                        process_id: "process1".into(),
+                        commodity: Rc::clone(&commodity_non_sed),
+                        flow: -5.0,
+                        flow_type: FlowType::Fixed,
+                        flow_cost: 1.0,
+                    },
+                ],
+            ),
+            (
+                "process2".into(),
+                vec![ProcessFlow {
+                    process_id: "process2".into(),
+                    commodity: Rc::clone(&commodity_sed),
+                    flow: -10.0,
+                    flow_type: FlowType::Fixed,
+                    flow_cost: 1.0,
+                }],
+            ),
+        ]
+        .into_iter()
+        .collect();
+
+        // Validate commodities
+        assert!(validate_commodities(&commodities, &process_flows).is_ok());
+
+        // Modify flows to make the validation fail
+        let process_flows_invalid: HashMap<Rc<str>, Vec<ProcessFlow>> = vec![(
+            "process1".into(),
+            vec![ProcessFlow {
+                process_id: "process1".into(),
+                commodity: Rc::clone(&commodity_sed),
+                flow: 10.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+            }],
+        )]
+        .into_iter()
+        .collect();
+
+        // Validate commodities should fail
+        assert!(validate_commodities(&commodities, &process_flows_invalid).is_err());
     }
 }
