@@ -192,7 +192,7 @@ where
 ///
 /// # Returns
 ///
-/// The model contents as a `Model` struct or an error if the model is invalid
+/// The static model data ([`Model`]) and an [`AssetPool`] struct or an error.
 pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let model_file = ModelFile::from_path(&model_dir)?;
 
