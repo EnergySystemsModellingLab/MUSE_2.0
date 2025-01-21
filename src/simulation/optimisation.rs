@@ -12,10 +12,20 @@ use log::{error, info};
 use std::iter;
 use std::rc::Rc;
 
-/// The solution to the dispatch optimisation problem (PLACEHOLDER)
-pub struct Solution;
+/// The solution to the dispatch optimisation problem
+pub struct Solution {
+    variables: VariableMap,
+    solution: highs::Solution,
+}
 
 impl Solution {
+    /// Iterate over the newly calculated commodity flows for assets.
+    pub fn iter_commodity_flows(&self) -> impl Iterator<Item = (&VariableMapKey, f64)> {
+        self.variables
+            .keys()
+            .zip(self.solution.columns().iter().copied())
+    }
+
     /// Iterate over the newly calculated commodity prices.
     ///
     /// Note that there may only be prices for a subset of the commodities; the rest will needed to
@@ -32,8 +42,9 @@ type Variable = highs::Col;
 /// A map for easy lookup of variables in the optimisation.
 type VariableMap = IndexMap<VariableMapKey, Variable>;
 
+/// A key for a [`VariableMap`]
 #[derive(Eq, PartialEq, Hash)]
-struct VariableMapKey {
+pub struct VariableMapKey {
     asset_id: u32,
     commodity_id: Rc<str>,
     time_slice: TimeSliceID,
@@ -81,8 +92,10 @@ pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u3
         error!("Could not solve: {status:?}");
     }
 
-    // **PLACEHOLDER**
-    Solution {}
+    Solution {
+        variables,
+        solution: solution.get_solution(),
+    }
 }
 
 /// Add variables to the optimisation problem.
