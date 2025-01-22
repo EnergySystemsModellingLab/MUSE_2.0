@@ -12,30 +12,6 @@ use log::{error, info};
 use std::iter;
 use std::rc::Rc;
 
-/// The solution to the dispatch optimisation problem
-pub struct Solution {
-    variables: VariableMap,
-    solution: highs::Solution,
-}
-
-impl Solution {
-    /// Iterate over the newly calculated commodity flows for assets.
-    pub fn iter_commodity_flows(&self) -> impl Iterator<Item = (&VariableMapKey, f64)> {
-        self.variables
-            .keys()
-            .zip(self.solution.columns().iter().copied())
-    }
-
-    /// Iterate over the newly calculated commodity prices.
-    ///
-    /// Note that there may only be prices for a subset of the commodities; the rest will need to be
-    /// calculated in another way.
-    pub fn iter_commodity_prices(&self) -> impl Iterator<Item = (&Rc<str>, f64)> {
-        // **PLACEHOLDER**
-        iter::empty()
-    }
-}
-
 // A decision variable in the optimisation
 type Variable = highs::Col;
 
@@ -58,6 +34,30 @@ impl VariableMapKey {
             commodity_id,
             time_slice,
         }
+    }
+}
+
+/// The solution to the dispatch optimisation problem
+pub struct Solution {
+    variables: VariableMap,
+    solution: highs::Solution,
+}
+
+impl Solution {
+    /// Iterate over the newly calculated commodity flows for assets.
+    pub fn iter_commodity_flows(&self) -> impl Iterator<Item = (&VariableMapKey, f64)> {
+        self.variables
+            .keys()
+            .zip(self.solution.columns().iter().copied())
+    }
+
+    /// Iterate over the newly calculated commodity prices.
+    ///
+    /// Note that there may only be prices for a subset of the commodities; the rest will need to be
+    /// calculated in another way.
+    pub fn iter_commodity_prices(&self) -> impl Iterator<Item = (&Rc<str>, f64)> {
+        // **PLACEHOLDER**
+        iter::empty()
     }
 }
 
