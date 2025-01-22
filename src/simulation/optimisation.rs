@@ -28,8 +28,8 @@ impl Solution {
 
     /// Iterate over the newly calculated commodity prices.
     ///
-    /// Note that there may only be prices for a subset of the commodities; the rest will needed to
-    /// be calculated in another way.
+    /// Note that there may only be prices for a subset of the commodities; the rest will need to be
+    /// calculated in another way.
     pub fn iter_commodity_prices(&self) -> impl Iterator<Item = (&Rc<str>, f64)> {
         // **PLACEHOLDER**
         iter::empty()
