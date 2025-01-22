@@ -59,14 +59,6 @@ pub fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-/// Handle the `example list` command.
-pub fn handle_example_list_command() -> Result<()> {
-    for entry in EXAMPLES_DIR.dirs() {
-        println!("{}", entry.path().display());
-    }
-    Ok(())
-}
-
 /// Handle the `example` subcommand.
 pub fn handle_example_subcommand(args: &[String]) -> Result<()> {
     match args.first().map(|arg| arg.as_str()) {
@@ -77,6 +69,14 @@ pub fn handle_example_subcommand(args: &[String]) -> Result<()> {
             Ok(())
         }
     }
+}
+
+/// Handle the `example list` command.
+pub fn handle_example_list_command() -> Result<()> {
+    for entry in EXAMPLES_DIR.dirs() {
+        println!("{}", entry.path().display());
+    }
+    Ok(())
 }
 
 fn handle_example_run_command(example_name: &str) -> Result<()> {
