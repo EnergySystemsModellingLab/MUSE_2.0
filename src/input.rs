@@ -1,4 +1,7 @@
 //! Common routines for handling input data.
+use crate::agent::AssetPool;
+use crate::model::{Model, ModelFile};
+use crate::time_slice::read_time_slice_info;
 use anyhow::{ensure, Context, Result};
 use float_cmp::approx_eq;
 use itertools::Itertools;
@@ -10,6 +13,8 @@ use std::rc::Rc;
 
 pub mod agent;
 pub use agent::read_agents;
+pub mod asset;
+use asset::read_assets;
 pub mod commodity;
 pub use commodity::read_commodities;
 pub mod process;
@@ -179,6 +184,47 @@ where
     );
 
     Ok(())
+}
+
+/// Read a model from the specified directory.
+///
+/// # Arguments
+///
+/// * `model_dir` - Folder containing model configuration files
+///
+/// # Returns
+///
+/// The static model data ([`Model`]) and an [`AssetPool`] struct or an error.
+pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
+    let model_file = ModelFile::from_path(&model_dir)?;
+
+    let time_slice_info = read_time_slice_info(model_dir.as_ref())?;
+    let regions = read_regions(model_dir.as_ref())?;
+    let region_ids = regions.keys().cloned().collect();
+    let years = &model_file.milestone_years.years;
+    let year_range = *years.first().unwrap()..=*years.last().unwrap();
+
+    let commodities = read_commodities(model_dir.as_ref(), &region_ids, &time_slice_info, years)?;
+    let processes = read_processes(
+        model_dir.as_ref(),
+        &commodities,
+        &region_ids,
+        &time_slice_info,
+        &year_range,
+    )?;
+    let agents = read_agents(model_dir.as_ref(), &commodities, &processes, &region_ids)?;
+    let agent_ids = agents.keys().cloned().collect();
+    let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
+
+    let model = Model {
+        milestone_years: model_file.milestone_years.years,
+        agents,
+        commodities,
+        processes,
+        time_slice_info,
+        regions,
+    };
+    Ok((model, assets))
 }
 
 #[cfg(test)]
