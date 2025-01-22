@@ -42,7 +42,7 @@ pub enum Commands {
 pub enum ExampleSubcommands {
     /// List the available example models.
     List,
-    /// Name of the example model
+    /// Run specified example model.
     Run {
         /// The name of the example model.
         name: String,
