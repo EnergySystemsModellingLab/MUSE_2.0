@@ -1,7 +1,6 @@
 //! Common routines for handling input data.
 use crate::agent::AssetPool;
 use crate::model::{Model, ModelFile};
-use crate::time_slice::read_time_slice_info;
 use anyhow::{ensure, Context, Result};
 use float_cmp::approx_eq;
 use itertools::Itertools;
