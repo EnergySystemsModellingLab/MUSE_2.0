@@ -2,10 +2,10 @@
 
 Decision variables:
 
-\\( q_{r,a,c,ts} \\). Where *q* represents *c* commodity flow in region *r*, to/from asset *a*, in
-time slice *ts*.
-Negative values are flows into the asset and positive values are flows from the asset. Note that *q*
-is a quantity flow (e.g. energy) as opposed to an intensity (e.g. power).
+\\( q_{r,a,c,ts} \\), where *q* represents *c* commodity flow in region *r*, to/from asset *a*, in
+time slice *ts*. Negative values are flows into the asset and positive values are flows from the
+asset; *q* must be ≤0 for input flows and ≥0 for output flows. Note that *q* is a quantity flow
+(e.g. energy) as opposed to an intensity (e.g. power).
 
 where
 
