@@ -31,8 +31,6 @@ pub struct Agent {
     pub regions: RegionSelection,
     /// The agent's objectives.
     pub objectives: Vec<AgentObjective>,
-    /// Assets controlled by this agent.
-    pub assets: Vec<Asset>,
 }
 
 /// Which processes apply to this agent
@@ -98,3 +96,6 @@ pub struct Asset {
     /// The year the asset comes online
     pub commission_year: u32,
 }
+
+/// A pool of [`Asset`]s
+pub type AssetPool = Vec<Asset>;

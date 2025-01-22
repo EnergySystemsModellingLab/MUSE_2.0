@@ -10,8 +10,6 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
-pub mod asset;
-use asset::read_agent_assets;
 pub mod objective;
 use objective::read_agent_objectives;
 pub mod region;
@@ -66,13 +64,10 @@ pub fn read_agents(
 
     let mut agent_regions = read_agent_regions(model_dir, &agent_ids, region_ids)?;
     let mut objectives = read_agent_objectives(model_dir, &agents)?;
-    let mut assets = read_agent_assets(model_dir, &agent_ids, processes, region_ids)?;
 
-    // Populate each Agent's Vecs
     for (id, agent) in agents.iter_mut() {
         agent.regions = agent_regions.remove(id).unwrap();
         agent.objectives = objectives.remove(id).unwrap();
-        agent.assets = assets.remove(id).unwrap_or_default();
     }
 
     Ok(agents)
@@ -139,7 +134,6 @@ where
             annual_cost_limit: agent_raw.annual_cost_limit,
             regions: RegionSelection::default(),
             objectives: Vec::new(),
-            assets: Vec::new(),
         };
 
         ensure!(
@@ -196,7 +190,6 @@ mod tests {
             annual_cost_limit: None,
             regions: RegionSelection::default(),
             objectives: Vec::new(),
-            assets: Vec::new(),
         };
         let expected = HashMap::from_iter([("agent".into(), agent_out)]);
         let actual =

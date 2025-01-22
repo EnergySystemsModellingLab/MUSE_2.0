@@ -1,7 +1,6 @@
 //! The command line interface for the simulation.
-use crate::log;
-use crate::model::Model;
 use crate::settings::Settings;
+use crate::{input::load_model, log};
 use ::log::info;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -48,9 +47,9 @@ pub enum ExampleSubcommands {
 pub fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
     let settings = Settings::from_path(model_dir)?;
     log::init(settings.log_level.as_deref()).context("Failed to initialize logging.")?;
-    let model = Model::from_path(model_dir).context("Failed to load model.")?;
+    let (model, assets) = load_model(model_dir).context("Failed to load model.")?;
     info!("Model loaded successfully.");
-    crate::simulation::run(&model);
+    crate::simulation::run(&model, &assets);
     Ok(())
 }
 
