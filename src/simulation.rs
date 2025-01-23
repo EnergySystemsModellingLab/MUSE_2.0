@@ -42,5 +42,5 @@ pub fn run(model: Model, mut assets: AssetPool) {
 pub fn filter_assets(assets: &AssetPool, year: u32) -> impl Iterator<Item = &Asset> {
     assets
         .iter()
-        .filter(move |asset| asset.commission_year >= year)
+        .filter(move |asset| asset.commission_year <= year)
 }
