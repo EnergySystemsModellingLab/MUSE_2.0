@@ -20,7 +20,6 @@ struct ProcessAvailabilityRaw {
     process_id: String,
     limit_type: LimitType,
     time_slice: String,
-    #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     value: f64,
 }
 
@@ -45,6 +44,11 @@ where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
     iter.map(|record| -> Result<_> {
+        ensure!(
+            record.value >= 0.0 && record.value <= 1.0,
+            "value for availability must be between 0 and 1 inclusive"
+        );
+
         let time_slice = time_slice_info.get_selection(&record.time_slice)?;
 
         Ok(ProcessAvailability {
