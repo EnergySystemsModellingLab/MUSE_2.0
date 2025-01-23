@@ -106,10 +106,9 @@ fn validate_flows(flows: &HashMap<Rc<str>, Vec<ProcessFlow>>) -> Result<()> {
         for flow in flows.iter() {
             let commodity_id = &flow.commodity.id;
             ensure!(
-                !commodities.contains(commodity_id),
+                commodities.insert(Rc::clone(commodity_id)),
                 "Process {process_id} has multiple flows for commodity {commodity_id}",
             );
-            commodities.insert(Rc::clone(commodity_id));
         }
     }
 
