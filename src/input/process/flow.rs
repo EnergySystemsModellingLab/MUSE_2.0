@@ -22,6 +22,7 @@ struct ProcessFlowRaw {
     #[serde(default)]
     flow_type: FlowType,
     flow_cost: Option<f64>,
+    is_pac: bool,
 }
 define_process_id_getter! {ProcessFlowRaw}
 
@@ -79,6 +80,7 @@ where
             flow: flow.flow,
             flow_type: flow.flow_type,
             flow_cost: flow.flow_cost.unwrap_or(0.0),
+            is_pac: flow.is_pac,
         })
     })
     .process_results(|iter| iter.into_id_map(process_ids))?
@@ -117,6 +119,7 @@ mod tests {
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: Some(1.0),
+                is_pac: true,
             },
             ProcessFlowRaw {
                 process_id: "id1".into(),
@@ -124,6 +127,7 @@ mod tests {
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: Some(1.0),
+                is_pac: false,
             },
             ProcessFlowRaw {
                 process_id: "id2".into(),
@@ -131,6 +135,7 @@ mod tests {
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: Some(1.0),
+                is_pac: true,
             },
         ];
 
@@ -144,6 +149,7 @@ mod tests {
                         flow: 1.0,
                         flow_type: FlowType::Fixed,
                         flow_cost: 1.0,
+                        is_pac: true,
                     },
                     ProcessFlow {
                         process_id: "id1".into(),
@@ -151,6 +157,7 @@ mod tests {
                         flow: 1.0,
                         flow_type: FlowType::Fixed,
                         flow_cost: 1.0,
+                        is_pac: false,
                     },
                 ],
             ),
@@ -162,6 +169,7 @@ mod tests {
                     flow: 1.0,
                     flow_type: FlowType::Fixed,
                     flow_cost: 1.0,
+                    is_pac: true,
                 }],
             ),
         ]);
@@ -198,6 +206,7 @@ mod tests {
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: Some(1.0),
+                is_pac: true,
             },
             ProcessFlowRaw {
                 process_id: "id1".into(),
@@ -205,6 +214,7 @@ mod tests {
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: Some(1.0),
+                is_pac: false,
             },
         ];
 
@@ -236,6 +246,7 @@ mod tests {
                     flow: $flow,
                     flow_type: FlowType::Fixed,
                     flow_cost: Some(1.0),
+                    is_pac: true,
                 };
                 assert!(
                     read_process_flows_from_iter(iter::once(flow), &process_ids, &commodities)
@@ -272,6 +283,7 @@ mod tests {
                     flow: 1.0,
                     flow_type: FlowType::Fixed,
                     flow_cost: Some($flow_cost),
+                    is_pac: true,
                 };
 
                 read_process_flows_from_iter(iter::once(flow), &process_ids, &commodities).is_ok()

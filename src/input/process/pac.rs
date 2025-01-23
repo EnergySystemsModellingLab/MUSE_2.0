@@ -166,6 +166,7 @@ mod tests {
                             flow: 1.0,
                             flow_type: FlowType::Fixed,
                             flow_cost: 1.0,
+                            is_pac: true,
                         })
                         .collect(),
                 )

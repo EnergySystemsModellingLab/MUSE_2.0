@@ -59,6 +59,8 @@ pub struct ProcessFlow {
     /// flow, in contrast to [`ProcessParameter::variable_operating_cost`], which applies only to
     /// PAC flows.
     pub flow_cost: f64,
+    /// Whether this flow represents a Primary Activity Commodity
+    pub is_pac: bool,
 }
 
 #[derive(PartialEq, Default, Debug, Clone, DeserializeLabeledStringEnum)]
