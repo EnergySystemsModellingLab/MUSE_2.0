@@ -86,9 +86,34 @@ where
         })
         .process_results(|iter| iter.into_id_map(process_ids))??;
 
+    validate_flows(&flows)?;
     validate_pac_flows(&flows)?;
 
     Ok(flows)
+}
+
+/// Validate that no process has multiple flows for the same commodity.
+///
+/// # Arguments
+/// * `flows` - A map of process IDs to process flows
+///
+/// # Returns
+/// An `Ok(())` if the check is successful, or an error.
+fn validate_flows(flows: &HashMap<Rc<str>, Vec<ProcessFlow>>) -> Result<()> {
+    for (process_id, flows) in flows.iter() {
+        let mut commodities: HashSet<Rc<str>> = HashSet::new();
+
+        for flow in flows.iter() {
+            let commodity_id = &flow.commodity.id;
+            ensure!(
+                !commodities.contains(commodity_id),
+                "Process {process_id} has multiple flows for commodity {commodity_id}",
+            );
+            commodities.insert(Rc::clone(commodity_id));
+        }
+    }
+
+    Ok(())
 }
 
 /// Validate that the PACs for each process are either all inputs or all outputs.
