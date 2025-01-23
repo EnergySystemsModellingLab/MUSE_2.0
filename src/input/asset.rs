@@ -114,7 +114,6 @@ mod tests {
             description: "Description".into(),
             availabilities: vec![],
             flows: vec![],
-            pacs: vec![],
             parameter: process_param.clone(),
             regions: RegionSelection::All,
         });
@@ -190,7 +189,6 @@ mod tests {
             description: "Description".into(),
             availabilities: vec![],
             flows: vec![],
-            pacs: vec![],
             parameter: process_param,
             regions: RegionSelection::Some(["GBR".into()].into_iter().collect()),
         });

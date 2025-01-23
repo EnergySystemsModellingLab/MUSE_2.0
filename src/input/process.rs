@@ -14,8 +14,6 @@ pub mod availability;
 use availability::read_process_availabilities;
 pub mod flow;
 use flow::read_process_flows;
-pub mod pac;
-use pac::read_process_pacs;
 pub mod parameter;
 use parameter::read_process_parameters;
 pub mod region;
@@ -70,7 +68,6 @@ pub fn read_processes(
 
     let availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let flows = read_process_flows(model_dir, &process_ids, commodities)?;
-    let pacs = read_process_pacs(model_dir, &process_ids, commodities, &flows)?;
     let parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
     let regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
@@ -78,7 +75,6 @@ pub fn read_processes(
         descriptions.into_values(),
         availabilities,
         flows,
-        pacs,
         parameters,
         regions,
     )
@@ -88,7 +84,6 @@ fn create_process_map<I>(
     descriptions: I,
     availabilities: GroupedMap<ProcessAvailability>,
     flows: GroupedMap<ProcessFlow>,
-    pacs: GroupedMap<Rc<Commodity>>,
     parameters: HashMap<Rc<str>, ProcessParameter>,
     regions: HashMap<Rc<str>, RegionSelection>,
 ) -> Result<HashMap<Rc<str>, Rc<Process>>>
@@ -98,7 +93,6 @@ where
     // Need to be mutable as we remove elements as we go along
     let mut availabilities = availabilities;
     let mut flows = flows;
-    let mut pacs = pacs;
     let mut parameters = parameters;
     let mut regions = regions;
 
@@ -111,9 +105,6 @@ where
             let flows = flows
                 .remove(id)
                 .with_context(|| format!("No commodity flows defined for process {id}"))?;
-            let pacs = pacs
-                .remove(id)
-                .with_context(|| format!("No PACs defined for process {id}"))?;
             let parameter = parameters
                 .remove(id)
                 .with_context(|| format!("No parameters defined for process {id}"))?;
@@ -126,7 +117,6 @@ where
                 description: description.description,
                 availabilities,
                 flows,
-                pacs,
                 parameter,
                 regions,
             };
@@ -144,7 +134,6 @@ mod tests {
         descriptions: Vec<ProcessDescription>,
         availabilities: GroupedMap<ProcessAvailability>,
         flows: GroupedMap<ProcessFlow>,
-        pacs: GroupedMap<Rc<Commodity>>,
         parameters: HashMap<Rc<str>, ProcessParameter>,
         regions: HashMap<Rc<str>, RegionSelection>,
     }
@@ -168,11 +157,6 @@ mod tests {
             .collect();
 
         let flows = ["process1", "process2"]
-            .into_iter()
-            .map(|id| (id.into(), vec![]))
-            .collect();
-
-        let pacs = ["process1", "process2"]
             .into_iter()
             .map(|id| (id.into(), vec![]))
             .collect();
@@ -204,7 +188,6 @@ mod tests {
             descriptions,
             availabilities,
             flows,
-            pacs,
             parameters,
             regions,
         }
@@ -217,7 +200,6 @@ mod tests {
             data.descriptions.into_iter(),
             data.availabilities,
             data.flows,
-            data.pacs,
             data.parameters,
             data.regions,
         )
@@ -238,7 +220,6 @@ mod tests {
                 data.descriptions.into_iter(),
                 data.availabilities,
                 data.flows,
-                data.pacs,
                 data.parameters,
                 data.regions,
             );
@@ -249,11 +230,6 @@ mod tests {
     #[test]
     fn test_create_process_map_missing_availabilities() {
         test_missing!(availabilities);
-    }
-
-    #[test]
-    fn test_create_process_map_missing_pacs() {
-        test_missing!(pacs);
     }
 
     #[test]

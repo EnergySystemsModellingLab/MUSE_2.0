@@ -13,9 +13,15 @@ pub struct Process {
     pub description: String,
     pub availabilities: Vec<ProcessAvailability>,
     pub flows: Vec<ProcessFlow>,
-    pub pacs: Vec<Rc<Commodity>>,
     pub parameter: ProcessParameter,
     pub regions: RegionSelection,
+}
+
+impl Process {
+    /// Iterate over this process's Primary Activity Commodity flows
+    pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
+        self.flows.iter().filter(|flow| flow.is_pac)
+    }
 }
 
 /// The availabilities for a process over time slices
