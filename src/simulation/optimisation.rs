@@ -12,10 +12,21 @@ use log::{error, info};
 use std::iter;
 use std::rc::Rc;
 
-// A decision variable in the optimisation
+/// A decision variable in the optimisation
+///
+/// Note that this type does **not** include the value of the variable; it just refers to a
+/// particular column of the problem.
 type Variable = highs::Col;
 
-/// A map for easy lookup of variables in the optimisation.
+/// A map for easy lookup of variables in the problem.
+///
+/// The entries are ordered (see [`IndexMap`]).
+///
+/// We use this data structure for two things:
+///
+/// 1. In order define constraints for the optimisation
+/// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
+///    are reading the results of the optimisation.
 pub type VariableMap = IndexMap<VariableMapKey, Variable>;
 
 /// A key for a [`VariableMap`]
@@ -62,6 +73,10 @@ impl Solution {
 }
 
 /// Perform the dispatch optimisation.
+///
+/// For a detailed description, please see the [dispatch optimisation formulation][1].
+///
+/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html
 ///
 /// # Arguments
 ///
