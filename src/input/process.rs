@@ -331,6 +331,7 @@ mod tests {
                         flow: 10.0,
                         flow_type: FlowType::Fixed,
                         flow_cost: 1.0,
+                        is_pac: false,
                     },
                     ProcessFlow {
                         process_id: "process1".into(),
@@ -338,6 +339,7 @@ mod tests {
                         flow: -5.0,
                         flow_type: FlowType::Fixed,
                         flow_cost: 1.0,
+                        is_pac: false,
                     },
                 ],
             ),
@@ -349,6 +351,7 @@ mod tests {
                     flow: -10.0,
                     flow_type: FlowType::Fixed,
                     flow_cost: 1.0,
+                    is_pac: false,
                 }],
             ),
         ]
@@ -367,6 +370,7 @@ mod tests {
                 flow: 10.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: 1.0,
+                is_pac: false,
             }],
         )]
         .into_iter()
