@@ -87,34 +87,43 @@ pub fn read_processes(
     )
 }
 
+/// Perform consistency checks for commodity flows.
 fn validate_commodities(
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
     flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
 ) -> Result<()> {
     for (commodity_id, commodity) in commodities {
         if commodity.kind == CommodityType::SupplyEqualsDemand {
-            let mut has_producer = false;
-            let mut has_consumer = false;
-
-            for process_flows in flows.values() {
-                for flow in process_flows {
-                    if Rc::ptr_eq(&flow.commodity, commodity) {
-                        if flow.flow > 0.0 {
-                            has_producer = true;
-                        } else if flow.flow < 0.0 {
-                            has_consumer = true;
-                        }
-                    }
-                }
-            }
-
-            ensure!(
-                has_producer && has_consumer,
-                "Commodity {} of 'SED' type must have both producer and consumer processes",
-                commodity_id
-            );
+            validate_sed_commodity(commodity_id, commodity, flows)?;
         }
     }
+    Ok(())
+}
+
+fn validate_sed_commodity(
+    commodity_id: &Rc<str>,
+    commodity: &Rc<Commodity>,
+    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
+) -> Result<()> {
+    let mut has_producer = false;
+    let mut has_consumer = false;
+
+    for flow in flows.values().flatten() {
+        if Rc::ptr_eq(&flow.commodity, commodity) {
+            if flow.flow > 0.0 {
+                has_producer = true;
+            } else if flow.flow < 0.0 {
+                has_consumer = true;
+            }
+        }
+    }
+
+    ensure!(
+        has_producer && has_consumer,
+        "Commodity {} of 'SED' type must have both producer and consumer processes",
+        commodity_id
+    );
+
     Ok(())
 }
 
@@ -325,7 +334,7 @@ mod tests {
             demand: DemandMap::new(),
         });
 
-        let commodities: HashMap<Rc<str>, Rc<Commodity>> = vec![
+        let commodities: HashMap<Rc<str>, Rc<Commodity>> = [
             (Rc::clone(&commodity_sed.id), Rc::clone(&commodity_sed)),
             (
                 Rc::clone(&commodity_non_sed.id),
@@ -336,7 +345,7 @@ mod tests {
         .collect();
 
         // Create mock flows
-        let process_flows: HashMap<Rc<str>, Vec<ProcessFlow>> = vec![
+        let process_flows: HashMap<Rc<str>, Vec<ProcessFlow>> = [
             (
                 "process1".into(),
                 vec![
@@ -374,7 +383,7 @@ mod tests {
         assert!(validate_commodities(&commodities, &process_flows).is_ok());
 
         // Modify flows to make the validation fail
-        let process_flows_invalid: HashMap<Rc<str>, Vec<ProcessFlow>> = vec![(
+        let process_flows_invalid: HashMap<Rc<str>, Vec<ProcessFlow>> = [(
             "process1".into(),
             vec![ProcessFlow {
                 process_id: "process1".into(),
