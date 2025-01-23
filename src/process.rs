@@ -25,27 +25,10 @@ impl Process {
     }
 }
 
-/// A map indicating the availability of a [`Process`] over the course of the year
-pub type ProcessAvailabilityMap = HashMap<TimeSliceID, ProcessAvailability>;
-
-/// The type of limit and availability value
-#[derive(PartialEq, Debug)]
-pub struct ProcessAvailability {
-    /// The limit type - lower bound, upper bound or equality
-    pub limit_type: LimitType,
-    /// The availability value, between 0 and 1 inclusive
-    pub value: f64,
-}
-
-#[derive(PartialEq, Clone, Copy, Debug, DeserializeLabeledStringEnum)]
-pub enum LimitType {
-    #[string = "lo"]
-    LowerBound,
-    #[string = "up"]
-    UpperBound,
-    #[string = "fx"]
-    Equality,
-}
+/// A map indicating the availability of a [`Process`] over the course of the year.
+///
+/// The availability is a range, depending on the user-specified limit type and value
+pub type ProcessAvailabilityMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
 
 #[derive(PartialEq, Debug, Deserialize, Clone)]
 pub struct ProcessFlow {

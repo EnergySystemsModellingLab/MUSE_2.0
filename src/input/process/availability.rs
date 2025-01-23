@@ -1,8 +1,8 @@
 //! Code for reading process availabilities CSV file
 use crate::input::*;
-use crate::process::{LimitType, ProcessAvailability, ProcessAvailabilityMap};
+use crate::process::ProcessAvailabilityMap;
 use crate::time_slice::TimeSliceInfo;
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -14,7 +14,7 @@ const PROCESS_AVAILABILITIES_FILE_NAME: &str = "process_availabilities.csv";
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessAvailabilityRaw {
     process_id: String,
-    limit_type: LimitType,
+    limit_type: String,
     time_slice: String,
     value: f64,
 }
@@ -42,27 +42,32 @@ where
     let mut map = HashMap::new();
 
     for record in iter {
+        let process_id = process_ids.get_id(&record.process_id)?;
+
+        let bounds = match record.limit_type.to_ascii_lowercase().as_str() {
+            // lower bound
+            "lo" => record.value..=f64::INFINITY,
+            // upper bound
+            "up" => f64::NEG_INFINITY..=record.value,
+            // equality
+            "fx" => record.value..=record.value,
+            // error: unknown
+            _ => bail!("Invalid limit type ({})", record.limit_type),
+        };
+
         ensure!(
             record.value >= 0.0 && record.value <= 1.0,
             "value for availability must be between 0 and 1 inclusive"
         );
 
-        let process_id = process_ids.get_id(&record.process_id)?;
+        let ts_selection = time_slice_info.get_selection(&record.time_slice)?;
+
         let map = map
             .entry(process_id)
             .or_insert_with(ProcessAvailabilityMap::new);
 
-        let ts_selection = time_slice_info.get_selection(&record.time_slice)?;
         for (time_slice, _) in time_slice_info.iter_selection(&ts_selection) {
-            let existing = map
-                .insert(
-                    time_slice.clone(),
-                    ProcessAvailability {
-                        limit_type: record.limit_type,
-                        value: record.value,
-                    },
-                )
-                .is_some();
+            let existing = map.insert(time_slice.clone(), bounds.clone()).is_some();
 
             ensure!(
                 !existing,
