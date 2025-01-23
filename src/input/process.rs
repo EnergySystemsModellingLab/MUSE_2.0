@@ -79,20 +79,14 @@ pub fn read_processes(
 
 fn create_process_map<I>(
     descriptions: I,
-    availabilities: HashMap<Rc<str>, ProcessAvailabilityMap>,
-    flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
-    parameters: HashMap<Rc<str>, ProcessParameter>,
-    regions: HashMap<Rc<str>, RegionSelection>,
+    mut availabilities: HashMap<Rc<str>, ProcessAvailabilityMap>,
+    mut flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
+    mut parameters: HashMap<Rc<str>, ProcessParameter>,
+    mut regions: HashMap<Rc<str>, RegionSelection>,
 ) -> Result<HashMap<Rc<str>, Rc<Process>>>
 where
     I: Iterator<Item = ProcessDescription>,
 {
-    // Need to be mutable as we remove elements as we go along
-    let mut availabilities = availabilities;
-    let mut flows = flows;
-    let mut parameters = parameters;
-    let mut regions = regions;
-
     descriptions
         .map(|description| {
             let id = &description.id;
