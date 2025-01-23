@@ -32,12 +32,12 @@ struct AssetRaw {
 /// # Returns
 ///
 /// A `HashMap` containing assets grouped by agent ID.
-pub fn read_agent_assets(
+pub fn read_assets(
     model_dir: &Path,
     agent_ids: &HashSet<Rc<str>>,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Vec<Asset>>> {
+) -> Result<Vec<Asset>> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
     let assets_csv = read_csv(&file_path)?;
     read_assets_from_iter(assets_csv, agent_ids, processes, region_ids)
@@ -55,13 +55,13 @@ pub fn read_agent_assets(
 ///
 /// # Returns
 ///
-/// A `HashMap` containing assets grouped by agent ID or an error.
+/// A [`Vec`] of [`Asset`]s or an error.
 fn read_assets_from_iter<I>(
     iter: I,
     agent_ids: &HashSet<Rc<str>>,
     processes: &HashMap<Rc<str>, Rc<Process>>,
     region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Vec<Asset>>>
+) -> Result<Vec<Asset>>
 where
     I: Iterator<Item = AssetRaw>,
 {
@@ -78,18 +78,15 @@ where
             process.id
         );
 
-        Ok((
-            Rc::clone(&agent_id),
-            Asset {
-                agent_id,
-                process: Rc::clone(process),
-                region_id,
-                capacity: asset.capacity,
-                commission_year: asset.commission_year,
-            },
-        ))
+        Ok(Asset {
+            agent_id,
+            process: Rc::clone(process),
+            region_id,
+            capacity: asset.capacity,
+            commission_year: asset.commission_year,
+        })
     })
-    .process_results(|iter| iter.into_group_map())
+    .try_collect()
 }
 
 #[cfg(test)]
@@ -97,7 +94,8 @@ mod tests {
     use super::*;
     use crate::process::ProcessParameter;
     use crate::region::RegionSelection;
-    use std::vec;
+    use itertools::assert_equal;
+    use std::iter;
 
     #[test]
     fn test_read_assets_from_iter() {
@@ -116,7 +114,6 @@ mod tests {
             description: "Description".into(),
             availabilities: vec![],
             flows: vec![],
-            pacs: vec![],
             parameter: process_param.clone(),
             regions: RegionSelection::All,
         });
@@ -141,11 +138,10 @@ mod tests {
             capacity: 1.0,
             commission_year: 2010,
         };
-        let expected = [("agent1".into(), vec![asset_out])].into_iter().collect();
-        assert!(
+        assert_equal(
             read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
-                .unwrap()
-                == expected
+                .unwrap(),
+            iter::once(asset_out),
         );
 
         // Bad process ID
@@ -193,7 +189,6 @@ mod tests {
             description: "Description".into(),
             availabilities: vec![],
             flows: vec![],
-            pacs: vec![],
             parameter: process_param,
             regions: RegionSelection::Some(["GBR".into()].into_iter().collect()),
         });

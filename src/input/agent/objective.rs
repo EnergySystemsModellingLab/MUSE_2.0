@@ -177,7 +177,6 @@ mod tests {
                 annual_cost_limit: None,
                 regions: RegionSelection::All,
                 objectives: Vec::new(),
-                assets: Vec::new(),
             },
         )]
         .into_iter()

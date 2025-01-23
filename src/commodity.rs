@@ -6,7 +6,8 @@ use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-/// A commodity within the simulation
+/// A commodity within the simulation. Represents a substance (e.g. CO2) or form of energy (e.g.
+/// electricity) that can be produced and/or consumed by technologies in the model.
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct Commodity {
     /// Unique identifier for the commodity (e.g. "ELC")
@@ -37,7 +38,7 @@ pub enum BalanceType {
     Production,
 }
 
-/// Cost parameters for each commodity
+/// Represents a tax or other external cost on a commodity
 #[derive(PartialEq, Clone, Debug)]
 pub struct CommodityCost {
     /// Type of balance for application of cost.
