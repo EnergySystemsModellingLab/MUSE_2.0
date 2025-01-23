@@ -448,4 +448,48 @@ mod tests {
         assert!(!is_flow_cost_ok!(f64::INFINITY));
         assert!(!is_flow_cost_ok!(f64::NAN));
     }
+
+    #[test]
+    fn test_read_process_flows_from_iter_duplicate_flow() {
+        let process_ids = iter::once("id1".into()).collect();
+        let commodities = ["commodity1"]
+            .into_iter()
+            .map(|id| {
+                let commodity = Commodity {
+                    id: id.into(),
+                    description: "Some description".into(),
+                    kind: CommodityType::InputCommodity,
+                    time_slice_level: TimeSliceLevel::Annual,
+                    costs: CommodityCostMap::new(),
+                    demand: DemandMap::new(),
+                };
+
+                (Rc::clone(&commodity.id), commodity.into())
+            })
+            .collect();
+
+        let flows_raw = [
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: Some(1.0),
+                is_pac: true,
+            },
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: Some(1.0),
+                is_pac: false,
+            },
+        ];
+
+        assert!(
+            read_process_flows_from_iter(flows_raw.into_iter(), &process_ids, &commodities)
+                .is_err()
+        );
+    }
 }
