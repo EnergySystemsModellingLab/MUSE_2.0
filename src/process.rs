@@ -1,9 +1,10 @@
 #![allow(missing_docs)]
 use crate::commodity::Commodity;
 use crate::region::RegionSelection;
-use crate::time_slice::TimeSliceSelection;
+use crate::time_slice::TimeSliceID;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
+use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -11,7 +12,7 @@ use std::rc::Rc;
 pub struct Process {
     pub id: Rc<str>,
     pub description: String,
-    pub availabilities: Vec<ProcessAvailability>,
+    pub availabilities: ProcessAvailabilityMap,
     pub flows: Vec<ProcessFlow>,
     pub parameter: ProcessParameter,
     pub regions: RegionSelection,
@@ -24,20 +25,19 @@ impl Process {
     }
 }
 
-/// The availabilities for a process over time slices
+/// A map indicating the availability of a [`Process`] over the course of the year
+pub type ProcessAvailabilityMap = HashMap<TimeSliceID, ProcessAvailability>;
+
+/// The type of limit and availability value
 #[derive(PartialEq, Debug)]
 pub struct ProcessAvailability {
-    /// Unique identifier for the process
-    pub process_id: String,
     /// The limit type - lower bound, upper bound or equality
     pub limit_type: LimitType,
-    /// The time slice to which the availability applies
-    pub time_slice: TimeSliceSelection,
     /// The availability value, between 0 and 1 inclusive
     pub value: f64,
 }
 
-#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
+#[derive(PartialEq, Clone, Copy, Debug, DeserializeLabeledStringEnum)]
 pub enum LimitType {
     #[string = "lo"]
     LowerBound,

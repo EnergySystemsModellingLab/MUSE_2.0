@@ -1,7 +1,7 @@
 //! Code for reading process-related information from CSV files.
 use crate::commodity::Commodity;
 use crate::input::*;
-use crate::process::{Process, ProcessAvailability, ProcessFlow, ProcessParameter};
+use crate::process::{Process, ProcessAvailabilityMap, ProcessFlow, ProcessParameter};
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
@@ -38,9 +38,6 @@ struct ProcessDescription {
     description: String,
 }
 define_id_getter! {ProcessDescription}
-
-/// A map of process-related data structures, grouped by process ID
-type GroupedMap<T> = HashMap<Rc<str>, Vec<T>>;
 
 /// Read process information from the specified CSV files.
 ///
@@ -82,8 +79,8 @@ pub fn read_processes(
 
 fn create_process_map<I>(
     descriptions: I,
-    availabilities: GroupedMap<ProcessAvailability>,
-    flows: GroupedMap<ProcessFlow>,
+    availabilities: HashMap<Rc<str>, ProcessAvailabilityMap>,
+    flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
     parameters: HashMap<Rc<str>, ProcessParameter>,
     regions: HashMap<Rc<str>, RegionSelection>,
 ) -> Result<HashMap<Rc<str>, Rc<Process>>>
@@ -132,8 +129,8 @@ mod tests {
 
     struct ProcessData {
         descriptions: Vec<ProcessDescription>,
-        availabilities: GroupedMap<ProcessAvailability>,
-        flows: GroupedMap<ProcessFlow>,
+        availabilities: HashMap<Rc<str>, ProcessAvailabilityMap>,
+        flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
         parameters: HashMap<Rc<str>, ProcessParameter>,
         regions: HashMap<Rc<str>, RegionSelection>,
     }
@@ -153,7 +150,7 @@ mod tests {
 
         let availabilities = ["process1", "process2"]
             .into_iter()
-            .map(|id| (id.into(), vec![]))
+            .map(|id| (id.into(), ProcessAvailabilityMap::new()))
             .collect();
 
         let flows = ["process1", "process2"]
