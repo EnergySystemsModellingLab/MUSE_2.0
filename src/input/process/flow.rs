@@ -22,6 +22,7 @@ struct ProcessFlowRaw {
     #[serde(default)]
     flow_type: FlowType,
     flow_cost: Option<f64>,
+    is_pac: bool,
 }
 define_process_id_getter! {ProcessFlowRaw}
 
@@ -46,42 +47,81 @@ fn read_process_flows_from_iter<I>(
 where
     I: Iterator<Item = ProcessFlowRaw>,
 {
-    iter.map(|flow| -> Result<ProcessFlow> {
-        let commodity = commodities
-            .get(flow.commodity_id.as_str())
-            .with_context(|| format!("{} is not a valid commodity ID", &flow.commodity_id))?;
+    let flows = iter
+        .map(|flow| -> Result<ProcessFlow> {
+            let commodity = commodities
+                .get(flow.commodity_id.as_str())
+                .with_context(|| format!("{} is not a valid commodity ID", &flow.commodity_id))?;
 
-        ensure!(flow.flow != 0.0, "Flow cannot be zero");
+            ensure!(flow.flow != 0.0, "Flow cannot be zero");
 
-        // Check that flow is not infinity, nan, etc.
-        ensure!(
-            flow.flow.is_normal(),
-            "Invalid value for flow ({})",
-            flow.flow
-        );
-
-        // **TODO**: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/300
-        ensure!(
-            flow.flow_type == FlowType::Fixed,
-            "Commodity flexible assets are not currently supported"
-        );
-
-        if let Some(flow_cost) = flow.flow_cost {
+            // Check that flow is not infinity, nan, etc.
             ensure!(
-                (0.0..f64::INFINITY).contains(&flow_cost),
-                "Invalid value for flow cost ({flow_cost}). Must be >=0."
-            )
+                flow.flow.is_normal(),
+                "Invalid value for flow ({})",
+                flow.flow
+            );
+
+            // **TODO**: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/300
+            ensure!(
+                flow.flow_type == FlowType::Fixed,
+                "Commodity flexible assets are not currently supported"
+            );
+
+            if let Some(flow_cost) = flow.flow_cost {
+                ensure!(
+                    (0.0..f64::INFINITY).contains(&flow_cost),
+                    "Invalid value for flow cost ({flow_cost}). Must be >=0."
+                )
+            }
+
+            Ok(ProcessFlow {
+                process_id: flow.process_id,
+                commodity: Rc::clone(commodity),
+                flow: flow.flow,
+                flow_type: flow.flow_type,
+                flow_cost: flow.flow_cost.unwrap_or(0.0),
+                is_pac: flow.is_pac,
+            })
+        })
+        .process_results(|iter| iter.into_id_map(process_ids))??;
+
+    validate_pac_flows(&flows)?;
+
+    Ok(flows)
+}
+
+/// Validate that the PACs for each process are either all inputs or all outputs.
+///
+/// # Arguments
+///
+/// * `flows` - A map of process IDs to process flows
+///
+/// # Returns
+/// An `Ok(())` if the check is successful, or an error.
+fn validate_pac_flows(flows: &HashMap<Rc<str>, Vec<ProcessFlow>>) -> Result<()> {
+    for (process_id, flows) in flows.iter() {
+        let mut flow_sign: Option<bool> = None; // False for inputs, true for outputs
+
+        for flow in flows.iter().filter(|flow| flow.is_pac) {
+            // Check that flow sign is consistent
+            let current_flow_sign = flow.flow > 0.0;
+            if let Some(flow_sign) = flow_sign {
+                ensure!(
+                    current_flow_sign == flow_sign,
+                    "PACs for process {process_id} are a mix of inputs and outputs",
+                );
+            }
+            flow_sign = Some(current_flow_sign);
         }
 
-        Ok(ProcessFlow {
-            process_id: flow.process_id,
-            commodity: Rc::clone(commodity),
-            flow: flow.flow,
-            flow_type: flow.flow_type,
-            flow_cost: flow.flow_cost.unwrap_or(0.0),
-        })
-    })
-    .process_results(|iter| iter.into_id_map(process_ids))?
+        ensure!(
+            flow_sign.is_some(),
+            "No PACs defined for process {process_id}"
+        );
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -117,6 +157,7 @@ mod tests {
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: Some(1.0),
+                is_pac: true,
             },
             ProcessFlowRaw {
                 process_id: "id1".into(),
@@ -124,6 +165,7 @@ mod tests {
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: Some(1.0),
+                is_pac: false,
             },
             ProcessFlowRaw {
                 process_id: "id2".into(),
@@ -131,6 +173,7 @@ mod tests {
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: Some(1.0),
+                is_pac: true,
             },
         ];
 
@@ -144,6 +187,7 @@ mod tests {
                         flow: 1.0,
                         flow_type: FlowType::Fixed,
                         flow_cost: 1.0,
+                        is_pac: true,
                     },
                     ProcessFlow {
                         process_id: "id1".into(),
@@ -151,6 +195,7 @@ mod tests {
                         flow: 1.0,
                         flow_type: FlowType::Fixed,
                         flow_cost: 1.0,
+                        is_pac: false,
                     },
                 ],
             ),
@@ -162,6 +207,7 @@ mod tests {
                     flow: 1.0,
                     flow_type: FlowType::Fixed,
                     flow_cost: 1.0,
+                    is_pac: true,
                 }],
             ),
         ]);
@@ -198,6 +244,7 @@ mod tests {
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: Some(1.0),
+                is_pac: true,
             },
             ProcessFlowRaw {
                 process_id: "id1".into(),
@@ -205,6 +252,7 @@ mod tests {
                 flow: 1.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: Some(1.0),
+                is_pac: false,
             },
         ];
 
@@ -236,6 +284,7 @@ mod tests {
                     flow: $flow,
                     flow_type: FlowType::Fixed,
                     flow_cost: Some(1.0),
+                    is_pac: true,
                 };
                 assert!(
                     read_process_flows_from_iter(iter::once(flow), &process_ids, &commodities)
@@ -248,6 +297,94 @@ mod tests {
         check_bad_flow!(f64::NEG_INFINITY);
         check_bad_flow!(f64::INFINITY);
         check_bad_flow!(f64::NAN);
+    }
+
+    #[test]
+    fn test_read_process_flows_from_iter_bad_pacs() {
+        let process_ids = ["id1".into(), "id2".into()].into_iter().collect();
+        let commodities = ["commodity1", "commodity2"]
+            .into_iter()
+            .map(|id| {
+                let commodity = Commodity {
+                    id: id.into(),
+                    description: "Some description".into(),
+                    kind: CommodityType::InputCommodity,
+                    time_slice_level: TimeSliceLevel::Annual,
+                    costs: CommodityCostMap::new(),
+                    demand: DemandMap::new(),
+                };
+
+                (Rc::clone(&commodity.id), commodity.into())
+            })
+            .collect();
+
+        let flows_raw = [
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: Some(1.0),
+                is_pac: true,
+            },
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity2".into(),
+                flow: -1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: Some(1.0),
+                is_pac: true,
+            },
+        ];
+
+        assert!(
+            read_process_flows_from_iter(flows_raw.into_iter(), &process_ids, &commodities)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn test_read_process_flows_from_iter_no_pacs() {
+        let process_ids = ["id1".into(), "id2".into()].into_iter().collect();
+        let commodities = ["commodity1", "commodity2"]
+            .into_iter()
+            .map(|id| {
+                let commodity = Commodity {
+                    id: id.into(),
+                    description: "Some description".into(),
+                    kind: CommodityType::InputCommodity,
+                    time_slice_level: TimeSliceLevel::Annual,
+                    costs: CommodityCostMap::new(),
+                    demand: DemandMap::new(),
+                };
+
+                (Rc::clone(&commodity.id), commodity.into())
+            })
+            .collect();
+
+        let flows_raw = [
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: Some(1.0),
+                is_pac: false,
+            },
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity2".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: Some(1.0),
+                is_pac: false,
+            },
+        ];
+
+        assert!(
+            read_process_flows_from_iter(flows_raw.into_iter(), &process_ids, &commodities)
+                .is_err()
+        );
     }
 
     #[test]
@@ -272,6 +409,7 @@ mod tests {
                     flow: 1.0,
                     flow_type: FlowType::Fixed,
                     flow_cost: Some($flow_cost),
+                    is_pac: true,
                 };
 
                 read_process_flows_from_iter(iter::once(flow), &process_ids, &commodities).is_ok()
