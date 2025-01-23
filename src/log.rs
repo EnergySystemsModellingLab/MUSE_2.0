@@ -4,11 +4,11 @@
 //! colourisation based on terminal support. It also allows configuration of the log level through
 //! environment variables.
 use anyhow::{bail, Result};
-use atty;
 use chrono::Local;
 use fern::colors::{Color, ColoredLevelConfig};
 use fern::Dispatch;
 use std::env;
+use std::io::IsTerminal;
 
 /// The default log level for the program.
 ///
@@ -55,7 +55,7 @@ pub fn init(log_level_from_settings: Option<&str>) -> Result<()> {
     let timestamp_format = "%H:%M:%S";
 
     // Automatically apply colours only if the output is a terminal
-    let use_colour = atty::is(atty::Stream::Stdout);
+    let use_colour = std::io::stdout().is_terminal();
 
     // Set up colours for log levels
     let colours = ColoredLevelConfig::new()
