@@ -21,13 +21,13 @@ pub struct Process {
 /// The availabilities for a process over time slices
 #[derive(PartialEq, Debug)]
 pub struct ProcessAvailability {
-    /// Unique identifier for the process (typically uses a structured naming convention).
+    /// Unique identifier for the process
     pub process_id: String,
-    /// The limit type – lower bound, upper bound or equality.
+    /// The limit type - lower bound, upper bound or equality
     pub limit_type: LimitType,
-    /// The time slice to which the availability applies.
+    /// The time slice to which the availability applies
     pub time_slice: TimeSliceSelection,
-    /// The availability value, between 0 and 1 inclusive.
+    /// The availability value, between 0 and 1 inclusive
     pub value: f64,
 }
 
@@ -43,15 +43,21 @@ pub enum LimitType {
 
 #[derive(PartialEq, Debug, Deserialize, Clone)]
 pub struct ProcessFlow {
-    /// A unique identifier for the process (typically uses a structured naming convention).
+    /// A unique identifier for the process
     pub process_id: String,
     /// Identifies the commodity for the specified flow
     pub commodity: Rc<Commodity>,
-    /// Commodity flow quantity relative to other commodity flows. +ve value indicates flow out, -ve value indicates flow in.
+    /// Commodity flow quantity relative to other commodity flows.
+    ///
+    /// Positive value indicates flow out and negative value indicates flow in.
     pub flow: f64,
     /// Identifies if a flow is fixed or flexible.
     pub flow_type: FlowType,
-    /// Cost per unit flow. For example, cost per unit of natural gas produced. Differs from var_opex because the user can apply it to any specified flow, whereas var_opex applies to pac flow.
+    /// Cost per unit flow.
+    ///
+    /// For example, cost per unit of natural gas produced. The user can apply it to any specified
+    /// flow, in contrast to [`ProcessParameter::variable_operating_cost`], which applies only to
+    /// PAC flows.
     pub flow_cost: f64,
 }
 
@@ -59,10 +65,11 @@ pub struct ProcessFlow {
 pub enum FlowType {
     #[default]
     #[string = "fixed"]
-    /// The input to output flow ratio is fixed.
+    /// The input to output flow ratio is fixed
     Fixed,
     #[string = "flexible"]
-    /// The flow ratio can vary, subject to overall flow of a specified group of commodities whose input/output ratio must be as per user input data.
+    /// The flow ratio can vary, subject to overall flow of a specified group of commodities whose
+    /// input/output ratio must be as per user input data
     Flexible,
 }
 
