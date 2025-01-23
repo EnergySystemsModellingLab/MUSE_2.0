@@ -86,9 +86,33 @@ where
         })
         .process_results(|iter| iter.into_id_map(process_ids))??;
 
+    validate_flows(&flows)?;
     validate_pac_flows(&flows)?;
 
     Ok(flows)
+}
+
+/// Validate that no process has multiple flows for the same commodity.
+///
+/// # Arguments
+/// * `flows` - A map of process IDs to process flows
+///
+/// # Returns
+/// An `Ok(())` if the check is successful, or an error.
+fn validate_flows(flows: &HashMap<Rc<str>, Vec<ProcessFlow>>) -> Result<()> {
+    for (process_id, flows) in flows.iter() {
+        let mut commodities: HashSet<Rc<str>> = HashSet::new();
+
+        for flow in flows.iter() {
+            let commodity_id = &flow.commodity.id;
+            ensure!(
+                commodities.insert(Rc::clone(commodity_id)),
+                "Process {process_id} has multiple flows for commodity {commodity_id}",
+            );
+        }
+    }
+
+    Ok(())
 }
 
 /// Validate that the PACs for each process are either all inputs or all outputs.
@@ -422,5 +446,49 @@ mod tests {
         assert!(!is_flow_cost_ok!(f64::NEG_INFINITY));
         assert!(!is_flow_cost_ok!(f64::INFINITY));
         assert!(!is_flow_cost_ok!(f64::NAN));
+    }
+
+    #[test]
+    fn test_read_process_flows_from_iter_duplicate_flow() {
+        let process_ids = iter::once("id1".into()).collect();
+        let commodities = ["commodity1"]
+            .into_iter()
+            .map(|id| {
+                let commodity = Commodity {
+                    id: id.into(),
+                    description: "Some description".into(),
+                    kind: CommodityType::InputCommodity,
+                    time_slice_level: TimeSliceLevel::Annual,
+                    costs: CommodityCostMap::new(),
+                    demand: DemandMap::new(),
+                };
+
+                (Rc::clone(&commodity.id), commodity.into())
+            })
+            .collect();
+
+        let flows_raw = [
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: Some(1.0),
+                is_pac: true,
+            },
+            ProcessFlowRaw {
+                process_id: "id1".into(),
+                commodity_id: "commodity1".into(),
+                flow: 1.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: Some(1.0),
+                is_pac: false,
+            },
+        ];
+
+        assert!(
+            read_process_flows_from_iter(flows_raw.into_iter(), &process_ids, &commodities)
+                .is_err()
+        );
     }
 }
