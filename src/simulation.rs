@@ -28,7 +28,9 @@ pub fn run(model: Model, mut assets: AssetPool) {
     for year in model.iter_years() {
         info!("Milestone year: {year}");
 
-        // Commission new assets based on milestone year
+        // Commission and decommission assets for this milestone year, based on their user-defined
+        // properties
+        assets.decomission_old(year);
         assets.commission_new(year);
 
         // Dispatch optimisation

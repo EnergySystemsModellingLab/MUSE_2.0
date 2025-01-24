@@ -139,6 +139,12 @@ impl AssetPool {
         self.active.extend(self.future.drain(0..count))
     }
 
+    /// Decommission old assets for the specified milestone year
+    pub fn decomission_old(&mut self, year: u32) {
+        self.active
+            .retain(|asset| asset.decommission_year() <= year);
+    }
+
     /// Iterate over active assets
     pub fn iter(&self) -> impl Iterator<Item = &Asset> {
         self.active.iter()
@@ -238,5 +244,18 @@ mod tests {
         assets.commission_new(2000);
         assert!(assets.future.len() == 2);
         assert!(assets.active.is_empty());
+    }
+
+    #[test]
+    fn test_asset_pool_decommission_old() {
+        let mut assets = create_asset_pool();
+        assets.commission_new(2020);
+        assert!(assets.active.len() == 2);
+        assets.decomission_old(2020); // should decommission first asset (lifetime == 5)
+        assert!(assets.active.len() == 1);
+        assets.decomission_old(2022); // nothing to decommission
+        assert!(assets.active.len() == 1);
+        assets.decomission_old(2025); // should decommission second asset
+        assert!(assets.active.len() == 1);
     }
 }
