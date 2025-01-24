@@ -148,6 +148,16 @@ impl AssetPool {
         self.current_year = year;
     }
 
+    /// Decommission old assets for the specified milestone year
+    pub fn decomission_old(&mut self, year: u32) {
+        assert!(
+            year >= self.current_year,
+            "Cannot decommission assets in the past (current year: {})",
+            self.current_year
+        );
+        self.assets.retain(|asset| asset.decommission_year() > year);
+    }
+
     /// Iterate over active assets
     pub fn iter(&self) -> impl Iterator<Item = &Asset> {
         self.assets
@@ -283,5 +293,20 @@ mod tests {
         assets.commission_new(2000);
         assert!(assets.current_year == 2000);
         assert!(assets.iter().next().is_none()); // no active assets
+    }
+
+    #[test]
+    fn test_asset_pool_decommission_old() {
+        let mut assets = create_asset_pool();
+        let assets2 = assets.assets.clone();
+
+        assets.commission_new(2020);
+        assert!(assets.assets.len() == 2);
+        assets.decomission_old(2020); // should decommission first asset (lifetime == 5)
+        assert_equal(&assets.assets, iter::once(&assets2[1]));
+        assets.decomission_old(2022); // nothing to decommission
+        assert_equal(&assets.assets, iter::once(&assets2[1]));
+        assets.decomission_old(2025); // should decommission second asset
+        assert!(assets.assets.is_empty());
     }
 }
