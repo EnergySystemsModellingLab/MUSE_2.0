@@ -19,7 +19,21 @@ struct ProcessAvailabilityRaw {
     value: f64,
 }
 
-/// Read the availability of each process over time slices
+/// Read the process availabilities CSV file.
+///
+/// This file contains information about the availability of processes over the course of a year as
+/// a proportion of their maximum capacity.
+///
+/// # Arguments
+///
+/// * `model_dir` - Folder containing model configuration files
+/// * `process_ids` - The possible valid process IDs
+/// * `time_slice_info` - Information about seasons and times of day
+///
+/// # Returns
+///
+/// A [`HashMap`] with process IDs as the keys and [`ProcessAvailabilityMap`]s as the values or an
+/// error.
 pub fn read_process_availabilities(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
@@ -31,6 +45,7 @@ pub fn read_process_availabilities(
         .with_context(|| input_err_msg(&file_path))
 }
 
+/// Process raw process availabilities input data into [`ProcessAvailabilityMap`]s
 fn read_process_availabilities_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
