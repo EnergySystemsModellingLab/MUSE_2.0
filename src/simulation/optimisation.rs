@@ -4,7 +4,6 @@
 use crate::agent::{Asset, AssetPool};
 use crate::model::Model;
 use crate::process::ProcessFlow;
-use crate::simulation::filter_assets;
 use crate::time_slice::TimeSliceID;
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
@@ -93,7 +92,7 @@ pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u3
     // Set up problem
     let mut problem = Problem::default();
     let mut variables = VariableMap::new();
-    for asset in filter_assets(assets, year) {
+    for asset in assets.iter() {
         add_variables(&mut problem, &mut variables, model, asset, year);
         add_commodity_balance_constraints(&mut problem, &variables, model, asset);
     }

@@ -100,16 +100,141 @@ pub struct Asset {
 }
 
 /// A pool of [`Asset`]s
-pub struct AssetPool(Vec<Asset>);
+pub struct AssetPool {
+    /// The pool of assets yet to be commissioned, sorted in reverse order of commission year
+    future: Vec<Asset>,
+    /// The pool of active assets
+    active: Vec<Asset>,
+}
 
 impl AssetPool {
     /// Create a new [`AssetPool`]
-    pub fn new(assets: Vec<Asset>) -> Self {
-        Self(assets)
+    pub fn new(mut assets: Vec<Asset>) -> Self {
+        // Sort in reverse order of commission year
+        assets.sort_by(|a, b| b.commission_year.cmp(&a.commission_year));
+
+        Self {
+            future: assets,
+            active: Vec::new(),
+        }
+    }
+
+    /// Commission new assets for the specified milestone year
+    pub fn commission_new(&mut self, year: u32) {
+        // Count the number of assets at the end of `future` which come online on or before `year`
+        let count = self
+            .future
+            .iter()
+            .rev()
+            .take_while(|asset| asset.commission_year <= year)
+            .count();
+
+        // Move these assets from `future` to `active`
+        self.active
+            .extend(self.future.drain(self.future.len() - count..))
     }
 
     /// Iterate over active assets
     pub fn iter(&self) -> impl Iterator<Item = &Asset> {
-        self.0.iter()
+        self.active.iter()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
+    use crate::process::ProcessParameter;
+    use crate::time_slice::TimeSliceLevel;
+    use itertools::Itertools;
+
+    fn create_asset_pool() -> AssetPool {
+        let process_param = ProcessParameter {
+            process_id: "process1".into(),
+            years: 2010..=2020,
+            capital_cost: 5.0,
+            fixed_operating_cost: 2.0,
+            variable_operating_cost: 1.0,
+            lifetime: 5,
+            discount_rate: 0.9,
+            cap2act: 1.0,
+        };
+        let process = Rc::new(Process {
+            id: "process1".into(),
+            description: "Description".into(),
+            availabilities: vec![],
+            flows: vec![],
+            pacs: vec![],
+            parameter: process_param.clone(),
+            regions: RegionSelection::All,
+        });
+        let commodity = Rc::new(Commodity {
+            id: "commodity1".into(),
+            description: "A commodity".into(),
+            kind: CommodityType::SupplyEqualsDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand: DemandMap::new(),
+        });
+        let agent = Rc::new(Agent {
+            id: "agent1".into(),
+            description: "".into(),
+            commodity,
+            commodity_portion: 1.0,
+            search_space: SearchSpace::AllProcesses,
+            decision_rule: DecisionRule::Single,
+            capex_limit: None,
+            annual_cost_limit: None,
+            regions: RegionSelection::default(),
+            objectives: Vec::new(),
+        });
+        let future = [2010, 2020]
+            .map(|year| Asset {
+                id: 0,
+                agent: Rc::clone(&agent),
+                process: Rc::clone(&process),
+                region_id: "GBR".into(),
+                capacity: 1.0,
+                commission_year: year,
+            })
+            .into_iter()
+            .collect_vec();
+
+        AssetPool::new(future)
+    }
+
+    #[test]
+    fn test_asset_pool_new() {
+        let assets = create_asset_pool();
+
+        // Order should be reversed
+        assert!(assets.future.len() == 2);
+        assert!(assets.future[0].commission_year == 2020);
+        assert!(assets.future[1].commission_year == 2010);
+    }
+
+    #[test]
+    fn test_asset_pool_commission_new() {
+        // Asset to be commissioned in this year
+        let mut assets = create_asset_pool();
+        assets.commission_new(2010);
+        assert!(assets.future.len() == 1);
+        assert!(assets.future[0].commission_year == 2020);
+        assert!(assets.active.len() == 1);
+        assert!(assets.active[0].commission_year == 2010);
+
+        // Commission year has passed
+        let mut assets = create_asset_pool();
+        assets.commission_new(2011);
+        assert!(assets.future.len() == 1);
+        assert!(assets.future[0].commission_year == 2020);
+        assert!(assets.active.len() == 1);
+        assert!(assets.active[0].commission_year == 2010);
+
+        // Nothing to commission for this year
+        let mut assets = create_asset_pool();
+        assets.commission_new(2000);
+        assert!(assets.future.len() == 2);
+        assert!(assets.active.is_empty());
     }
 }
