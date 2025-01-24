@@ -99,6 +99,13 @@ pub struct Asset {
     pub commission_year: u32,
 }
 
+impl Asset {
+    /// The last year in which this asset should be decommissioned
+    pub fn decommission_year(&self) -> u32 {
+        self.commission_year + self.process.parameter.lifetime
+    }
+}
+
 /// A pool of [`Asset`]s
 pub struct AssetPool {
     /// The pool of assets yet to be commissioned sorted by commission year
