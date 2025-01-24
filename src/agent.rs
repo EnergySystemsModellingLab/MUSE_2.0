@@ -102,6 +102,11 @@ pub struct Asset {
 }
 
 impl Asset {
+    /// The last year in which this asset should be decommissioned
+    pub fn decommission_year(&self) -> u32 {
+        self.commission_year + self.process.parameter.lifetime
+    }
+
     /// Get the activity limits for this asset in a particular time slice
     pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
         let limits = self.process.capacity_fractions.get(time_slice).unwrap();
