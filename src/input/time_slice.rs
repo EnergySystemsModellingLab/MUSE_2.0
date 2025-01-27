@@ -1,14 +1,12 @@
 //! Code for reading in time slice info from a CSV file.
 #![allow(missing_docs)]
 use crate::input::*;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
-use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
-
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 
 const TIME_SLICES_FILE_NAME: &str = "time_slices.csv";
 
@@ -65,17 +63,6 @@ where
         times_of_day,
         fractions,
     })
-}
-
-/// Refers to a particular aspect of a time slice
-#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
-pub enum TimeSliceLevel {
-    #[string = "annual"]
-    Annual,
-    #[string = "season"]
-    Season,
-    #[string = "daynight"]
-    DayNight,
 }
 
 /// Read time slices from a CSV file.
