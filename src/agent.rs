@@ -83,7 +83,7 @@ pub enum ObjectiveType {
 }
 
 /// A unique identifier for an asset
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetID(u32);
 
 impl AssetID {
@@ -183,6 +183,17 @@ impl AssetPool {
     pub fn decomission_old(&mut self, year: u32) {
         self.active
             .retain(|asset| asset.decommission_year() <= year);
+    }
+
+    /// Get an asset with the specified ID
+    pub fn get(&self, id: AssetID) -> &Asset {
+        // The assets in `active` are in order of ID
+        let idx = self
+            .active
+            .binary_search_by(|asset| asset.id.cmp(&id))
+            .unwrap();
+
+        &self.active[idx]
     }
 
     /// Iterate over active assets
@@ -306,5 +317,13 @@ mod tests {
         assert!(assets.active.len() == 1);
         assets.decomission_old(2025); // should decommission second asset
         assert!(assets.active.len() == 1);
+    }
+
+    #[test]
+    fn test_asset_pool_get() {
+        let mut assets = create_asset_pool();
+        assets.commission_new(2020);
+        assert!(*assets.get(AssetID(0)) == assets.active[0]);
+        assert!(*assets.get(AssetID(1)) == assets.active[1]);
     }
 }
