@@ -82,11 +82,20 @@ pub enum ObjectiveType {
     EquivalentAnnualCost,
 }
 
+/// A unique identifier for an asset
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct AssetID(u32);
+
+impl AssetID {
+    /// Sentinel value indicating that the asset is not active
+    pub const INVALID: AssetID = AssetID(u32::MAX);
+}
+
 /// An asset controlled by an agent.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Asset {
     /// A unique identifier for the asset
-    pub id: u32,
+    pub id: AssetID,
     /// The [`Agent`] which owns this asset
     pub agent: Rc<Agent>,
     /// The [`Process`] that this asset corresponds to
@@ -100,6 +109,27 @@ pub struct Asset {
 }
 
 impl Asset {
+    /// Create a new [`Asset`].
+    ///
+    /// The `id` field is initially set to [`AssetID::INVALID`], but is changed to a unique value
+    /// when the asset is commissioned.
+    pub fn new(
+        agent: Rc<Agent>,
+        process: Rc<Process>,
+        region_id: Rc<str>,
+        capacity: f64,
+        commission_year: u32,
+    ) -> Self {
+        Self {
+            id: AssetID::INVALID,
+            agent,
+            process,
+            region_id,
+            capacity,
+            commission_year,
+        }
+    }
+
     /// The last year in which this asset should be decommissioned
     pub fn decommission_year(&self) -> u32 {
         self.commission_year + self.process.parameter.lifetime
@@ -112,6 +142,8 @@ pub struct AssetPool {
     future: VecDeque<Asset>,
     /// The pool of active assets
     active: Vec<Asset>,
+    /// Internal counter to ensure asset IDs are unique
+    id_count: u32,
 }
 
 impl AssetPool {
@@ -123,6 +155,7 @@ impl AssetPool {
         Self {
             future: assets.into(),
             active: Vec::new(),
+            id_count: 0,
         }
     }
 
@@ -135,8 +168,15 @@ impl AssetPool {
             .take_while(|asset| asset.commission_year <= year)
             .count();
 
-        // Move these assets from `future` to `active`
-        self.active.extend(self.future.drain(0..count))
+        // Move these assets out of `future` and give each a unique ID
+        let new_assets = self.future.drain(0..count).map(|mut asset| {
+            asset.id = AssetID(self.id_count);
+            self.id_count += 1;
+            asset
+        });
+
+        // Put new assets into `active`
+        self.active.extend(new_assets);
     }
 
     /// Decommission old assets for the specified milestone year
@@ -200,13 +240,14 @@ mod tests {
             objectives: Vec::new(),
         });
         let future = [2010, 2020]
-            .map(|year| Asset {
-                id: 0,
-                agent: Rc::clone(&agent),
-                process: Rc::clone(&process),
-                region_id: "GBR".into(),
-                capacity: 1.0,
-                commission_year: year,
+            .map(|year| {
+                Asset::new(
+                    Rc::clone(&agent),
+                    Rc::clone(&process),
+                    "GBR".into(),
+                    1.0,
+                    year,
+                )
             })
             .into_iter()
             .collect_vec();
@@ -244,6 +285,14 @@ mod tests {
         assets.commission_new(2000);
         assert!(assets.future.len() == 2);
         assert!(assets.active.is_empty());
+
+        // Check that assets are given unique IDs
+        let mut assets = create_asset_pool();
+        assets.commission_new(2020);
+        assert!(assets.future.is_empty());
+        assert!(assets.active.len() == 2);
+        assert!(assets.active[0].id == AssetID(0));
+        assert!(assets.active[1].id == AssetID(1));
     }
 
     #[test]

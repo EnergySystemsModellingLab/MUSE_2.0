@@ -1,7 +1,7 @@
 //! Code for performing dispatch optimisation.
 //!
 //! This is used to calculate commodity flows and prices.
-use crate::agent::{Asset, AssetPool};
+use crate::agent::{Asset, AssetID, AssetPool};
 use crate::model::Model;
 use crate::process::ProcessFlow;
 use crate::time_slice::TimeSliceID;
@@ -31,14 +31,14 @@ pub type VariableMap = IndexMap<VariableMapKey, Variable>;
 /// A key for a [`VariableMap`]
 #[derive(Eq, PartialEq, Hash)]
 pub struct VariableMapKey {
-    asset_id: u32,
+    asset_id: AssetID,
     commodity_id: Rc<str>,
     time_slice: TimeSliceID,
 }
 
 impl VariableMapKey {
     /// Create a new [`VariableMapKey`]
-    fn new(asset_id: u32, commodity_id: Rc<str>, time_slice: TimeSliceID) -> Self {
+    fn new(asset_id: AssetID, commodity_id: Rc<str>, time_slice: TimeSliceID) -> Self {
         Self {
             asset_id,
             commodity_id,
