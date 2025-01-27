@@ -5,7 +5,7 @@ use crate::process::Process;
 use crate::region::RegionSelection;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::rc::Rc;
 
 /// An agent in the simulation
@@ -101,8 +101,8 @@ pub struct Asset {
 
 /// A pool of [`Asset`]s
 pub struct AssetPool {
-    /// The pool of assets yet to be commissioned, sorted in reverse order of commission year
-    future: Vec<Asset>,
+    /// The pool of assets yet to be commissioned sorted by commission year
+    future: VecDeque<Asset>,
     /// The pool of active assets
     active: Vec<Asset>,
 }
@@ -110,28 +110,26 @@ pub struct AssetPool {
 impl AssetPool {
     /// Create a new [`AssetPool`]
     pub fn new(mut assets: Vec<Asset>) -> Self {
-        // Sort in reverse order of commission year
-        assets.sort_by(|a, b| b.commission_year.cmp(&a.commission_year));
+        // Sort in order of commission year
+        assets.sort_by(|a, b| a.commission_year.cmp(&b.commission_year));
 
         Self {
-            future: assets,
+            future: assets.into(),
             active: Vec::new(),
         }
     }
 
     /// Commission new assets for the specified milestone year
     pub fn commission_new(&mut self, year: u32) {
-        // Count the number of assets at the end of `future` which come online on or before `year`
+        // Count the number of assets in `future` which come online on or before `year`
         let count = self
             .future
             .iter()
-            .rev()
             .take_while(|asset| asset.commission_year <= year)
             .count();
 
         // Move these assets from `future` to `active`
-        self.active
-            .extend(self.future.drain(self.future.len() - count..))
+        self.active.extend(self.future.drain(0..count))
     }
 
     /// Iterate over active assets
@@ -206,11 +204,8 @@ mod tests {
     #[test]
     fn test_asset_pool_new() {
         let assets = create_asset_pool();
-
-        // Order should be reversed
         assert!(assets.future.len() == 2);
-        assert!(assets.future[0].commission_year == 2020);
-        assert!(assets.future[1].commission_year == 2010);
+        assert!(assets.active.is_empty());
     }
 
     #[test]
