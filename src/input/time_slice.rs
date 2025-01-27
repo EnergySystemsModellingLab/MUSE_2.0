@@ -1,5 +1,4 @@
 //! Code for reading in time slice info from a CSV file.
-#![allow(missing_docs)]
 use crate::input::*;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
