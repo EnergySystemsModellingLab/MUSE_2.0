@@ -2,7 +2,6 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
-#![allow(missing_docs)]
 use anyhow::{Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
@@ -215,13 +214,16 @@ impl TimeSliceInfo {
     }
 }
 
-/// Refers to a particular aspect of a time slice
+/// The time granularity for a particular operation
 #[derive(PartialEq, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
 pub enum TimeSliceLevel {
+    /// The whole year
     #[string = "annual"]
     Annual,
+    /// Whole seasons
     #[string = "season"]
     Season,
+    /// Treat individual time slices separately
     #[string = "daynight"]
     DayNight,
 }
