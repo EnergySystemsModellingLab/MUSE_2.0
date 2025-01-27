@@ -85,7 +85,7 @@ pub enum ObjectiveType {
 }
 
 /// A unique identifier for an asset
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetID(u32);
 
 impl AssetID {
@@ -191,6 +191,21 @@ impl AssetPool {
             self.current_year
         );
         self.assets.retain(|asset| asset.decommission_year() > year);
+    }
+
+    /// Get an asset with the specified ID
+    ///
+    /// # Panics
+    ///
+    /// Panics if `id` is not in pool.
+    pub fn get(&self, id: AssetID) -> &Asset {
+        // The assets in `active` are in order of ID
+        let idx = self
+            .assets
+            .binary_search_by(|asset| asset.id.cmp(&id))
+            .expect("id not found");
+
+        &self.assets[idx]
     }
 
     /// Iterate over active assets
@@ -344,5 +359,13 @@ mod tests {
         assert_equal(&assets.assets, iter::once(&assets2[1]));
         assets.decomission_old(2025); // should decommission second asset
         assert!(assets.assets.is_empty());
+    }
+
+    #[test]
+    fn test_asset_pool_get() {
+        let mut assets = create_asset_pool();
+        assets.commission_new(2020);
+        assert!(*assets.get(AssetID(0)) == assets.assets[0]);
+        assert!(*assets.get(AssetID(1)) == assets.assets[1]);
     }
 }
