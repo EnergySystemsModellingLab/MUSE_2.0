@@ -6,8 +6,10 @@
 use anyhow::{bail, Result};
 use chrono::Local;
 use fern::colors::{Color, ColoredLevelConfig};
-use fern::Dispatch;
+use fern::{Dispatch, FormatCallback};
+use log::Record;
 use std::env;
+use std::fmt::{Arguments, Display};
 use std::io::IsTerminal;
 
 /// The default log level for the program.
@@ -51,44 +53,27 @@ pub fn init(log_level_from_settings: Option<&str>) -> Result<()> {
         unknown => bail!("Unknown log level: {}", unknown),
     };
 
-    // Format timestamp as HH:MM:SS
-    let timestamp_format = "%H:%M:%S";
-
     // Automatically apply colours only if the output is a terminal
     let use_colour = std::io::stdout().is_terminal();
 
     // Set up colours for log levels
-    let colours = ColoredLevelConfig::new()
-        .error(Color::Red)
-        .warn(Color::Yellow)
-        .info(Color::Green)
-        .debug(Color::Blue)
-        .trace(Color::Magenta);
+    let colours = if use_colour {
+        Some(
+            ColoredLevelConfig::new()
+                .error(Color::Red)
+                .warn(Color::Yellow)
+                .info(Color::Green)
+                .debug(Color::Blue)
+                .trace(Color::Magenta),
+        )
+    } else {
+        None
+    };
 
     // Configure the logger
     let dispatch = Dispatch::new()
         .format(move |out, message, record| {
-            // Generate the current timestamp
-            let timestamp = Local::now().format(timestamp_format);
-
-            // Format output with or without colour based on `use_colour`
-            if use_colour {
-                out.finish(format_args!(
-                    "[{} {} {}] {}",
-                    timestamp,
-                    colours.color(record.level()),
-                    record.target(),
-                    message
-                ))
-            } else {
-                out.finish(format_args!(
-                    "[{} {} {}] {}",
-                    timestamp,
-                    record.level(),
-                    record.target(),
-                    message
-                ))
-            }
+            write_log_colour(out, message, record, &colours);
         })
         .level(log_level)
         .chain(std::io::stdout());
@@ -97,4 +82,38 @@ pub fn init(log_level_from_settings: Option<&str>) -> Result<()> {
     dispatch.apply()?;
 
     Ok(())
+}
+
+/// Write to the log in the format we want for MUSE 2.0
+fn write_log<T: Display>(out: FormatCallback, level: T, target: &str, message: &Arguments) {
+    // Format timestamp as HH:MM:SS
+    let timestamp_format = "%H:%M:%S";
+
+    // Generate the current timestamp
+    let timestamp = Local::now().format(timestamp_format);
+
+    out.finish(format_args!(
+        "[{} {} {}] {}",
+        timestamp, level, target, message
+    ));
+}
+
+/// Write to the log with no colours
+fn write_log_plain(out: FormatCallback, message: &Arguments, record: &Record) {
+    write_log(out, record.level(), record.target(), message);
+}
+
+/// Write to the log with optional colours
+fn write_log_colour(
+    out: FormatCallback,
+    message: &Arguments,
+    record: &Record,
+    colours: &Option<ColoredLevelConfig>,
+) {
+    // Format output with or without colour based on `use_colour`
+    if let Some(colours) = colours {
+        write_log(out, colours.color(record.level()), record.target(), message);
+    } else {
+        write_log_plain(out, message, record);
+    }
 }
