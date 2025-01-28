@@ -1,4 +1,5 @@
 use clap::Parser;
+use human_panic::setup_panic;
 use muse2::commands;
 
 use commands::{
@@ -6,6 +7,8 @@ use commands::{
 };
 
 fn main() {
+    setup_panic!();
+
     let cli = Cli::parse();
     match cli.command {
         Commands::Run { model_dir } => handle_run_command(&model_dir),
