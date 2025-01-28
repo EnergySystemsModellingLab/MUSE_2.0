@@ -7,7 +7,7 @@ use anyhow::{bail, Result};
 use chrono::Local;
 use fern::colors::{Color, ColoredLevelConfig};
 use fern::{Dispatch, FormatCallback};
-use log::Record;
+use log::{LevelFilter, Record};
 use std::env;
 use std::fmt::{Arguments, Display};
 use std::io::IsTerminal;
@@ -44,39 +44,48 @@ pub fn init(log_level_from_settings: Option<&str>) -> Result<()> {
 
     // Convert the log level string to a log::LevelFilter
     let log_level = match log_level.to_lowercase().as_str() {
-        "off" => log::LevelFilter::Off,
-        "error" => log::LevelFilter::Error,
-        "warn" => log::LevelFilter::Warn,
-        "info" => log::LevelFilter::Info,
-        "debug" => log::LevelFilter::Debug,
-        "trace" => log::LevelFilter::Trace,
+        "off" => LevelFilter::Off,
+        "error" => LevelFilter::Error,
+        "warn" => LevelFilter::Warn,
+        "info" => LevelFilter::Info,
+        "debug" => LevelFilter::Debug,
+        "trace" => LevelFilter::Trace,
         unknown => bail!("Unknown log level: {}", unknown),
     };
 
-    // Automatically apply colours only if the output is a terminal
-    let use_colour = std::io::stdout().is_terminal();
-
     // Set up colours for log levels
-    let colours = if use_colour {
-        Some(
-            ColoredLevelConfig::new()
-                .error(Color::Red)
-                .warn(Color::Yellow)
-                .info(Color::Green)
-                .debug(Color::Blue)
-                .trace(Color::Magenta),
-        )
-    } else {
-        None
-    };
+    let colours = ColoredLevelConfig::new()
+        .error(Color::Red)
+        .warn(Color::Yellow)
+        .info(Color::Green)
+        .debug(Color::Blue)
+        .trace(Color::Magenta);
+
+    // Automatically apply colours only if the output is a terminal
+    let use_colour_stdout = std::io::stdout().is_terminal();
+    let use_colour_stderr = std::io::stderr().is_terminal();
 
     // Configure the logger
     let dispatch = Dispatch::new()
-        .format(move |out, message, record| {
-            write_log_colour(out, message, record, &colours);
-        })
-        .level(log_level)
-        .chain(std::io::stdout());
+        .chain(
+            // Write non-error messages to stdout
+            Dispatch::new()
+                .filter(|metadata| metadata.level() > LevelFilter::Warn)
+                .format(move |out, message, record| {
+                    write_log_colour(out, message, record, use_colour_stdout, &colours);
+                })
+                .level(log_level)
+                .chain(std::io::stdout()),
+        )
+        .chain(
+            // Write error messages to stderr
+            Dispatch::new()
+                .format(move |out, message, record| {
+                    write_log_colour(out, message, record, use_colour_stderr, &colours);
+                })
+                .level(log_level.min(LevelFilter::Warn))
+                .chain(std::io::stderr()),
+        );
 
     // Apply the logger configuration
     dispatch.apply()?;
@@ -108,10 +117,11 @@ fn write_log_colour(
     out: FormatCallback,
     message: &Arguments,
     record: &Record,
-    colours: &Option<ColoredLevelConfig>,
+    use_colour: bool,
+    colours: &ColoredLevelConfig,
 ) {
     // Format output with or without colour based on `use_colour`
-    if let Some(colours) = colours {
+    if use_colour {
         write_log(out, colours.color(record.level()), record.target(), message);
     } else {
         write_log_plain(out, message, record);
