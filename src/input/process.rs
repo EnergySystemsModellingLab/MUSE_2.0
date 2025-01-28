@@ -1,7 +1,7 @@
 //! Code for reading process-related information from CSV files.
 use crate::commodity::{Commodity, CommodityType};
 use crate::input::*;
-use crate::process::{Process, ProcessAvailability, ProcessFlow, ProcessParameter};
+use crate::process::{Process, ProcessCapacityMap, ProcessFlow, ProcessParameter};
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
@@ -39,9 +39,6 @@ struct ProcessDescription {
     description: String,
 }
 define_id_getter! {ProcessDescription}
-
-/// A map of process-related data structures, grouped by process ID
-type GroupedMap<T> = HashMap<Rc<str>, Vec<T>>;
 
 /// Read process information from the specified CSV files.
 ///
@@ -127,20 +124,14 @@ fn validate_sed_commodity(
 
 fn create_process_map<I>(
     descriptions: I,
-    availabilities: GroupedMap<ProcessAvailability>,
-    flows: GroupedMap<ProcessFlow>,
-    parameters: HashMap<Rc<str>, ProcessParameter>,
-    regions: HashMap<Rc<str>, RegionSelection>,
+    mut availabilities: HashMap<Rc<str>, ProcessCapacityMap>,
+    mut flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
+    mut parameters: HashMap<Rc<str>, ProcessParameter>,
+    mut regions: HashMap<Rc<str>, RegionSelection>,
 ) -> Result<HashMap<Rc<str>, Rc<Process>>>
 where
     I: Iterator<Item = ProcessDescription>,
 {
-    // Need to be mutable as we remove elements as we go along
-    let mut availabilities = availabilities;
-    let mut flows = flows;
-    let mut parameters = parameters;
-    let mut regions = regions;
-
     descriptions
         .map(|description| {
             let id = &description.id;
@@ -160,7 +151,7 @@ where
             let process = Process {
                 id: Rc::clone(id),
                 description: description.description,
-                availabilities,
+                capacity_fractions: availabilities,
                 flows,
                 parameter,
                 regions,
@@ -181,8 +172,8 @@ mod tests {
 
     struct ProcessData {
         descriptions: Vec<ProcessDescription>,
-        availabilities: GroupedMap<ProcessAvailability>,
-        flows: GroupedMap<ProcessFlow>,
+        availabilities: HashMap<Rc<str>, ProcessCapacityMap>,
+        flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
         parameters: HashMap<Rc<str>, ProcessParameter>,
         regions: HashMap<Rc<str>, RegionSelection>,
     }
@@ -202,7 +193,7 @@ mod tests {
 
         let availabilities = ["process1", "process2"]
             .into_iter()
-            .map(|id| (id.into(), vec![]))
+            .map(|id| (id.into(), ProcessCapacityMap::new()))
             .collect();
 
         let flows = ["process1", "process2"]
