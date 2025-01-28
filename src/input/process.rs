@@ -17,6 +17,7 @@ use flow::read_process_flows;
 pub mod parameter;
 use parameter::read_process_parameters;
 pub mod region;
+use anyhow::bail;
 use region::read_process_regions;
 
 const PROCESSES_FILE_NAME: &str = "processes.csv";
@@ -87,7 +88,7 @@ pub fn read_processes(
 fn validate_commodities(
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
     flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     for (commodity_id, commodity) in commodities {
         if commodity.kind == CommodityType::SupplyEqualsDemand {
             validate_sed_commodity(commodity_id, commodity, flows)?;
@@ -111,16 +112,17 @@ fn validate_sed_commodity(
             } else if flow.flow < 0.0 {
                 has_consumer = true;
             }
+
+            if has_producer && has_consumer {
+                return Ok(());
+            }
         }
     }
 
-    ensure!(
-        has_producer && has_consumer,
+    bail!(
         "Commodity {} of 'SED' type must have both producer and consumer processes",
         commodity_id
     );
-
-    Ok(())
 }
 
 fn create_process_map<I>(
