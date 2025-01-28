@@ -1,7 +1,7 @@
 //! Code for reading process-related information from CSV files.
 use crate::commodity::Commodity;
 use crate::input::*;
-use crate::process::{Process, ProcessAvailabilityMap, ProcessFlow, ProcessParameter};
+use crate::process::{Process, ProcessCapacityMap, ProcessFlow, ProcessParameter};
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
@@ -79,7 +79,7 @@ pub fn read_processes(
 
 fn create_process_map<I>(
     descriptions: I,
-    mut availabilities: HashMap<Rc<str>, ProcessAvailabilityMap>,
+    mut availabilities: HashMap<Rc<str>, ProcessCapacityMap>,
     mut flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
     mut parameters: HashMap<Rc<str>, ProcessParameter>,
     mut regions: HashMap<Rc<str>, RegionSelection>,
@@ -106,7 +106,7 @@ where
             let process = Process {
                 id: Rc::clone(id),
                 description: description.description,
-                availabilities,
+                capacity_fractions: availabilities,
                 flows,
                 parameter,
                 regions,
@@ -123,7 +123,7 @@ mod tests {
 
     struct ProcessData {
         descriptions: Vec<ProcessDescription>,
-        availabilities: HashMap<Rc<str>, ProcessAvailabilityMap>,
+        availabilities: HashMap<Rc<str>, ProcessCapacityMap>,
         flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
         parameters: HashMap<Rc<str>, ProcessParameter>,
         regions: HashMap<Rc<str>, RegionSelection>,
@@ -144,7 +144,7 @@ mod tests {
 
         let availabilities = ["process1", "process2"]
             .into_iter()
-            .map(|id| (id.into(), ProcessAvailabilityMap::new()))
+            .map(|id| (id.into(), ProcessCapacityMap::new()))
             .collect();
 
         let flows = ["process1", "process2"]

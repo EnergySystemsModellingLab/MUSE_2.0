@@ -1,9 +1,10 @@
 //! Code for reading process availabilities CSV file
 use crate::input::*;
-use crate::process::ProcessAvailabilityMap;
+use crate::process::ProcessCapacityMap;
 use crate::time_slice::TimeSliceInfo;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use serde::Deserialize;
+use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
@@ -11,12 +12,23 @@ use std::rc::Rc;
 const PROCESS_AVAILABILITIES_FILE_NAME: &str = "process_availabilities.csv";
 
 /// Represents a row of the process availabilities CSV file
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(Deserialize)]
 struct ProcessAvailabilityRaw {
     process_id: String,
-    limit_type: String,
+    limit_type: LimitType,
     time_slice: String,
     value: f64,
+}
+
+/// The type of limit given for availability
+#[derive(DeserializeLabeledStringEnum)]
+enum LimitType {
+    #[string = "lo"]
+    LowerBound,
+    #[string = "up"]
+    UpperBound,
+    #[string = "fx"]
+    Equality,
 }
 
 /// Read the process availabilities CSV file.
@@ -32,25 +44,25 @@ struct ProcessAvailabilityRaw {
 ///
 /// # Returns
 ///
-/// A [`HashMap`] with process IDs as the keys and [`ProcessAvailabilityMap`]s as the values or an
+/// A [`HashMap`] with process IDs as the keys and [`ProcessCapacityMap`]s as the values or an
 /// error.
 pub fn read_process_availabilities(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<Rc<str>, ProcessAvailabilityMap>> {
+) -> Result<HashMap<Rc<str>, ProcessCapacityMap>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let process_availabilities_csv = read_csv(&file_path)?;
     read_process_availabilities_from_iter(process_availabilities_csv, process_ids, time_slice_info)
         .with_context(|| input_err_msg(&file_path))
 }
 
-/// Process raw process availabilities input data into [`ProcessAvailabilityMap`]s
+/// Process raw process availabilities input data into [`ProcessCapacityMap`]s
 fn read_process_availabilities_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<Rc<str>, ProcessAvailabilityMap>>
+) -> Result<HashMap<Rc<str>, ProcessCapacityMap>>
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
@@ -58,17 +70,6 @@ where
 
     for record in iter {
         let process_id = process_ids.get_id(&record.process_id)?;
-
-        let bounds = match record.limit_type.to_ascii_lowercase().as_str() {
-            // lower bound
-            "lo" => record.value..=f64::INFINITY,
-            // upper bound
-            "up" => f64::NEG_INFINITY..=record.value,
-            // equality
-            "fx" => record.value..=record.value,
-            // error: unknown
-            _ => bail!("Invalid limit type ({})", record.limit_type),
-        };
 
         ensure!(
             record.value >= 0.0 && record.value <= 1.0,
@@ -79,11 +80,18 @@ where
 
         let map = map
             .entry(process_id)
-            .or_insert_with(ProcessAvailabilityMap::new);
+            .or_insert_with(ProcessCapacityMap::new);
 
-        for (time_slice, _) in time_slice_info.iter_selection(&ts_selection) {
+        for (time_slice, ts_length) in time_slice_info.iter_selection(&ts_selection) {
+            // Calculate fraction of annual capacity as availability multiplied by time slice length
+            let value = record.value * ts_length;
+            let bounds = match record.limit_type {
+                LimitType::LowerBound => value..=f64::INFINITY,
+                LimitType::UpperBound => f64::NEG_INFINITY..=value,
+                LimitType::Equality => value..=value,
+            };
+
             let existing = map.insert(time_slice.clone(), bounds.clone()).is_some();
-
             ensure!(
                 !existing,
                 "Process availability entry covered by more than one time slice \
@@ -125,13 +133,18 @@ mod tests {
         }
     }
 
-    fn check_succeeds(process_id: &str, limit_type: &str, time_slice: &str, value: f64) -> bool {
+    fn check_succeeds(
+        process_id: &str,
+        limit_type: LimitType,
+        time_slice: &str,
+        value: f64,
+    ) -> bool {
         let process_ids = iter::once("process1".into()).collect();
         let time_slice_info = get_time_slice_info();
 
         let avail = ProcessAvailabilityRaw {
             process_id: process_id.into(),
-            limit_type: limit_type.into(),
+            limit_type,
             time_slice: time_slice.into(),
             value,
         };
@@ -149,7 +162,7 @@ mod tests {
             ($limit_type: expr, $range: expr) => {
                 let avail = ProcessAvailabilityRaw {
                     process_id: "process1".into(),
-                    limit_type: $limit_type.into(),
+                    limit_type: $limit_type,
                     time_slice: "winter".into(),
                     value,
                 };
@@ -170,16 +183,17 @@ mod tests {
             };
         }
 
-        check_with_limit_type!("lo", value..=f64::INFINITY);
-        check_with_limit_type!("up", f64::NEG_INFINITY..=value);
-        check_with_limit_type!("fx", value..=value);
+        let result = value * 0.5; // time slice lengths are 0.5
+        check_with_limit_type!(LimitType::LowerBound, result..=f64::INFINITY);
+        check_with_limit_type!(LimitType::UpperBound, f64::NEG_INFINITY..=result);
+        check_with_limit_type!(LimitType::Equality, result..=result);
     }
 
     #[test]
     fn test_read_process_availabilities_from_iter_values() {
         macro_rules! succeeds_with_value {
             ($value:expr) => {{
-                check_succeeds("process1", "fx", "winter.day", $value)
+                check_succeeds("process1", LimitType::Equality, "winter.day", $value)
             }};
         }
 
@@ -204,7 +218,7 @@ mod tests {
         let value = 0.5;
         let avail = ["winter", "winter.day"].map(|time_slice| ProcessAvailabilityRaw {
             process_id: "process1".into(),
-            limit_type: "fx".into(),
+            limit_type: LimitType::Equality,
             time_slice: time_slice.into(),
             value,
         });
@@ -218,16 +232,21 @@ mod tests {
 
     #[test]
     fn test_read_process_availabilities_from_iter_bad_process_id() {
-        assert!(!check_succeeds("MADEUP", "fx", "winter", 0.5));
-    }
-
-    #[test]
-    fn test_read_process_availabilities_from_iter_bad_limit_type() {
-        assert!(!check_succeeds("process1", "MADEUP", "winter", 0.5));
+        assert!(!check_succeeds(
+            "MADEUP",
+            LimitType::Equality,
+            "winter",
+            0.5
+        ));
     }
 
     #[test]
     fn test_read_process_availabilities_from_iter_bad_time_slice() {
-        assert!(!check_succeeds("process1", "fx", "MADEUP", 0.5));
+        assert!(!check_succeeds(
+            "process1",
+            LimitType::Equality,
+            "MADEUP",
+            0.5
+        ));
     }
 }

@@ -12,7 +12,7 @@ use std::rc::Rc;
 pub struct Process {
     pub id: Rc<str>,
     pub description: String,
-    pub availabilities: ProcessAvailabilityMap,
+    pub capacity_fractions: ProcessCapacityMap,
     pub flows: Vec<ProcessFlow>,
     pub parameter: ProcessParameter,
     pub regions: RegionSelection,
@@ -25,10 +25,16 @@ impl Process {
     }
 }
 
-/// A map indicating the availability of a [`Process`] over the course of the year.
+/// A map indicating capacity limits for a [`Process`] throughout the year.
 ///
-/// The availability is a range, depending on the user-specified limit type and value
-pub type ProcessAvailabilityMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
+/// The capacity value is calculated as availability multiplied by time slice length. Note that it
+/// is a *fraction* of capacity for the year; to calculate *actual* capacity for a given time slice
+/// you need to know the maximum capacity for the specific instance of a [`Process`] in use (e.g.
+/// given by [`Asset::capacity`](crate::agent::Asset::capacity)).
+///
+/// The capacity is given as a range, depending on the user-specified limit type and value for
+/// availability.
+pub type ProcessCapacityMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
 
 #[derive(PartialEq, Debug, Deserialize, Clone)]
 pub struct ProcessFlow {
