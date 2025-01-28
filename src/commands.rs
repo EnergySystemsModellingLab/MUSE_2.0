@@ -45,7 +45,7 @@ pub enum ExampleSubcommands {
 
 /// Handle the `run` command.
 pub fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
-    let settings = Settings::from_path(model_dir)?;
+    let settings = Settings::from_path(model_dir).context("Failed to load settings.")?;
     log::init(settings.log_level.as_deref()).context("Failed to initialize logging.")?;
     let (model, assets) = load_model(model_dir).context("Failed to load model.")?;
     info!("Model loaded successfully.");
