@@ -1,0 +1,3 @@
+[alias]
+# Automatically fix clippy warnings (where possible)
+clipfix = "clippy --fix --allow-dirty --allow-staged"
