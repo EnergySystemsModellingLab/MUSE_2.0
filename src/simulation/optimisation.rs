@@ -56,7 +56,10 @@ pub struct Solution {
 
 impl Solution {
     /// Iterate over the newly calculated commodity flows for assets.
-    pub fn iter_commodity_flows(&self) -> impl Iterator<Item = (&VariableMapKey, f64)> {
+    ///
+    /// Note that this only includes commodity flows which relate to assets, so not every commodity
+    /// in the simulation will necessarily be represented.
+    pub fn iter_commodity_flows_for_assets(&self) -> impl Iterator<Item = (&VariableMapKey, f64)> {
         self.variables
             .keys()
             .zip(self.solution.columns().iter().copied())
