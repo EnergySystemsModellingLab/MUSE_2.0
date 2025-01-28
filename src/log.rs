@@ -122,11 +122,7 @@ pub fn init(log_level_from_settings: Option<&str>, output_path: &Path) -> Result
 
 /// Write to the log in the format we want for MUSE 2.0
 fn write_log<T: Display>(out: FormatCallback, level: T, target: &str, message: &Arguments) {
-    // Format timestamp as HH:MM:SS
-    let timestamp_format = "%H:%M:%S";
-
-    // Generate the current timestamp
-    let timestamp = Local::now().format(timestamp_format);
+    let timestamp = Local::now().format("%H:%M:%S");
 
     out.finish(format_args!(
         "[{} {} {}] {}",
