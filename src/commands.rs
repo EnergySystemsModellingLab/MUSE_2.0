@@ -49,7 +49,8 @@ pub fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
     let settings = Settings::from_path(model_dir).context("Failed to load settings.")?;
     let output_path =
         create_output_directory(model_dir).context("Failed to create output directory.")?;
-    log::init(settings.log_level.as_deref()).context("Failed to initialize logging.")?;
+    log::init(settings.log_level.as_deref(), &output_path)
+        .context("Failed to initialize logging.")?;
     info!("Output directory created: {}", output_path.display());
     let (model, assets) = load_model(model_dir).context("Failed to load model.")?;
     info!("Model loaded successfully.");
