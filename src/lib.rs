@@ -6,6 +6,7 @@ pub mod commodity;
 pub mod input;
 pub mod log;
 pub mod model;
+pub mod output;
 pub mod process;
 pub mod region;
 pub mod settings;
