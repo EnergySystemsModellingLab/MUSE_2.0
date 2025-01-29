@@ -1,5 +1,5 @@
 //! The command line interface for the simulation.
-use crate::settings::{self, Settings};
+use crate::settings::{Settings};
 use crate::{input::load_model, log};
 use ::log::info;
 use anyhow::{Context, Result};
@@ -68,9 +68,9 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
         let path = temp_dir.path().join(entry.path().file_name().unwrap());
         fs::write(&path, entry.contents())?;
     }
-    let settings = Settings::from_path(&example_dir)?;
+    let settings = Settings::from_path(example_dir)?;
     log::init(settings.log_level.as_deref()).context("Failed to initialize logging.")?;
-    let (model, assets) = load_model(&example_dir).context("Failed to load model.")?;
+    let (model, assets) = load_model(example_dir).context("Failed to load model.")?;
     info!("Model loaded successfully.");
     crate::simulation::run(model, assets);
     Ok(())
