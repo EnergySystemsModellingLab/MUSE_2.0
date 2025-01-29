@@ -92,7 +92,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::ProcessParameter;
+    use crate::process::{ProcessCapacityMap, ProcessParameter};
     use crate::region::RegionSelection;
     use itertools::assert_equal;
     use std::iter;
@@ -112,9 +112,8 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            availabilities: vec![],
+            capacity_fractions: ProcessCapacityMap::new(),
             flows: vec![],
-            pacs: vec![],
             parameter: process_param.clone(),
             regions: RegionSelection::All,
         });
@@ -188,9 +187,8 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            availabilities: vec![],
+            capacity_fractions: ProcessCapacityMap::new(),
             flows: vec![],
-            pacs: vec![],
             parameter: process_param,
             regions: RegionSelection::Some(["GBR".into()].into_iter().collect()),
         });
