@@ -1,5 +1,5 @@
 //! The command line interface for the simulation.
-use crate::settings::{Settings};
+use crate::settings::Settings;
 use crate::{input::load_model, log};
 use ::log::info;
 use anyhow::{Context, Result};
@@ -103,6 +103,7 @@ mod tests {
     fn test_handle_run_command() {
         handle_run_command(&get_model_dir()).unwrap();
         // Second time will fail because the logging is already initialised
+
         assert_eq!(
             handle_run_command(&get_model_dir())
                 .unwrap_err()
