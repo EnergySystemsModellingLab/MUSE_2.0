@@ -27,7 +27,25 @@ type Variable = highs::Col;
 /// 1. In order define constraints for the optimisation
 /// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
 ///    are reading the results of the optimisation.
-pub type VariableMap = IndexMap<VariableMapKey, Variable>;
+#[derive(Default)]
+pub struct VariableMap(IndexMap<VariableMapKey, Variable>);
+
+impl VariableMap {
+    /// Get the [`Variable`] corresponding to the given parameters.
+    #[allow(dead_code)] // remove when we have a user
+    fn get(&self, asset_id: u32, commodity_id: &Rc<str>, time_slice: &TimeSliceID) -> Variable {
+        let key = VariableMapKey {
+            asset_id,
+            commodity_id: Rc::clone(commodity_id),
+            time_slice: time_slice.clone(),
+        };
+
+        *self
+            .0
+            .get(&key)
+            .expect("No variable found for given params")
+    }
+}
 
 /// A key for a [`VariableMap`]
 #[derive(Eq, PartialEq, Hash)]
@@ -61,6 +79,7 @@ impl Solution {
     /// in the simulation will necessarily be represented.
     pub fn iter_commodity_flows_for_assets(&self) -> impl Iterator<Item = (&VariableMapKey, f64)> {
         self.variables
+            .0
             .keys()
             .zip(self.solution.columns().iter().copied())
     }
@@ -134,7 +153,7 @@ fn add_variables(
     year: u32,
 ) -> VariableMap {
     info!("Adding variables to problem...");
-    let mut variables = VariableMap::new();
+    let mut variables = VariableMap::default();
 
     for asset in filter_assets(assets, year) {
         for flow in asset.process.flows.iter() {
@@ -154,7 +173,7 @@ fn add_variables(
                     time_slice.clone(),
                 );
 
-                let existing = variables.insert(key, var).is_some();
+                let existing = variables.0.insert(key, var).is_some();
                 assert!(!existing, "Duplicate entry for var");
             }
         }
@@ -215,6 +234,10 @@ fn add_commodity_balance_constraints(
 /// Add constraints for non-flexible assets.
 ///
 /// Non-flexible assets are those which have a fixed ratio between inputs and outputs.
+///
+/// See description in [the dispatch optimisation documentation][1].
+///
+/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#non-flexible-assets
 fn add_fixed_asset_constraints(
     _problem: &mut Problem,
     _variables: &VariableMap,
@@ -226,6 +249,10 @@ fn add_fixed_asset_constraints(
 }
 
 /// Add asset-level capacity and availability constraints
+///
+/// See description in [the dispatch optimisation documentation][1].
+///
+/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#asset-level-capacity-and-availability-constraints
 fn add_asset_capacity_constraints(
     _problem: &mut Problem,
     _variables: &VariableMap,
