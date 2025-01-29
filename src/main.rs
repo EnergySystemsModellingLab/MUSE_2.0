@@ -1,4 +1,5 @@
 use clap::Parser;
+use human_panic::{metadata, setup_panic};
 use muse2::commands;
 
 use commands::{
@@ -6,6 +7,11 @@ use commands::{
 };
 
 fn main() {
+    setup_panic!(metadata!().support(format!(
+        "Open an issue on Github: {}/issues/new?template=bug_report.md",
+        env!("CARGO_PKG_REPOSITORY")
+    )));
+
     let cli = Cli::parse();
     match cli.command {
         Commands::Run { model_dir } => handle_run_command(&model_dir),
