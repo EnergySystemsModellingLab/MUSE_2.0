@@ -65,6 +65,8 @@ fn read_assets_from_iter<I>(
 where
     I: Iterator<Item = AssetRaw>,
 {
+    let mut id = 0u32;
+
     iter.map(|asset| -> Result<_> {
         let agent_id = agent_ids.get_id(&asset.agent_id)?;
         let process = processes
@@ -78,13 +80,19 @@ where
             process.id
         );
 
-        Ok(Asset {
+        let asset = Asset {
+            id,
             agent_id,
             process: Rc::clone(process),
             region_id,
             capacity: asset.capacity,
             commission_year: asset.commission_year,
-        })
+        };
+
+        // Increment ID for next asset
+        id += 1;
+
+        Ok(asset)
     })
     .try_collect()
 }
@@ -132,6 +140,7 @@ mod tests {
             commission_year: 2010,
         };
         let asset_out = Asset {
+            id: 0,
             agent_id: "agent1".into(),
             process: Rc::clone(&process),
             region_id: "GBR".into(),
