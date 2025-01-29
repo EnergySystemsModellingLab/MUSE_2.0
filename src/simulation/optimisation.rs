@@ -5,7 +5,7 @@ use crate::agent::{Asset, AssetPool};
 use crate::model::Model;
 use crate::process::ProcessFlow;
 use crate::simulation::filter_assets;
-use crate::time_slice::TimeSliceID;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use log::{error, info};
@@ -32,7 +32,6 @@ pub struct VariableMap(IndexMap<VariableMapKey, Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
-    #[allow(dead_code)] // remove when we have a user
     fn get(&self, asset_id: u32, commodity_id: &Rc<str>, time_slice: &TimeSliceID) -> Variable {
         let key = VariableMapKey {
             asset_id,
@@ -208,7 +207,7 @@ fn add_asset_contraints(
     // need to add different constraints for assets with flexible and non-flexible flows.
     //
     // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
-    add_fixed_asset_constraints(problem, variables, model, assets, year);
+    add_fixed_asset_constraints(problem, variables, assets, year, &model.time_slice_info);
 
     add_asset_capacity_constraints(problem, variables, model, assets, year);
 }
@@ -239,13 +238,34 @@ fn add_commodity_balance_constraints(
 ///
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#non-flexible-assets
 fn add_fixed_asset_constraints(
-    _problem: &mut Problem,
-    _variables: &VariableMap,
-    _model: &Model,
-    _assets: &AssetPool,
-    _year: u32,
+    problem: &mut Problem,
+    variables: &VariableMap,
+    assets: &AssetPool,
+    year: u32,
+    time_slice_info: &TimeSliceInfo,
 ) {
     info!("Adding constraints for non-flexible assets...");
+
+    for asset in filter_assets(assets, year) {
+        // Get first PAC. unwrap is safe because all processes have at least one PAC.
+        let pac1 = asset.process.iter_pacs().next().unwrap();
+
+        for time_slice in time_slice_info.iter_ids() {
+            let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
+            let pac_term = (pac_var, -1.0 / pac1.flow);
+
+            for flow in asset.process.flows.iter() {
+                // Don't add a constraint for the PAC itself
+                if Rc::ptr_eq(&flow.commodity, &pac1.commodity) {
+                    continue;
+                }
+
+                // We are enforcing that (var / flow) - (pac_var / pac_flow) = 0
+                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
+                problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
+            }
+        }
+    }
 }
 
 /// Add asset-level capacity and availability constraints
