@@ -2,18 +2,18 @@
 use crate::agent::{Asset, AssetPool};
 use crate::model::Model;
 use log::info;
+use std::collections::HashMap;
 use std::rc::Rc;
 
-/// Get an iterator of active [`Asset`]s for the specified milestone year in a given region.
-fn filter_assets<'a>(
-    assets: &'a AssetPool,
-    year: u32,
-    region_id: &'a Rc<str>,
-) -> impl Iterator<Item = &'a Asset> {
-    assets
-        .iter()
-        .filter(move |asset| asset.commission_year >= year && asset.region_id == *region_id)
-}
+pub mod optimisation;
+use optimisation::perform_dispatch_optimisation;
+pub mod investment;
+use investment::perform_agent_investment;
+pub mod update;
+use update::{update_commodity_flows, update_commodity_prices};
+
+/// A map relating commodity ID to current price (endogenous)
+pub type CommodityPrices = HashMap<Rc<str>, f64>;
 
 /// Run the simulation.
 ///
@@ -21,21 +21,26 @@ fn filter_assets<'a>(
 ///
 /// * `model` - The model to run
 /// * `assets` - The asset pool
-pub fn run(model: &Model, assets: &AssetPool) {
+pub fn run(model: Model, mut assets: AssetPool) {
+    // Commodity prices (endogenous)
+    let mut prices = CommodityPrices::new();
+
     for year in model.iter_years() {
         info!("Milestone year: {year}");
-        for region_id in model.iter_regions() {
-            info!("├── Region: {region_id}");
-            for asset in filter_assets(assets, year, region_id) {
-                info!(
-                    "│   ├── Agent {} has asset {} (commissioned in {})",
-                    asset.agent_id, asset.process.id, asset.commission_year
-                );
 
-                for flow in asset.process.flows.iter() {
-                    info!("│   │   ├── Commodity: {}", flow.commodity.id);
-                }
-            }
-        }
+        // Dispatch optimisation
+        let solution = perform_dispatch_optimisation(&model, &assets, year);
+        update_commodity_flows(&solution, &mut assets);
+        update_commodity_prices(&model.commodities, &solution, &mut prices);
+
+        // Agent investment
+        perform_agent_investment(&model, &mut assets);
     }
+}
+
+/// Get an iterator of active [`Asset`]s for the specified milestone year.
+pub fn filter_assets(assets: &AssetPool, year: u32) -> impl Iterator<Item = &Asset> {
+    assets
+        .iter()
+        .filter(move |asset| asset.commission_year <= year)
 }
