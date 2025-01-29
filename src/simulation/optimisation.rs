@@ -98,7 +98,7 @@ pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u3
     let variables = add_variables(&mut problem, model, assets, year);
 
     // Add constraints
-    add_commodity_balance_constraints(&mut problem, &variables, model, assets, year);
+    add_asset_contraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
     let solution = problem.optimise(Sense::Minimise).solve();
@@ -174,6 +174,26 @@ fn calculate_cost_coefficient(
     1.0
 }
 
+/// Add asset-level constraints
+fn add_asset_contraints(
+    problem: &mut Problem,
+    variables: &VariableMap,
+    model: &Model,
+    assets: &AssetPool,
+    year: u32,
+) {
+    add_commodity_balance_constraints(problem, variables, model, assets, year);
+
+    // **TODO**: Currently it's safe to assume all process flows are non-flexible, as we enforce
+    // this when reading data in. Once we've added support for flexible process flows, we will
+    // need to add different constraints for assets with flexible and non-flexible flows.
+    //
+    // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
+    add_fixed_asset_constraints(problem, variables, model, assets, year);
+
+    add_asset_capacity_constraints(problem, variables, model, assets, year);
+}
+
 /// Add asset-level input-output commodity balances
 fn add_commodity_balance_constraints(
     _problem: &mut Problem,
@@ -183,13 +203,35 @@ fn add_commodity_balance_constraints(
     _year: u32,
 ) {
     info!("Adding commodity balance constraints...");
-    // TODO: Add constraints
 
-    // You add constraints as rows to the problem, like so;
-    //
-    // let var = variables.get(asset.id, &flow.commodity.id, &time_slice);
-    // problem.add_row(-1..=1, &[(var, 1.0)]);
-    //
-    // This means "var must be >= -1 and <= 1". See highs documentation for more
-    // examples.
+    // Sanity check: we rely on the first n values of the dual row values corresponding to the
+    // commodity constraints, so these must be the first rows
+    assert!(
+        _problem.num_rows() == 0,
+        "Commodity balance constraints must be added before other constraints"
+    );
+}
+
+/// Add constraints for non-flexible assets.
+///
+/// Non-flexible assets are those which have a fixed ratio between inputs and outputs.
+fn add_fixed_asset_constraints(
+    _problem: &mut Problem,
+    _variables: &VariableMap,
+    _model: &Model,
+    _assets: &AssetPool,
+    _year: u32,
+) {
+    info!("Adding constraints for non-flexible assets...");
+}
+
+/// Add asset-level capacity and availability constraints
+fn add_asset_capacity_constraints(
+    _problem: &mut Problem,
+    _variables: &VariableMap,
+    _model: &Model,
+    _assets: &AssetPool,
+    _year: u32,
+) {
+    info!("Adding asset-level capacity and availability constraints...");
 }
