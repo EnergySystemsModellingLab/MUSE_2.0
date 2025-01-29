@@ -16,6 +16,13 @@ Once you have done so, select the `stable` toolchain (used by this project) as y
 rustup default stable
 ```
 
+As the project uses the latest stable toolchain, you may see build errors if your toolchain is out
+of date. You can update to the latest version with:
+
+```sh
+rustup update stable
+```
+
 ## Working with the project
 
 To build the project, run:
@@ -24,11 +31,17 @@ To build the project, run:
 cargo build
 ```
 
-To run MUSE with the example input files, you can run:
+Note that if you just want to build-test the project (i.e. check for errors and warnings) without
+building an executable, you can use the `cargo check` command, which is much faster.
+
+To run MUSE 2.0 with the "simple" example, you can run:
 
 ```sh
-cargo run examples/simple
+cargo run run examples/simple
 ```
+
+(Note the two `run`s. The first is for `cargo` and the second is passed as an argument to the built
+`muse2` program.)
 
 Tests can be run with:
 

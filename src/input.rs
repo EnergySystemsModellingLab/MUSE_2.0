@@ -1,7 +1,6 @@
 //! Common routines for handling input data.
 use crate::agent::AssetPool;
 use crate::model::{Model, ModelFile};
-use crate::time_slice::read_time_slice_info;
 use anyhow::{ensure, Context, Result};
 use float_cmp::approx_eq;
 use itertools::Itertools;
@@ -21,6 +20,8 @@ pub mod process;
 pub use process::read_processes;
 pub mod region;
 pub use region::read_regions;
+mod time_slice;
+pub use time_slice::read_time_slice_info;
 
 /// Read a series of type `T`s from a CSV file.
 ///

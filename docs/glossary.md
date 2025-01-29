@@ -40,6 +40,11 @@ produce 31.536 PJ energy output in a year.
 produced and/or consumed by technologies in the model. A *Service Demand* is a type of commodity
 that is defined at the end point of the system.
 
+**Commodity Cost:** Represents a tax or other external cost on a commodity. Commodity costs can be
+applied to all commodity production (sum of output of all processes for that commodity), net
+production (sum of output and input for all processes), or all consumption (sum of input for all
+processes).
+
 **Decision Rule:** The rule via which an *Agent* uses the *Objective/s* to decide between technology
 options to invest in. Examples include single objective, weighted sum between multiple objectives,
 or epsilon constraint where a secondary objective is considered if two options with similar primary
@@ -73,7 +78,7 @@ the next most expensive, etc, until demand is served. Also called “unit commit
 
 **Primary Activity Commodity (PAC):** The PACs specify which output/s are linked to the process
 capacity. The combined output of all PACs cannot exceed the *Asset's* capacity. A user can define
-which output/s are PACs.
+which output/s are PACs. Most, but not all processes will have only one PAC.
 
 **Process/Technology:** An available process that converts input commodities to output commodities.
 Processes have economic attributes of capital cost, fixed operating cost per unit capacity, non-fuel

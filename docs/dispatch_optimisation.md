@@ -2,10 +2,10 @@
 
 Decision variables:
 
-\\( q_{r,a,c,ts} \\). Where *q* represents *c* commodity flow in region *r*, to/from asset *a*, in
-time slice *ts*.
-Negative values are flows into the asset and positive values are flows from the asset. Note that *q*
-is a quantity flow (e.g. energy) as opposed to an intensity (e.g. power).
+\\( q_{r,a,c,ts} \\), where *q* represents *c* commodity flow in region *r*, to/from asset *a*, in
+time slice *ts*. Negative values are flows into the asset and positive values are flows from the
+asset; *q* must be ≤0 for input flows and ≥0 for output flows. Note that *q* is a quantity flow
+(e.g. energy) as opposed to an intensity (e.g. power).
 
 where
 
@@ -29,6 +29,15 @@ each commodity flow.
 $$
   cost_{r,a,c,ts} = var\\_ opex_{r,a,pacs,ts} + flow\\_ cost_{r,a,c,ts} + commodity\\_ cost_{r,c,ts}
 $$
+
+*var\_opex* is the variable operating cost for a PAC. If the commodity is not a PAC, this value is
+zero.
+
+*flow\_cost* is the cost per unit flow. Note that if this is for an input flow, its value should be
+multiplied by &minus;1 so that the impact on the objective function is a positive cost.
+
+*commodity\_cost* is the exogenous (user-defined) cost for a commodity. If none is defined for this
+combination of parameters, this value is zero.
 
 Constraints.
 
