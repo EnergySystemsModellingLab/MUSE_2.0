@@ -9,8 +9,6 @@ use log::info;
 ///
 /// * `model` - The model
 /// * `assets` - The asset pool
-/// * `year` - Current milestone year
-/// * `prices` - Commodity prices
 pub fn perform_agent_investment(_model: &Model, _assets: &mut AssetPool) {
     info!("Performing agent investment...");
 }
