@@ -6,10 +6,8 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use include_dir::{include_dir, Dir};
 use std::path::PathBuf;
-
 /// The directory containing the example models.
 pub const EXAMPLES_DIR: Dir = include_dir!("examples");
-
 #[derive(Parser)]
 #[command(version, about)]
 /// The command line interface for the simulation.
@@ -18,7 +16,6 @@ pub struct Cli {
     /// The available commands.
     pub command: Commands,
 }
-
 #[derive(Subcommand)]
 /// The available commands.
 pub enum Commands {
@@ -35,17 +32,11 @@ pub enum Commands {
         subcommand: ExampleSubcommands,
     },
 }
-
 #[derive(Subcommand)]
 /// The available subcommands for managing example models.
 pub enum ExampleSubcommands {
-    /// List the available example models.
+    /// List available examples.
     List,
-    /// Run specified example model.
-    Run {
-        /// The name of the example model.
-        name: String,
-    },
 }
 
 /// Handle the `run` command.
@@ -58,33 +49,11 @@ pub fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-/// Handle the `example` subcommand.
-pub fn handle_example_subcommand(args: &[String]) -> Result<()> {
-    match args.first().map(|arg| arg.as_str()) {
-        Some("list") => handle_example_list_command(),
-        Some(example_name) => handle_example_run_command(example_name),
-        None => {
-            println!("Usage: muse2 example <list|example-name>");
-            Ok(())
-        }
-    }
-}
-
 /// Handle the `example list` command.
 pub fn handle_example_list_command() -> Result<()> {
     for entry in EXAMPLES_DIR.dirs() {
         println!("{}", entry.path().display());
     }
-    Ok(())
-}
-
-fn handle_example_run_command(example_name: &str) -> Result<()> {
-    let model_dir = std::path::PathBuf::from("examples").join(example_name);
-    let settings = Settings::from_path(&model_dir)?;
-    log::init(settings.log_level.as_deref())?;
-    let model = Model::from_path(&model_dir)?;
-    info!("Model loaded successfully.");
-    crate::simulation::run(&model);
     Ok(())
 }
 
@@ -106,7 +75,6 @@ mod tests {
     #[test]
     fn test_handle_run_command() {
         handle_run_command(&get_model_dir()).unwrap();
-
         // Second time will fail because the logging is already initialised
         assert_eq!(
             handle_run_command(&get_model_dir())
