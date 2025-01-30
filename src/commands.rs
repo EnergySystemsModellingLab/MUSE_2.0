@@ -61,9 +61,9 @@ pub fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
 pub fn handle_example_run_command(name: &str) -> Result<()> {
     // Find the subdirectory in EXAMPLES_DIR whose name matches `name`.
     let sub_dir = EXAMPLES_DIR
-        .dirs()
-        .find(|d| d.path().file_name().map_or(false, |f| f == name))
+        .get_dir(name)
         .context("Directory not found.")?;
+
     // Creates temporary directory
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
     // Copies the contents of the subdirectory to the temporary directory
