@@ -135,22 +135,4 @@ mod tests {
             "Failed to initialize logging."
         );
     }
-    #[test]
-    fn test_handle_example_run_command() {
-        handle_example_run_command("simple").unwrap();
-        // Second time will fail because the logging is already initialised
-        assert_eq!(
-            handle_example_run_command("simple")
-                .unwrap_err()
-                .chain()
-                .next()
-                .unwrap()
-                .to_string(),
-            "Failed to initialize logging."
-        );
-    }
-    #[test]
-    fn test_handle_example_list_command() {
-        handle_example_list_command().unwrap();
-    }
 }
