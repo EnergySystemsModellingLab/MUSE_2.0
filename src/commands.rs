@@ -64,9 +64,9 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
         .dirs()
         .find(|d| d.path().file_name().map_or(false, |f| f == name))
         .context("Directory not found.")?;
-    // creates temporary directory
+    // Creates temporary directory
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
-    // copies the contents of the subdirectory to the temporary directory
+    // Copies the contents of the subdirectory to the temporary directory
     for entry in sub_dir.entries() {
         match entry {
             DirEntry::Dir(d) => {
