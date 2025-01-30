@@ -11,6 +11,7 @@ use tempfile::TempDir;
 
 /// The directory containing the example models.
 pub const EXAMPLES_DIR: Dir = include_dir!("examples");
+
 #[derive(Parser)]
 #[command(version, about)]
 /// The command line interface for the simulation.
@@ -19,6 +20,7 @@ pub struct Cli {
     /// The available commands.
     pub command: Commands,
 }
+
 #[derive(Subcommand)]
 /// The available commands.
 pub enum Commands {
@@ -35,6 +37,7 @@ pub enum Commands {
         subcommand: ExampleSubcommands,
     },
 }
+
 #[derive(Subcommand)]
 /// The available subcommands for managing example models.
 pub enum ExampleSubcommands {
