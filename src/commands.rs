@@ -64,12 +64,12 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
         .dirs()
         .find(|d| d.path().file_name().map_or(false, |f| f == name))
         .context("Directory not found.")?;
-
+    // creates temporary directory
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
+    // copies the contents of the subdirectory to the temporary directory
     for entry in sub_dir.entries() {
         match entry {
             DirEntry::Dir(d) => {
-                // Copy the contents of this subdirectory directly into temp_dir
                 for sub_entry in d.entries() {
                     match sub_entry {
                         DirEntry::File(f) => {
@@ -78,7 +78,7 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
                             fs::write(&file_path, f.contents())?;
                         }
                         DirEntry::Dir(_) => {
-                            // Handle nested directories if needed
+                            return Err(anyhow::anyhow!("Nested directories are not supported."));
                         }
                     }
                 }
