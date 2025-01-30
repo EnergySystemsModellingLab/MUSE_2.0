@@ -102,7 +102,7 @@ fn try_insert_region(
         return match entity_regions.insert(entity_id, RegionSelection::All) {
             None => Ok(()),
             Some(region_name) => Err(anyhow!(
-                "Cannot specify both \"all\" and \"{:?}\" regions for \"{}\".",
+                "Cannot specify both \"all\" and \"{}\" regions for \"{}\".",
                 region_name,
                 entity_name,
             )),
