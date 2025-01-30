@@ -425,10 +425,7 @@ mod tests {
         )]
         .into_iter()
         .collect();
-        assert!(
-            validate_commodities(&commodities, &process_flows_invalid, &regions, &year_range)
-                .is_err()
-        );
+
         // Validate commodities should fail
         assert!(
             validate_commodities(&commodities, &process_flows_invalid, &regions, &year_range)
