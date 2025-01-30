@@ -4,13 +4,13 @@ use crate::{input::load_model, log};
 use ::log::info;
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use include_dir::{include_dir, Dir};
+use include_dir::{include_dir, Dir, DirEntry};
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// The directory containing the example models.
-pub const EXAMPLES_DIR: Dir = include_dir!("examples/simple");
+pub const EXAMPLES_DIR: Dir = include_dir!("examples");
 #[derive(Parser)]
 #[command(version, about)]
 /// The command line interface for the simulation.
@@ -59,23 +59,45 @@ pub fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
 
 /// Handle the `example run` command.
 pub fn handle_example_run_command(name: &str) -> Result<()> {
-    let example_dir = EXAMPLES_DIR
-        .get_dir(name)
-        .context("Example not found.")?
-        .path();
+    // Find the subdirectory in EXAMPLES_DIR whose name matches `name`.
+    let sub_dir = EXAMPLES_DIR
+        .dirs()
+        .find(|d| d.path().file_name().map_or(false, |f| f == name))
+        .context("Directory not found.")?;
+
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
-    for entry in EXAMPLES_DIR.get_dir(name).unwrap().files() {
-        let path = temp_dir.path().join(entry.path().file_name().unwrap());
-        fs::write(&path, entry.contents())?;
+    for entry in sub_dir.entries() {
+        match entry {
+            DirEntry::Dir(d) => {
+                // Copy the contents of this subdirectory directly into temp_dir
+                for sub_entry in d.entries() {
+                    match sub_entry {
+                        DirEntry::File(f) => {
+                            let file_name = f.path().file_name().unwrap();
+                            let file_path = temp_dir.path().join(file_name);
+                            fs::write(&file_path, f.contents())?;
+                        }
+                        DirEntry::Dir(_) => {
+                            // Handle nested directories if needed
+                        }
+                    }
+                }
+            }
+            DirEntry::File(f) => {
+                let file_name = f.path().file_name().unwrap();
+                let file_path = temp_dir.path().join(file_name);
+                fs::write(&file_path, f.contents())?;
+            }
+        }
     }
-    let settings = Settings::from_path(example_dir)?;
+
+    let settings = Settings::from_path(temp_dir.path())?;
     log::init(settings.log_level.as_deref()).context("Failed to initialize logging.")?;
-    let (model, assets) = load_model(example_dir).context("Failed to load model.")?;
-    info!("Model loaded successfully.");
+    let (model, assets) = load_model(temp_dir.path()).context("Failed to load model.")?;
+    info!("Model loaded successfully from directory: {}", name);
     crate::simulation::run(model, assets);
     Ok(())
 }
-
 /// Handle the `example list` command.
 pub fn handle_example_list_command() -> Result<()> {
     for entry in EXAMPLES_DIR.dirs() {
