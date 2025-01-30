@@ -4,7 +4,7 @@ use crate::input::*;
 use crate::process::{Process, ProcessCapacityMap, ProcessFlow, ProcessParameter};
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
@@ -17,6 +17,7 @@ use flow::read_process_flows;
 pub mod parameter;
 use parameter::read_process_parameters;
 pub mod region;
+use crate::time_slice::TimeSliceID;
 use anyhow::bail;
 use region::read_process_regions;
 
@@ -70,7 +71,7 @@ pub fn read_processes(
     let regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
     // Validate commodities after the flows have been read
-    validate_commodities(commodities, &flows)?;
+    validate_commodities(commodities, &flows, &regions, year_range)?;
 
     create_process_map(
         descriptions.into_values(),
@@ -85,10 +86,18 @@ pub fn read_processes(
 fn validate_commodities(
     commodities: &HashMap<Rc<str>, Rc<Commodity>>,
     flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
+    regions: &HashMap<Rc<str>, RegionSelection>,
+    year_range: &RangeInclusive<u32>,
 ) -> anyhow::Result<()> {
     for (commodity_id, commodity) in commodities {
-        if commodity.kind == CommodityType::SupplyEqualsDemand {
-            validate_sed_commodity(commodity_id, commodity, flows)?;
+        match commodity.kind {
+            CommodityType::SupplyEqualsDemand => {
+                validate_sed_commodity(commodity_id, commodity, flows)?;
+            }
+            CommodityType::ServiceDemand => {
+                validate_svd_commodity(commodity_id, commodity, flows, regions, year_range)?;
+            }
+            _ => {}
         }
     }
     Ok(())
@@ -120,6 +129,48 @@ fn validate_sed_commodity(
         "Commodity {} of 'SED' type must have both producer and consumer processes",
         commodity_id
     );
+}
+
+fn validate_svd_commodity(
+    commodity_id: &Rc<str>,
+    commodity: &Rc<Commodity>,
+    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
+    regions: &HashMap<Rc<str>, RegionSelection>,
+    year_range: &RangeInclusive<u32>,
+) -> Result<()> {
+    let base_year = *year_range.start();
+    let time_slice = TimeSliceID {
+        season: "all-year".into(),
+        time_of_day: "all-day".into(),
+    };
+
+    for region_id in regions.keys() {
+        if let Some(demand) = commodity
+            .demand
+            .get(region_id.clone(), base_year, time_slice.clone())
+        {
+            if demand > 0.0 {
+                let mut has_producer = false;
+
+                for flow in flows.values().flatten() {
+                    if Rc::ptr_eq(&flow.commodity, commodity) && flow.flow > 0.0 {
+                        has_producer = true;
+                        break;
+                    }
+                }
+
+                if !has_producer {
+                    bail!(
+                        "Commodity {} of 'SVD' type must have a producer process for region {}",
+                        commodity_id,
+                        region_id
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn create_process_map<I>(
@@ -351,8 +402,14 @@ mod tests {
         .into_iter()
         .collect();
 
+        // Create mock regions
+        let data = get_process_data();
+        let regions = data.regions;
+
+        let year_range = 2010..=2020;
+
         // Validate commodities
-        assert!(validate_commodities(&commodities, &process_flows).is_ok());
+        assert!(validate_commodities(&commodities, &process_flows, &regions, &year_range).is_ok());
 
         // Modify flows to make the validation fail
         let process_flows_invalid: HashMap<Rc<str>, Vec<ProcessFlow>> = [(
@@ -368,8 +425,14 @@ mod tests {
         )]
         .into_iter()
         .collect();
-
+        assert!(
+            validate_commodities(&commodities, &process_flows_invalid, &regions, &year_range)
+                .is_err()
+        );
         // Validate commodities should fail
-        assert!(validate_commodities(&commodities, &process_flows_invalid).is_err());
+        assert!(
+            validate_commodities(&commodities, &process_flows_invalid, &regions, &year_range)
+                .is_err()
+        );
     }
 }
