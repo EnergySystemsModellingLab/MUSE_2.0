@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 
 /// The directory containing the example models.
-pub const EXAMPLES_DIR: Dir = include_dir!("examples");
+pub const EXAMPLES_DIR: Dir = include_dir!("examples/simple");
 #[derive(Parser)]
 #[command(version, about)]
 /// The command line interface for the simulation.
