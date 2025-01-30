@@ -125,8 +125,8 @@ mod tests {
     #[test]
     fn test_handle_run_command() {
         handle_run_command(&get_model_dir()).unwrap();
-        // Second time will fail because the logging is already initialised
 
+        // Second time will fail because the logging is already initialised
         assert_eq!(
             handle_run_command(&get_model_dir())
                 .unwrap_err()
