@@ -93,8 +93,7 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
         }
     }
 
-    handle_run_command(temp_dir.path())?;
-    Ok(())
+    handle_run_command(temp_dir.path())
 }
 
 /// Handle the `example list` command.
