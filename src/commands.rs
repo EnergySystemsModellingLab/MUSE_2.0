@@ -67,6 +67,7 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
 
     // Creates temporary directory
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
+
     // Copies the contents of the subdirectory to the temporary directory
     for entry in sub_dir.entries() {
         match entry {
@@ -91,6 +92,7 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
             }
         }
     }
+
     handle_run_command(temp_dir.path())?;
     Ok(())
 }
