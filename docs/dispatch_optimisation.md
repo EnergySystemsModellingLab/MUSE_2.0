@@ -27,7 +27,7 @@ Where *cost* is a vector of cost coefficients representing the cost of
 each commodity flow.
 
 $$
-  cost_{r,a,c,ts} = var\\_ opex_{r,a,pacs,ts} + flow\\_ cost_{r,a,c,ts} + commodity\\_ cost_{r,c,ts}
+  cost_{r,a,c,ts} = var\\_ opex_{r,a,pacs} + flow\\_ cost_{r,a,c} + commodity\\_ cost_{r,c,ts}
 $$
 
 *var\_opex* is the variable operating cost for a PAC. If the commodity is not a PAC, this value is
