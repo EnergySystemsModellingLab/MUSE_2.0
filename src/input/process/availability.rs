@@ -113,23 +113,15 @@ mod tests {
     use std::iter;
 
     fn get_time_slice_info() -> TimeSliceInfo {
-        let slices = [
-            TimeSliceID {
-                season: "winter".into(),
-                time_of_day: "day".into(),
-            },
-            TimeSliceID {
-                season: "summer".into(),
-                time_of_day: "night".into(),
-            },
-        ];
+        let time_slice = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "day".into(),
+        };
 
         TimeSliceInfo {
-            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
-            times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            fractions: [(slices[0].clone(), 0.5), (slices[1].clone(), 0.5)]
-                .into_iter()
-                .collect(),
+            seasons: iter::once("winter".into()).collect(),
+            times_of_day: iter::once("day".into()).collect(),
+            fractions: iter::once((time_slice, 0.5)).collect(),
         }
     }
 
