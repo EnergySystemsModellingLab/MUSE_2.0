@@ -1,4 +1,5 @@
 //! The command line interface for the simulation.
+use crate::output::create_output_directory;
 use crate::settings::Settings;
 use crate::{input::load_model, log};
 use ::log::info;
@@ -52,8 +53,12 @@ pub enum ExampleSubcommands {
 
 /// Handle the `run` command.
 pub fn handle_run_command(model_dir: &Path) -> Result<()> {
-    let settings = Settings::from_path(model_dir)?;
-    log::init(settings.log_level.as_deref()).context("Failed to initialize logging.")?;
+    let settings = Settings::from_path(model_dir).context("Failed to load settings.")?;
+    let output_path =
+        create_output_directory(model_dir).context("Failed to create output directory.")?;
+    log::init(settings.log_level.as_deref(), &output_path)
+        .context("Failed to initialize logging.")?;
+    info!("Output directory created: {}", output_path.display());
     let (model, assets) = load_model(model_dir).context("Failed to load model.")?;
     info!("Model loaded successfully.");
     crate::simulation::run(model, assets);
