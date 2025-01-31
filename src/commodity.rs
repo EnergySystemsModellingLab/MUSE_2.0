@@ -84,14 +84,14 @@ impl CommodityCostMap {
     /// Retrieve a [`CommodityCost`] from the map
     pub fn get(
         &self,
-        region_id: Rc<str>,
+        region_id: &Rc<str>,
         year: u32,
-        time_slice: TimeSliceID,
+        time_slice: &TimeSliceID,
     ) -> Option<&CommodityCost> {
         let key = CommodityCostKey {
-            region_id,
+            region_id: Rc::clone(region_id),
             year,
-            time_slice,
+            time_slice: time_slice.clone(),
         };
         self.0.get(&key)
     }
@@ -186,6 +186,6 @@ mod tests {
         assert!(map
             .insert("GBR".into(), 2010, ts.clone(), value.clone())
             .is_none());
-        assert_eq!(map.get("GBR".into(), 2010, ts).unwrap(), &value);
+        assert_eq!(map.get(&"GBR".into(), 2010, &ts).unwrap(), &value);
     }
 }
