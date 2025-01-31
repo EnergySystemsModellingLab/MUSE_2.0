@@ -93,8 +93,8 @@ pub struct Asset {
     pub process: Rc<Process>,
     /// The region in which the asset is located
     pub region_id: Rc<str>,
-    /// Capacity of asset
-    pub capacity: f64,
+    /// The maximum commodity output per year
+    pub capacity_a: f64,
     /// The year the asset comes online
     pub commission_year: u32,
 }
