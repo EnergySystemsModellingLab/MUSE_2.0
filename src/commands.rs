@@ -71,20 +71,7 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
     // Copies the contents of the subdirectory to the temporary directory
     for entry in sub_dir.entries() {
         match entry {
-            DirEntry::Dir(d) => {
-                for sub_entry in d.entries() {
-                    match sub_entry {
-                        DirEntry::File(f) => {
-                            let file_name = f.path().file_name().unwrap();
-                            let file_path = temp_dir.path().join(file_name);
-                            fs::write(&file_path, f.contents())?;
-                        }
-                        DirEntry::Dir(_) => {
-                            return Err(anyhow::anyhow!("Nested directories are not supported."));
-                        }
-                    }
-                }
-            }
+            DirEntry::Dir(_) => panic!("Subdirectories in examples not supported"),
             DirEntry::File(f) => {
                 let file_name = f.path().file_name().unwrap();
                 let file_path = temp_dir.path().join(file_name);
