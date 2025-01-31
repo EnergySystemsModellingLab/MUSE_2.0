@@ -199,10 +199,13 @@ fn calculate_cost_coefficient(
 
     // If there is a user-provided commodity cost for this combination of parameters, include it
     if let Some(cost) = flow.commodity.costs.get(&asset.region_id, year, time_slice) {
-        if cost.balance_type == BalanceType::Net
-            || (cost.balance_type == BalanceType::Consumption && flow.flow < 0.0)
-            || (cost.balance_type == BalanceType::Production && flow.flow > 0.0)
-        {
+        let apply_cost = match cost.balance_type {
+            BalanceType::Net => true,
+            BalanceType::Consumption => flow.flow < 0.0,
+            BalanceType::Production => flow.flow > 0.0,
+        };
+
+        if apply_cost {
             coeff += cost.value;
         }
     }
