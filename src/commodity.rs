@@ -48,7 +48,7 @@ pub struct CommodityCost {
 }
 
 /// Used for looking up [`CommodityCost`]s in a [`CommodityCostMap`]
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 struct CommodityCostKey {
     region_id: Rc<str>,
     year: u32,
@@ -56,7 +56,7 @@ struct CommodityCostKey {
 }
 
 /// A data structure for easy lookup of [`CommodityCost`]s
-#[derive(PartialEq, Debug, Default)]
+#[derive(PartialEq, Debug, Default, Clone)]
 pub struct CommodityCostMap(HashMap<CommodityCostKey, CommodityCost>);
 
 impl CommodityCostMap {
