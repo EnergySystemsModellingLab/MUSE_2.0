@@ -6,7 +6,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use include_dir::{include_dir, Dir, DirEntry};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
 /// The directory containing the example models.
@@ -51,7 +51,7 @@ pub enum ExampleSubcommands {
 }
 
 /// Handle the `run` command.
-pub fn handle_run_command(model_dir: &PathBuf) -> Result<()> {
+pub fn handle_run_command(model_dir: &Path) -> Result<()> {
     let settings = Settings::from_path(model_dir)?;
     log::init(settings.log_level.as_deref()).context("Failed to initialize logging.")?;
     let (model, assets) = load_model(model_dir).context("Failed to load model.")?;
@@ -91,12 +91,7 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
             }
         }
     }
-
-    let settings = Settings::from_path(temp_dir.path())?;
-    log::init(settings.log_level.as_deref()).context("Failed to initialize logging.")?;
-    let (model, assets) = load_model(temp_dir.path()).context("Failed to load model.")?;
-    info!("Model loaded successfully from directory: {}", name);
-    crate::simulation::run(model, assets);
+    handle_run_command(temp_dir.path())?;
     Ok(())
 }
 
