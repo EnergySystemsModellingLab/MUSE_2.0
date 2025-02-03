@@ -1,6 +1,8 @@
 //! Regions represent different geographical areas in which agents, processes, etc. are active.
+use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::rc::Rc;
 
 /// Represents a region with an ID and a longer description.
@@ -28,6 +30,15 @@ impl RegionSelection {
         match self {
             Self::All => true,
             Self::Some(regions) => regions.contains(region_id),
+        }
+    }
+}
+
+impl Display for RegionSelection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::All => write!(f, "all"),
+            Self::Some(regions) => write!(f, "{}", regions.iter().join(", ")),
         }
     }
 }
