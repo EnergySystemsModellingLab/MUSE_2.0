@@ -5,7 +5,7 @@ use crate::agent::{Asset, AssetPool};
 use crate::model::Model;
 use crate::process::ProcessFlow;
 use crate::simulation::filter_assets;
-use crate::time_slice::TimeSliceID;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use log::{error, info};
@@ -27,7 +27,24 @@ type Variable = highs::Col;
 /// 1. In order define constraints for the optimisation
 /// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
 ///    are reading the results of the optimisation.
-pub type VariableMap = IndexMap<VariableMapKey, Variable>;
+#[derive(Default)]
+pub struct VariableMap(IndexMap<VariableMapKey, Variable>);
+
+impl VariableMap {
+    /// Get the [`Variable`] corresponding to the given parameters.
+    fn get(&self, asset_id: u32, commodity_id: &Rc<str>, time_slice: &TimeSliceID) -> Variable {
+        let key = VariableMapKey {
+            asset_id,
+            commodity_id: Rc::clone(commodity_id),
+            time_slice: time_slice.clone(),
+        };
+
+        *self
+            .0
+            .get(&key)
+            .expect("No variable found for given params")
+    }
+}
 
 /// A key for a [`VariableMap`]
 #[derive(Eq, PartialEq, Hash)]
@@ -61,6 +78,7 @@ impl Solution {
     /// in the simulation will necessarily be represented.
     pub fn iter_commodity_flows_for_assets(&self) -> impl Iterator<Item = (&VariableMapKey, f64)> {
         self.variables
+            .0
             .keys()
             .zip(self.solution.columns().iter().copied())
     }
@@ -95,11 +113,10 @@ pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u3
 
     // Set up problem
     let mut problem = Problem::default();
-    let mut variables = VariableMap::new();
-    for asset in filter_assets(assets, year) {
-        add_variables(&mut problem, &mut variables, model, asset, year);
-        add_commodity_balance_constraints(&mut problem, &variables, model, asset);
-    }
+    let variables = add_variables(&mut problem, model, assets, year);
+
+    // Add constraints
+    add_asset_contraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
     let solution = problem.optimise(Sense::Minimise).solve();
@@ -130,31 +147,38 @@ pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u3
 /// A [`VariableMap`] with the problem's variables as values.
 fn add_variables(
     problem: &mut Problem,
-    variables: &mut VariableMap,
     model: &Model,
-    asset: &Asset,
+    assets: &AssetPool,
     year: u32,
-) {
+) -> VariableMap {
     info!("Adding variables to problem...");
+    let mut variables = VariableMap::default();
 
-    for flow in asset.process.flows.iter() {
-        for time_slice in model.time_slice_info.iter_ids() {
-            let coeff = calculate_cost_coefficient(year, asset, flow, time_slice);
+    for asset in filter_assets(assets, year) {
+        for flow in asset.process.flows.iter() {
+            for time_slice in model.time_slice_info.iter_ids() {
+                let coeff = calculate_cost_coefficient(year, asset, flow, time_slice);
 
-            // var's value must be <= 0 for inputs and >= 0 for outputs
-            let var = if flow.flow < 0.0 {
-                problem.add_column(coeff, ..=0.0)
-            } else {
-                problem.add_column(coeff, 0.0..)
-            };
+                // var's value must be <= 0 for inputs and >= 0 for outputs
+                let var = if flow.flow < 0.0 {
+                    problem.add_column(coeff, ..=0.0)
+                } else {
+                    problem.add_column(coeff, 0.0..)
+                };
 
-            let key =
-                VariableMapKey::new(asset.id, Rc::clone(&flow.commodity.id), time_slice.clone());
+                let key = VariableMapKey::new(
+                    asset.id,
+                    Rc::clone(&flow.commodity.id),
+                    time_slice.clone(),
+                );
 
-            let existing = variables.insert(key, var).is_some();
-            assert!(!existing, "Duplicate entry for var");
+                let existing = variables.0.insert(key, var).is_some();
+                assert!(!existing, "Duplicate entry for var");
+            }
         }
     }
+
+    variables
 }
 
 /// Calculate the cost coefficient for a decision variable
@@ -168,26 +192,93 @@ fn calculate_cost_coefficient(
     1.0
 }
 
+/// Add asset-level constraints
+fn add_asset_contraints(
+    problem: &mut Problem,
+    variables: &VariableMap,
+    model: &Model,
+    assets: &AssetPool,
+    year: u32,
+) {
+    add_commodity_balance_constraints(problem, variables, model, assets, year);
+
+    // **TODO**: Currently it's safe to assume all process flows are non-flexible, as we enforce
+    // this when reading data in. Once we've added support for flexible process flows, we will
+    // need to add different constraints for assets with flexible and non-flexible flows.
+    //
+    // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
+    add_fixed_asset_constraints(problem, variables, assets, year, &model.time_slice_info);
+
+    add_asset_capacity_constraints(problem, variables, model, assets, year);
+}
+
 /// Add asset-level input-output commodity balances
 fn add_commodity_balance_constraints(
     _problem: &mut Problem,
     _variables: &VariableMap,
-    model: &Model,
-    asset: &Asset,
+    _model: &Model,
+    _assets: &AssetPool,
+    _year: u32,
 ) {
     info!("Adding commodity balance constraints...");
 
-    for _flow in asset.process.flows.iter() {
-        for _time_slice in model.time_slice_info.iter_ids() {
-            // TODO: Add constraints
+    // Sanity check: we rely on the first n values of the dual row values corresponding to the
+    // commodity constraints, so these must be the first rows
+    assert!(
+        _problem.num_rows() == 0,
+        "Commodity balance constraints must be added before other constraints"
+    );
+}
 
-            // You add constraints as rows to the problem, like so;
-            //
-            // let var = variables.get(asset.id, &flow.commodity.id, &time_slice);
-            // problem.add_row(-1..=1, &[(var, 1.0)]);
-            //
-            // This means "var must be >= -1 and <= 1". See highs documentation for more
-            // examples.
+/// Add constraints for non-flexible assets.
+///
+/// Non-flexible assets are those which have a fixed ratio between inputs and outputs.
+///
+/// See description in [the dispatch optimisation documentation][1].
+///
+/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#non-flexible-assets
+fn add_fixed_asset_constraints(
+    problem: &mut Problem,
+    variables: &VariableMap,
+    assets: &AssetPool,
+    year: u32,
+    time_slice_info: &TimeSliceInfo,
+) {
+    info!("Adding constraints for non-flexible assets...");
+
+    for asset in filter_assets(assets, year) {
+        // Get first PAC. unwrap is safe because all processes have at least one PAC.
+        let pac1 = asset.process.iter_pacs().next().unwrap();
+
+        for time_slice in time_slice_info.iter_ids() {
+            let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
+            let pac_term = (pac_var, -1.0 / pac1.flow);
+
+            for flow in asset.process.flows.iter() {
+                // Don't add a constraint for the PAC itself
+                if Rc::ptr_eq(&flow.commodity, &pac1.commodity) {
+                    continue;
+                }
+
+                // We are enforcing that (var / flow) - (pac_var / pac_flow) = 0
+                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
+                problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
+            }
         }
     }
+}
+
+/// Add asset-level capacity and availability constraints
+///
+/// See description in [the dispatch optimisation documentation][1].
+///
+/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#asset-level-capacity-and-availability-constraints
+fn add_asset_capacity_constraints(
+    _problem: &mut Problem,
+    _variables: &VariableMap,
+    _model: &Model,
+    _assets: &AssetPool,
+    _year: u32,
+) {
+    info!("Adding asset-level capacity and availability constraints...");
 }

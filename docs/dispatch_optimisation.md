@@ -55,7 +55,7 @@ defined for each commodity. Input/output ratio is a fixed value.
 
 For each *r*, *a*, *ts*, *c*:
 
-$$ \frac{q_{r,a,c,ts}}{flow_{r,a,ts,c}} - \frac{q_{r,a,pac1,ts}}{flow_{r,a,ts,pac1}} = 0 $$
+$$ \frac{q_{r,a,c,ts}}{flow_{r,a,c}} - \frac{q_{r,a,pac1,ts}}{flow_{r,a,pac1}} = 0 $$
 
 for all commodity flows that the process has (except *pac1*). Where *pac1* is the first listed
 primary activity commodity for the asset (i.e. all input and output flows are made proportional to
