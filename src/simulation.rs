@@ -1,5 +1,5 @@
 //! Functionality for running the MUSE 2.0 simulation.
-use crate::agent::{Asset, AssetPool};
+use crate::agent::AssetPool;
 use crate::model::Model;
 use log::info;
 use std::collections::HashMap;
@@ -28,6 +28,9 @@ pub fn run(model: Model, mut assets: AssetPool) {
     for year in model.iter_years() {
         info!("Milestone year: {year}");
 
+        // Commission new assets for this milestone year
+        assets.commission_new(year);
+
         // Dispatch optimisation
         let solution = perform_dispatch_optimisation(&model, &assets, year);
         update_commodity_flows(&solution, &mut assets);
@@ -36,11 +39,4 @@ pub fn run(model: Model, mut assets: AssetPool) {
         // Agent investment
         perform_agent_investment(&model, &mut assets);
     }
-}
-
-/// Get an iterator of active [`Asset`]s for the specified milestone year.
-pub fn filter_assets(assets: &AssetPool, year: u32) -> impl Iterator<Item = &Asset> {
-    assets
-        .iter()
-        .filter(move |asset| asset.commission_year <= year)
 }

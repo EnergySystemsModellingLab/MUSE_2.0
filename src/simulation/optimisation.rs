@@ -4,7 +4,6 @@
 use crate::agent::{Asset, AssetPool};
 use crate::model::Model;
 use crate::process::ProcessFlow;
-use crate::simulation::filter_assets;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
@@ -154,7 +153,7 @@ fn add_variables(
     info!("Adding variables to problem...");
     let mut variables = VariableMap::default();
 
-    for asset in filter_assets(assets, year) {
+    for asset in assets.iter() {
         for flow in asset.process.flows.iter() {
             for time_slice in model.time_slice_info.iter_ids() {
                 let coeff = calculate_cost_coefficient(year, asset, flow, time_slice);
@@ -207,9 +206,9 @@ fn add_asset_contraints(
     // need to add different constraints for assets with flexible and non-flexible flows.
     //
     // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
-    add_fixed_asset_constraints(problem, variables, assets, year, &model.time_slice_info);
+    add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
 
-    add_asset_capacity_constraints(problem, variables, assets, year, &model.time_slice_info);
+    add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
 }
 
 /// Add asset-level input-output commodity balances
@@ -241,12 +240,11 @@ fn add_fixed_asset_constraints(
     problem: &mut Problem,
     variables: &VariableMap,
     assets: &AssetPool,
-    year: u32,
     time_slice_info: &TimeSliceInfo,
 ) {
     info!("Adding constraints for non-flexible assets...");
 
-    for asset in filter_assets(assets, year) {
+    for asset in assets.iter() {
         // Get first PAC. unwrap is safe because all processes have at least one PAC.
         let pac1 = asset.process.iter_pacs().next().unwrap();
 
@@ -281,13 +279,12 @@ fn add_asset_capacity_constraints(
     problem: &mut Problem,
     variables: &VariableMap,
     assets: &AssetPool,
-    year: u32,
     time_slice_info: &TimeSliceInfo,
 ) {
     info!("Adding asset-level capacity and availability constraints...");
 
     let mut terms = Vec::new();
-    for asset in filter_assets(assets, year) {
+    for asset in assets.iter() {
         for time_slice in time_slice_info.iter_ids() {
             let mut is_input = false; // NB: there will be at least one PAC
             for flow in asset.process.iter_pacs() {

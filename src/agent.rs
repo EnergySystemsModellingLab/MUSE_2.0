@@ -113,17 +113,41 @@ impl Asset {
 }
 
 /// A pool of [`Asset`]s
-pub struct AssetPool(Vec<Asset>);
+pub struct AssetPool {
+    /// The pool of assets, both active and yet to be commissioned.
+    ///
+    /// Sorted in order of commission year.
+    assets: Vec<Asset>,
+    /// Current milestone year.
+    current_year: u32,
+}
 
 impl AssetPool {
     /// Create a new [`AssetPool`]
-    pub fn new(assets: Vec<Asset>) -> Self {
-        Self(assets)
+    pub fn new(mut assets: Vec<Asset>) -> Self {
+        // Sort in order of commission year
+        assets.sort_by(|a, b| a.commission_year.cmp(&b.commission_year));
+
+        Self {
+            assets,
+            current_year: 0,
+        }
+    }
+
+    /// Commission new assets for the specified milestone year
+    pub fn commission_new(&mut self, year: u32) {
+        assert!(
+            year >= self.current_year,
+            "Assets have already been commissioned for year {year}"
+        );
+        self.current_year = year;
     }
 
     /// Iterate over active assets
     pub fn iter(&self) -> impl Iterator<Item = &Asset> {
-        self.0.iter()
+        self.assets
+            .iter()
+            .take_while(|asset| asset.commission_year <= self.current_year)
     }
 }
 
@@ -131,8 +155,9 @@ impl AssetPool {
 mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{FlowType, ProcessFlow, ProcessParameter};
+    use crate::process::{FlowType, Process, ProcessCapacityMap, ProcessFlow, ProcessParameter};
     use crate::time_slice::TimeSliceLevel;
+    use itertools::{assert_equal, Itertools};
     use std::iter;
 
     #[test]
@@ -187,5 +212,71 @@ mod tests {
         };
 
         assert_eq!(asset.get_activity_limits(&time_slice), 6.0..=f64::INFINITY);
+    }
+
+    fn create_asset_pool() -> AssetPool {
+        let process_param = ProcessParameter {
+            process_id: "process1".into(),
+            years: 2010..=2020,
+            capital_cost: 5.0,
+            fixed_operating_cost: 2.0,
+            variable_operating_cost: 1.0,
+            lifetime: 5,
+            discount_rate: 0.9,
+            cap2act: 1.0,
+        };
+        let process = Rc::new(Process {
+            id: "process1".into(),
+            description: "Description".into(),
+            capacity_fractions: ProcessCapacityMap::new(),
+            flows: vec![],
+            parameter: process_param.clone(),
+            regions: RegionSelection::All,
+        });
+        let future = [2020, 2010]
+            .map(|year| Asset {
+                id: 0,
+                agent_id: "agent1".into(),
+                process: Rc::clone(&process),
+                region_id: "GBR".into(),
+                capacity: 1.0,
+                commission_year: year,
+            })
+            .into_iter()
+            .collect_vec();
+
+        AssetPool::new(future)
+    }
+
+    #[test]
+    fn test_asset_pool_new() {
+        let assets = create_asset_pool();
+        assert!(assets.current_year == 0);
+
+        // Should be in order of commission year
+        assert!(assets.assets.len() == 2);
+        assert!(assets.assets[0].commission_year == 2010);
+        assert!(assets.assets[1].commission_year == 2020);
+    }
+
+    #[test]
+    fn test_asset_pool_commission_new() {
+        // Asset to be commissioned in this year
+        let mut assets = create_asset_pool();
+        assets.commission_new(2010);
+        assert!(assets.current_year == 2010);
+        assert_equal(assets.iter(), iter::once(&assets.assets[0]));
+
+        // Commission year has passed
+        let mut assets = create_asset_pool();
+        assets.commission_new(2011);
+        assert!(assets.current_year == 2011);
+        assert_equal(assets.iter(), iter::once(&assets.assets[0]));
+
+        // Nothing to commission for this year
+        let mut assets = create_asset_pool();
+        assets.commission_new(2000);
+        assert!(assets.current_year == 2000);
+        assert!(assets.iter().next().is_none()); // no active assets
     }
 }
