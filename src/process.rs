@@ -29,8 +29,7 @@ impl Process {
 ///
 /// The capacity value is calculated as availability multiplied by time slice length. Note that it
 /// is a *fraction* of capacity for the year; to calculate *actual* capacity for a given time slice
-/// you need to know the maximum capacity for the specific instance of a [`Process`] in use (e.g.
-/// given by [`Asset::capacity`](crate::agent::Asset::capacity)).
+/// you need to know the maximum capacity for the specific instance of a [`Process`] in use.
 ///
 /// The capacity is given as a range, depending on the user-specified limit type and value for
 /// availability.
