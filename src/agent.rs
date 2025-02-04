@@ -84,11 +84,20 @@ pub enum ObjectiveType {
     EquivalentAnnualCost,
 }
 
+/// A unique identifier for an asset
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct AssetID(u32);
+
+impl AssetID {
+    /// Sentinel value indicating that the asset is not active
+    pub const INVALID: AssetID = AssetID(u32::MAX);
+}
+
 /// An asset controlled by an agent.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Asset {
     /// A unique identifier for the asset
-    pub id: u32,
+    pub id: AssetID,
     /// A unique identifier for the agent
     pub agent_id: Rc<str>,
     /// The [`Process`] that this asset corresponds to
@@ -102,6 +111,27 @@ pub struct Asset {
 }
 
 impl Asset {
+    /// Create a new [`Asset`].
+    ///
+    /// The `id` field is initially set to [`AssetID::INVALID`], but is changed to a unique value
+    /// when the asset is commissioned.
+    pub fn new(
+        agent_id: Rc<str>,
+        process: Rc<Process>,
+        region_id: Rc<str>,
+        capacity: f64,
+        commission_year: u32,
+    ) -> Self {
+        Self {
+            id: AssetID::INVALID,
+            agent_id,
+            process,
+            region_id,
+            capacity,
+            commission_year,
+        }
+    }
+
     /// The last year in which this asset should be decommissioned
     pub fn decommission_year(&self) -> u32 {
         self.commission_year + self.process.parameter.lifetime
@@ -132,6 +162,11 @@ impl AssetPool {
     pub fn new(mut assets: Vec<Asset>) -> Self {
         // Sort in order of commission year
         assets.sort_by(|a, b| a.commission_year.cmp(&b.commission_year));
+
+        // Assign each asset a unique ID
+        for (id, asset) in assets.iter_mut().enumerate() {
+            asset.id = AssetID(id as u32);
+        }
 
         Self {
             assets,
@@ -218,7 +253,7 @@ mod tests {
             regions: RegionSelection::All,
         });
         let asset = Asset {
-            id: 0,
+            id: AssetID(0),
             agent_id: "agent1".into(),
             process: Rc::clone(&process),
             region_id: "GBR".into(),
@@ -249,13 +284,14 @@ mod tests {
             regions: RegionSelection::All,
         });
         let future = [2020, 2010]
-            .map(|year| Asset {
-                id: 0,
-                agent_id: "agent1".into(),
-                process: Rc::clone(&process),
-                region_id: "GBR".into(),
-                capacity: 1.0,
-                commission_year: year,
+            .map(|year| {
+                Asset::new(
+                    "agent1".into(),
+                    Rc::clone(&process),
+                    "GBR".into(),
+                    1.0,
+                    year,
+                )
             })
             .into_iter()
             .collect_vec();
