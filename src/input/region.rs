@@ -88,7 +88,6 @@ where
 }
 
 /// Try to insert a region ID into the specified map
-#[must_use]
 fn try_insert_region(
     entity_id: Rc<str>,
     region_id: &str,
