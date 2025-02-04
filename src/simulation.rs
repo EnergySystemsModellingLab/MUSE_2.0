@@ -28,6 +28,9 @@ pub fn run(model: Model, mut assets: AssetPool) {
     for year in model.iter_years() {
         info!("Milestone year: {year}");
 
+        // Commission new assets for this milestone year
+        assets.commission_new(year);
+
         // Dispatch optimisation
         let solution = perform_dispatch_optimisation(&model, &assets, year);
         update_commodity_flows(&solution, &mut assets);
@@ -39,8 +42,9 @@ pub fn run(model: Model, mut assets: AssetPool) {
 }
 
 /// Get an iterator of active [`Asset`]s for the specified milestone year.
-pub fn filter_assets(assets: &AssetPool, year: u32) -> impl Iterator<Item = &Asset> {
-    assets
-        .iter()
-        .filter(move |asset| asset.commission_year <= year)
+///
+/// **TODO:** Users of this function should just use `assets.iter()` directly. Once we've converted
+/// them all over, we can delete this.
+pub fn filter_assets(assets: &AssetPool, _year: u32) -> impl Iterator<Item = &Asset> {
+    assets.iter()
 }
