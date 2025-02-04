@@ -1,9 +1,10 @@
 #![allow(missing_docs)]
 use crate::commodity::Commodity;
 use crate::region::RegionSelection;
-use crate::time_slice::TimeSliceSelection;
+use crate::time_slice::TimeSliceID;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
+use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -11,7 +12,7 @@ use std::rc::Rc;
 pub struct Process {
     pub id: Rc<str>,
     pub description: String,
-    pub availabilities: Vec<ProcessAvailability>,
+    pub capacity_fractions: ProcessCapacityMap,
     pub flows: Vec<ProcessFlow>,
     pub parameter: ProcessParameter,
     pub regions: RegionSelection,
@@ -24,28 +25,16 @@ impl Process {
     }
 }
 
-/// The availabilities for a process over time slices
-#[derive(PartialEq, Debug)]
-pub struct ProcessAvailability {
-    /// Unique identifier for the process
-    pub process_id: String,
-    /// The limit type - lower bound, upper bound or equality
-    pub limit_type: LimitType,
-    /// The time slice to which the availability applies
-    pub time_slice: TimeSliceSelection,
-    /// The availability value, between 0 and 1 inclusive
-    pub value: f64,
-}
-
-#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
-pub enum LimitType {
-    #[string = "lo"]
-    LowerBound,
-    #[string = "up"]
-    UpperBound,
-    #[string = "fx"]
-    Equality,
-}
+/// A map indicating capacity limits for a [`Process`] throughout the year.
+///
+/// The capacity value is calculated as availability multiplied by time slice length. Note that it
+/// is a *fraction* of capacity for the year; to calculate *actual* capacity for a given time slice
+/// you need to know the maximum capacity for the specific instance of a [`Process`] in use (e.g.
+/// given by [`Asset::capacity`](crate::agent::Asset::capacity)).
+///
+/// The capacity is given as a range, depending on the user-specified limit type and value for
+/// availability.
+pub type ProcessCapacityMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
 
 #[derive(PartialEq, Debug, Deserialize, Clone)]
 pub struct ProcessFlow {

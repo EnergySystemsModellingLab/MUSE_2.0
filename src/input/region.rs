@@ -1,7 +1,7 @@
 //! Code for reading region-related information from CSV files.
 use super::*;
 use crate::region::{Region, RegionSelection};
-use anyhow::{ensure, Context, Result};
+use anyhow::{anyhow, ensure, Context, Result};
 use serde::de::DeserializeOwned;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -74,12 +74,9 @@ where
         let entity_id = entity_ids.get_id(entity.get_id())?;
         let region_id = entity.get_region_id();
 
-        let succeeded = try_insert_region(entity_id, region_id, region_ids, &mut entity_regions);
-
-        ensure!(
-            succeeded,
+        try_insert_region(entity_id, region_id, region_ids, &mut entity_regions).context(
             "Invalid regions specified for entity. Must specify either unique region IDs or \"all\"."
-        );
+        )?;
     }
 
     ensure!(
@@ -97,19 +94,24 @@ fn try_insert_region(
     region_id: &str,
     region_ids: &HashSet<Rc<str>>,
     entity_regions: &mut HashMap<Rc<str>, RegionSelection>,
-) -> bool {
+) -> Result<()> {
+    let entity_name = entity_id.clone();
+
     if region_id.eq_ignore_ascii_case("all") {
         // Valid for all regions
-        return entity_regions
-            .insert(entity_id, RegionSelection::All)
-            .is_none();
+        return match entity_regions.insert(entity_id, RegionSelection::All) {
+            None => Ok(()),
+            Some(region_name) => Err(anyhow!(
+                "Cannot specify both \"all\" and \"{}\" regions for \"{}\".",
+                region_name,
+                entity_name,
+            )),
+        };
     }
 
     // Validate region_id
-    let region_id = match region_ids.get_id(region_id) {
-        Ok(id) => id,
-        Err(_) => return false,
-    };
+    let region_id = region_ids.get_id(region_id)?;
+    let region_name = region_id.clone();
 
     // Add or create entry in entity_regions
     let selection = entity_regions
@@ -117,8 +119,19 @@ fn try_insert_region(
         .or_insert_with(|| RegionSelection::Some(HashSet::with_capacity(1)));
 
     match selection {
-        RegionSelection::All => false,
-        RegionSelection::Some(ref mut set) => set.insert(region_id),
+        RegionSelection::All => Err(anyhow!(
+            "Cannot specify both \"{}\" and \"all\" regions for \"{}\".",
+            region_name,
+            entity_name
+        )),
+        RegionSelection::Some(ref mut set) => match set.insert(region_id) {
+            true => Ok(()),
+            false => Err(anyhow!(
+                "Region \"{}\" specified multiple times for \"{}\".",
+                region_name,
+                entity_name
+            )),
+        },
     }
 }
 
@@ -184,12 +197,7 @@ AP,Asia Pacific"
 
         // Insert new
         let mut entity_regions = HashMap::new();
-        assert!(try_insert_region(
-            "key".into(),
-            "GBR",
-            &region_ids,
-            &mut entity_regions
-        ));
+        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_ok());
         let selected: HashSet<_> = ["GBR".into()].into_iter().collect();
         assert_eq!(
             *entity_regions.get("key").unwrap(),
@@ -198,12 +206,7 @@ AP,Asia Pacific"
 
         // Insert "all"
         let mut entity_regions = HashMap::new();
-        assert!(try_insert_region(
-            "key".into(),
-            "all",
-            &region_ids,
-            &mut entity_regions
-        ));
+        assert!(try_insert_region("key".into(), "all", &region_ids, &mut entity_regions).is_ok());
         assert_eq!(*entity_regions.get("key").unwrap(), RegionSelection::All);
 
         // Append to existing
@@ -211,12 +214,7 @@ AP,Asia Pacific"
         let mut entity_regions = [("key".into(), RegionSelection::Some(selected.clone()))]
             .into_iter()
             .collect();
-        assert!(try_insert_region(
-            "key".into(),
-            "GBR",
-            &region_ids,
-            &mut entity_regions
-        ));
+        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_ok());
         let selected: HashSet<_> = ["FRA".into(), "GBR".into()].into_iter().collect();
         assert_eq!(
             *entity_regions.get("key").unwrap(),
@@ -225,36 +223,21 @@ AP,Asia Pacific"
 
         // "All" already specified
         let mut entity_regions = [("key".into(), RegionSelection::All)].into_iter().collect();
-        assert!(!try_insert_region(
-            "key".into(),
-            "GBR",
-            &region_ids,
-            &mut entity_regions
-        ));
+        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_err());
 
         // "GBR" specified twice
         let selected: HashSet<_> = ["GBR".into()].into_iter().collect();
         let mut entity_regions = [("key".into(), RegionSelection::Some(selected))]
             .into_iter()
             .collect();
-        assert!(!try_insert_region(
-            "key".into(),
-            "GBR",
-            &region_ids,
-            &mut entity_regions
-        ));
+        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_err());
 
         // Try appending "all" to existing
         let selected: HashSet<_> = ["FRA".into()].into_iter().collect();
         let mut entity_regions = [("key".into(), RegionSelection::Some(selected.clone()))]
             .into_iter()
             .collect();
-        assert!(!try_insert_region(
-            "key".into(),
-            "all",
-            &region_ids,
-            &mut entity_regions
-        ));
+        assert!(try_insert_region("key".into(), "all", &region_ids, &mut entity_regions).is_err());
     }
 
     #[derive(Deserialize, PartialEq)]
