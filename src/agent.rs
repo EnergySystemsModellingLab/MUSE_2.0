@@ -102,8 +102,8 @@ pub struct Asset {
 }
 
 impl Asset {
-    /// Get the capacity limits for this asset in a particular time slice
-    pub fn get_capacity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
+    /// Get the activity limits for this asset in a particular time slice
+    pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
         let limits = self.process.capacity_fractions.get(time_slice).unwrap();
         let capacity_a = self.capacity * self.process.parameter.cap2act;
 
@@ -174,6 +174,6 @@ mod tests {
             commission_year: 2010,
         };
 
-        assert_eq!(asset.get_capacity_limits(&time_slice), 6.0..=f64::INFINITY);
+        assert_eq!(asset.get_activity_limits(&time_slice), 6.0..=f64::INFINITY);
     }
 }
