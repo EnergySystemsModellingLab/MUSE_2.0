@@ -85,7 +85,7 @@ where
             agent_id,
             process: Rc::clone(process),
             region_id,
-            capacity_a: asset.capacity * process.parameter.cap2act,
+            capacity: asset.capacity,
             commission_year: asset.commission_year,
         };
 
@@ -144,7 +144,7 @@ mod tests {
             agent_id: "agent1".into(),
             process: Rc::clone(&process),
             region_id: "GBR".into(),
-            capacity_a: 1.0,
+            capacity: 1.0,
             commission_year: 2010,
         };
         assert_equal(

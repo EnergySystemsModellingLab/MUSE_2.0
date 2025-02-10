@@ -95,8 +95,8 @@ pub struct Asset {
     pub process: Rc<Process>,
     /// The region in which the asset is located
     pub region_id: Rc<str>,
-    /// The maximum commodity output per year
-    pub capacity_a: f64,
+    /// Capacity of asset
+    pub capacity: f64,
     /// The year the asset comes online
     pub commission_year: u32,
 }
@@ -105,9 +105,10 @@ impl Asset {
     /// Get the capacity limits for this asset in a particular time slice
     pub fn get_capacity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
         let limits = self.process.capacity_fractions.get(time_slice).unwrap();
+        let capacity_a = self.capacity * self.process.parameter.cap2act;
 
         // Multiply the fractional capacity in self.process by this asset's actual capacity
-        (self.capacity_a * limits.start())..=(self.capacity_a * limits.end())
+        (capacity_a * limits.start())..=(capacity_a * limits.end())
     }
 }
 
@@ -136,7 +137,7 @@ mod tests {
             variable_operating_cost: 1.0,
             lifetime: 5,
             discount_rate: 0.9,
-            cap2act: 1.0,
+            cap2act: 3.0,
         };
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
@@ -169,10 +170,10 @@ mod tests {
             agent_id: "agent1".into(),
             process: Rc::clone(&process),
             region_id: "GBR".into(),
-            capacity_a: 2.0,
+            capacity: 2.0,
             commission_year: 2010,
         };
 
-        assert_eq!(asset.get_capacity_limits(&time_slice), 2.0..=f64::INFINITY);
+        assert_eq!(asset.get_capacity_limits(&time_slice), 6.0..=f64::INFINITY);
     }
 }
