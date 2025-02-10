@@ -124,7 +124,7 @@ mod tests {
     use std::iter;
 
     #[test]
-    fn test_asset_get_capacity_limits() {
+    fn test_asset_get_activity_limits() {
         let time_slice = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
