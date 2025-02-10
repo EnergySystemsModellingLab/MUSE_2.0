@@ -1,16 +1,10 @@
 //! Integration tests for the `run` command.
 use muse2::commands::handle_run_command;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// Get the path to the example model.
 fn get_model_dir() -> PathBuf {
-    Path::new(file!())
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("examples")
-        .join("simple")
+    PathBuf::from("examples/simple")
 }
 
 /// An integration test for the `run` command.
