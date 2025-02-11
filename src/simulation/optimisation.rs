@@ -2,10 +2,10 @@
 //!
 //! This is used to calculate commodity flows and prices.
 use crate::agent::{Asset, AssetID, AssetPool};
-use crate::commodity::BalanceType;
+use crate::commodity::{BalanceType, CommodityType};
 use crate::model::Model;
 use crate::process::ProcessFlow;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use log::{error, info};
@@ -65,6 +65,9 @@ impl VariableMapKey {
     }
 }
 
+/// Indicates the commodity ID and time slice selection covered by each commodity constraint
+type CommodityConstraintKeys = Vec<(Rc<str>, TimeSliceSelection)>;
+
 /// The solution to the dispatch optimisation problem
 pub struct Solution {
     variables: VariableMap,
@@ -116,7 +119,8 @@ pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u3
     let variables = add_variables(&mut problem, model, assets, year);
 
     // Add constraints
-    add_asset_contraints(&mut problem, &variables, model, assets, year);
+    let _commodity_constraint_keys =
+        add_asset_contraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
     let solution = problem.optimise(Sense::Minimise).solve();
@@ -221,8 +225,9 @@ fn add_asset_contraints(
     model: &Model,
     assets: &AssetPool,
     year: u32,
-) {
-    add_commodity_balance_constraints(problem, variables, model, assets, year);
+) -> CommodityConstraintKeys {
+    let commodity_constraint_keys =
+        add_commodity_balance_constraints(problem, variables, model, assets, year);
 
     // **TODO**: Currently it's safe to assume all process flows are non-flexible, as we enforce
     // this when reading data in. Once we've added support for flexible process flows, we will
@@ -232,24 +237,93 @@ fn add_asset_contraints(
     add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
 
     add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
+
+    commodity_constraint_keys
 }
 
-/// Add asset-level input-output commodity balances
+/// Add asset-level input-output commodity balances.
+///
+/// These constraints fix the supply-demand balance for the whole system.
+///
+/// See description in [the dispatch optimisation documentation][1].
+///
+/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#commodity-balance-constraints
 fn add_commodity_balance_constraints(
-    _problem: &mut Problem,
-    _variables: &VariableMap,
-    _model: &Model,
-    _assets: &AssetPool,
-    _year: u32,
-) {
+    problem: &mut Problem,
+    variables: &VariableMap,
+    model: &Model,
+    assets: &AssetPool,
+    year: u32,
+) -> CommodityConstraintKeys {
     info!("Adding commodity balance constraints...");
 
     // Sanity check: we rely on the first n values of the dual row values corresponding to the
     // commodity constraints, so these must be the first rows
     assert!(
-        _problem.num_rows() == 0,
+        problem.num_rows() == 0,
         "Commodity balance constraints must be added before other constraints"
     );
+
+    let mut terms = Vec::new();
+    let mut keys = CommodityConstraintKeys::new();
+    for commodity in model.commodities.values() {
+        if commodity.kind != CommodityType::SupplyEqualsDemand
+            && commodity.kind != CommodityType::ServiceDemand
+        {
+            continue;
+        }
+
+        for region_id in model.iter_regions() {
+            for ts_selection in model
+                .time_slice_info
+                .iter_selections_for_level(commodity.time_slice_level)
+            {
+                // Note about performance: this loop **may** prove to be a bottleneck as
+                // `time_slice_info.iter_selection` returns a `Box` and so requires a heap
+                // allocation each time. For commodities with a `TimeSliceLevel` of `TimeSlice` (the
+                // worst case), this means the number of additional heap allocations will equal the
+                // number of time slices, which for this function could be in the
+                // hundreds/thousands.
+                for (time_slice, _) in model.time_slice_info.iter_selection(&ts_selection) {
+                    // Add terms for this asset + commodity at this time slice. The coefficient for
+                    // each variable is one.
+                    terms.extend(
+                        assets
+                            .iter_for_region_and_commodity(region_id, commodity)
+                            .map(|asset| (variables.get(asset.id, &commodity.id, time_slice), 1.0)),
+                    );
+                }
+
+                // Get the RHS of the equation for a commodity balance constraint. For SED
+                // commodities, the RHS will be zero and for SVD commodities it will be equal to the
+                // demand for the given time slice selection.
+                let rhs = match commodity.kind {
+                    CommodityType::SupplyEqualsDemand => 0.0,
+                    CommodityType::ServiceDemand => {
+                        match ts_selection {
+                            TimeSliceSelection::Single(ref ts) => {
+                                commodity.demand.get(region_id, year, ts)
+                            }
+                            // We currently only support specifying demand at the time slice level:
+                            //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/391
+                            _ => panic!(
+                            "Currently SVD commodities must have a time slice level of time slice"
+                        ),
+                        }
+                    }
+                    _ => unreachable!(),
+                };
+
+                // Add constraint (sum of terms must equal rhs)
+                problem.add_row(rhs..=rhs, terms.drain(0..));
+
+                // Keep track of the order in which constraints were added
+                keys.push((Rc::clone(&commodity.id), ts_selection));
+            }
+        }
+    }
+
+    keys
 }
 
 /// Add constraints for non-flexible assets.
