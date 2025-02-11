@@ -38,8 +38,8 @@ fn update_commodity_prices_from_solution(
 
     let mut commodities_updated = HashSet::new();
 
-    for (commodity_id, price) in solution.iter_commodity_prices() {
-        prices.insert(Rc::clone(commodity_id), price);
+    for (commodity_id, time_slice, price) in solution.iter_commodity_prices() {
+        prices.insert(commodity_id, time_slice, price);
         commodities_updated.insert(Rc::clone(commodity_id));
     }
 
