@@ -214,6 +214,25 @@ impl AssetPool {
             .iter()
             .take_while(|asset| asset.commission_year <= self.current_year)
     }
+
+    /// Iterate over active assets for a particular region
+    pub fn iter_for_region<'a>(
+        &'a self,
+        region_id: &'a Rc<str>,
+    ) -> impl Iterator<Item = &'a Asset> {
+        self.iter().filter(|asset| asset.region_id == *region_id)
+    }
+
+    /// Iterate over only the active assets in a given region that produce or consume a given
+    /// commodity
+    pub fn iter_for_region_and_commodity<'a>(
+        &'a self,
+        region_id: &'a Rc<str>,
+        commodity: &'a Rc<Commodity>,
+    ) -> impl Iterator<Item = &'a Asset> {
+        self.iter_for_region(region_id)
+            .filter(|asset| asset.process.contains_commodity_flow(commodity))
+    }
 }
 
 #[cfg(test)]
