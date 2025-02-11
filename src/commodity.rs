@@ -132,12 +132,12 @@ impl DemandMap {
     }
 
     /// Retrieve the demand for the specified region, year and time slice
-    pub fn get(&self, region_id: Rc<str>, year: u32, time_slice: TimeSliceID) -> Option<f64> {
+    pub fn get(&self, region_id: &Rc<str>, year: u32, time_slice: &TimeSliceID) -> Option<f64> {
         self.0
             .get(&DemandMapKey {
-                region_id,
+                region_id: region_id.clone(),
                 year,
-                time_slice,
+                time_slice: time_slice.clone(),
             })
             .copied()
     }
@@ -169,7 +169,7 @@ mod tests {
         let mut map = DemandMap::new();
         map.insert("North".into(), 2020, time_slice.clone(), value);
 
-        assert_eq!(map.get("North".into(), 2020, time_slice).unwrap(), value)
+        assert_eq!(map.get(&"North".into(), 2020, &time_slice).unwrap(), value)
     }
 
     #[test]
