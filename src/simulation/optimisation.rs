@@ -2,9 +2,10 @@
 //!
 //! This is used to calculate commodity flows and prices.
 use crate::agent::{Asset, AssetID, AssetPool};
+use crate::commodity::CommodityType;
 use crate::model::Model;
 use crate::process::ProcessFlow;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use log::{error, info};
@@ -64,6 +65,9 @@ impl VariableMapKey {
     }
 }
 
+/// Indicates the commodity ID and time slice selection covered by each commodity constraint
+type CommodityConstraintKeys = Vec<(Rc<str>, TimeSliceSelection)>;
+
 /// The solution to the dispatch optimisation problem
 pub struct Solution {
     variables: VariableMap,
@@ -115,7 +119,8 @@ pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u3
     let variables = add_variables(&mut problem, model, assets, year);
 
     // Add constraints
-    add_asset_contraints(&mut problem, &variables, model, assets, year);
+    let _commodity_constraint_keys =
+        add_asset_contraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
     let solution = problem.optimise(Sense::Minimise).solve();
@@ -198,8 +203,9 @@ fn add_asset_contraints(
     model: &Model,
     assets: &AssetPool,
     year: u32,
-) {
-    add_commodity_balance_constraints(problem, variables, model, assets, year);
+) -> CommodityConstraintKeys {
+    let commodity_constraint_keys =
+        add_commodity_balance_constraints(problem, variables, model, assets, year);
 
     // **TODO**: Currently it's safe to assume all process flows are non-flexible, as we enforce
     // this when reading data in. Once we've added support for flexible process flows, we will
@@ -209,24 +215,126 @@ fn add_asset_contraints(
     add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
 
     add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
+
+    commodity_constraint_keys
 }
 
-/// Add asset-level input-output commodity balances
+/// Add asset-level input-output commodity balances.
+///
+/// These constraints fix the supply-demand balance for the whole system.
+///
+/// See description in [the dispatch optimisation documentation][1].
+///
+/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#commodity-balance-constraints
 fn add_commodity_balance_constraints(
-    _problem: &mut Problem,
-    _variables: &VariableMap,
-    _model: &Model,
-    _assets: &AssetPool,
-    _year: u32,
-) {
+    problem: &mut Problem,
+    variables: &VariableMap,
+    model: &Model,
+    assets: &AssetPool,
+    year: u32,
+) -> CommodityConstraintKeys {
     info!("Adding commodity balance constraints...");
 
     // Sanity check: we rely on the first n values of the dual row values corresponding to the
     // commodity constraints, so these must be the first rows
     assert!(
-        _problem.num_rows() == 0,
+        problem.num_rows() == 0,
         "Commodity balance constraints must be added before other constraints"
     );
+
+    let mut terms = Vec::new();
+    let mut keys = CommodityConstraintKeys::new();
+    for commodity in model.commodities.values() {
+        match commodity.kind {
+            CommodityType::SupplyEqualsDemand => {}
+            CommodityType::ServiceDemand => {
+                // We currently only support specifying demand at the time slice level:
+                //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/391
+                assert!(commodity.time_slice_level == TimeSliceLevel::DayNight)
+            }
+            _ => continue,
+        }
+
+        // Get the term for the specified asset and time slice for this commodity. The coefficient
+        // for each variable is one.
+        let get_term =
+            |asset: &Asset, time_slice| (variables.get(asset.id, &commodity.id, time_slice), 1.0);
+
+        for region_id in model.iter_regions() {
+            // Get the RHS of the equation for a commodity balance constraint. For SED commodities,
+            // the RHS will be zero and for SVD commodities it will be equal to the demand for the
+            // given time slice.
+            let get_rhs = |time_slice| {
+                let value = match commodity.kind {
+                    CommodityType::SupplyEqualsDemand => 0.0,
+                    CommodityType::ServiceDemand => {
+                        commodity.demand.get(region_id, year, time_slice)
+                    }
+                    _ => panic!("Bad commodity type"), // sanity check
+                };
+
+                value..=value
+            };
+
+            match commodity.time_slice_level {
+                TimeSliceLevel::Annual => {
+                    for asset in assets.iter_for_commodity(commodity) {
+                        terms.extend(
+                            model
+                                .time_slice_info
+                                .iter_ids()
+                                .map(|ts| get_term(asset, ts)),
+                        );
+                    }
+
+                    // NB: Will only work for SED commodities
+                    problem.add_row(0.0..=0.0, terms.drain(0..));
+
+                    keys.push((Rc::clone(&commodity.id), TimeSliceSelection::Annual));
+                }
+                TimeSliceLevel::Season => {
+                    for season in model.time_slice_info.seasons.iter() {
+                        for asset in assets.iter_for_commodity(commodity) {
+                            terms.extend(
+                                model
+                                    .time_slice_info
+                                    .iter_ids_for_season(season)
+                                    .map(|ts| get_term(asset, ts)),
+                            );
+                        }
+
+                        // NB: Will only work for SED commodities
+                        problem.add_row(0.0..=0.0, terms.drain(0..));
+
+                        keys.push((
+                            Rc::clone(&commodity.id),
+                            TimeSliceSelection::Season(Rc::clone(season)),
+                        ));
+                    }
+                }
+                TimeSliceLevel::DayNight => {
+                    for time_slice in model.time_slice_info.iter_ids() {
+                        terms.extend(
+                            assets
+                                .iter_for_commodity(commodity)
+                                .map(|asset| get_term(asset, time_slice)),
+                        );
+
+                        // Add constraint
+                        let rhs = get_rhs(time_slice);
+                        problem.add_row(rhs, terms.drain(0..));
+
+                        keys.push((
+                            Rc::clone(&commodity.id),
+                            TimeSliceSelection::Single(time_slice.clone()),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    keys
 }
 
 /// Add constraints for non-flexible assets.
