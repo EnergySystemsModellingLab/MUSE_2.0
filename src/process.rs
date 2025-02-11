@@ -19,6 +19,13 @@ pub struct Process {
 }
 
 impl Process {
+    /// Whether the process contains a flow for a given commodity
+    pub fn contains_commodity_flow(&self, commodity: &Rc<Commodity>) -> bool {
+        self.flows
+            .iter()
+            .any(|flow| Rc::ptr_eq(&flow.commodity, commodity))
+    }
+
     /// Iterate over this process's Primary Activity Commodity flows
     pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.flows.iter().filter(|flow| flow.is_pac)
