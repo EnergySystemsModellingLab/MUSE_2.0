@@ -146,10 +146,10 @@ impl TimeSliceInfo {
     ///
     /// For example, if [`TimeSliceLevel::Season`] is specified, this function will return an
     /// iterator of [`TimeSliceSelection`]s covering each season.
-    pub fn iter_selections_for_level(
-        &self,
+    pub fn iter_selections_for_level<'a>(
+        &'a self,
         level: TimeSliceLevel,
-    ) -> Box<dyn Iterator<Item = TimeSliceSelection> + '_> {
+    ) -> Box<dyn Iterator<Item = TimeSliceSelection> + 'a> {
         match level {
             TimeSliceLevel::Annual => Box::new(iter::once(TimeSliceSelection::Annual)),
             TimeSliceLevel::Season => {
