@@ -214,6 +214,15 @@ impl AssetPool {
             .iter()
             .take_while(|asset| asset.commission_year <= self.current_year)
     }
+
+    /// Iterate over only the active assets that produce or consume a given commodity
+    pub fn iter_for_commodity<'a>(
+        &'a self,
+        commodity: &'a Rc<Commodity>,
+    ) -> impl Iterator<Item = &'a Asset> {
+        self.iter()
+            .filter(|asset| asset.process.contains_commodity_flow(commodity))
+    }
 }
 
 #[cfg(test)]
