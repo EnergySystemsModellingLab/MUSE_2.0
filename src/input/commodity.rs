@@ -1,9 +1,9 @@
 //! Code for reading in commodity-related data from CSV files.
-use crate::commodity::Commodity;
+use crate::commodity::{Commodity, CommodityMap};
 use crate::input::*;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -32,7 +32,7 @@ pub fn read_commodities(
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Rc<Commodity>>> {
+) -> Result<CommodityMap> {
     let commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME))?;
     let commodity_ids = commodities.keys().cloned().collect();
     let mut costs = read_commodity_costs(
