@@ -1,14 +1,13 @@
 //! Code for simulation models.
 #![allow(missing_docs)]
-use crate::agent::Agent;
-use crate::commodity::Commodity;
+use crate::agent::AgentMap;
+use crate::commodity::CommodityMap;
 use crate::input::*;
-use crate::process::Process;
-use crate::region::Region;
+use crate::process::ProcessMap;
+use crate::region::RegionMap;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -17,11 +16,11 @@ const MODEL_FILE_NAME: &str = "model.toml";
 /// Model definition
 pub struct Model {
     pub milestone_years: Vec<u32>,
-    pub agents: HashMap<Rc<str>, Agent>,
-    pub commodities: HashMap<Rc<str>, Rc<Commodity>>,
-    pub processes: HashMap<Rc<str>, Rc<Process>>,
+    pub agents: AgentMap,
+    pub commodities: CommodityMap,
+    pub processes: ProcessMap,
     pub time_slice_info: TimeSliceInfo,
-    pub regions: HashMap<Rc<str>, Region>,
+    pub regions: RegionMap,
 }
 
 /// Represents the contents of the entire model file.

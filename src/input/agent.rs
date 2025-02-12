@@ -1,12 +1,12 @@
 //! Code for reading in agent-related data from CSV files.
 use super::*;
-use crate::agent::{Agent, DecisionRule, SearchSpace};
-use crate::commodity::Commodity;
-use crate::process::Process;
+use crate::agent::{Agent, AgentMap, DecisionRule, SearchSpace};
+use crate::commodity::CommodityMap;
+use crate::process::ProcessMap;
 use crate::region::RegionSelection;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -54,10 +54,10 @@ struct AgentRaw {
 /// A map of Agents, with the agent ID as the key
 pub fn read_agents(
     model_dir: &Path,
-    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
-    processes: &HashMap<Rc<str>, Rc<Process>>,
+    commodities: &CommodityMap,
+    processes: &ProcessMap,
     region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Agent>> {
+) -> Result<AgentMap> {
     let process_ids = processes.keys().cloned().collect();
     let mut agents = read_agents_file(model_dir, commodities, &process_ids)?;
     let agent_ids = agents.keys().cloned().collect();
@@ -86,9 +86,9 @@ pub fn read_agents(
 /// A map of Agents, with the agent ID as the key
 pub fn read_agents_file(
     model_dir: &Path,
-    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    commodities: &CommodityMap,
     process_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Agent>> {
+) -> Result<AgentMap> {
     let file_path = model_dir.join(AGENT_FILE_NAME);
     let agents_csv = read_csv(&file_path)?;
     read_agents_file_from_iter(agents_csv, commodities, process_ids)
@@ -98,13 +98,13 @@ pub fn read_agents_file(
 /// Read agents info from an iterator.
 fn read_agents_file_from_iter<I>(
     iter: I,
-    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    commodities: &CommodityMap,
     process_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, Agent>>
+) -> Result<AgentMap>
 where
     I: Iterator<Item = AgentRaw>,
 {
-    let mut agents = HashMap::new();
+    let mut agents = AgentMap::new();
     for agent_raw in iter {
         let commodity = commodities
             .get(agent_raw.commodity_id.as_str())
@@ -149,7 +149,7 @@ where
 mod tests {
     use super::*;
     use crate::agent::DecisionRule;
-    use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
+    use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use std::iter;
@@ -191,7 +191,7 @@ mod tests {
             regions: RegionSelection::default(),
             objectives: Vec::new(),
         };
-        let expected = HashMap::from_iter([("agent".into(), agent_out)]);
+        let expected = AgentMap::from_iter(iter::once(("agent".into(), agent_out)));
         let actual =
             read_agents_file_from_iter(iter::once(agent), &commodities, &process_ids).unwrap();
         assert_eq!(actual, expected);

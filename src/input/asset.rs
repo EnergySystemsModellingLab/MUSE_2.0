@@ -1,11 +1,11 @@
 //! Code for reading [Asset]s from a CSV file.
 use crate::agent::Asset;
 use crate::input::*;
-use crate::process::Process;
+use crate::process::ProcessMap;
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -35,7 +35,7 @@ struct AssetRaw {
 pub fn read_assets(
     model_dir: &Path,
     agent_ids: &HashSet<Rc<str>>,
-    processes: &HashMap<Rc<str>, Rc<Process>>,
+    processes: &ProcessMap,
     region_ids: &HashSet<Rc<str>>,
 ) -> Result<Vec<Asset>> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
@@ -59,7 +59,7 @@ pub fn read_assets(
 fn read_assets_from_iter<I>(
     iter: I,
     agent_ids: &HashSet<Rc<str>>,
-    processes: &HashMap<Rc<str>, Rc<Process>>,
+    processes: &ProcessMap,
     region_ids: &HashSet<Rc<str>>,
 ) -> Result<Vec<Asset>>
 where
@@ -92,7 +92,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::{ProcessCapacityMap, ProcessParameter};
+    use crate::process::{Process, ProcessCapacityMap, ProcessParameter};
     use crate::region::RegionSelection;
     use itertools::assert_equal;
     use std::iter;

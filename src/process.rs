@@ -2,11 +2,15 @@
 use crate::commodity::Commodity;
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceID;
+use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
+
+/// A map of [`Process`]es, keyed by process ID
+pub type ProcessMap = IndexMap<Rc<str>, Rc<Process>>;
 
 #[derive(PartialEq, Debug)]
 pub struct Process {
