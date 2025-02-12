@@ -2,8 +2,8 @@
 use crate::agent::AssetPool;
 use crate::model::Model;
 use crate::time_slice::TimeSliceID;
+use indexmap::IndexMap;
 use log::info;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 pub mod optimisation;
@@ -18,7 +18,7 @@ type CommodityPriceKey = (Rc<str>, TimeSliceID);
 
 /// A map relating commodity ID + time slice to current price (endogenous)
 #[derive(Default)]
-pub struct CommodityPrices(HashMap<CommodityPriceKey, f64>);
+pub struct CommodityPrices(IndexMap<CommodityPriceKey, f64>);
 
 impl CommodityPrices {
     /// Get the price for the given commodity and time slice
