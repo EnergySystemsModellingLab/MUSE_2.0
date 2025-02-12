@@ -35,6 +35,17 @@ impl CommodityPrices {
         let key = (Rc::clone(commodity_id), time_slice.clone());
         self.0.insert(key, price);
     }
+
+    /// Iterate over the map.
+    ///
+    /// # Returns
+    ///
+    /// An iterator of tuples containing commodity ID, time slice and price.
+    pub fn iter(&self) -> impl Iterator<Item = (&Rc<str>, &TimeSliceID, f64)> {
+        self.0
+            .iter()
+            .map(|((commodity_id, ts), price)| (commodity_id, ts, *price))
+    }
 }
 
 /// Run the simulation.
