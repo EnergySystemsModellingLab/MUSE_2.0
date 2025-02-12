@@ -2,11 +2,11 @@
 use super::*;
 use crate::agent::{Agent, AgentMap, DecisionRule, SearchSpace};
 use crate::commodity::CommodityMap;
-use crate::process::Process;
+use crate::process::ProcessMap;
 use crate::region::RegionSelection;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -55,7 +55,7 @@ struct AgentRaw {
 pub fn read_agents(
     model_dir: &Path,
     commodities: &CommodityMap,
-    processes: &HashMap<Rc<str>, Rc<Process>>,
+    processes: &ProcessMap,
     region_ids: &HashSet<Rc<str>>,
 ) -> Result<AgentMap> {
     let process_ids = processes.keys().cloned().collect();

@@ -1,7 +1,7 @@
 //! Code for reading process-related information from CSV files.
 use crate::commodity::{Commodity, CommodityMap, CommodityType};
 use crate::input::*;
-use crate::process::{Process, ProcessCapacityMap, ProcessFlow, ProcessParameter};
+use crate::process::{Process, ProcessCapacityMap, ProcessFlow, ProcessMap, ProcessParameter};
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
@@ -59,7 +59,7 @@ pub fn read_processes(
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, Rc<Process>>> {
+) -> Result<ProcessMap> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let descriptions = read_csv_id_file::<ProcessDescription>(&file_path)?;
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
@@ -128,7 +128,7 @@ fn create_process_map<I>(
     mut flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
     mut parameters: HashMap<Rc<str>, ProcessParameter>,
     mut regions: HashMap<Rc<str>, RegionSelection>,
-) -> Result<HashMap<Rc<str>, Rc<Process>>>
+) -> Result<ProcessMap>
 where
     I: Iterator<Item = ProcessDescription>,
 {
@@ -159,7 +159,7 @@ where
 
             Ok((description.id, process.into()))
         })
-        .process_results(|iter| iter.collect())
+        .try_collect()
 }
 
 #[cfg(test)]
