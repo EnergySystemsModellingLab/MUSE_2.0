@@ -84,7 +84,7 @@ impl Solution {
             .zip(self.solution.columns().iter().copied())
     }
 
-    /// Iterate over the newly calculated commodity prices.
+    /// Iterate over the newly calculated commodity prices for each time slice.
     ///
     /// Note that there may only be prices for a subset of the commodities; the rest will need to be
     /// calculated in another way.
