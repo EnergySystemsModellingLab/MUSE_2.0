@@ -9,7 +9,6 @@ use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use log::{error, info};
-use std::iter;
 use std::rc::Rc;
 
 /// A decision variable in the optimisation
@@ -69,12 +68,14 @@ impl VariableMapKey {
 type CommodityConstraintKeys = Vec<(Rc<str>, TimeSliceSelection)>;
 
 /// The solution to the dispatch optimisation problem
-pub struct Solution {
-    variables: VariableMap,
+pub struct Solution<'a> {
     solution: highs::Solution,
+    variables: VariableMap,
+    time_slice_info: &'a TimeSliceInfo,
+    commodity_constraint_keys: CommodityConstraintKeys,
 }
 
-impl Solution {
+impl Solution<'_> {
     /// Iterate over the newly calculated commodity flows for assets.
     ///
     /// Note that this only includes commodity flows which relate to assets, so not every commodity
@@ -91,8 +92,18 @@ impl Solution {
     /// Note that there may only be prices for a subset of the commodities; the rest will need to be
     /// calculated in another way.
     pub fn iter_commodity_prices(&self) -> impl Iterator<Item = (&Rc<str>, &TimeSliceID, f64)> {
-        // **PLACEHOLDER**
-        iter::empty()
+        // We can get the prices by looking at the dual row values for commodity balance
+        // constraints. Each commodity balance constraint applies to a particular time slice
+        // selection (depending on time slice level), but we want to return prices for each time
+        // slice, so if the selection covers multiple time slices we return the same price for each.
+        self.commodity_constraint_keys
+            .iter()
+            .zip(self.solution.dual_rows())
+            .flat_map(|((commodity_id, ts_selection), price)| {
+                self.time_slice_info
+                    .iter_selection(ts_selection)
+                    .map(move |(ts, _)| (commodity_id, ts, *price))
+            })
     }
 }
 
@@ -111,7 +122,11 @@ impl Solution {
 /// # Returns
 ///
 /// A solution containing new commodity flows for assets and prices for (some) commodities.
-pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u32) -> Solution {
+pub fn perform_dispatch_optimisation<'a>(
+    model: &'a Model,
+    assets: &AssetPool,
+    year: u32,
+) -> Solution<'a> {
     info!("Performing dispatch optimisation...");
 
     // Set up problem
@@ -119,7 +134,7 @@ pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u3
     let variables = add_variables(&mut problem, model, assets, year);
 
     // Add constraints
-    let _commodity_constraint_keys =
+    let commodity_constraint_keys =
         add_asset_contraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
@@ -132,8 +147,10 @@ pub fn perform_dispatch_optimisation(model: &Model, assets: &AssetPool, year: u3
     }
 
     Solution {
-        variables,
         solution: solution.get_solution(),
+        variables,
+        time_slice_info: &model.time_slice_info,
+        commodity_constraint_keys,
     }
 }
 
