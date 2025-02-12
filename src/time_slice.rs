@@ -107,14 +107,6 @@ impl TimeSliceInfo {
         }
     }
 
-    /// Iterate over all time slices.
-    ///
-    /// The order will be consistent each time this is called, but not every time the program is
-    /// run.
-    pub fn iter(&self) -> impl Iterator<Item = (&TimeSliceID, f64)> {
-        self.fractions.iter().map(|(ts, fraction)| (ts, *fraction))
-    }
-
     /// Iterate over all [`TimeSliceID`]s.
     ///
     /// The order will be consistent each time this is called, but not every time the program is
@@ -123,12 +115,12 @@ impl TimeSliceInfo {
         self.fractions.keys()
     }
 
-    /// Iterate over the [`TimeSliceID`]s for `season`.
-    pub fn iter_ids_for_season<'a>(
-        &'a self,
-        season: &'a Rc<str>,
-    ) -> impl Iterator<Item = &'a TimeSliceID> {
-        self.iter_ids().filter(|ts| ts.season == *season)
+    /// Iterate over all time slices.
+    ///
+    /// The order will be consistent each time this is called, but not every time the program is
+    /// run.
+    pub fn iter(&self) -> impl Iterator<Item = (&TimeSliceID, f64)> {
+        self.fractions.iter().map(|(ts, fraction)| (ts, *fraction))
     }
 
     /// Iterate over the subset of time slices indicated by `selection`.
