@@ -1,7 +1,7 @@
 //! Code for simulation models.
 #![allow(missing_docs)]
 use crate::agent::AgentMap;
-use crate::commodity::Commodity;
+use crate::commodity::CommodityMap;
 use crate::input::*;
 use crate::process::Process;
 use crate::region::RegionMap;
@@ -18,7 +18,7 @@ const MODEL_FILE_NAME: &str = "model.toml";
 pub struct Model {
     pub milestone_years: Vec<u32>,
     pub agents: AgentMap,
-    pub commodities: HashMap<Rc<str>, Rc<Commodity>>,
+    pub commodities: CommodityMap,
     pub processes: HashMap<Rc<str>, Rc<Process>>,
     pub time_slice_info: TimeSliceInfo,
     pub regions: RegionMap,

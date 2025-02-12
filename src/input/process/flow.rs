@@ -1,6 +1,6 @@
 //! Code for reading process flows file
 use super::define_process_id_getter;
-use crate::commodity::Commodity;
+use crate::commodity::CommodityMap;
 use crate::input::*;
 use crate::process::{FlowType, ProcessFlow};
 use anyhow::{ensure, Context, Result};
@@ -30,7 +30,7 @@ define_process_id_getter! {ProcessFlowRaw}
 pub fn read_process_flows(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
-    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    commodities: &CommodityMap,
 ) -> Result<HashMap<Rc<str>, Vec<ProcessFlow>>> {
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let process_flow_csv = read_csv(&file_path)?;
@@ -42,7 +42,7 @@ pub fn read_process_flows(
 fn read_process_flows_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
-    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    commodities: &CommodityMap,
 ) -> Result<HashMap<Rc<str>, Vec<ProcessFlow>>>
 where
     I: Iterator<Item = ProcessFlowRaw>,
@@ -151,14 +151,14 @@ fn validate_pac_flows(flows: &HashMap<Rc<str>, Vec<ProcessFlow>>) -> Result<()> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
+    use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
     use std::iter;
 
     #[test]
     fn test_read_process_flows_from_iter_good() {
         let process_ids = ["id1".into(), "id2".into()].into_iter().collect();
-        let commodities: HashMap<Rc<str>, Rc<Commodity>> = ["commodity1", "commodity2"]
+        let commodities: CommodityMap = ["commodity1", "commodity2"]
             .into_iter()
             .map(|id| {
                 let commodity = Commodity {

@@ -1,5 +1,5 @@
 //! Code for reading process-related information from CSV files.
-use crate::commodity::{Commodity, CommodityType};
+use crate::commodity::{Commodity, CommodityMap, CommodityType};
 use crate::input::*;
 use crate::process::{Process, ProcessCapacityMap, ProcessFlow, ProcessParameter};
 use crate::region::RegionSelection;
@@ -55,7 +55,7 @@ define_id_getter! {ProcessDescription}
 /// This function returns a map of processes, with the IDs as keys.
 pub fn read_processes(
     model_dir: &Path,
-    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    commodities: &CommodityMap,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     year_range: &RangeInclusive<u32>,
@@ -83,7 +83,7 @@ pub fn read_processes(
 
 /// Perform consistency checks for commodity flows.
 fn validate_commodities(
-    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    commodities: &CommodityMap,
     flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
 ) -> anyhow::Result<()> {
     for (commodity_id, commodity) in commodities {
@@ -303,7 +303,7 @@ mod tests {
             demand: DemandMap::new(),
         });
 
-        let commodities: HashMap<Rc<str>, Rc<Commodity>> = [
+        let commodities: CommodityMap = [
             (Rc::clone(&commodity_sed.id), Rc::clone(&commodity_sed)),
             (
                 Rc::clone(&commodity_non_sed.id),
