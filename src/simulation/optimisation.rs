@@ -232,7 +232,7 @@ fn add_asset_contraints(
     // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
     add_fixed_asset_constraints(problem, variables, assets, year, &model.time_slice_info);
 
-    add_asset_capacity_constraints(problem, variables, model, assets, year);
+    add_asset_capacity_constraints(problem, variables, assets, year, &model.time_slice_info);
 }
 
 /// Add asset-level input-output commodity balances
@@ -291,19 +291,45 @@ fn add_fixed_asset_constraints(
     }
 }
 
-/// Add asset-level capacity and availability constraints
+/// Add asset-level capacity and availability constraints.
+///
+/// For every asset at every time slice, the sum of the commodity flows for PACs must not exceed the
+/// capacity limits, which are a product of the annual capacity, time slice length and process
+/// availability.
 ///
 /// See description in [the dispatch optimisation documentation][1].
 ///
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#asset-level-capacity-and-availability-constraints
 fn add_asset_capacity_constraints(
-    _problem: &mut Problem,
-    _variables: &VariableMap,
-    _model: &Model,
-    _assets: &AssetPool,
-    _year: u32,
+    problem: &mut Problem,
+    variables: &VariableMap,
+    assets: &AssetPool,
+    year: u32,
+    time_slice_info: &TimeSliceInfo,
 ) {
     info!("Adding asset-level capacity and availability constraints...");
+
+    let mut terms = Vec::new();
+    for asset in filter_assets(assets, year) {
+        for time_slice in time_slice_info.iter_ids() {
+            let mut is_input = false; // NB: there will be at least one PAC
+            for flow in asset.process.iter_pacs() {
+                is_input = flow.flow < 0.0; // NB: PACs will be all inputs or all outputs
+
+                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
+                terms.push((var, 1.0));
+            }
+
+            let mut limits = asset.get_activity_limits(time_slice);
+
+            // If it's an input flow, the q's will be negative, so we need to invert the limits
+            if is_input {
+                limits = -limits.end()..=-limits.start();
+            }
+
+            problem.add_row(limits, terms.drain(0..));
+        }
+    }
 }
 
 #[cfg(test)]

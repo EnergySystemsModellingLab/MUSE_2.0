@@ -102,7 +102,25 @@ where
         }
     }
 
+    validate_capacity_maps(&map, time_slice_info)?;
+
     Ok(map)
+}
+
+/// Check that every capacity map has an entry for every time slice
+fn validate_capacity_maps(
+    map: &HashMap<Rc<str>, ProcessCapacityMap>,
+    time_slice_info: &TimeSliceInfo,
+) -> Result<()> {
+    for (process_id, map) in map.iter() {
+        ensure!(
+            map.len() == time_slice_info.fractions.len(),
+            "Missing process availability entries for process {process_id}. \
+            There must be entries covering every time slice.",
+        );
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -113,23 +131,15 @@ mod tests {
     use std::iter;
 
     fn get_time_slice_info() -> TimeSliceInfo {
-        let slices = [
-            TimeSliceID {
-                season: "winter".into(),
-                time_of_day: "day".into(),
-            },
-            TimeSliceID {
-                season: "summer".into(),
-                time_of_day: "night".into(),
-            },
-        ];
+        let time_slice = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "day".into(),
+        };
 
         TimeSliceInfo {
-            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
-            times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            fractions: [(slices[0].clone(), 0.5), (slices[1].clone(), 0.5)]
-                .into_iter()
-                .collect(),
+            seasons: iter::once("winter".into()).collect(),
+            times_of_day: iter::once("day".into()).collect(),
+            fractions: iter::once((time_slice, 0.5)).collect(),
         }
     }
 
@@ -248,5 +258,58 @@ mod tests {
             "MADEUP",
             0.5
         ));
+    }
+
+    #[test]
+    fn test_read_process_availabilities_from_iter_bad_missing_entry() {
+        let process_ids = iter::once("process1".into()).collect();
+        let slices = [
+            TimeSliceID {
+                season: "winter".into(),
+                time_of_day: "day".into(),
+            },
+            TimeSliceID {
+                season: "summer".into(),
+                time_of_day: "night".into(),
+            },
+        ];
+        let time_slice_info = TimeSliceInfo {
+            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            times_of_day: ["day".into(), "night".into()].into_iter().collect(),
+            fractions: slices.into_iter().map(|ts| (ts, 0.5)).collect(),
+        };
+
+        // Good values
+        let avail = ["winter.day".into(), "summer.night".into()]
+            .into_iter()
+            .map(|time_slice| ProcessAvailabilityRaw {
+                process_id: "process1".into(),
+                limit_type: LimitType::Equality,
+                time_slice,
+                value: 0.0,
+            });
+        assert!(
+            read_process_availabilities_from_iter(avail, &process_ids, &time_slice_info).is_ok()
+        );
+
+        // Missing entry
+        let avail = ["winter.day".into()]
+            .into_iter()
+            .map(|time_slice| ProcessAvailabilityRaw {
+                process_id: "process1".into(),
+                limit_type: LimitType::Equality,
+                time_slice,
+                value: 0.0,
+            });
+        assert_eq!(
+            read_process_availabilities_from_iter(avail, &process_ids, &time_slice_info)
+                .unwrap_err()
+                .chain()
+                .next()
+                .unwrap()
+                .to_string(),
+            "Missing process availability entries for process process1. \
+            There must be entries covering every time slice."
+        );
     }
 }

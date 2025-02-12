@@ -3,9 +3,11 @@
 use crate::commodity::Commodity;
 use crate::process::Process;
 use crate::region::RegionSelection;
+use crate::time_slice::TimeSliceID;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashSet;
+use std::ops::RangeInclusive;
 use std::rc::Rc;
 
 /// An agent in the simulation
@@ -99,5 +101,79 @@ pub struct Asset {
     pub commission_year: u32,
 }
 
+impl Asset {
+    /// Get the activity limits for this asset in a particular time slice
+    pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
+        let limits = self.process.capacity_fractions.get(time_slice).unwrap();
+        let capacity_a = self.capacity * self.process.parameter.cap2act;
+
+        // Multiply the fractional capacity in self.process by this asset's actual capacity
+        (capacity_a * limits.start())..=(capacity_a * limits.end())
+    }
+}
+
 /// A pool of [`Asset`]s
 pub type AssetPool = Vec<Asset>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
+    use crate::process::{FlowType, ProcessFlow, ProcessParameter};
+    use crate::time_slice::TimeSliceLevel;
+    use std::iter;
+
+    #[test]
+    fn test_asset_get_activity_limits() {
+        let time_slice = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "day".into(),
+        };
+        let process_param = ProcessParameter {
+            process_id: "process1".into(),
+            years: 2010..=2020,
+            capital_cost: 5.0,
+            fixed_operating_cost: 2.0,
+            variable_operating_cost: 1.0,
+            lifetime: 5,
+            discount_rate: 0.9,
+            cap2act: 3.0,
+        };
+        let commodity = Rc::new(Commodity {
+            id: "commodity1".into(),
+            description: "Some description".into(),
+            kind: CommodityType::InputCommodity,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand: DemandMap::new(),
+        });
+        let flow = ProcessFlow {
+            process_id: "id1".into(),
+            commodity: Rc::clone(&commodity),
+            flow: 1.0,
+            flow_type: FlowType::Fixed,
+            flow_cost: 1.0,
+            is_pac: true,
+        };
+        let fraction_limits = 1.0..=f64::INFINITY;
+        let capacity_fractions = iter::once((time_slice.clone(), fraction_limits)).collect();
+        let process = Rc::new(Process {
+            id: "process1".into(),
+            description: "Description".into(),
+            capacity_fractions,
+            flows: vec![flow.clone()],
+            parameter: process_param.clone(),
+            regions: RegionSelection::All,
+        });
+        let asset = Asset {
+            id: 0,
+            agent_id: "agent1".into(),
+            process: Rc::clone(&process),
+            region_id: "GBR".into(),
+            capacity: 2.0,
+            commission_year: 2010,
+        };
+
+        assert_eq!(asset.get_activity_limits(&time_slice), 6.0..=f64::INFINITY);
+    }
+}
