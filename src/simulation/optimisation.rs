@@ -5,7 +5,7 @@ use crate::agent::{Asset, AssetID, AssetPool};
 use crate::commodity::CommodityType;
 use crate::model::Model;
 use crate::process::ProcessFlow;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use log::{error, info};
@@ -245,91 +245,51 @@ fn add_commodity_balance_constraints(
     let mut terms = Vec::new();
     let mut keys = CommodityConstraintKeys::new();
     for commodity in model.commodities.values() {
-        match commodity.kind {
-            CommodityType::SupplyEqualsDemand => {}
-            CommodityType::ServiceDemand => {
-                // We currently only support specifying demand at the time slice level:
-                //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/391
-                assert!(commodity.time_slice_level == TimeSliceLevel::DayNight)
-            }
-            _ => continue,
+        if commodity.kind != CommodityType::SupplyEqualsDemand
+            && commodity.kind != CommodityType::ServiceDemand
+        {
+            continue;
         }
 
-        // Get the term for the specified asset and time slice for this commodity. The coefficient
-        // for each variable is one.
-        let get_term =
-            |asset: &Asset, time_slice| (variables.get(asset.id, &commodity.id, time_slice), 1.0);
-
         for region_id in model.iter_regions() {
-            // Get the RHS of the equation for a commodity balance constraint. For SED commodities,
-            // the RHS will be zero and for SVD commodities it will be equal to the demand for the
-            // given time slice.
-            let get_rhs = |time_slice| {
-                let value = match commodity.kind {
-                    CommodityType::SupplyEqualsDemand => 0.0,
-                    CommodityType::ServiceDemand => {
-                        commodity.demand.get(region_id, year, time_slice)
+            for ts_selection in model
+                .time_slice_info
+                .iter_selections_for_level(commodity.time_slice_level)
+            {
+                for (time_slice, _) in model.time_slice_info.iter_selection(&ts_selection) {
+                    // Add terms for this asset + commodity at this time slice. The coefficient for
+                    // each variable is one.
+                    terms.extend(
+                        assets
+                            .iter_for_commodity(commodity)
+                            .map(|asset| (variables.get(asset.id, &commodity.id, time_slice), 1.0)),
+                    );
+                }
+
+                // Get the RHS of the equation for a commodity balance constraint. For SED
+                // commodities, the RHS will be zero and for SVD commodities it will be equal to the
+                // demand for the given time slice selection.
+                let rhs = if commodity.kind == CommodityType::SupplyEqualsDemand {
+                    0.0
+                } else {
+                    // service demand commodity
+                    match ts_selection {
+                        TimeSliceSelection::Single(ref ts) => {
+                            commodity.demand.get(region_id, year, ts)
+                        }
+                        // We currently only support specifying demand at the time slice level:
+                        //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/391
+                        _ => panic!(
+                            "Currently SVD commodities must have a time slice level of time slice"
+                        ),
                     }
-                    _ => panic!("Bad commodity type"), // sanity check
                 };
 
-                value..=value
-            };
+                // Add constraint (sum of terms must equal rhs)
+                problem.add_row(rhs..=rhs, terms.drain(0..));
 
-            match commodity.time_slice_level {
-                TimeSliceLevel::Annual => {
-                    for asset in assets.iter_for_commodity(commodity) {
-                        terms.extend(
-                            model
-                                .time_slice_info
-                                .iter_ids()
-                                .map(|ts| get_term(asset, ts)),
-                        );
-                    }
-
-                    // NB: Will only work for SED commodities
-                    problem.add_row(0.0..=0.0, terms.drain(0..));
-
-                    keys.push((Rc::clone(&commodity.id), TimeSliceSelection::Annual));
-                }
-                TimeSliceLevel::Season => {
-                    for season in model.time_slice_info.seasons.iter() {
-                        for asset in assets.iter_for_commodity(commodity) {
-                            terms.extend(
-                                model
-                                    .time_slice_info
-                                    .iter_ids_for_season(season)
-                                    .map(|ts| get_term(asset, ts)),
-                            );
-                        }
-
-                        // NB: Will only work for SED commodities
-                        problem.add_row(0.0..=0.0, terms.drain(0..));
-
-                        keys.push((
-                            Rc::clone(&commodity.id),
-                            TimeSliceSelection::Season(Rc::clone(season)),
-                        ));
-                    }
-                }
-                TimeSliceLevel::DayNight => {
-                    for time_slice in model.time_slice_info.iter_ids() {
-                        terms.extend(
-                            assets
-                                .iter_for_commodity(commodity)
-                                .map(|asset| get_term(asset, time_slice)),
-                        );
-
-                        // Add constraint
-                        let rhs = get_rhs(time_slice);
-                        problem.add_row(rhs, terms.drain(0..));
-
-                        keys.push((
-                            Rc::clone(&commodity.id),
-                            TimeSliceSelection::Single(time_slice.clone()),
-                        ));
-                    }
-                }
+                // Keep track of the order in which constraints were added
+                keys.push((Rc::clone(&commodity.id), ts_selection));
             }
         }
     }
