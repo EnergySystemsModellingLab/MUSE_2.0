@@ -1,14 +1,13 @@
 //! Code for reading in time slice info from a CSV file.
 #![allow(missing_docs)]
 use crate::input::*;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
-use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
-
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 
 const TIME_SLICES_FILE_NAME: &str = "time_slices.csv";
 
@@ -22,7 +21,7 @@ struct TimeSliceRaw {
 }
 
 /// Get the specified `String` from `set` or insert if it doesn't exist
-fn get_or_insert(value: String, set: &mut HashSet<Rc<str>>) -> Rc<str> {
+fn get_or_insert(value: String, set: &mut IndexSet<Rc<str>>) -> Rc<str> {
     // Sadly there's no entry API for HashSets: https://github.com/rust-lang/rfcs/issues/1490
     match set.get(value.as_str()) {
         Some(value) => Rc::clone(value),
@@ -39,9 +38,9 @@ fn read_time_slice_info_from_iter<I>(iter: I) -> Result<TimeSliceInfo>
 where
     I: Iterator<Item = TimeSliceRaw>,
 {
-    let mut seasons: HashSet<Rc<str>> = HashSet::new();
-    let mut times_of_day = HashSet::new();
-    let mut fractions = HashMap::new();
+    let mut seasons = IndexSet::new();
+    let mut times_of_day = IndexSet::new();
+    let mut fractions = IndexMap::new();
     for time_slice in iter {
         let season = get_or_insert(time_slice.season, &mut seasons);
         let time_of_day = get_or_insert(time_slice.time_of_day, &mut times_of_day);
