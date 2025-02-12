@@ -4,7 +4,7 @@ use crate::agent::Agent;
 use crate::commodity::Commodity;
 use crate::input::*;
 use crate::process::Process;
-use crate::region::Region;
+use crate::region::RegionMap;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -21,7 +21,7 @@ pub struct Model {
     pub commodities: HashMap<Rc<str>, Rc<Commodity>>,
     pub processes: HashMap<Rc<str>, Rc<Process>>,
     pub time_slice_info: TimeSliceInfo,
-    pub regions: HashMap<Rc<str>, Region>,
+    pub regions: RegionMap,
 }
 
 /// Represents the contents of the entire model file.

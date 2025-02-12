@@ -1,9 +1,13 @@
 //! Regions represent different geographical areas in which agents, processes, etc. are active.
+use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::rc::Rc;
+
+/// A map of [`Region`]s, keyed by region ID
+pub type RegionMap = IndexMap<Rc<str>, Region>;
 
 /// Represents a region with an ID and a longer description.
 #[derive(Debug, Deserialize, PartialEq)]
