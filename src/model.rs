@@ -3,12 +3,11 @@
 use crate::agent::AgentMap;
 use crate::commodity::CommodityMap;
 use crate::input::*;
-use crate::process::Process;
+use crate::process::ProcessMap;
 use crate::region::RegionMap;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -19,7 +18,7 @@ pub struct Model {
     pub milestone_years: Vec<u32>,
     pub agents: AgentMap,
     pub commodities: CommodityMap,
-    pub processes: HashMap<Rc<str>, Rc<Process>>,
+    pub processes: ProcessMap,
     pub time_slice_info: TimeSliceInfo,
     pub regions: RegionMap,
 }
