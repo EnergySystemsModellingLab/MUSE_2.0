@@ -3,7 +3,8 @@ use super::optimisation::Solution;
 use super::CommodityPrices;
 use crate::agent::AssetPool;
 use crate::commodity::CommodityMap;
-use log::info;
+use itertools::Itertools;
+use log::{info, warn};
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -54,9 +55,10 @@ fn update_commodity_prices_from_solution(
 ///
 /// * `commodity_ids` - IDs of commodities to update
 /// * `prices` - Commodity prices
-fn update_remaining_commodity_prices<I>(_commodity_ids: I, _prices: &mut CommodityPrices)
+fn update_remaining_commodity_prices<I>(mut _commodity_ids: I, _prices: &mut CommodityPrices)
 where
     I: Iterator<Item = Rc<str>>,
 {
     info!("Updating remaining commodity prices...");
+    warn!("Remaining commodities: {}", _commodity_ids.join(", "));
 }
