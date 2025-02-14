@@ -14,6 +14,9 @@ use std::io::IsTerminal;
 use std::path::Path;
 
 /// The default log level for the program.
+///
+/// Used as a fallback if the user hasn't specified something else with the MUSE2_LOG_LEVEL
+/// environment variable or the settings.toml file.
 const DEFAULT_LOG_LEVEL: &str = "info";
 
 /// The file name for the log file containing messages about the ordinary operation of MUSE 2.0
