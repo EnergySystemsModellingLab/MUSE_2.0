@@ -36,6 +36,20 @@ pub enum TimeSliceSelection {
     Single(TimeSliceID),
 }
 
+/// The time granularity for a particular operation
+#[derive(PartialEq, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
+pub enum TimeSliceLevel {
+    /// The whole year
+    #[string = "annual"]
+    Annual,
+    /// Whole seasons
+    #[string = "season"]
+    Season,
+    /// Treat individual time slices separately
+    #[string = "daynight"]
+    DayNight,
+}
+
 /// Information about the time slices in the simulation, including names and fractions
 #[derive(PartialEq, Debug)]
 pub struct TimeSliceInfo {
@@ -212,20 +226,6 @@ impl TimeSliceInfo {
         self.iterate_selection_share(selection)
             .map(move |(ts, share)| (ts, value * share))
     }
-}
-
-/// The time granularity for a particular operation
-#[derive(PartialEq, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
-pub enum TimeSliceLevel {
-    /// The whole year
-    #[string = "annual"]
-    Annual,
-    /// Whole seasons
-    #[string = "season"]
-    Season,
-    /// Treat individual time slices separately
-    #[string = "daynight"]
-    DayNight,
 }
 
 #[cfg(test)]
