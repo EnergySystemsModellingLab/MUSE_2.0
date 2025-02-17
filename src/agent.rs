@@ -89,7 +89,7 @@ pub enum ObjectiveType {
 pub struct AssetID(u32);
 
 impl AssetID {
-    /// Sentinel value indicating that the asset is not active
+    /// Sentinel value assigned to [`Asset`]s when they are initially created
     pub const INVALID: AssetID = AssetID(u32::MAX);
 }
 
