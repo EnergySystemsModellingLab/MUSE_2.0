@@ -84,11 +84,20 @@ pub enum ObjectiveType {
     EquivalentAnnualCost,
 }
 
+/// A unique identifier for an asset
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct AssetID(u32);
+
+impl AssetID {
+    /// Sentinel value assigned to [`Asset`]s when they are initially created
+    pub const INVALID: AssetID = AssetID(u32::MAX);
+}
+
 /// An asset controlled by an agent.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Asset {
     /// A unique identifier for the asset
-    pub id: u32,
+    pub id: AssetID,
     /// A unique identifier for the agent
     pub agent_id: Rc<str>,
     /// The [`Process`] that this asset corresponds to
@@ -102,6 +111,32 @@ pub struct Asset {
 }
 
 impl Asset {
+    /// Create a new [`Asset`].
+    ///
+    /// The `id` field is initially set to [`AssetID::INVALID`], but is changed to a unique value
+    /// when the asset is commissioned.
+    pub fn new(
+        agent_id: Rc<str>,
+        process: Rc<Process>,
+        region_id: Rc<str>,
+        capacity: f64,
+        commission_year: u32,
+    ) -> Self {
+        Self {
+            id: AssetID::INVALID,
+            agent_id,
+            process,
+            region_id,
+            capacity,
+            commission_year,
+        }
+    }
+
+    /// The last year in which this asset should be decommissioned
+    pub fn decommission_year(&self) -> u32 {
+        self.commission_year + self.process.parameter.lifetime
+    }
+
     /// Get the activity limits for this asset in a particular time slice
     pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
         let limits = self.process.capacity_fractions.get(time_slice).unwrap();
@@ -113,14 +148,81 @@ impl Asset {
 }
 
 /// A pool of [`Asset`]s
-pub type AssetPool = Vec<Asset>;
+pub struct AssetPool {
+    /// The pool of assets, both active and yet to be commissioned.
+    ///
+    /// Sorted in order of commission year.
+    assets: Vec<Asset>,
+    /// Current milestone year.
+    current_year: u32,
+}
+
+impl AssetPool {
+    /// Create a new [`AssetPool`]
+    pub fn new(mut assets: Vec<Asset>) -> Self {
+        // Sort in order of commission year
+        assets.sort_by(|a, b| a.commission_year.cmp(&b.commission_year));
+
+        // Assign each asset a unique ID
+        for (id, asset) in assets.iter_mut().enumerate() {
+            asset.id = AssetID(id as u32);
+        }
+
+        Self {
+            assets,
+            current_year: 0,
+        }
+    }
+
+    /// Commission new assets for the specified milestone year
+    pub fn commission_new(&mut self, year: u32) {
+        assert!(
+            year >= self.current_year,
+            "Assets have already been commissioned for year {year}"
+        );
+        self.current_year = year;
+    }
+
+    /// Decommission old assets for the specified milestone year
+    pub fn decomission_old(&mut self, year: u32) {
+        assert!(
+            year >= self.current_year,
+            "Cannot decommission assets in the past (current year: {})",
+            self.current_year
+        );
+        self.assets.retain(|asset| asset.decommission_year() > year);
+    }
+
+    /// Get an asset with the specified ID
+    ///
+    /// # Panics
+    ///
+    /// Panics if `id` is not in pool.
+    pub fn get(&self, id: AssetID) -> &Asset {
+        // The assets in `active` are in order of ID
+        let idx = self
+            .assets
+            .binary_search_by(|asset| asset.id.cmp(&id))
+            .expect("id not found");
+
+        &self.assets[idx]
+    }
+
+    /// Iterate over active assets
+    pub fn iter(&self) -> impl Iterator<Item = &Asset> {
+        self.assets
+            .iter()
+            .take_while(|asset| asset.commission_year <= self.current_year)
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{FlowType, ProcessFlow, ProcessParameter};
+    use crate::process::{FlowType, Process, ProcessCapacityMap, ProcessFlow, ProcessParameter};
     use crate::time_slice::TimeSliceLevel;
+    use itertools::{assert_equal, Itertools};
     use std::iter;
 
     #[test]
@@ -166,7 +268,7 @@ mod tests {
             regions: RegionSelection::All,
         });
         let asset = Asset {
-            id: 0,
+            id: AssetID(0),
             agent_id: "agent1".into(),
             process: Rc::clone(&process),
             region_id: "GBR".into(),
@@ -175,5 +277,95 @@ mod tests {
         };
 
         assert_eq!(asset.get_activity_limits(&time_slice), 6.0..=f64::INFINITY);
+    }
+
+    fn create_asset_pool() -> AssetPool {
+        let process_param = ProcessParameter {
+            process_id: "process1".into(),
+            years: 2010..=2020,
+            capital_cost: 5.0,
+            fixed_operating_cost: 2.0,
+            variable_operating_cost: 1.0,
+            lifetime: 5,
+            discount_rate: 0.9,
+            cap2act: 1.0,
+        };
+        let process = Rc::new(Process {
+            id: "process1".into(),
+            description: "Description".into(),
+            capacity_fractions: ProcessCapacityMap::new(),
+            flows: vec![],
+            parameter: process_param.clone(),
+            regions: RegionSelection::All,
+        });
+        let future = [2020, 2010]
+            .map(|year| {
+                Asset::new(
+                    "agent1".into(),
+                    Rc::clone(&process),
+                    "GBR".into(),
+                    1.0,
+                    year,
+                )
+            })
+            .into_iter()
+            .collect_vec();
+
+        AssetPool::new(future)
+    }
+
+    #[test]
+    fn test_asset_pool_new() {
+        let assets = create_asset_pool();
+        assert!(assets.current_year == 0);
+
+        // Should be in order of commission year
+        assert!(assets.assets.len() == 2);
+        assert!(assets.assets[0].commission_year == 2010);
+        assert!(assets.assets[1].commission_year == 2020);
+    }
+
+    #[test]
+    fn test_asset_pool_commission_new() {
+        // Asset to be commissioned in this year
+        let mut assets = create_asset_pool();
+        assets.commission_new(2010);
+        assert!(assets.current_year == 2010);
+        assert_equal(assets.iter(), iter::once(&assets.assets[0]));
+
+        // Commission year has passed
+        let mut assets = create_asset_pool();
+        assets.commission_new(2011);
+        assert!(assets.current_year == 2011);
+        assert_equal(assets.iter(), iter::once(&assets.assets[0]));
+
+        // Nothing to commission for this year
+        let mut assets = create_asset_pool();
+        assets.commission_new(2000);
+        assert!(assets.current_year == 2000);
+        assert!(assets.iter().next().is_none()); // no active assets
+    }
+
+    #[test]
+    fn test_asset_pool_decommission_old() {
+        let mut assets = create_asset_pool();
+        let assets2 = assets.assets.clone();
+
+        assets.commission_new(2020);
+        assert!(assets.assets.len() == 2);
+        assets.decomission_old(2020); // should decommission first asset (lifetime == 5)
+        assert_equal(&assets.assets, iter::once(&assets2[1]));
+        assets.decomission_old(2022); // nothing to decommission
+        assert_equal(&assets.assets, iter::once(&assets2[1]));
+        assets.decomission_old(2025); // should decommission second asset
+        assert!(assets.assets.is_empty());
+    }
+
+    #[test]
+    fn test_asset_pool_get() {
+        let mut assets = create_asset_pool();
+        assets.commission_new(2020);
+        assert!(*assets.get(AssetID(0)) == assets.assets[0]);
+        assert!(*assets.get(AssetID(1)) == assets.assets[1]);
     }
 }

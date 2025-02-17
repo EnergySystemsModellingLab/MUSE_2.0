@@ -65,8 +65,6 @@ fn read_assets_from_iter<I>(
 where
     I: Iterator<Item = AssetRaw>,
 {
-    let mut id = 0u32;
-
     iter.map(|asset| -> Result<_> {
         let agent_id = agent_ids.get_id(&asset.agent_id)?;
         let process = processes
@@ -80,19 +78,13 @@ where
             process.id
         );
 
-        let asset = Asset {
-            id,
+        Ok(Asset::new(
             agent_id,
-            process: Rc::clone(process),
+            Rc::clone(process),
             region_id,
-            capacity: asset.capacity,
-            commission_year: asset.commission_year,
-        };
-
-        // Increment ID for next asset
-        id += 1;
-
-        Ok(asset)
+            asset.capacity,
+            asset.commission_year,
+        ))
     })
     .try_collect()
 }
@@ -139,14 +131,13 @@ mod tests {
             capacity: 1.0,
             commission_year: 2010,
         };
-        let asset_out = Asset {
-            id: 0,
-            agent_id: "agent1".into(),
-            process: Rc::clone(&process),
-            region_id: "GBR".into(),
-            capacity: 1.0,
-            commission_year: 2010,
-        };
+        let asset_out = Asset::new(
+            "agent1".into(),
+            Rc::clone(&process),
+            "GBR".into(),
+            1.0,
+            2010,
+        );
         assert_equal(
             read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
                 .unwrap(),
