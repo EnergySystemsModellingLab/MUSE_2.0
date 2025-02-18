@@ -2,8 +2,9 @@
 use super::optimisation::Solution;
 use super::CommodityPrices;
 use crate::agent::AssetPool;
-use crate::commodity::CommodityMap;
-use log::info;
+use crate::model::Model;
+use crate::time_slice::TimeSliceInfo;
+use log::{info, warn};
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -13,20 +14,16 @@ pub fn update_commodity_flows(_solution: &Solution, _assets: &mut AssetPool) {
 }
 
 /// Update commodity prices for assets based on the result of the dispatch optimisation.
-pub fn update_commodity_prices(
-    commodities: &CommodityMap,
-    solution: &Solution,
-    prices: &mut CommodityPrices,
-) {
+pub fn update_commodity_prices(model: &Model, solution: &Solution, prices: &mut CommodityPrices) {
     info!("Updating commodity prices...");
     let commodities_updated = update_commodity_prices_from_solution(solution, prices);
 
     // Find commodities not updated in last step
-    let remaining_commodities = commodities
+    let remaining_commodities = model
+        .commodities
         .keys()
-        .filter(|id| !commodities_updated.contains(*id))
-        .cloned();
-    update_remaining_commodity_prices(remaining_commodities, prices);
+        .filter(|id| !commodities_updated.contains(*id));
+    update_remaining_commodity_prices(remaining_commodities, &model.time_slice_info, prices);
 }
 
 /// Update the commodity prices for which there are values in the solution
@@ -54,9 +51,19 @@ fn update_commodity_prices_from_solution(
 ///
 /// * `commodity_ids` - IDs of commodities to update
 /// * `prices` - Commodity prices
-fn update_remaining_commodity_prices<I>(_commodity_ids: I, _prices: &mut CommodityPrices)
-where
-    I: Iterator<Item = Rc<str>>,
+fn update_remaining_commodity_prices<'a, I>(
+    commodity_ids: I,
+    time_slice_info: &TimeSliceInfo,
+    prices: &mut CommodityPrices,
+) where
+    I: Iterator<Item = &'a Rc<str>>,
 {
     info!("Updating remaining commodity prices...");
+
+    for commodity_id in commodity_ids {
+        warn!("No prices calculated for commodity {commodity_id}; setting to NaN");
+        for time_slice in time_slice_info.iter_ids() {
+            prices.insert(commodity_id, time_slice, f64::NAN);
+        }
+    }
 }
