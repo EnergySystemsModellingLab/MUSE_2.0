@@ -1,6 +1,7 @@
 //! Functionality for running the MUSE 2.0 simulation.
 use crate::agent::AssetPool;
 use crate::model::Model;
+use crate::output::write_commodity_prices_to_csv;
 use crate::time_slice::TimeSliceID;
 use log::info;
 use std::collections::HashMap;
@@ -71,5 +72,11 @@ pub fn run(model: Model, mut assets: AssetPool) {
 
         // Agent investment
         perform_agent_investment(&model, &mut assets);
+
+        // Write current commodity prices to CSV
+        match write_commodity_prices_to_csv(year, &prices) {
+            Ok(_) => (),
+            Err(e) => eprintln!("Error writing commodity prices to CSV: {}", e),
+        }
     }
 }
