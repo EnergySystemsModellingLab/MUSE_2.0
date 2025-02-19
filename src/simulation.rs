@@ -3,8 +3,10 @@ use crate::agent::AssetPool;
 use crate::model::Model;
 use crate::output::write_commodity_prices_to_csv;
 use crate::time_slice::TimeSliceID;
+use anyhow::Result;
 use log::info;
 use std::collections::HashMap;
+use std::path::Path;
 use std::rc::Rc;
 
 pub mod optimisation;
@@ -55,7 +57,7 @@ impl CommodityPrices {
 ///
 /// * `model` - The model to run
 /// * `assets` - The asset pool
-pub fn run(model: Model, mut assets: AssetPool) {
+pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()> {
     let mut prices = CommodityPrices::default();
 
     for year in model.iter_years() {
@@ -74,9 +76,8 @@ pub fn run(model: Model, mut assets: AssetPool) {
         perform_agent_investment(&model, &mut assets);
 
         // Write current commodity prices to CSV
-        match write_commodity_prices_to_csv(year, &prices) {
-            Ok(_) => (),
-            Err(e) => eprintln!("Error writing commodity prices to CSV: {}", e),
-        }
+        write_commodity_prices_to_csv(output_path, year, &prices)?;
     }
+
+    Ok(())
 }

@@ -3,8 +3,7 @@ use crate::simulation::CommodityPrices;
 use anyhow::{Context, Result};
 use csv::Writer;
 use serde::Serialize;
-use std::fs;
-use std::fs::File;
+use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
 
 /// The root folder in which model-specific output folders will be created
@@ -45,11 +44,16 @@ struct CommodityPriceRow {
 }
 
 /// Write commodity prices to a CSV file.
-pub fn write_commodity_prices_to_csv(milestone_year: u32, prices: &CommodityPrices) -> Result<()> {
-    let file_path: PathBuf = [OUTPUT_DIRECTORY_ROOT, "commodity_prices.csv"]
-        .iter()
-        .collect();
-    let file = File::create(file_path)?;
+pub fn write_commodity_prices_to_csv(
+    output_path: &Path,
+    milestone_year: u32,
+    prices: &CommodityPrices,
+) -> Result<()> {
+    let file_path = output_path.join("commodity_prices.csv");
+    let file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(file_path)?;
     let mut wtr = Writer::from_writer(file);
 
     for (commodity_id, time_slice, price) in prices.iter() {
