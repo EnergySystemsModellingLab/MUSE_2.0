@@ -1,17 +1,11 @@
 //! Code for updating the simulation state.
 use super::optimisation::Solution;
 use super::CommodityPrices;
-use crate::agent::AssetPool;
 use crate::model::Model;
 use crate::time_slice::TimeSliceInfo;
 use log::{info, warn};
 use std::collections::HashSet;
 use std::rc::Rc;
-
-/// Update commodity flows for assets based on the result of the dispatch optimisation.
-pub fn update_commodity_flows(_solution: &Solution, _assets: &mut AssetPool) {
-    info!("Updating commodity flows...");
-}
 
 /// Update commodity prices for assets based on the result of the dispatch optimisation.
 pub fn update_commodity_prices(model: &Model, solution: &Solution, prices: &mut CommodityPrices) {

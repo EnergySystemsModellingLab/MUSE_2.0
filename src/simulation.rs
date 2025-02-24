@@ -16,7 +16,7 @@ use optimisation::perform_dispatch_optimisation;
 pub mod investment;
 use investment::perform_agent_investment;
 pub mod update;
-use update::{update_commodity_flows, update_commodity_prices};
+use update::update_commodity_prices;
 
 /// A combination of commodity ID and time slice
 type CommodityPriceKey = (Rc<str>, TimeSliceID);
@@ -77,7 +77,6 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
 
         // Dispatch optimisation
         let solution = perform_dispatch_optimisation(&model, &assets, year);
-        update_commodity_flows(&solution, &mut assets);
         update_commodity_prices(&model, &solution, &mut prices);
 
         // Agent investment
