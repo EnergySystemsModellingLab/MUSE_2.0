@@ -144,10 +144,17 @@ impl Asset {
     /// Get the activity limits for this asset in a particular time slice
     pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
         let limits = self.process.capacity_fractions.get(time_slice).unwrap();
-        let capacity_a = self.capacity * self.process.parameter.capacity_to_activity;
+        let max_act = self.maximum_activity();
 
         // Multiply the fractional capacity in self.process by this asset's actual capacity
-        (capacity_a * limits.start())..=(capacity_a * limits.end())
+        (max_act * limits.start())..=(max_act * limits.end())
+    }
+
+    /// Maximum activity for this asset in a year.
+    ///
+    /// This was referred to as `capacity_a` in MUSE 1.0.
+    pub fn maximum_activity(&self) -> f64 {
+        self.capacity * self.process.parameter.capacity_to_activity
     }
 }
 
