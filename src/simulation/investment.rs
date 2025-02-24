@@ -21,12 +21,12 @@ where
     let mut utilisation = HashMap::new();
     for (asset_id, commodity_id, time_slice, flow) in flows {
         let asset = assets.get(asset_id);
-        if asset.process.get_commodity_flow(commodity_id).is_pac {
+        let pac1 = asset.process.iter_pacs().next().unwrap();
+        if *commodity_id == pac1.commodity.id {
             let key = (asset_id, time_slice.clone());
             let ts_fraction = model.time_slice_info.fractions.get(time_slice).unwrap();
             let value = flow.abs() / (asset.maximum_activity() * ts_fraction);
-            let exists = utilisation.insert(key, value).is_some();
-            assert!(!exists, "Multiple PACs found for asset");
+            utilisation.insert(key, value);
 
             info!(
                 "Agent {}, process {}, {}: utilisation {}",
