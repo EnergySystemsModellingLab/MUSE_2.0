@@ -103,19 +103,19 @@ Consistency check is performed.
 
 ### 2. Base Year Price Discovery
 
-Dispatch is executed to determine base year commodity production and consumption.
-The result is used to discover commodity prices in the calibrated base year (*t<sub>0</sub>*).
+Dispatch Optimimisation (hereon "Dispatch") is executed to determine base year commodity production
+and consumption. The result is used to discover commodity prices in the calibrated base year (*t<sub>0</sub>*).
 
 1. Dispatch is solved for all assets and commodities in the system
     simultaneously, where existing assets (known from calibrated
     input data) are operated to meet demand, and to produce/consume
     any intermediate commodities required, and to meet environmental
-    constraints if specified.
+    or other constraints if specified.
 
 2. Asset dispatch is merit order based but is subject to
     constraints that represent technical or other limits.
 
-    - For processes, dispatch limits that can be defined are
+    - For assets/processes, dispatch limits that can be defined are
         minimum, maximum and fixed capacity factors (i.e. percentage
         of capacity) that can be input per time slice, season or
         year.
@@ -125,31 +125,32 @@ The result is used to discover commodity prices in the calibrated base year (*t<
         by time slice, season or year.
 
 3. Price discovery is implemented via linear programming (cost
-    minimisation). The objective function is the cost of operating
-    the system over a year, which must be minimised. The decision
-    variables are the commodity inputs and outputs of each asset.
-    These are constrained by (a) the capacity of the asset and (b)
-    the capacity factor limits by time slice/season/year. Energy
-    commodity supply/demand must balance for SED (supply equals
-    demand) type commodities, and all service demands (SVD
-    commodities) must be met. Other commodity production or
-    consumption may be subject to constraints (usually annual but
-    could be seasonal/diurnal).
+    minimisation within the Dispatch Optimisation). The objective
+    function is the cost of operating the system over a year, which
+    must be minimised. The decision variables are the commodity inputs
+    and outputs of each asset, for each time slice. These are constrained
+    by (a) the capacity of the asset and (b) the capacity factor limits
+    by time slice/season/year. Energy commodity supply/demand must
+    balance for SED (supply equals demand) type commodities, and all
+    service demands (SVD commodities) must be met. Commodity production
+    or consumption may be subject to constraints (usually annual but
+    could be time slice/season level).
 
 4. Based on the resulting dispatch a time sliced price is
     calculated for each commodity using marginal pricing (i.e. the
-    operational cost of the most expensive process serving a
+    system-level operational cost of the most expensive process serving a
     commodity demand). The result of this step is model-generated
     time sliced commodity prices for the base year, *t<sub>0</sub>*.
 
 5. The model then also calculates the prices of commodities that
-    are not present in the base year, directly from input data. This
-    could be done by calculating the marginal price of the process
+    are not present in the dispatch solution, but could exist in the
+    solution for next period. These are calculated directly from input data.
+    This is done by calculating the marginal price of the process
     producing the commodity in question with the best objective
     value, where objective values are calculated using the
     utilisation of the next most expensive (marginal cost) asset in
-    the dispatch stack, and commodity prices from the price discovery
-    at step 3 above.
+    the dispatch stack, adjusted for availability differences, and
+    commodity prices from the price discovery at step 3 above.
 
 ### 3. Agent Investment
 
