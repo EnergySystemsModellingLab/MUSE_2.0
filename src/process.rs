@@ -27,6 +27,15 @@ pub struct Process {
 }
 
 impl Process {
+    /// Get the capital recovery factor for this process.
+    ///
+    /// See: https://www.homerenergy.com/products/pro/docs/3.15/capital_recovery_factor.html
+    pub fn capital_recovery_factor(&self) -> f64 {
+        let dr = self.parameter.discount_rate;
+        let num_years = self.parameter.lifetime as f64;
+        dr / (f64::powf(1.0 + dr, num_years) - 1.0)
+    }
+
     /// Iterate over this process's Primary Activity Commodity flows
     pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.flows.iter().filter(|flow| flow.is_pac)

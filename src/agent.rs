@@ -145,6 +145,19 @@ impl Asset {
         // Multiply the fractional capacity in self.process by this asset's actual capacity
         (capacity_a * limits.start())..=(capacity_a * limits.end())
     }
+
+    /// Calculate objective value based on LCOX
+    #[allow(dead_code)]
+    fn levelised_cost(&self, utilisation: f64) -> f64 {
+        let capital_cost =
+            self.process.parameter.capital_cost * self.process.capital_recovery_factor();
+        let capital_cost_per_year = capital_cost / self.process.parameter.lifetime as f64;
+
+        let p = &self.process.parameter;
+        let running_costs = utilisation * (p.fixed_operating_cost + p.variable_operating_cost);
+
+        capital_cost_per_year + running_costs
+    }
 }
 
 /// A pool of [`Asset`]s
