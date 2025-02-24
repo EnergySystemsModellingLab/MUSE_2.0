@@ -118,7 +118,7 @@ impl Asset {
     /// Create a new [`Asset`].
     ///
     /// The `id` field is initially set to [`AssetID::INVALID`], but is changed to a unique value
-    /// when the asset is commissioned.
+    /// when the asset is stored in an [`AssetPool`].
     pub fn new(
         agent_id: Rc<str>,
         process: Rc<Process>,
