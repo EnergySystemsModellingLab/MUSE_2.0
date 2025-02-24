@@ -27,14 +27,6 @@ pub struct Process {
 }
 
 impl Process {
-    /// Get a commodity flow matching the given commodity ID
-    pub fn get_commodity_flow(&self, commodity_id: &Rc<str>) -> &ProcessFlow {
-        self.flows
-            .iter()
-            .find(|flow| flow.commodity.id == *commodity_id)
-            .expect("Missing commodity flow")
-    }
-
     /// Whether the process contains a flow for a given commodity
     pub fn contains_commodity_flow(&self, commodity: &Rc<Commodity>) -> bool {
         self.flows
