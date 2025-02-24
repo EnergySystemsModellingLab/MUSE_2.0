@@ -107,10 +107,11 @@ pub struct ProcessParameter {
     pub lifetime: u32,
     /// Process-specific discount rate
     pub discount_rate: f64,
-    /// Factor for calculating the maximum PAC output over a year ("capacity to activity").
+    /// Factor for calculating the maximum PAC output over a year.
     ///
     /// Used for converting one unit of capacity to maximum activity of the PAC per year. For
-    /// example, if capacity is measured in GW and activity is measured in PJ, the cap2act for the
-    /// process is 31.536 because 1 GW of capacity can produce 31.536 PJ energy output in a year.
-    pub cap2act: f64,
+    /// example, if capacity is measured in GW and activity is measured in PJ, the
+    /// capacity_to_activity for the process is 31.536 because 1 GW of capacity can produce 31.536
+    /// PJ energy output in a year.
+    pub capacity_to_activity: f64,
 }

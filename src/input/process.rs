@@ -314,7 +314,7 @@ mod tests {
                     variable_operating_cost: 0.0,
                     lifetime: 1,
                     discount_rate: 1.0,
-                    cap2act: 0.0,
+                    capacity_to_activity: 0.0,
                 };
 
                 (id.into(), parameter)

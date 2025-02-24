@@ -107,7 +107,7 @@ mod tests {
             variable_operating_cost: 1.0,
             lifetime: 5,
             discount_rate: 0.9,
-            cap2act: 1.0,
+            capacity_to_activity: 1.0,
         };
         let process = Rc::new(Process {
             id: "process1".into(),

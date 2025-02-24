@@ -144,7 +144,7 @@ impl Asset {
     /// Get the activity limits for this asset in a particular time slice
     pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
         let limits = self.process.capacity_fractions.get(time_slice).unwrap();
-        let capacity_a = self.capacity * self.process.parameter.cap2act;
+        let capacity_a = self.capacity * self.process.parameter.capacity_to_activity;
 
         // Multiply the fractional capacity in self.process by this asset's actual capacity
         (capacity_a * limits.start())..=(capacity_a * limits.end())
@@ -263,7 +263,7 @@ mod tests {
             variable_operating_cost: 1.0,
             lifetime: 5,
             discount_rate: 0.9,
-            cap2act: 3.0,
+            capacity_to_activity: 3.0,
         };
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
@@ -312,7 +312,7 @@ mod tests {
             variable_operating_cost: 1.0,
             lifetime: 5,
             discount_rate: 0.9,
-            cap2act: 1.0,
+            capacity_to_activity: 1.0,
         };
         let process = Rc::new(Process {
             id: "process1".into(),
