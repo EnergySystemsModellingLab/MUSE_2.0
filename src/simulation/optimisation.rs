@@ -47,7 +47,7 @@ impl VariableMap {
 
 /// A key for a [`VariableMap`]
 #[derive(Eq, PartialEq, Hash)]
-pub struct VariableMapKey {
+struct VariableMapKey {
     asset_id: AssetID,
     commodity_id: Rc<str>,
     time_slice: TimeSliceID,
@@ -80,11 +80,18 @@ impl Solution<'_> {
     ///
     /// Note that this only includes commodity flows which relate to assets, so not every commodity
     /// in the simulation will necessarily be represented.
-    pub fn iter_commodity_flows_for_assets(&self) -> impl Iterator<Item = (&VariableMapKey, f64)> {
+    ///
+    /// # Returns
+    ///
+    /// An iterator of tuples containing an asset ID, commodity, time slice and flow.
+    pub fn iter_commodity_flows_for_assets(
+        &self,
+    ) -> impl Iterator<Item = (AssetID, &Rc<str>, &TimeSliceID, f64)> {
         self.variables
             .0
             .keys()
             .zip(self.solution.columns().iter().copied())
+            .map(|(key, flow)| (key.asset_id, &key.commodity_id, &key.time_slice, flow))
     }
 
     /// Iterate over the newly calculated commodity prices for each time slice.
