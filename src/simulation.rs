@@ -69,6 +69,10 @@ pub fn run(model: Model, mut assets: AssetPool) {
         update_commodity_prices(&model, &solution, &mut prices);
 
         // Agent investment
-        perform_agent_investment(&model, &mut assets);
+        perform_agent_investment(
+            &model,
+            solution.iter_commodity_flows_for_assets(),
+            &mut assets,
+        );
     }
 }
