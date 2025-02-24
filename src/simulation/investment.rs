@@ -12,26 +12,31 @@ use std::rc::Rc;
 ///
 /// * `model` - The model
 /// * `assets` - The asset pool
-pub fn perform_agent_investment<'a, I>(model: &Model, flows: I, assets: &mut AssetPool)
+pub fn perform_agent_investment<'a, I>(_model: &Model, flows: I, assets: &mut AssetPool)
 where
     I: Iterator<Item = (AssetID, &'a Rc<str>, &'a TimeSliceID, f64)>,
 {
     info!("Performing agent investment...");
 
     let mut utilisation = HashMap::new();
-    for (asset_id, commodity_id, time_slice, flow) in flows {
+    for (asset_id, commodity_id, _time_slice, flow) in flows {
         let asset = assets.get(asset_id);
         let pac1 = asset.process.iter_pacs().next().unwrap();
-        if *commodity_id == pac1.commodity.id {
-            let key = (asset_id, time_slice.clone());
-            let ts_fraction = model.time_slice_info.fractions.get(time_slice).unwrap();
-            let value = flow.abs() / (asset.maximum_activity() * ts_fraction);
-            utilisation.insert(key, value);
-
-            info!(
-                "Agent {}, process {}, {}: utilisation {}",
-                asset.agent_id, asset.process.id, time_slice, value
-            );
+        if *commodity_id != pac1.commodity.id {
+            continue;
         }
+
+        let value = utilisation.entry(asset_id).or_insert(0.0);
+        *value += flow.abs();
+    }
+
+    for (asset_id, value) in utilisation.iter_mut() {
+        let asset = assets.get(*asset_id);
+        *value /= asset.maximum_activity();
+
+        info!(
+            "Agent {}, process {}: utilisation {}",
+            asset.agent_id, asset.process.id, value
+        );
     }
 }
