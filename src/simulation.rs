@@ -6,6 +6,7 @@ use crate::time_slice::TimeSliceID;
 use anyhow::Result;
 use log::info;
 use std::collections::HashMap;
+use std::fs::OpenOptions;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -60,6 +61,12 @@ impl CommodityPrices {
 pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()> {
     let mut prices = CommodityPrices::default();
 
+    let file_path = output_path.join("commodity_prices.csv");
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(file_path)?;
+
     for year in model.iter_years() {
         info!("Milestone year: {year}");
 
@@ -76,7 +83,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         perform_agent_investment(&model, &mut assets);
 
         // Write current commodity prices to CSV
-        write_commodity_prices_to_csv(output_path, year, &prices)?;
+        write_commodity_prices_to_csv(&mut file, year, &prices)?;
     }
 
     Ok(())

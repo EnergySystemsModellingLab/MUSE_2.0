@@ -1,9 +1,10 @@
 //! The module responsible for writing output data to disk.
 use crate::simulation::CommodityPrices;
 use anyhow::{Context, Result};
-use csv::Writer;
 use serde::Serialize;
-use std::fs::{self, OpenOptions};
+use std::fs;
+use std::fs::File;
+use std::io::Seek;
 use std::path::{Path, PathBuf};
 
 /// The root folder in which model-specific output folders will be created
@@ -45,16 +46,15 @@ struct CommodityPriceRow {
 
 /// Write commodity prices to a CSV file.
 pub fn write_commodity_prices_to_csv(
-    output_path: &Path,
+    file: &mut File,
     milestone_year: u32,
     prices: &CommodityPrices,
 ) -> Result<()> {
-    let file_path = output_path.join("commodity_prices.csv");
-    let file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(file_path)?;
-    let mut wtr = Writer::from_writer(file);
+    // Check if the file is empty. If it is, we need to write headers.
+    let needs_headers = file.seek(std::io::SeekFrom::End(0))? == 0;
+    let mut wtr = csv::WriterBuilder::new()
+        .has_headers(needs_headers)
+        .from_writer(file);
 
     for (commodity_id, time_slice, price) in prices.iter() {
         let row = CommodityPriceRow {
