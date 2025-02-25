@@ -36,7 +36,8 @@ the framework in the high-performance Rust language.
 
 MUSE is classified as a recursive dynamic modelling framework in the sense that it iterates on a
 single time period to find a market equilibrium, and then moves to the next time period.
-Agents in MUSE have limited foresight, reacting only to information available in the current time period.
+Agents in MUSE have limited foresight, reacting only to information available in the current time
+period.
 <!-- markdown-link-check-disable-next-line -->
 This is distinct from intertemporal optimisation modelling frameworks (such as [TIMES](https://iea-etsap.org/index.php/etsap-tools/model-generators/times)
 and [MESSAGEix](https://docs.messageix.org/en/latest/)) which have perfect foresight over the whole
@@ -186,7 +187,7 @@ The capacity investment of new assets required in the next milestone year are ca
         with marginal cost immediately above the process, also
         taking into account availability constraints. This would be
         more accurate in most cases (but there are some complications,
-        e.g. where asset/process has conflicting capacity factor
+        e.g. where asset/process has conflicting availability
         constraints/utilisation).
 
     - Add assets/processes to the capacity mix starting with the
@@ -254,14 +255,15 @@ The capacity investment of new assets required in the next milestone year are ca
 
 ### 4. Carbon budget solution (or CO<sub>2</sub> price responsiveness)
 
-Where a CO<sub>2</sub> budget or price is specified, steps (2)-(3) are initially run with the CO<sub>2</sub>
-price from the previous milestone year. After completion, we run dispatch with a CO<sub>2</sub> budget
-equal to the user prescribed level (if it exists) for the new milestone year, and record the
-resulting CO<sub>2</sub> price (dual solution of the CO<sub>2</sub> constraint). If the CO<sub>2</sub>
-price is less than zero then re-run dispatch without the budget constraint and set CO<sub>2</sub>
-price to zero. **Alternatively,** a user might specify a CO<sub>2</sub> price for all or part of the
-time horizon, and no carbon budget, in which case the model runs dispatch with the specified carbon
-price relating to each milestone year in steps (2)-(3) and no further processing is needed here.
+Where a CO<sub>2</sub> budget or price is specified, steps (2)-(3) are initially run with the
+CO<sub>2</sub> price from the previous milestone year. After completion, we run dispatch with a
+CO<sub>2</sub> budget equal to the user prescribed level (if it exists) for the new milestone year,
+and record the resulting CO<sub>2</sub> price (dual solution of the CO<sub>2</sub> constraint). If
+the CO<sub>2</sub> price is less than zero then re-run dispatch without the budget constraint and
+set CO<sub>2</sub> price to zero. **Alternatively,** a user might specify a CO<sub>2</sub> price for
+all or part of the time horizon, and no carbon budget, in which case the model runs dispatch with
+the specified carbon price relating to each milestone year in steps (2)-(3) and no further
+processing is needed here.
 
 If there is no solution to the dispatch optimisation, then the CO<sub>2</sub>
 budget cannot be met. In this case we re-run dispatch without the budget constraint but
@@ -283,8 +285,8 @@ and repeats the process, beginning with prices from the last-solved
 time period. This process continues until the end of the time
 horizon is reached.
 
-        > **Issue 6:** At this point we have commodity prices for every
-        time period in the simulation. The model could then perform a
-        "super-loop" where the entire process above is repeated, but agents
-        have some foresight of on commodity price. Super-loops we be considered
-        for inclusion is a later release of MUSE.
+  > **Issue 6:** At this point we have commodity prices for every
+  time period in the simulation. The model could then perform a
+  "super-loop" where the entire process above is repeated, but agents
+  have some foresight of on commodity price. Super-loops we be considered
+  for inclusion is a later release of MUSE.
