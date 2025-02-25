@@ -1,6 +1,6 @@
 # Dispatch Optimisation Formulation
 
-Decision variables:
+## Decision variables
 
 \\( q_{r,a,c,ts} \\), where *q* represents *c* commodity flow in region *r*, to/from asset *a*, in
 time slice *ts*. Negative values are flows into the asset and positive values are flows from the
@@ -17,7 +17,7 @@ where
 
 *ts* = time slice
 
-Objective function:
+## Objective function
 
 $$
   min. \sum_{r}{\sum_{a}{\sum_{c}{\sum_{ts}}}} cost_{r,a,c,ts} * q_{r,a,c,ts}
@@ -41,15 +41,16 @@ combination of parameters, this value is zero.
 **NOTE:** If the commodity flow is an input (i.e. flow <0), then the value of *cost* should be
 multiplied by &minus;1 so that the impact on the objective function is positive.
 
-Constraints.
+## Constraints
 
-TBD – does it make sense for all assets of the same type that are in the
-same region are grouped together in constraints (to reduce the number of
-constraints).
+  > **Issue 1:** It would reduce the size of the optimisation problem if all assets of the same
+  type that are in the same region are grouped together in constraints (to reduce the number of
+  constraints). However, this approach would also complicate pre- and post-optimisation processing
+  which would need to unpick grouped assets and allocate back to their agent owners.
 
-## Asset-level input-output commodity balances
+### Asset-level input-output commodity balances
 
-### Non-flexible assets
+#### Non-flexible assets
 
 Assets where ratio between output/s and input/s is strictly proportional. Energy commodity asset
 inputs and outputs are proportional to first-listed primary activity commodity at a time slice level
@@ -65,7 +66,7 @@ primary activity commodity for the asset (i.e. all input and output flows are ma
 
 **TBD** - cases where time slice level of the commodity is seasonal or annual.
 
-### Commodity-flexible assets
+#### Commodity-flexible assets
 
 Assets where ratio of input/s to output/s can vary for selected commodities, subject to user-defined
 ratios between input and output.
