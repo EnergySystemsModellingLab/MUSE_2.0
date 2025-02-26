@@ -136,14 +136,15 @@ impl DemandMap {
     }
 
     /// Retrieve the demand for the specified region, year and time slice
-    pub fn get(&self, region_id: Rc<str>, year: u32, time_slice: TimeSliceID) -> Option<f64> {
+    pub fn get(&self, region_id: &Rc<str>, year: u32, time_slice: &TimeSliceID) -> f64 {
         self.0
             .get(&DemandMapKey {
-                region_id,
+                region_id: region_id.clone(),
                 year,
-                time_slice,
+                time_slice: time_slice.clone(),
             })
             .copied()
+            .expect("Missing demand entry")
     }
 
     /// Insert a new demand entry for the specified region, year and time slice
@@ -173,7 +174,7 @@ mod tests {
         let mut map = DemandMap::new();
         map.insert("North".into(), 2020, time_slice.clone(), value);
 
-        assert_eq!(map.get("North".into(), 2020, time_slice).unwrap(), value)
+        assert_eq!(map.get(&"North".into(), 2020, &time_slice), value)
     }
 
     #[test]
