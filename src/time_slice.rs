@@ -3,11 +3,10 @@
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
 #![allow(missing_docs)]
-use crate::input::*;
 use anyhow::{Context, Result};
+use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 use serde_string_enum::DeserializeLabeledStringEnum;
-use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::iter;
 use std::rc::Rc;
@@ -42,11 +41,11 @@ pub enum TimeSliceSelection {
 #[derive(PartialEq, Debug)]
 pub struct TimeSliceInfo {
     /// Names of seasons
-    pub seasons: HashSet<Rc<str>>,
+    pub seasons: IndexSet<Rc<str>>,
     /// Names of times of day (e.g. "evening")
-    pub times_of_day: HashSet<Rc<str>>,
+    pub times_of_day: IndexSet<Rc<str>>,
     /// The fraction of the year that this combination of season and time of day occupies
-    pub fractions: HashMap<TimeSliceID, f64>,
+    pub fractions: IndexMap<TimeSliceID, f64>,
 }
 
 impl Default for TimeSliceInfo {
@@ -102,7 +101,11 @@ impl TimeSliceInfo {
             let time_slice = self.get_time_slice_id_from_str(time_slice)?;
             Ok(TimeSliceSelection::Single(time_slice))
         } else {
-            let season = self.seasons.get_id(time_slice)?;
+            let season = self
+                .seasons
+                .get(time_slice)
+                .with_context(|| format!("'{time_slice}' is not a valid season"))?
+                .clone();
             Ok(TimeSliceSelection::Season(season))
         }
     }
@@ -208,6 +211,7 @@ pub enum TimeSliceLevel {
 mod tests {
     use super::*;
     use float_cmp::assert_approx_eq;
+    use itertools::assert_equal;
 
     #[test]
     fn test_iter_selection() {
@@ -229,22 +233,20 @@ mod tests {
                 .collect(),
         };
 
-        assert_eq!(
-            HashSet::<&TimeSliceID>::from_iter(
-                ts_info
-                    .iter_selection(&TimeSliceSelection::Annual)
-                    .map(|(ts, _)| ts)
-            ),
-            HashSet::from_iter(slices.iter())
+        assert_equal(
+            ts_info
+                .iter_selection(&TimeSliceSelection::Annual)
+                .map(|(ts, _)| ts),
+            slices.iter(),
         );
-        itertools::assert_equal(
+        assert_equal(
             ts_info
                 .iter_selection(&TimeSliceSelection::Season("winter".into()))
                 .map(|(ts, _)| ts),
             iter::once(&slices[0]),
         );
         let ts = ts_info.get_time_slice_id_from_str("summer.night").unwrap();
-        itertools::assert_equal(
+        assert_equal(
             ts_info
                 .iter_selection(&TimeSliceSelection::Single(ts))
                 .map(|(ts, _)| ts),
@@ -281,7 +283,7 @@ mod tests {
         macro_rules! check_share {
             ($selection:expr, $expected:expr) => {
                 let expected = $expected;
-                let actual: HashMap<_, _> = HashMap::from_iter(
+                let actual: IndexMap<_, _> = IndexMap::from_iter(
                     ts_info
                         .calculate_share(&$selection, 8.0)
                         .map(|(ts, share)| (ts.clone(), share)),
@@ -294,12 +296,13 @@ mod tests {
         }
 
         // Whole year
-        let expected: HashMap<_, _> = HashMap::from_iter(slices.iter().map(|ts| (ts.clone(), 2.0)));
+        let expected: IndexMap<_, _> =
+            IndexMap::from_iter(slices.iter().map(|ts| (ts.clone(), 2.0)));
         check_share!(TimeSliceSelection::Annual, expected);
 
         // One season
         let selection = TimeSliceSelection::Season("winter".into());
-        let expected: HashMap<_, _> = HashMap::from_iter(
+        let expected: IndexMap<_, _> = IndexMap::from_iter(
             ts_info
                 .iter_selection(&selection)
                 .map(|(ts, _)| (ts.clone(), 4.0)),
@@ -309,7 +312,7 @@ mod tests {
         // Single time slice
         let time_slice = ts_info.get_time_slice_id_from_str("winter.day").unwrap();
         let selection = TimeSliceSelection::Single(time_slice.clone());
-        let expected: HashMap<_, _> = HashMap::from_iter(iter::once((time_slice, 8.0)));
+        let expected: IndexMap<_, _> = IndexMap::from_iter(iter::once((time_slice, 8.0)));
         check_share!(selection, expected);
     }
 }
