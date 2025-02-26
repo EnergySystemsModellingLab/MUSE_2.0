@@ -1,9 +1,14 @@
 //! Functionality for running the MUSE 2.0 simulation.
 use crate::agent::AssetPool;
 use crate::model::Model;
+use crate::output::write_commodity_prices_to_csv;
 use crate::time_slice::TimeSliceID;
+
+use anyhow::Result;
 use indexmap::IndexMap;
 use log::info;
+use std::fs::OpenOptions;
+use std::path::Path;
 use std::rc::Rc;
 
 pub mod optimisation;
@@ -54,8 +59,14 @@ impl CommodityPrices {
 ///
 /// * `model` - The model to run
 /// * `assets` - The asset pool
-pub fn run(model: Model, mut assets: AssetPool) {
+pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()> {
     let mut prices = CommodityPrices::default();
+
+    let file_path = output_path.join("commodity_prices.csv");
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(file_path)?;
 
     for year in model.iter_years() {
         info!("Milestone year: {year}");
@@ -71,5 +82,10 @@ pub fn run(model: Model, mut assets: AssetPool) {
 
         // Agent investment
         perform_agent_investment(&model, &mut assets);
+
+        // Write current commodity prices to CSV
+        write_commodity_prices_to_csv(&mut file, year, &prices)?;
     }
+
+    Ok(())
 }
