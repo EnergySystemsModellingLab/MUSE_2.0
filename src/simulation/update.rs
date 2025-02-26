@@ -2,9 +2,9 @@
 use super::optimisation::Solution;
 use super::CommodityPrices;
 use crate::agent::AssetPool;
-use crate::commodity::Commodity;
+use crate::commodity::CommodityMap;
 use log::info;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::rc::Rc;
 
 /// Update commodity flows for assets based on the result of the dispatch optimisation.
@@ -14,7 +14,7 @@ pub fn update_commodity_flows(_solution: &Solution, _assets: &mut AssetPool) {
 
 /// Update commodity prices for assets based on the result of the dispatch optimisation.
 pub fn update_commodity_prices(
-    commodities: &HashMap<Rc<str>, Rc<Commodity>>,
+    commodities: &CommodityMap,
     solution: &Solution,
     prices: &mut CommodityPrices,
 ) {
