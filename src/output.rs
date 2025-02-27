@@ -89,6 +89,18 @@ struct AssetRow {
     commission_year: u32,
 }
 
+impl AssetRow {
+    fn new(milestone_year: u32, asset: &Asset) -> Self {
+        Self {
+            milestone_year,
+            process_id: Rc::clone(&asset.process.id),
+            region_id: Rc::clone(&asset.region_id),
+            agent_id: Rc::clone(&asset.agent_id),
+            commission_year: asset.commission_year,
+        }
+    }
+}
+
 /// An object for writing assets to file
 pub struct AssetsWriter(csv::Writer<File>);
 
@@ -105,13 +117,7 @@ impl AssetsWriter {
         I: Iterator<Item = &'a Asset>,
     {
         for asset in assets {
-            let row = AssetRow {
-                milestone_year,
-                process_id: Rc::clone(&asset.process.id),
-                region_id: Rc::clone(&asset.region_id),
-                agent_id: Rc::clone(&asset.agent_id),
-                commission_year: asset.commission_year,
-            };
+            let row = AssetRow::new(milestone_year, asset);
             self.0.serialize(row)?;
         }
 
@@ -193,13 +199,7 @@ mod tests {
             parameter: process_param.clone(),
             regions: RegionSelection::All,
         });
-        let asset = Asset::new(
-            Rc::clone(&agent_id),
-            Rc::clone(&process),
-            Rc::clone(&region_id),
-            2.0,
-            commission_year,
-        );
+        let asset = Asset::new(agent_id, process, region_id, 2.0, commission_year);
 
         let dir = tempdir().unwrap();
 
@@ -212,13 +212,7 @@ mod tests {
         }
 
         // Read back and compare
-        let expected = AssetRow {
-            milestone_year,
-            process_id,
-            region_id,
-            agent_id,
-            commission_year,
-        };
+        let expected = AssetRow::new(milestone_year, &asset);
         let records: Vec<AssetRow> = csv::Reader::from_path(dir.path().join(ASSETS_FILE_NAME))
             .unwrap()
             .into_deserialize()
