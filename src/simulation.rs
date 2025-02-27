@@ -1,10 +1,9 @@
 //! Functionality for running the MUSE 2.0 simulation.
 use crate::agent::AssetPool;
 use crate::model::Model;
-use crate::output::write_commodity_prices_to_csv;
+use crate::output::CommodityPricesWriter;
 use anyhow::Result;
 use log::{error, info};
-use std::fs::OpenOptions;
 use std::path::Path;
 
 pub mod optimisation;
@@ -21,11 +20,7 @@ pub use prices::CommodityPrices;
 /// * `model` - The model to run
 /// * `assets` - The asset pool
 pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()> {
-    let file_path = output_path.join("commodity_prices.csv");
-    let mut file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(file_path)?;
+    let mut prices_wtr = CommodityPricesWriter::create(output_path)?;
 
     let mut opt_solution = None;
     for year in model.iter_years() {
@@ -54,8 +49,10 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         opt_solution = Some(solution);
 
         // Write current commodity prices to CSV
-        write_commodity_prices_to_csv(&mut file, year, &prices)?;
+        prices_wtr.write(year, &prices)?;
     }
+
+    prices_wtr.flush()?;
 
     Ok(())
 }
