@@ -133,7 +133,11 @@ For a service demand, for each *c*, within a single region:
 
 $$\sum_{a,ts} q_{r,a,c,ts} = cr\\_ net\\_ fx$$
 
-Where *c* is a service demand commodity.
+Where *c* is a service demand commodity and *cr_net_fx* is the exogenous (user-defined) demand for
+the given time slice selection. Note that the *ts* to be summed over will differ depending on the
+specified time slice level for a given commodity. If the time slice level is `annual`, it will be
+every time slice, if it's `season` then there will be separate constraints for each season and if
+it's `time_slice` then there will be separate constraints for every individual time slice.
 
 **TBD** – commodities that are consumed (so sum of *q* can be a negative value). E.g. oil reserves. \
 **TBD** – trade between regions.

@@ -145,6 +145,25 @@ impl TimeSliceInfo {
         }
     }
 
+    /// Iterate over the different time slice selections for a given time slice level.
+    ///
+    /// For example, if [`TimeSliceLevel::Season`] is specified, this function will return an
+    /// iterator of [`TimeSliceSelection`]s covering each season.
+    pub fn iter_selections_for_level(
+        &self,
+        level: TimeSliceLevel,
+    ) -> Box<dyn Iterator<Item = TimeSliceSelection> + '_> {
+        match level {
+            TimeSliceLevel::Annual => Box::new(iter::once(TimeSliceSelection::Annual)),
+            TimeSliceLevel::Season => {
+                Box::new(self.seasons.iter().cloned().map(TimeSliceSelection::Season))
+            }
+            TimeSliceLevel::DayNight => {
+                Box::new(self.iter_ids().cloned().map(TimeSliceSelection::Single))
+            }
+        }
+    }
+
     /// Iterate over a subset of time slices calculating the relative duration of each.
     ///
     /// The relative duration is specified as a fraction of the total time (proportion of year)
@@ -197,7 +216,7 @@ impl TimeSliceInfo {
 }
 
 /// Refers to a particular aspect of a time slice
-#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
+#[derive(PartialEq, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
 pub enum TimeSliceLevel {
     #[string = "annual"]
     Annual,
