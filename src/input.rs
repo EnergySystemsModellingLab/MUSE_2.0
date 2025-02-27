@@ -3,6 +3,7 @@ use crate::agent::AssetPool;
 use crate::model::{Model, ModelFile};
 use anyhow::{ensure, Context, Result};
 use float_cmp::approx_eq;
+use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use std::collections::{HashMap, HashSet};
@@ -115,16 +116,19 @@ impl IDCollection for HashSet<Rc<str>> {
     }
 }
 
-/// Read a CSV file of items with IDs
-pub fn read_csv_id_file<T>(file_path: &Path) -> Result<HashMap<Rc<str>, T>>
+/// Read a CSV file of items with IDs.
+///
+/// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
+/// the IDs for a given type), we use an ordered map to maintain the order in the input files.
+pub fn read_csv_id_file<T>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
 where
     T: HasID + DeserializeOwned,
 {
-    fn fill_and_validate_map<T>(file_path: &Path) -> Result<HashMap<Rc<str>, T>>
+    fn fill_and_validate_map<T>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
     where
         T: HasID + DeserializeOwned,
     {
-        let mut map = HashMap::new();
+        let mut map = IndexMap::new();
         for record in read_csv::<T>(file_path)? {
             let id = record.get_id();
 

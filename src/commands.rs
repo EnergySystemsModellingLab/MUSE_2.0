@@ -61,7 +61,7 @@ pub fn handle_run_command(model_dir: &Path) -> Result<()> {
     info!("Output directory created: {}", output_path.display());
     let (model, assets) = load_model(model_dir).context("Failed to load model.")?;
     info!("Model loaded successfully.");
-    crate::simulation::run(model, assets);
+    crate::simulation::run(model, assets, &output_path)?;
     Ok(())
 }
 
@@ -72,6 +72,8 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
 
     // Creates temporary directory
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
+    let temp_path = temp_dir.path().join(name);
+    fs::create_dir(&temp_path)?;
 
     // Copies the contents of the subdirectory to the temporary directory
     for entry in sub_dir.entries() {
@@ -79,13 +81,13 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
             DirEntry::Dir(_) => panic!("Subdirectories in examples not supported"),
             DirEntry::File(f) => {
                 let file_name = f.path().file_name().unwrap();
-                let file_path = temp_dir.path().join(file_name);
+                let file_path = temp_path.join(file_name);
                 fs::write(&file_path, f.contents())?;
             }
         }
     }
 
-    handle_run_command(temp_dir.path())
+    handle_run_command(&temp_path)
 }
 
 /// Handle the `example list` command.

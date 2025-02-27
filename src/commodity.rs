@@ -1,10 +1,14 @@
 #![allow(missing_docs)]
 use crate::input::*;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
+use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
 use std::rc::Rc;
+
+/// A map of [`Commodity`]s, keyed by commodity ID
+pub type CommodityMap = IndexMap<Rc<str>, Rc<Commodity>>;
 
 /// A commodity within the simulation. Represents a substance (e.g. CO2) or form of energy (e.g.
 /// electricity) that can be produced and/or consumed by technologies in the model.

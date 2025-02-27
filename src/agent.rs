@@ -4,11 +4,15 @@ use crate::commodity::Commodity;
 use crate::process::Process;
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceID;
+use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashSet;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
+
+/// A map of [`Agent`]s, keyed by agent ID
+pub type AgentMap = IndexMap<Rc<str>, Agent>;
 
 /// An agent in the simulation
 #[derive(Debug, Clone, PartialEq)]
