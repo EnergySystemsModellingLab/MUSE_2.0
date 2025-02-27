@@ -3,7 +3,7 @@ use crate::agent::AssetPool;
 use crate::model::Model;
 use crate::output::write_commodity_prices_to_csv;
 use anyhow::Result;
-use log::info;
+use log::{error, info};
 use std::fs::OpenOptions;
 use std::path::Path;
 
@@ -37,6 +37,11 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         // NB: Agent investment is not carried out in first milestone year
         if let Some(solution) = opt_solution {
             perform_agent_investment(&model, &solution, &mut assets);
+
+            // **TODO:** Remove this when we implement at least some of the agent investment code
+            //   See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/304
+            error!("Agent investment is not yet implemented. Exiting...");
+            return Ok(());
         }
 
         // Newly commissioned assets will be included in optimisation for at least one milestone
