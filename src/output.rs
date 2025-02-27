@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 /// The root folder in which model-specific output folders will be created
 const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
@@ -43,7 +44,7 @@ pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityPriceRow {
     milestone_year: u32,
-    commodity_id: String,
+    commodity_id: Rc<str>,
     time_slice: String,
     price: f64,
 }
@@ -63,7 +64,7 @@ impl CommodityPricesWriter {
         for (commodity_id, time_slice, price) in prices.iter() {
             let row = CommodityPriceRow {
                 milestone_year,
-                commodity_id: commodity_id.to_string(),
+                commodity_id: Rc::clone(commodity_id),
                 time_slice: time_slice.to_string(),
                 price,
             };
@@ -111,7 +112,7 @@ mod tests {
 
         // Read back and compare
         let expected = CommodityPriceRow {
-            commodity_id: commodity_id.to_string(),
+            commodity_id,
             milestone_year,
             time_slice: time_slice.to_string(),
             price,
