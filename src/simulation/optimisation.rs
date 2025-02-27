@@ -8,7 +8,7 @@ use crate::process::ProcessFlow;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
-use log::{error, info};
+use log::error;
 use std::rc::Rc;
 
 /// A decision variable in the optimisation
@@ -134,8 +134,6 @@ pub fn perform_dispatch_optimisation<'a>(
     assets: &AssetPool,
     year: u32,
 ) -> Solution<'a> {
-    info!("Performing dispatch optimisation...");
-
     // Set up problem
     let mut problem = Problem::default();
     let variables = add_variables(&mut problem, model, assets, year);
@@ -179,7 +177,6 @@ fn add_variables(
     assets: &AssetPool,
     year: u32,
 ) -> VariableMap {
-    info!("Adding variables to problem...");
     let mut variables = VariableMap::default();
 
     for asset in assets.iter() {
@@ -279,8 +276,6 @@ fn add_commodity_balance_constraints(
     assets: &AssetPool,
     year: u32,
 ) -> CommodityConstraintKeys {
-    info!("Adding commodity balance constraints...");
-
     // Sanity check: we rely on the first n values of the dual row values corresponding to the
     // commodity constraints, so these must be the first rows
     assert!(
@@ -363,8 +358,6 @@ fn add_fixed_asset_constraints(
     assets: &AssetPool,
     time_slice_info: &TimeSliceInfo,
 ) {
-    info!("Adding constraints for non-flexible assets...");
-
     for asset in assets.iter() {
         // Get first PAC. unwrap is safe because all processes have at least one PAC.
         let pac1 = asset.process.iter_pacs().next().unwrap();
@@ -402,8 +395,6 @@ fn add_asset_capacity_constraints(
     assets: &AssetPool,
     time_slice_info: &TimeSliceInfo,
 ) {
-    info!("Adding asset-level capacity and availability constraints...");
-
     let mut terms = Vec::new();
     for asset in assets.iter() {
         for time_slice in time_slice_info.iter_ids() {

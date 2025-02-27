@@ -3,13 +3,12 @@ use super::optimisation::Solution;
 use super::CommodityPrices;
 use crate::model::Model;
 use crate::time_slice::TimeSliceInfo;
-use log::{info, warn};
+use log::warn;
 use std::collections::HashSet;
 use std::rc::Rc;
 
 /// Update commodity prices for assets based on the result of the dispatch optimisation.
 pub fn update_commodity_prices(model: &Model, solution: &Solution, prices: &mut CommodityPrices) {
-    info!("Updating commodity prices...");
     let commodities_updated = update_commodity_prices_from_solution(solution, prices);
 
     // Find commodities not updated in last step
@@ -25,8 +24,6 @@ fn update_commodity_prices_from_solution(
     solution: &Solution,
     prices: &mut CommodityPrices,
 ) -> HashSet<Rc<str>> {
-    info!("Updating commodity prices...");
-
     let mut commodities_updated = HashSet::new();
 
     for (commodity_id, time_slice, price) in solution.iter_commodity_prices() {
@@ -52,8 +49,6 @@ fn update_remaining_commodity_prices<'a, I>(
 ) where
     I: Iterator<Item = &'a Rc<str>>,
 {
-    info!("Updating remaining commodity prices...");
-
     for commodity_id in commodity_ids {
         warn!("No prices calculated for commodity {commodity_id}; setting to NaN");
         for time_slice in time_slice_info.iter_ids() {
