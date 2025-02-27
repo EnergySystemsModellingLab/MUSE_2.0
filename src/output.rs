@@ -1,14 +1,17 @@
 //! The module responsible for writing output data to disk.
 use crate::simulation::CommodityPrices;
 use anyhow::{Context, Result};
-use serde::Serialize;
+use csv;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
-use std::io::Seek;
 use std::path::{Path, PathBuf};
 
 /// The root folder in which model-specific output folders will be created
 const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
+
+/// The output file name for commodity prices
+const COMMODITY_PRICES_FILE_NAME: &str = "commodity_prices.csv";
 
 /// Create a new output directory for the model specified at `model_dir`.
 pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
@@ -36,7 +39,8 @@ pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
     Ok(path)
 }
 
-#[derive(Serialize)]
+/// Represents a row in the commodity prices CSV file
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityPriceRow {
     milestone_year: u32,
     commodity_id: String,
@@ -44,28 +48,80 @@ struct CommodityPriceRow {
     price: f64,
 }
 
-/// Write commodity prices to a CSV file.
-pub fn write_commodity_prices_to_csv(
-    file: &mut File,
-    milestone_year: u32,
-    prices: &CommodityPrices,
-) -> Result<()> {
-    // Check if the file is empty. If it is, we need to write headers.
-    let needs_headers = file.seek(std::io::SeekFrom::End(0))? == 0;
-    let mut wtr = csv::WriterBuilder::new()
-        .has_headers(needs_headers)
-        .from_writer(file);
+/// An object for writing commodity prices to file
+pub struct CommodityPricesWriter(csv::Writer<File>);
 
-    for (commodity_id, time_slice, price) in prices.iter() {
-        let row = CommodityPriceRow {
-            milestone_year,
+impl CommodityPricesWriter {
+    /// Create a new CSV file to write commodity prices to
+    pub fn create(output_path: &Path) -> Result<Self> {
+        let file_path = output_path.join(COMMODITY_PRICES_FILE_NAME);
+        Ok(Self(csv::Writer::from_path(file_path)?))
+    }
+
+    /// Write commodity prices to a CSV file
+    pub fn write(&mut self, milestone_year: u32, prices: &CommodityPrices) -> Result<()> {
+        for (commodity_id, time_slice, price) in prices.iter() {
+            let row = CommodityPriceRow {
+                milestone_year,
+                commodity_id: commodity_id.to_string(),
+                time_slice: time_slice.to_string(),
+                price,
+            };
+            self.0.serialize(row)?;
+        }
+
+        Ok(())
+    }
+
+    /// Flush the underlying stream
+    pub fn flush(&mut self) -> Result<()> {
+        Ok(self.0.flush()?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::iter;
+
+    use super::*;
+    use crate::time_slice::TimeSliceID;
+    use itertools::{assert_equal, Itertools};
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_commodity_prices_writer() {
+        let commodity_id = "commodity1".into();
+        let time_slice = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "day".into(),
+        };
+        let milestone_year = 2020;
+        let price = 42.0;
+        let mut prices = CommodityPrices::default();
+        prices.insert(&commodity_id, &time_slice, price);
+
+        let dir = tempdir().unwrap();
+
+        // Write a price
+        {
+            let mut prices_wtr = CommodityPricesWriter::create(dir.path()).unwrap();
+            prices_wtr.write(milestone_year, &prices).unwrap();
+            prices_wtr.flush().unwrap();
+        }
+
+        // Read back and compare
+        let expected = CommodityPriceRow {
             commodity_id: commodity_id.to_string(),
+            milestone_year,
             time_slice: time_slice.to_string(),
             price,
         };
-        wtr.serialize(row)?;
+        let records: Vec<CommodityPriceRow> =
+            csv::Reader::from_path(dir.path().join(COMMODITY_PRICES_FILE_NAME))
+                .unwrap()
+                .into_deserialize()
+                .try_collect()
+                .unwrap();
+        assert_equal(records, iter::once(expected));
     }
-
-    wtr.flush()?;
-    Ok(())
 }
