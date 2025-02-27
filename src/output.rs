@@ -1,4 +1,5 @@
 //! The module responsible for writing output data to disk.
+use crate::agent::Asset;
 use crate::simulation::CommodityPrices;
 use anyhow::{Context, Result};
 use csv;
@@ -13,6 +14,9 @@ const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
 
 /// The output file name for commodity prices
 const COMMODITY_PRICES_FILE_NAME: &str = "commodity_prices.csv";
+
+/// The output file name for assets
+const ASSETS_FILE_NAME: &str = "assets.csv";
 
 /// Create a new output directory for the model specified at `model_dir`.
 pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
@@ -40,6 +44,16 @@ pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
     Ok(path)
 }
 
+/// Represents a row in the assets output CSV file
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct AssetRow {
+    milestone_year: u32,
+    process_id: Rc<str>,
+    region_id: Rc<str>,
+    agent_id: Rc<str>,
+    commission_year: u32,
+}
+
 /// Represents a row in the commodity prices CSV file
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityPriceRow {
@@ -51,6 +65,7 @@ struct CommodityPriceRow {
 
 /// An object for writing commodity prices to file
 pub struct DataWriter {
+    assets_writer: csv::Writer<File>,
     prices_writer: csv::Writer<File>,
 }
 
@@ -63,8 +78,28 @@ impl DataWriter {
         };
 
         Ok(Self {
+            assets_writer: new_writer(ASSETS_FILE_NAME)?,
             prices_writer: new_writer(COMMODITY_PRICES_FILE_NAME)?,
         })
+    }
+
+    /// Write assets to a CSV file
+    pub fn write_assets<'a, I>(&mut self, milestone_year: u32, assets: I) -> Result<()>
+    where
+        I: Iterator<Item = &'a Asset>,
+    {
+        for asset in assets {
+            let row = AssetRow {
+                milestone_year,
+                process_id: Rc::clone(&asset.process.id),
+                region_id: Rc::clone(&asset.region_id),
+                agent_id: Rc::clone(&asset.agent_id),
+                commission_year: asset.commission_year,
+            };
+            self.assets_writer.serialize(row)?;
+        }
+
+        Ok(())
     }
 
     /// Write commodity prices to a CSV file
@@ -82,20 +117,84 @@ impl DataWriter {
         Ok(())
     }
 
-    /// Flush the underlying stream
+    /// Flush the underlying streams
     pub fn flush(&mut self) -> Result<()> {
-        Ok(self.prices_writer.flush()?)
+        self.assets_writer.flush()?;
+        self.prices_writer.flush()?;
+
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::iter;
-
     use super::*;
+    use crate::process::{Process, ProcessParameter};
+    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
+    use std::{collections::HashMap, iter};
     use tempfile::tempdir;
+
+    #[test]
+    fn test_write_assets() {
+        let milestone_year = 2020;
+        let process_id = "process1".into();
+        let region_id = "GBR".into();
+        let agent_id = "agent1".into();
+        let commission_year = 2015;
+        let process_param = ProcessParameter {
+            process_id: "process1".to_string(),
+            years: 2010..=2020,
+            capital_cost: 5.0,
+            fixed_operating_cost: 2.0,
+            variable_operating_cost: 1.0,
+            lifetime: 5,
+            discount_rate: 0.9,
+            cap2act: 3.0,
+        };
+        let process = Rc::new(Process {
+            id: Rc::clone(&process_id),
+            description: "Description".into(),
+            capacity_fractions: HashMap::new(),
+            flows: vec![],
+            parameter: process_param.clone(),
+            regions: RegionSelection::All,
+        });
+        let asset = Asset::new(
+            Rc::clone(&agent_id),
+            Rc::clone(&process),
+            Rc::clone(&region_id),
+            2.0,
+            commission_year,
+        );
+
+        let dir = tempdir().unwrap();
+
+        // Write an asset
+        {
+            let mut writer = DataWriter::create(dir.path()).unwrap();
+            writer
+                .write_assets(milestone_year, iter::once(&asset))
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        // Read back and compare
+        let expected = AssetRow {
+            milestone_year,
+            process_id,
+            region_id,
+            agent_id,
+            commission_year,
+        };
+        let records: Vec<AssetRow> = csv::Reader::from_path(dir.path().join(ASSETS_FILE_NAME))
+            .unwrap()
+            .into_deserialize()
+            .try_collect()
+            .unwrap();
+        assert_equal(records, iter::once(expected));
+    }
 
     #[test]
     fn test_write_prices() {
