@@ -12,7 +12,6 @@ use optimisation::perform_dispatch_optimisation;
 pub mod investment;
 use investment::perform_agent_investment;
 pub mod prices;
-use prices::update_commodity_prices;
 pub use prices::CommodityPrices;
 
 /// Run the simulation.
@@ -22,8 +21,6 @@ pub use prices::CommodityPrices;
 /// * `model` - The model to run
 /// * `assets` - The asset pool
 pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()> {
-    let mut prices = CommodityPrices::default();
-
     let file_path = output_path.join("commodity_prices.csv");
     let mut file = OpenOptions::new()
         .append(true)
@@ -39,7 +36,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
 
         // Dispatch optimisation
         let solution = perform_dispatch_optimisation(&model, &assets, year)?;
-        update_commodity_prices(&model, &solution, &mut prices);
+        let prices = CommodityPrices::from_model_and_solution(&model, &solution);
 
         // Agent investment
         perform_agent_investment(&model, &mut assets);

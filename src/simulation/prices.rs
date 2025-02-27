@@ -15,13 +15,59 @@ type CommodityPriceKey = (Rc<str>, TimeSliceID);
 pub struct CommodityPrices(IndexMap<CommodityPriceKey, f64>);
 
 impl CommodityPrices {
-    /// Get the price for the given commodity and time slice
-    pub fn get(&self, commodity_id: &Rc<str>, time_slice: &TimeSliceID) -> f64 {
-        let key = (Rc::clone(commodity_id), time_slice.clone());
-        *self
-            .0
-            .get(&key)
-            .expect("Missing price for given commodity and time slice")
+    /// Calculate commodity prices based on the result of the dispatch optimisation.
+    ///
+    /// Missing prices will be calculated directly from the input data
+    pub fn from_model_and_solution(model: &Model, solution: &Solution) -> Self {
+        let mut prices = CommodityPrices::default();
+        let commodities_updated = prices.add_from_solution(solution);
+
+        // Find commodities not updated in last step
+        let remaining_commodities = model
+            .commodities
+            .keys()
+            .filter(|id| !commodities_updated.contains(*id));
+        prices.add_remaining(remaining_commodities, &model.time_slice_info);
+
+        prices
+    }
+
+    /// Add commodity prices for which there are values in the solution
+    ///
+    /// # Arguments
+    ///
+    /// * `solution` - The solution to the dispatch optimisation
+    ///
+    /// # Returns
+    ///
+    /// The set of commodities for which prices were added.
+    fn add_from_solution(&mut self, solution: &Solution) -> HashSet<Rc<str>> {
+        let mut commodities_updated = HashSet::new();
+
+        for (commodity_id, time_slice, price) in solution.iter_commodity_prices() {
+            self.insert(commodity_id, time_slice, price);
+            commodities_updated.insert(Rc::clone(commodity_id));
+        }
+
+        commodities_updated
+    }
+
+    /// Add prices for any commodity not updated by the dispatch step.
+    ///
+    /// # Arguments
+    ///
+    /// * `commodity_ids` - IDs of commodities to update
+    /// * `time_slice_info` - Information about time slices
+    fn add_remaining<'a, I>(&mut self, commodity_ids: I, time_slice_info: &TimeSliceInfo)
+    where
+        I: Iterator<Item = &'a Rc<str>>,
+    {
+        for commodity_id in commodity_ids {
+            warn!("No prices calculated for commodity {commodity_id}; setting to NaN");
+            for time_slice in time_slice_info.iter_ids() {
+                self.insert(commodity_id, time_slice, f64::NAN);
+            }
+        }
     }
 
     /// Insert a price for the given commodity and time slice
@@ -39,55 +85,5 @@ impl CommodityPrices {
         self.0
             .iter()
             .map(|((commodity_id, ts), price)| (commodity_id, ts, *price))
-    }
-}
-
-/// Update commodity prices for assets based on the result of the dispatch optimisation.
-pub fn update_commodity_prices(model: &Model, solution: &Solution, prices: &mut CommodityPrices) {
-    let commodities_updated = update_commodity_prices_from_solution(solution, prices);
-
-    // Find commodities not updated in last step
-    let remaining_commodities = model
-        .commodities
-        .keys()
-        .filter(|id| !commodities_updated.contains(*id));
-    update_remaining_commodity_prices(remaining_commodities, &model.time_slice_info, prices);
-}
-
-/// Update the commodity prices for which there are values in the solution
-fn update_commodity_prices_from_solution(
-    solution: &Solution,
-    prices: &mut CommodityPrices,
-) -> HashSet<Rc<str>> {
-    let mut commodities_updated = HashSet::new();
-
-    for (commodity_id, time_slice, price) in solution.iter_commodity_prices() {
-        prices.insert(commodity_id, time_slice, price);
-        commodities_updated.insert(Rc::clone(commodity_id));
-    }
-
-    commodities_updated
-}
-
-/// Update prices for any commodity not updated by the dispatch step.
-///
-/// **TODO**: This will likely take additional arguments, depending on how we decide to do this step
-///
-/// # Arguments
-///
-/// * `commodity_ids` - IDs of commodities to update
-/// * `prices` - Commodity prices
-fn update_remaining_commodity_prices<'a, I>(
-    commodity_ids: I,
-    time_slice_info: &TimeSliceInfo,
-    prices: &mut CommodityPrices,
-) where
-    I: Iterator<Item = &'a Rc<str>>,
-{
-    for commodity_id in commodity_ids {
-        warn!("No prices calculated for commodity {commodity_id}; setting to NaN");
-        for time_slice in time_slice_info.iter_ids() {
-            prices.insert(commodity_id, time_slice, f64::NAN);
-        }
     }
 }
