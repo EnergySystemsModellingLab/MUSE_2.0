@@ -1,4 +1,5 @@
-#![allow(missing_docs)]
+//! Processes are used for converting between different commodities. The data structures in this
+//! module are used to represent these conversions along with the associated costs.
 use crate::commodity::Commodity;
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceID;
@@ -12,13 +13,20 @@ use std::rc::Rc;
 /// A map of [`Process`]es, keyed by process ID
 pub type ProcessMap = IndexMap<Rc<str>, Rc<Process>>;
 
+/// Represents a process within the simulation
 #[derive(PartialEq, Debug)]
 pub struct Process {
+    /// A unique identifier for the process (e.g. GASDRV)
     pub id: Rc<str>,
+    /// A human-readable description for the process (e.g. dry gas extraction)
     pub description: String,
+    /// The capacity limits for each time slice (as a fraction of maximum)
     pub capacity_fractions: ProcessCapacityMap,
+    /// Commodity flows for this process
     pub flows: Vec<ProcessFlow>,
+    /// Additional parameters for this process
     pub parameter: ProcessParameter,
+    /// The regions in which this process can operate
     pub regions: RegionSelection,
 }
 
@@ -46,11 +54,12 @@ impl Process {
 /// availability.
 pub type ProcessCapacityMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
 
+/// Represents a commodity flow for a given process
 #[derive(PartialEq, Debug, Deserialize, Clone)]
 pub struct ProcessFlow {
     /// A unique identifier for the process
     pub process_id: String,
-    /// Identifies the commodity for the specified flow
+    /// The commodity produced or consumed by this flow
     pub commodity: Rc<Commodity>,
     /// Commodity flow quantity relative to other commodity flows.
     ///
@@ -68,6 +77,7 @@ pub struct ProcessFlow {
     pub is_pac: bool,
 }
 
+/// Type of commodity flow (see [`ProcessFlow`])
 #[derive(PartialEq, Default, Debug, Clone, DeserializeLabeledStringEnum)]
 pub enum FlowType {
     #[default]
@@ -80,14 +90,27 @@ pub enum FlowType {
     Flexible,
 }
 
+/// Additional parameters for a process
 #[derive(PartialEq, Clone, Debug, Deserialize)]
 pub struct ProcessParameter {
+    /// A unique identifier for the process
     pub process_id: String,
+    /// The years in which this process is available for investment
     pub years: RangeInclusive<u32>,
+    /// Overnight capital cost per unit capacity
     pub capital_cost: f64,
+    /// Annual operating cost per unit capacity
     pub fixed_operating_cost: f64,
+    /// Variable operating cost per unit activity, for PACs **only**
     pub variable_operating_cost: f64,
+    /// Lifetime in years of an asset created from this process
     pub lifetime: u32,
+    /// Process-specific discount rate
     pub discount_rate: f64,
+    /// Factor for calculating the maximum PAC output over a year ("capacity to activity").
+    ///
+    /// Used for converting one unit of capacity to maximum activity of the PAC per year. For
+    /// example, if capacity is measured in GW and activity is measured in PJ, the cap2act for the
+    /// process is 31.536 because 1 GW of capacity can produce 31.536 PJ energy output in a year.
     pub cap2act: f64,
 }

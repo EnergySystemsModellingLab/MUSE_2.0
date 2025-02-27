@@ -2,7 +2,6 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
-#![allow(missing_docs)]
 use anyhow::{Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
@@ -35,6 +34,20 @@ pub enum TimeSliceSelection {
     Season(Rc<str>),
     /// Only applies to a single time slice
     Single(TimeSliceID),
+}
+
+/// The time granularity for a particular operation
+#[derive(PartialEq, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
+pub enum TimeSliceLevel {
+    /// The whole year
+    #[string = "annual"]
+    Annual,
+    /// Whole seasons
+    #[string = "season"]
+    Season,
+    /// Treat individual time slices separately
+    #[string = "daynight"]
+    DayNight,
 }
 
 /// Information about the time slices in the simulation, including names and fractions
@@ -213,17 +226,6 @@ impl TimeSliceInfo {
         self.iterate_selection_share(selection)
             .map(move |(ts, share)| (ts, value * share))
     }
-}
-
-/// Refers to a particular aspect of a time slice
-#[derive(PartialEq, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
-pub enum TimeSliceLevel {
-    #[string = "annual"]
-    Annual,
-    #[string = "season"]
-    Season,
-    #[string = "daynight"]
-    DayNight,
 }
 
 #[cfg(test)]
