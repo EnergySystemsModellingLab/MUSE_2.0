@@ -197,19 +197,20 @@ impl AssetPool {
         self.assets.retain(|asset| asset.decommission_year() > year);
     }
 
-    /// Get an asset with the specified ID
+    /// Get an asset with the specified ID.
     ///
-    /// # Panics
+    /// # Returns
     ///
-    /// Panics if `id` is not in pool.
-    pub fn get(&self, id: AssetID) -> &Asset {
+    /// Reference to an [`Asset`] if found, else `None`. The asset may not be found if it has
+    /// already been decommissioned.
+    pub fn get(&self, id: AssetID) -> Option<&Asset> {
         // The assets in `active` are in order of ID
         let idx = self
             .assets
             .binary_search_by(|asset| asset.id.cmp(&id))
-            .expect("id not found");
+            .ok()?;
 
-        &self.assets[idx]
+        Some(&self.assets[idx])
     }
 
     /// Iterate over active assets
@@ -388,7 +389,7 @@ mod tests {
     fn test_asset_pool_get() {
         let mut assets = create_asset_pool();
         assets.commission_new(2020);
-        assert!(*assets.get(AssetID(0)) == assets.assets[0]);
-        assert!(*assets.get(AssetID(1)) == assets.assets[1]);
+        assert!(assets.get(AssetID(0)) == Some(&assets.assets[0]));
+        assert!(assets.get(AssetID(1)) == Some(&assets.assets[1]));
     }
 }
