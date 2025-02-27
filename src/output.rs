@@ -1,6 +1,7 @@
 //! The module responsible for writing output data to disk.
-use crate::agent::Asset;
+use crate::agent::{Asset, AssetID, AssetPool};
 use crate::simulation::CommodityPrices;
+use crate::time_slice::TimeSliceID;
 use anyhow::{Context, Result};
 use csv;
 use serde::{Deserialize, Serialize};
@@ -11,6 +12,9 @@ use std::rc::Rc;
 
 /// The root folder in which model-specific output folders will be created
 const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
+
+/// The output file name for commodity flows
+const COMMODITY_FLOWS_FILE_NAME: &str = "commodity_flows.csv";
 
 /// The output file name for commodity prices
 const COMMODITY_PRICES_FILE_NAME: &str = "commodity_prices.csv";
@@ -66,6 +70,16 @@ impl AssetRow {
     }
 }
 
+/// Represents the flow-related data in a row of the commodity flows CSV file.
+///
+/// This will be written along with an [`AssetRow`] containing asset-related info.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct CommodityFlowRow {
+    commodity_id: Rc<str>,
+    time_slice: String,
+    flow: f64,
+}
+
 /// Represents a row in the commodity prices CSV file
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityPriceRow {
@@ -78,6 +92,7 @@ struct CommodityPriceRow {
 /// An object for writing commodity prices to file
 pub struct DataWriter {
     assets_writer: csv::Writer<File>,
+    flows_writer: csv::Writer<File>,
     prices_writer: csv::Writer<File>,
 }
 
@@ -91,6 +106,7 @@ impl DataWriter {
 
         Ok(Self {
             assets_writer: new_writer(ASSETS_FILE_NAME)?,
+            flows_writer: new_writer(COMMODITY_FLOWS_FILE_NAME)?,
             prices_writer: new_writer(COMMODITY_PRICES_FILE_NAME)?,
         })
     }
@@ -103,6 +119,30 @@ impl DataWriter {
         for asset in assets {
             let row = AssetRow::new(milestone_year, asset);
             self.assets_writer.serialize(row)?;
+        }
+
+        Ok(())
+    }
+
+    /// Write commodity flows to a CSV file
+    pub fn write_flows<'a, I>(
+        &mut self,
+        milestone_year: u32,
+        assets: &AssetPool,
+        flows: I,
+    ) -> Result<()>
+    where
+        I: Iterator<Item = (AssetID, &'a Rc<str>, &'a TimeSliceID, f64)>,
+    {
+        for (asset_id, commodity_id, time_slice, flow) in flows {
+            let asset = assets.get(asset_id).unwrap();
+            let asset_row = AssetRow::new(milestone_year, asset);
+            let flow_row = CommodityFlowRow {
+                commodity_id: Rc::clone(commodity_id),
+                time_slice: time_slice.to_string(),
+                flow,
+            };
+            self.flows_writer.serialize((asset_row, flow_row))?;
         }
 
         Ok(())
@@ -126,6 +166,7 @@ impl DataWriter {
     /// Flush the underlying streams
     pub fn flush(&mut self) -> Result<()> {
         self.assets_writer.flush()?;
+        self.flows_writer.flush()?;
         self.prices_writer.flush()?;
 
         Ok(())
@@ -142,9 +183,7 @@ mod tests {
     use std::{collections::HashMap, iter};
     use tempfile::tempdir;
 
-    #[test]
-    fn test_write_assets() {
-        let milestone_year = 2020;
+    fn get_asset() -> Asset {
         let process_id = "process1".into();
         let region_id = "GBR".into();
         let agent_id = "agent1".into();
@@ -167,7 +206,14 @@ mod tests {
             parameter: process_param.clone(),
             regions: RegionSelection::All,
         });
-        let asset = Asset::new(agent_id, process, region_id, 2.0, commission_year);
+
+        Asset::new(agent_id, process, region_id, 2.0, commission_year)
+    }
+
+    #[test]
+    fn test_write_assets() {
+        let milestone_year = 2020;
+        let asset = get_asset();
 
         let dir = tempdir().unwrap();
 
@@ -187,6 +233,48 @@ mod tests {
             .into_deserialize()
             .try_collect()
             .unwrap();
+        assert_equal(records, iter::once(expected));
+    }
+
+    #[test]
+    fn test_write_flows() {
+        let milestone_year = 2020;
+        let commodity_id = "commodity1".into();
+        let time_slice = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "day".into(),
+        };
+        let mut assets = AssetPool::new(vec![get_asset()]);
+        assets.commission_new(2020);
+        let flow_item = (
+            assets.iter().next().unwrap().id,
+            &commodity_id,
+            &time_slice,
+            42.0,
+        );
+
+        // Write a flow
+        let dir = tempdir().unwrap();
+        {
+            let mut writer = DataWriter::create(dir.path()).unwrap();
+            writer
+                .write_flows(milestone_year, &assets, iter::once(flow_item))
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        // Read back and compare
+        let expected = CommodityFlowRow {
+            commodity_id,
+            time_slice: time_slice.to_string(),
+            flow: 42.0,
+        };
+        let records: Vec<CommodityFlowRow> =
+            csv::Reader::from_path(dir.path().join(COMMODITY_FLOWS_FILE_NAME))
+                .unwrap()
+                .into_deserialize()
+                .try_collect()
+                .unwrap();
         assert_equal(records, iter::once(expected));
     }
 
