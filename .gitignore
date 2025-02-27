@@ -1,3 +1,5 @@
+*.zip
+
 # Simulation output files
 **/muse2_results
 
