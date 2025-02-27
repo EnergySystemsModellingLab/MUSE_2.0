@@ -1,14 +1,17 @@
 //! The module responsible for writing output data to disk.
 use crate::simulation::CommodityPrices;
 use anyhow::{Context, Result};
+use csv;
 use serde::Serialize;
 use std::fs;
 use std::fs::File;
-use std::io::Seek;
 use std::path::{Path, PathBuf};
 
 /// The root folder in which model-specific output folders will be created
 const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
+
+/// The output file name for commodity prices
+const COMMODITY_PRICES_FILE_NAME: &str = "commodity_prices.csv";
 
 /// Create a new output directory for the model specified at `model_dir`.
 pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
@@ -36,6 +39,7 @@ pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
     Ok(path)
 }
 
+/// Represents a row in the commodity prices CSV file
 #[derive(Serialize)]
 struct CommodityPriceRow {
     milestone_year: u32,
@@ -44,28 +48,28 @@ struct CommodityPriceRow {
     price: f64,
 }
 
-/// Write commodity prices to a CSV file.
-pub fn write_commodity_prices_to_csv(
-    file: &mut File,
-    milestone_year: u32,
-    prices: &CommodityPrices,
-) -> Result<()> {
-    // Check if the file is empty. If it is, we need to write headers.
-    let needs_headers = file.seek(std::io::SeekFrom::End(0))? == 0;
-    let mut wtr = csv::WriterBuilder::new()
-        .has_headers(needs_headers)
-        .from_writer(file);
+/// An object for writing commodity prices to file
+pub struct CommodityPricesWriter(csv::Writer<File>);
 
-    for (commodity_id, time_slice, price) in prices.iter() {
-        let row = CommodityPriceRow {
-            milestone_year,
-            commodity_id: commodity_id.to_string(),
-            time_slice: time_slice.to_string(),
-            price,
-        };
-        wtr.serialize(row)?;
+impl CommodityPricesWriter {
+    /// Create a new CSV file to write commodity prices to
+    pub fn create(output_path: &Path) -> Result<Self> {
+        let file_path = output_path.join(COMMODITY_PRICES_FILE_NAME);
+        Ok(Self(csv::Writer::from_path(file_path)?))
     }
 
-    wtr.flush()?;
-    Ok(())
+    /// Write commodity prices to a CSV file
+    pub fn write(&mut self, milestone_year: u32, prices: &CommodityPrices) -> Result<()> {
+        for (commodity_id, time_slice, price) in prices.iter() {
+            let row = CommodityPriceRow {
+                milestone_year,
+                commodity_id: commodity_id.to_string(),
+                time_slice: time_slice.to_string(),
+                price,
+            };
+            self.0.serialize(row)?;
+        }
+
+        Ok(())
+    }
 }
