@@ -2,7 +2,7 @@
 use crate::simulation::CommodityPrices;
 use anyhow::{Context, Result};
 use csv;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -40,7 +40,7 @@ pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
 }
 
 /// Represents a row in the commodity prices CSV file
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityPriceRow {
     milestone_year: u32,
     commodity_id: String,
@@ -71,5 +71,51 @@ impl CommodityPricesWriter {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::iter;
+
+    use super::*;
+    use crate::time_slice::TimeSliceID;
+    use itertools::{assert_equal, Itertools};
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_commodity_prices_writer() {
+        let commodity_id = "commodity1".into();
+        let time_slice = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "day".into(),
+        };
+        let milestone_year = 2020;
+        let price = 42.0;
+        let mut prices = CommodityPrices::default();
+        prices.insert(&commodity_id, &time_slice, price);
+
+        let dir = tempdir().unwrap();
+
+        // Write a price
+        {
+            let mut prices_wtr = CommodityPricesWriter::create(dir.path()).unwrap();
+            prices_wtr.write(milestone_year, &prices).unwrap();
+        }
+
+        // Read back and compare
+        let expected = CommodityPriceRow {
+            commodity_id: commodity_id.to_string(),
+            milestone_year,
+            time_slice: time_slice.to_string(),
+            price,
+        };
+        let records: Vec<CommodityPriceRow> =
+            csv::Reader::from_path(dir.path().join(COMMODITY_PRICES_FILE_NAME))
+                .unwrap()
+                .into_deserialize()
+                .try_collect()
+                .unwrap();
+        assert_equal(records, iter::once(expected));
     }
 }
