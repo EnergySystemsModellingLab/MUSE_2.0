@@ -1,11 +1,46 @@
 //! Code for updating the simulation state.
 use super::optimisation::Solution;
-use super::CommodityPrices;
 use crate::model::Model;
-use crate::time_slice::TimeSliceInfo;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use indexmap::IndexMap;
 use log::warn;
 use std::collections::HashSet;
 use std::rc::Rc;
+
+/// A combination of commodity ID and time slice
+type CommodityPriceKey = (Rc<str>, TimeSliceID);
+
+/// A map relating commodity ID + time slice to current price (endogenous)
+#[derive(Default)]
+pub struct CommodityPrices(IndexMap<CommodityPriceKey, f64>);
+
+impl CommodityPrices {
+    /// Get the price for the given commodity and time slice
+    pub fn get(&self, commodity_id: &Rc<str>, time_slice: &TimeSliceID) -> f64 {
+        let key = (Rc::clone(commodity_id), time_slice.clone());
+        *self
+            .0
+            .get(&key)
+            .expect("Missing price for given commodity and time slice")
+    }
+
+    /// Insert a price for the given commodity and time slice
+    pub fn insert(&mut self, commodity_id: &Rc<str>, time_slice: &TimeSliceID, price: f64) {
+        let key = (Rc::clone(commodity_id), time_slice.clone());
+        self.0.insert(key, price);
+    }
+
+    /// Iterate over the map.
+    ///
+    /// # Returns
+    ///
+    /// An iterator of tuples containing commodity ID, time slice and price.
+    pub fn iter(&self) -> impl Iterator<Item = (&Rc<str>, &TimeSliceID, f64)> {
+        self.0
+            .iter()
+            .map(|((commodity_id, ts), price)| (commodity_id, ts, *price))
+    }
+}
 
 /// Update commodity prices for assets based on the result of the dispatch optimisation.
 pub fn update_commodity_prices(model: &Model, solution: &Solution, prices: &mut CommodityPrices) {

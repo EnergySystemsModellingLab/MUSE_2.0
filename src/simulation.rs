@@ -2,56 +2,18 @@
 use crate::agent::AssetPool;
 use crate::model::Model;
 use crate::output::write_commodity_prices_to_csv;
-use crate::time_slice::TimeSliceID;
-
 use anyhow::Result;
-use indexmap::IndexMap;
 use log::info;
 use std::fs::OpenOptions;
 use std::path::Path;
-use std::rc::Rc;
 
 pub mod optimisation;
 use optimisation::perform_dispatch_optimisation;
 pub mod investment;
 use investment::perform_agent_investment;
-pub mod update;
-use update::update_commodity_prices;
-
-/// A combination of commodity ID and time slice
-type CommodityPriceKey = (Rc<str>, TimeSliceID);
-
-/// A map relating commodity ID + time slice to current price (endogenous)
-#[derive(Default)]
-pub struct CommodityPrices(IndexMap<CommodityPriceKey, f64>);
-
-impl CommodityPrices {
-    /// Get the price for the given commodity and time slice
-    pub fn get(&self, commodity_id: &Rc<str>, time_slice: &TimeSliceID) -> f64 {
-        let key = (Rc::clone(commodity_id), time_slice.clone());
-        *self
-            .0
-            .get(&key)
-            .expect("Missing price for given commodity and time slice")
-    }
-
-    /// Insert a price for the given commodity and time slice
-    pub fn insert(&mut self, commodity_id: &Rc<str>, time_slice: &TimeSliceID, price: f64) {
-        let key = (Rc::clone(commodity_id), time_slice.clone());
-        self.0.insert(key, price);
-    }
-
-    /// Iterate over the map.
-    ///
-    /// # Returns
-    ///
-    /// An iterator of tuples containing commodity ID, time slice and price.
-    pub fn iter(&self) -> impl Iterator<Item = (&Rc<str>, &TimeSliceID, f64)> {
-        self.0
-            .iter()
-            .map(|((commodity_id, ts), price)| (commodity_id, ts, *price))
-    }
-}
+pub mod prices;
+use prices::update_commodity_prices;
+pub use prices::CommodityPrices;
 
 /// Run the simulation.
 ///
