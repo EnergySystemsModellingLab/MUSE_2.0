@@ -42,6 +42,10 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         // year before agents have the option of decommissioning them
         assets.commission_new(year);
 
+        // Write current assets to CSV. This indicates the set of assets fed into the dispatch
+        // optimisation, so we *must* do it after agent investment and new assets are commissioned
+        writer.write_assets(year, assets.iter())?;
+
         // Dispatch optimisation
         let solution = perform_dispatch_optimisation(&model, &assets, year)?;
         let prices = CommodityPrices::from_model_and_solution(&model, &solution);
