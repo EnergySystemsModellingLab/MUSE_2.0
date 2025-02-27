@@ -39,7 +39,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         let prices = CommodityPrices::from_model_and_solution(&model, &solution);
 
         // Agent investment
-        perform_agent_investment(&model, &mut assets);
+        perform_agent_investment(&model, &solution, &mut assets);
 
         // Write current commodity prices to CSV
         write_commodity_prices_to_csv(&mut file, year, &prices)?;
