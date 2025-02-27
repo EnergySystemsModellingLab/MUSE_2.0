@@ -1,11 +1,11 @@
 //! Code for reading [Asset]s from a CSV file.
 use crate::agent::Asset;
 use crate::input::*;
-use crate::process::Process;
+use crate::process::ProcessMap;
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -35,7 +35,7 @@ struct AssetRaw {
 pub fn read_assets(
     model_dir: &Path,
     agent_ids: &HashSet<Rc<str>>,
-    processes: &HashMap<Rc<str>, Rc<Process>>,
+    processes: &ProcessMap,
     region_ids: &HashSet<Rc<str>>,
 ) -> Result<Vec<Asset>> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
@@ -59,14 +59,12 @@ pub fn read_assets(
 fn read_assets_from_iter<I>(
     iter: I,
     agent_ids: &HashSet<Rc<str>>,
-    processes: &HashMap<Rc<str>, Rc<Process>>,
+    processes: &ProcessMap,
     region_ids: &HashSet<Rc<str>>,
 ) -> Result<Vec<Asset>>
 where
     I: Iterator<Item = AssetRaw>,
 {
-    let mut id = 0u32;
-
     iter.map(|asset| -> Result<_> {
         let agent_id = agent_ids.get_id(&asset.agent_id)?;
         let process = processes
@@ -80,19 +78,13 @@ where
             process.id
         );
 
-        let asset = Asset {
-            id,
+        Ok(Asset::new(
             agent_id,
-            process: Rc::clone(process),
+            Rc::clone(process),
             region_id,
-            capacity: asset.capacity,
-            commission_year: asset.commission_year,
-        };
-
-        // Increment ID for next asset
-        id += 1;
-
-        Ok(asset)
+            asset.capacity,
+            asset.commission_year,
+        ))
     })
     .try_collect()
 }
@@ -100,7 +92,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::{ProcessCapacityMap, ProcessParameter};
+    use crate::process::{Process, ProcessCapacityMap, ProcessParameter};
     use crate::region::RegionSelection;
     use itertools::assert_equal;
     use std::iter;
@@ -139,14 +131,13 @@ mod tests {
             capacity: 1.0,
             commission_year: 2010,
         };
-        let asset_out = Asset {
-            id: 0,
-            agent_id: "agent1".into(),
-            process: Rc::clone(&process),
-            region_id: "GBR".into(),
-            capacity: 1.0,
-            commission_year: 2010,
-        };
+        let asset_out = Asset::new(
+            "agent1".into(),
+            Rc::clone(&process),
+            "GBR".into(),
+            1.0,
+            2010,
+        );
         assert_equal(
             read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
                 .unwrap(),

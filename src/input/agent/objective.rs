@@ -1,6 +1,6 @@
 //! Code for reading the agent objectives CSV file.
 use super::super::*;
-use crate::agent::{Agent, AgentObjective, DecisionRule};
+use crate::agent::{Agent, AgentMap, AgentObjective, DecisionRule};
 use anyhow::{ensure, Context, Result};
 use std::collections::HashMap;
 use std::path::Path;
@@ -21,7 +21,7 @@ define_id_getter! {Agent}
 /// A map of Agents, with the agent ID as the key
 pub fn read_agent_objectives(
     model_dir: &Path,
-    agents: &HashMap<Rc<str>, Agent>,
+    agents: &AgentMap,
 ) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>> {
     let file_path = model_dir.join(AGENT_OBJECTIVES_FILE_NAME);
     let agent_objectives_csv = read_csv(&file_path)?;
@@ -31,7 +31,7 @@ pub fn read_agent_objectives(
 
 fn read_agent_objectives_from_iter<I>(
     iter: I,
-    agents: &HashMap<Rc<str>, Agent>,
+    agents: &AgentMap,
 ) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>>
 where
     I: Iterator<Item = AgentObjective>,
@@ -164,7 +164,7 @@ mod tests {
             costs: CommodityCostMap::new(),
             demand: DemandMap::new(),
         });
-        let agents: HashMap<_, _> = [(
+        let agents = [(
             "agent".into(),
             Agent {
                 id: "agent".into(),

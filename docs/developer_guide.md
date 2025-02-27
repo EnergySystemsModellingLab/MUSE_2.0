@@ -108,3 +108,10 @@ pre-commit install
 
 Thereafter, a series of checks should be run every time you commit with Git. In addition, the
 `pre-commit` hooks are also run as part of the CI pipeline.
+
+Note: you may get errors due to the [`clippy`] hook failing. In this case, you may be able to
+automatically fix them by running `cargo clipfix` (which we have defined as an alias in
+[`.cargo/config.toml`]).
+
+[`clippy`]: https://doc.rust-lang.org/clippy
+[`.cargo/config.toml`]: https://github.com/EnergySystemsModellingLab/MUSE_2.0/blob/main/.cargo/config.toml

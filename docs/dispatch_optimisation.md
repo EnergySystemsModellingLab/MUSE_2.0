@@ -27,17 +27,19 @@ Where *cost* is a vector of cost coefficients representing the cost of
 each commodity flow.
 
 $$
-  cost_{r,a,c,ts} = var\\_ opex_{r,a,pacs,ts} + flow\\_ cost_{r,a,c,ts} + commodity\\_ cost_{r,c,ts}
+  cost_{r,a,c,ts} = var\\_ opex_{r,a,pacs} + flow\\_ cost_{r,a,c} + commodity\\_ cost_{r,c,ts}
 $$
 
 *var\_opex* is the variable operating cost for a PAC. If the commodity is not a PAC, this value is
 zero.
 
-*flow\_cost* is the cost per unit flow. Note that if this is for an input flow, its value should be
-multiplied by &minus;1 so that the impact on the objective function is a positive cost.
+*flow\_cost* is the cost per unit flow.
 
 *commodity\_cost* is the exogenous (user-defined) cost for a commodity. If none is defined for this
 combination of parameters, this value is zero.
+
+**NOTE:** If the commodity flow is an input (i.e. flow <0), then the value of *cost* should be
+multiplied by &minus;1 so that the impact on the objective function is positive.
 
 Constraints.
 
@@ -131,7 +133,11 @@ For a service demand, for each *c*, within a single region:
 
 $$\sum_{a,ts} q_{r,a,c,ts} = cr\\_ net\\_ fx$$
 
-Where *c* is a service demand commodity.
+Where *c* is a service demand commodity and *cr_net_fx* is the exogenous (user-defined) demand for
+the given time slice selection. Note that the *ts* to be summed over will differ depending on the
+specified time slice level for a given commodity. If the time slice level is `annual`, it will be
+every time slice, if it's `season` then there will be separate constraints for each season and if
+it's `time_slice` then there will be separate constraints for every individual time slice.
 
 **TBD** – commodities that are consumed (so sum of *q* can be a negative value). E.g. oil reserves. \
 **TBD** – trade between regions.

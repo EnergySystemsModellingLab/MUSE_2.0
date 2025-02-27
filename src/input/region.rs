@@ -1,6 +1,6 @@
 //! Code for reading region-related information from CSV files.
 use super::*;
-use crate::region::{Region, RegionSelection};
+use crate::region::{Region, RegionMap, RegionSelection};
 use anyhow::{anyhow, ensure, Context, Result};
 use serde::de::DeserializeOwned;
 use std::collections::{HashMap, HashSet};
@@ -37,7 +37,7 @@ pub(crate) use define_region_id_getter;
 /// # Returns
 ///
 /// A `HashMap<Rc<str>, Region>` with the parsed regions data or an error. The keys are region IDs.
-pub fn read_regions(model_dir: &Path) -> Result<HashMap<Rc<str>, Region>> {
+pub fn read_regions(model_dir: &Path) -> Result<RegionMap> {
     read_csv_id_file(&model_dir.join(REGIONS_FILE_NAME))
 }
 
@@ -88,7 +88,6 @@ where
 }
 
 /// Try to insert a region ID into the specified map
-#[must_use]
 fn try_insert_region(
     entity_id: Rc<str>,
     region_id: &str,
@@ -165,7 +164,7 @@ AP,Asia Pacific"
         let regions = read_regions(dir.path()).unwrap();
         assert_eq!(
             regions,
-            HashMap::from([
+            RegionMap::from([
                 (
                     "NA".into(),
                     Region {

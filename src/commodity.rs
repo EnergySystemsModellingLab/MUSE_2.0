@@ -1,10 +1,14 @@
 #![allow(missing_docs)]
 use crate::input::*;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
+use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
 use std::rc::Rc;
+
+/// A map of [`Commodity`]s, keyed by commodity ID
+pub type CommodityMap = IndexMap<Rc<str>, Rc<Commodity>>;
 
 /// A commodity within the simulation. Represents a substance (e.g. CO2) or form of energy (e.g.
 /// electricity) that can be produced and/or consumed by technologies in the model.
@@ -48,7 +52,7 @@ pub struct CommodityCost {
 }
 
 /// Used for looking up [`CommodityCost`]s in a [`CommodityCostMap`]
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 struct CommodityCostKey {
     region_id: Rc<str>,
     year: u32,
@@ -56,7 +60,7 @@ struct CommodityCostKey {
 }
 
 /// A data structure for easy lookup of [`CommodityCost`]s
-#[derive(PartialEq, Debug, Default)]
+#[derive(PartialEq, Debug, Default, Clone)]
 pub struct CommodityCostMap(HashMap<CommodityCostKey, CommodityCost>);
 
 impl CommodityCostMap {
@@ -84,14 +88,14 @@ impl CommodityCostMap {
     /// Retrieve a [`CommodityCost`] from the map
     pub fn get(
         &self,
-        region_id: Rc<str>,
+        region_id: &Rc<str>,
         year: u32,
-        time_slice: TimeSliceID,
+        time_slice: &TimeSliceID,
     ) -> Option<&CommodityCost> {
         let key = CommodityCostKey {
-            region_id,
+            region_id: Rc::clone(region_id),
             year,
-            time_slice,
+            time_slice: time_slice.clone(),
         };
         self.0.get(&key)
     }
@@ -132,14 +136,15 @@ impl DemandMap {
     }
 
     /// Retrieve the demand for the specified region, year and time slice
-    pub fn get(&self, region_id: Rc<str>, year: u32, time_slice: TimeSliceID) -> Option<f64> {
+    pub fn get(&self, region_id: &Rc<str>, year: u32, time_slice: &TimeSliceID) -> f64 {
         self.0
             .get(&DemandMapKey {
-                region_id,
+                region_id: region_id.clone(),
                 year,
-                time_slice,
+                time_slice: time_slice.clone(),
             })
             .copied()
+            .expect("Missing demand entry")
     }
 
     /// Insert a new demand entry for the specified region, year and time slice
@@ -169,7 +174,7 @@ mod tests {
         let mut map = DemandMap::new();
         map.insert("North".into(), 2020, time_slice.clone(), value);
 
-        assert_eq!(map.get("North".into(), 2020, time_slice).unwrap(), value)
+        assert_eq!(map.get(&"North".into(), 2020, &time_slice), value)
     }
 
     #[test]
@@ -186,6 +191,6 @@ mod tests {
         assert!(map
             .insert("GBR".into(), 2010, ts.clone(), value.clone())
             .is_none());
-        assert_eq!(map.get("GBR".into(), 2010, ts).unwrap(), &value);
+        assert_eq!(map.get(&"GBR".into(), 2010, &ts).unwrap(), &value);
     }
 }
