@@ -1,6 +1,7 @@
 //! The module responsible for writing output data to disk.
-use crate::agent::Asset;
+use crate::agent::{Asset, AssetID, AssetPool};
 use crate::simulation::CommodityPrices;
+use crate::time_slice::TimeSliceID;
 use anyhow::{Context, Result};
 use csv;
 use serde::{Deserialize, Serialize};
@@ -11,6 +12,9 @@ use std::rc::Rc;
 
 /// The root folder in which model-specific output folders will be created
 const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
+
+/// The output file name for commodity flows
+const COMMODITY_FLOWS_FILE_NAME: &str = "commodity_flows.csv";
 
 /// The output file name for commodity prices
 const COMMODITY_PRICES_FILE_NAME: &str = "commodity_prices.csv";
@@ -42,6 +46,46 @@ pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
     fs::create_dir_all(&path)?;
 
     Ok(path)
+}
+
+/// Represents the flow-related data in a row of the commodity flows CSV file.
+///
+/// This will be written along with an [`AssetRow`] containing asset-related info.
+#[derive(Serialize)]
+struct CommodityFlowRow {
+    commodity_id: Rc<str>,
+    time_slice: String,
+    flow: f64,
+}
+
+/// An object for writing commodity flows to file
+pub struct CommodityFlowWriter(csv::Writer<File>);
+
+impl CommodityFlowWriter {
+    /// Create a new CSV file to write commodity flows to
+    pub fn create(output_path: &Path) -> Result<Self> {
+        let file_path = output_path.join(COMMODITY_FLOWS_FILE_NAME);
+        Ok(Self(csv::Writer::from_path(file_path)?))
+    }
+
+    /// Write commodity flows to a CSV file
+    pub fn write<'a, I>(&mut self, milestone_year: u32, assets: &AssetPool, flows: I) -> Result<()>
+    where
+        I: Iterator<Item = (AssetID, &'a Rc<str>, &'a TimeSliceID, f64)>,
+    {
+        for (asset_id, commodity_id, time_slice, flow) in flows {
+            let asset = assets.get(asset_id);
+            let asset_row = AssetRow::new(milestone_year, asset);
+            let flow_row = CommodityFlowRow {
+                commodity_id: Rc::clone(commodity_id),
+                time_slice: time_slice.to_string(),
+                flow,
+            };
+            self.0.serialize((asset_row, flow_row))?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Represents a row in the commodity prices CSV file
