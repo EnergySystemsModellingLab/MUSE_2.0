@@ -6,9 +6,9 @@ use crate::commodity::{BalanceType, CommodityType};
 use crate::model::Model;
 use crate::process::ProcessFlow;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
+use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
-use log::error;
 use std::rc::Rc;
 
 /// A decision variable in the optimisation
@@ -133,7 +133,7 @@ pub fn perform_dispatch_optimisation<'a>(
     model: &'a Model,
     assets: &AssetPool,
     year: u32,
-) -> Solution<'a> {
+) -> Result<Solution<'a>> {
     // Set up problem
     let mut problem = Problem::default();
     let variables = add_variables(&mut problem, model, assets, year);
@@ -145,17 +145,14 @@ pub fn perform_dispatch_optimisation<'a>(
     // Solve problem
     let solution = problem.optimise(Sense::Minimise).solve();
 
-    let status = solution.status();
-    if status != HighsModelStatus::Optimal {
-        // **TODO**: Make this a hard error once the problem is actually solvable
-        error!("Could not solve: {status:?}");
-    }
-
-    Solution {
-        solution: solution.get_solution(),
-        variables,
-        time_slice_info: &model.time_slice_info,
-        commodity_constraint_keys,
+    match solution.status() {
+        HighsModelStatus::Optimal => Ok(Solution {
+            solution: solution.get_solution(),
+            variables,
+            time_slice_info: &model.time_slice_info,
+            commodity_constraint_keys,
+        }),
+        status => Err(anyhow!("Could not solve: {status:?}")),
     }
 }
 

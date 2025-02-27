@@ -76,7 +76,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         assets.commission_new(year);
 
         // Dispatch optimisation
-        let solution = perform_dispatch_optimisation(&model, &assets, year);
+        let solution = perform_dispatch_optimisation(&model, &assets, year)?;
         update_commodity_prices(&model, &solution, &mut prices);
 
         // Agent investment
