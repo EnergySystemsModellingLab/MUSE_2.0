@@ -1,4 +1,5 @@
 //! The module responsible for writing output data to disk.
+use crate::agent::Asset;
 use crate::simulation::CommodityPrices;
 use anyhow::{Context, Result};
 use csv;
@@ -13,6 +14,9 @@ const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
 
 /// The output file name for commodity prices
 const COMMODITY_PRICES_FILE_NAME: &str = "commodity_prices.csv";
+
+/// The output file name for assets
+const ASSETS_FILE_NAME: &str = "assets.csv";
 
 /// Create a new output directory for the model specified at `model_dir`.
 pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
@@ -75,12 +79,56 @@ impl CommodityPricesWriter {
     }
 }
 
+/// Represents a row in the assets output CSV file
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct AssetRow {
+    milestone_year: u32,
+    process_id: Rc<str>,
+    region_id: Rc<str>,
+    agent_id: Rc<str>,
+    commission_year: u32,
+}
+
+/// An object for writing assets to file
+pub struct AssetsWriter(csv::Writer<File>);
+
+impl AssetsWriter {
+    /// Create a new CSV file to write assets to
+    pub fn create(output_path: &Path) -> Result<Self> {
+        let file_path = output_path.join(ASSETS_FILE_NAME);
+        Ok(Self(csv::Writer::from_path(file_path)?))
+    }
+
+    /// Write assets to a CSV file
+    pub fn write<'a, I>(&mut self, milestone_year: u32, assets: I) -> Result<()>
+    where
+        I: Iterator<Item = &'a Asset>,
+    {
+        for asset in assets {
+            let row = AssetRow {
+                milestone_year,
+                process_id: Rc::clone(&asset.process.id),
+                region_id: Rc::clone(&asset.region_id),
+                agent_id: Rc::clone(&asset.agent_id),
+                commission_year: asset.commission_year,
+            };
+            self.0.serialize(row)?;
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use std::iter;
+    use std::{collections::HashMap, iter};
 
     use super::*;
-    use crate::time_slice::TimeSliceID;
+    use crate::{
+        process::{Process, ProcessParameter},
+        region::RegionSelection,
+        time_slice::TimeSliceID,
+    };
     use itertools::{assert_equal, Itertools};
     use tempfile::tempdir;
 
@@ -117,6 +165,65 @@ mod tests {
                 .into_deserialize()
                 .try_collect()
                 .unwrap();
+        assert_equal(records, iter::once(expected));
+    }
+
+    #[test]
+    fn test_assets_writer() {
+        let milestone_year = 2020;
+        let process_id = "process1".into();
+        let region_id = "GBR".into();
+        let agent_id = "agent1".into();
+        let commission_year = 2015;
+        let process_param = ProcessParameter {
+            process_id: "process1".to_string(),
+            years: 2010..=2020,
+            capital_cost: 5.0,
+            fixed_operating_cost: 2.0,
+            variable_operating_cost: 1.0,
+            lifetime: 5,
+            discount_rate: 0.9,
+            cap2act: 3.0,
+        };
+        let process = Rc::new(Process {
+            id: Rc::clone(&process_id),
+            description: "Description".into(),
+            capacity_fractions: HashMap::new(),
+            flows: vec![],
+            parameter: process_param.clone(),
+            regions: RegionSelection::All,
+        });
+        let asset = Asset::new(
+            Rc::clone(&agent_id),
+            Rc::clone(&process),
+            Rc::clone(&region_id),
+            2.0,
+            commission_year,
+        );
+
+        let dir = tempdir().unwrap();
+
+        // Write an asset
+        {
+            let mut assets_wtr = AssetsWriter::create(dir.path()).unwrap();
+            assets_wtr
+                .write(milestone_year, iter::once(&asset))
+                .unwrap();
+        }
+
+        // Read back and compare
+        let expected = AssetRow {
+            milestone_year,
+            process_id,
+            region_id,
+            agent_id,
+            commission_year,
+        };
+        let records: Vec<AssetRow> = csv::Reader::from_path(dir.path().join(ASSETS_FILE_NAME))
+            .unwrap()
+            .into_deserialize()
+            .try_collect()
+            .unwrap();
         assert_equal(records, iter::once(expected));
     }
 }

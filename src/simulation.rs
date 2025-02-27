@@ -1,7 +1,7 @@
 //! Functionality for running the MUSE 2.0 simulation.
 use crate::agent::AssetPool;
 use crate::model::Model;
-use crate::output::CommodityPricesWriter;
+use crate::output::{AssetsWriter, CommodityPricesWriter};
 use anyhow::Result;
 use log::{error, info};
 use std::path::Path;
@@ -20,6 +20,7 @@ pub use prices::CommodityPrices;
 /// * `model` - The model to run
 /// * `assets` - The asset pool
 pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()> {
+    let mut assets_wtr = AssetsWriter::create(output_path)?;
     let mut prices_wtr = CommodityPricesWriter::create(output_path)?;
 
     let mut opt_solution = None;
@@ -42,6 +43,10 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         // Newly commissioned assets will be included in optimisation for at least one milestone
         // year before agents have the option of decommissioning them
         assets.commission_new(year);
+
+        // Write current assets to CSV. This indicates the set of assets fed into the dispatch
+        // optimisation, so we *must* do it after agent investment and new assets are commissioned
+        assets_wtr.write(year, assets.iter())?;
 
         // Dispatch optimisation
         let solution = perform_dispatch_optimisation(&model, &assets, year)?;
