@@ -77,6 +77,7 @@ pub fn read_processes(
         year_range,
         time_slice_info,
         &parameters,
+        &availabilities,
     )?;
 
     create_process_map(
@@ -88,6 +89,15 @@ pub fn read_processes(
     )
 }
 
+struct ValidationParams<'a> {
+    flows: &'a HashMap<Rc<str>, Vec<ProcessFlow>>,
+    regions: &'a HashMap<Rc<str>, RegionSelection>,
+    year_range: &'a RangeInclusive<u32>,
+    time_slice_info: &'a TimeSliceInfo,
+    parameters: &'a HashMap<Rc<str>, ProcessParameter>,
+    availabilities: &'a HashMap<Rc<str>, ProcessCapacityMap>,
+}
+
 /// Perform consistency checks for commodity flows.
 fn validate_commodities(
     commodities: &CommodityMap,
@@ -96,22 +106,23 @@ fn validate_commodities(
     year_range: &RangeInclusive<u32>,
     time_slice_info: &TimeSliceInfo,
     parameters: &HashMap<Rc<str>, ProcessParameter>,
+    availabilities: &HashMap<Rc<str>, ProcessCapacityMap>,
 ) -> anyhow::Result<()> {
+    let params = ValidationParams {
+        flows,
+        regions,
+        year_range,
+        time_slice_info,
+        parameters,
+        availabilities,
+    };
     for (commodity_id, commodity) in commodities {
         match commodity.kind {
             CommodityType::SupplyEqualsDemand => {
                 validate_sed_commodity(commodity_id, commodity, flows)?;
             }
             CommodityType::ServiceDemand => {
-                validate_svd_commodity(
-                    commodity_id,
-                    commodity,
-                    flows,
-                    regions,
-                    year_range,
-                    time_slice_info,
-                    parameters,
-                )?;
+                validate_svd_commodity(commodity_id, commodity, &params)?;
             }
             _ => {}
         }
@@ -150,45 +161,48 @@ fn validate_sed_commodity(
 fn validate_svd_commodity(
     commodity_id: &Rc<str>,
     commodity: &Rc<Commodity>,
-    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
-    regions: &HashMap<Rc<str>, RegionSelection>,
-    year_range: &RangeInclusive<u32>,
-    time_slice_info: &TimeSliceInfo,
-    parameters: &HashMap<Rc<str>, ProcessParameter>,
+    params: &ValidationParams,
 ) -> Result<()> {
-    for region_id in regions.keys() {
-        for year in year_range.clone() {
-            for time_slice in time_slice_info.iter_ids() {
-                if let Some(demand) =
-                    commodity
-                        .demand
-                        .get(region_id.clone(), year, time_slice.clone())
-                {
-                    if demand > 0.0 {
-                        let mut has_producer = false;
+    for region_id in params.regions.keys() {
+        for year in params.year_range.clone() {
+            for time_slice in params.time_slice_info.iter_ids() {
+                let demand = commodity.demand.get(region_id, year, time_slice);
+                if demand > 0.0 {
+                    let mut has_producer = false;
 
-                        for flow in flows.values().flatten() {
-                            if Rc::ptr_eq(&flow.commodity, commodity)
-                                && flow.flow > 0.0
-                                && parameters
-                                    .get(&*flow.process_id)
-                                    .unwrap()
-                                    .years
-                                    .contains(&year)
-                            {
-                                has_producer = true;
-                                break;
-                            }
+                    // We must check for producers in every time slice, region, and year.
+                    // This includes checking if flow > 0 and if availability > 0.
+
+                    for flow in params.flows.values().flatten() {
+                        if Rc::ptr_eq(&flow.commodity, commodity)
+                            && flow.flow > 0.0
+                            && params
+                                .parameters
+                                .get(&*flow.process_id)
+                                .unwrap()
+                                .years
+                                .contains(&year)
+                            && params
+                                .availabilities
+                                .get(&*flow.process_id)
+                                .unwrap()
+                                .get(time_slice)
+                                .unwrap()
+                                .start()
+                                > &0.0
+                        {
+                            has_producer = true;
+                            break;
                         }
-
-                        ensure!(
-                            has_producer,
-                            "Commodity {} of 'SVD' type must have producer processes for region {} in year {}",
-                            commodity_id,
-                            region_id,
-                            year
-                        );
                     }
+
+                    ensure!(
+                        has_producer,
+                        "Commodity {} of 'SVD' type must have producer processes for region {} in year {}",
+                        commodity_id,
+                        region_id,
+                        year
+                    );
                 }
             }
         }
@@ -427,7 +441,7 @@ mod tests {
         .into_iter()
         .collect();
 
-        let regions: HashMap<Rc<str>, RegionSelection> = vec![
+        let regions: HashMap<Rc<str>, RegionSelection> = [
             ("process1".into(), RegionSelection::All),
             ("process2".into(), RegionSelection::All),
         ]
