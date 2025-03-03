@@ -7,7 +7,6 @@ use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
 pub mod availability;
@@ -58,7 +57,7 @@ pub fn read_processes(
     commodities: &CommodityMap,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-    year_range: &RangeInclusive<u32>,
+    milestone_years: &[u32],
 ) -> Result<ProcessMap> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let descriptions = read_csv_id_file::<ProcessDescription>(&file_path)?;
@@ -66,15 +65,16 @@ pub fn read_processes(
 
     let availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let flows = read_process_flows(model_dir, &process_ids, commodities)?;
-    let parameters = read_process_parameters(model_dir, &process_ids, year_range)?;
+    let year_range = milestone_years[0]..=milestone_years[milestone_years.len() - 1];
+    let parameters = read_process_parameters(model_dir, &process_ids, &year_range)?;
     let regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
     // Validate commodities after the flows have been read
     validate_commodities(
         commodities,
         &flows,
-        &regions,
-        year_range,
+        region_ids,
+        milestone_years,
         time_slice_info,
         &parameters,
         &availabilities,
@@ -91,8 +91,8 @@ pub fn read_processes(
 
 struct ValidationParams<'a> {
     flows: &'a HashMap<Rc<str>, Vec<ProcessFlow>>,
-    regions: &'a HashMap<Rc<str>, RegionSelection>,
-    year_range: &'a RangeInclusive<u32>,
+    region_ids: &'a HashSet<Rc<str>>,
+    milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
     parameters: &'a HashMap<Rc<str>, ProcessParameter>,
     availabilities: &'a HashMap<Rc<str>, ProcessCapacityMap>,
@@ -102,16 +102,16 @@ struct ValidationParams<'a> {
 fn validate_commodities(
     commodities: &CommodityMap,
     flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
-    regions: &HashMap<Rc<str>, RegionSelection>,
-    year_range: &RangeInclusive<u32>,
+    region_ids: &HashSet<Rc<str>>,
+    milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
     parameters: &HashMap<Rc<str>, ProcessParameter>,
     availabilities: &HashMap<Rc<str>, ProcessCapacityMap>,
 ) -> anyhow::Result<()> {
     let params = ValidationParams {
         flows,
-        regions,
-        year_range,
+        region_ids,
+        milestone_years,
         time_slice_info,
         parameters,
         availabilities,
@@ -163,8 +163,8 @@ fn validate_svd_commodity(
     commodity: &Rc<Commodity>,
     params: &ValidationParams,
 ) -> Result<()> {
-    for region_id in params.regions.keys() {
-        for year in params.year_range.clone() {
+    for region_id in params.region_ids.iter() {
+        for year in params.milestone_years.iter().copied() {
             for time_slice in params.time_slice_info.iter_ids() {
                 let demand = commodity.demand.get(region_id, year, time_slice);
                 if demand > 0.0 {
@@ -188,7 +188,7 @@ fn validate_svd_commodity(
                                 .unwrap()
                                 .get(time_slice)
                                 .unwrap()
-                                .start()
+                                .end()
                                 > &0.0
                         {
                             has_producer = true;
@@ -255,7 +255,9 @@ where
 mod tests {
     use crate::commodity::{CommodityCostMap, DemandMap};
     use crate::process::FlowType;
+    use crate::time_slice::TimeSliceID;
     use crate::time_slice::TimeSliceLevel;
+    use std::iter;
 
     use super::*;
 
@@ -265,6 +267,7 @@ mod tests {
         flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
         parameters: HashMap<Rc<str>, ProcessParameter>,
         regions: HashMap<Rc<str>, RegionSelection>,
+        region_ids: HashSet<Rc<str>>,
     }
 
     /// Returns example data (without errors) for processes
@@ -282,7 +285,17 @@ mod tests {
 
         let availabilities = ["process1", "process2"]
             .into_iter()
-            .map(|id| (id.into(), ProcessCapacityMap::new()))
+            .map(|id| {
+                let mut map = ProcessCapacityMap::new();
+                map.insert(
+                    TimeSliceID {
+                        season: "winter".into(),
+                        time_of_day: "day".into(),
+                    },
+                    0.1..=0.9,
+                );
+                (id.into(), map)
+            })
             .collect();
 
         let flows = ["process1", "process2"]
@@ -313,12 +326,15 @@ mod tests {
             .map(|id| (id.into(), RegionSelection::All))
             .collect();
 
+        let region_ids = HashSet::from_iter(iter::once("GBR".into()));
+
         ProcessData {
             descriptions,
             availabilities,
             flows,
             parameters,
             regions,
+            region_ids,
         }
     }
 
@@ -384,13 +400,38 @@ mod tests {
             demand: DemandMap::new(),
         });
 
+        let milestone_years = [2010, 2020];
+
+        // Set the TimeSliceInfo
+        let id = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "day".into(),
+        };
+        let fractions: IndexMap<TimeSliceID, f64> = [(id.clone(), 1.0)].into_iter().collect();
+        let time_slice_info = TimeSliceInfo {
+            seasons: [id.season].into_iter().collect(),
+            times_of_day: [id.time_of_day].into_iter().collect(),
+            fractions,
+        };
+        let parameters = data.parameters;
+        let availabilities = data.availabilities;
+
+        // Create a dummy demand map for the non-SED commodity
+        let mut demand_map = DemandMap::new();
+        for region in data.region_ids.iter() {
+            for year in milestone_years.clone() {
+                for time_slice in time_slice_info.iter_ids() {
+                    demand_map.insert(region.clone(), year, time_slice.clone(), 0.5);
+                }
+            }
+        }
         let commodity_non_sed = Rc::new(Commodity {
             id: "commodity_non_sed".into(),
             description: "Non-SED commodity".into(),
             kind: CommodityType::ServiceDemand,
             time_slice_level: TimeSliceLevel::Annual,
             costs: CommodityCostMap::new(),
-            demand: DemandMap::new(),
+            demand: demand_map,
         });
 
         let commodities: CommodityMap = [
@@ -419,7 +460,7 @@ mod tests {
                     ProcessFlow {
                         process_id: "process1".into(),
                         commodity: Rc::clone(&commodity_non_sed),
-                        flow: -5.0,
+                        flow: 5.0,
                         flow_type: FlowType::Fixed,
                         flow_cost: 1.0,
                         is_pac: false,
@@ -441,25 +482,15 @@ mod tests {
         .into_iter()
         .collect();
 
-        let regions: HashMap<Rc<str>, RegionSelection> = [
-            ("process1".into(), RegionSelection::All),
-            ("process2".into(), RegionSelection::All),
-        ]
-        .into_iter()
-        .collect();
-
-        let year_range = 2010..=2020;
-        let time_slice_info = TimeSliceInfo::default();
-        let parameters = data.parameters;
-
         // Validate commodities
         assert!(validate_commodities(
             &commodities,
             &process_flows,
-            &regions,
-            &year_range,
+            &data.region_ids,
+            &milestone_years,
             &time_slice_info,
-            &parameters
+            &parameters,
+            &availabilities,
         )
         .is_ok());
 
@@ -482,10 +513,11 @@ mod tests {
         assert!(validate_commodities(
             &commodities,
             &process_flows_invalid,
-            &regions,
-            &year_range,
+            &data.region_ids,
+            &milestone_years,
             &time_slice_info,
-            &parameters
+            &parameters,
+            &availabilities,
         )
         .is_err());
     }
