@@ -50,17 +50,25 @@ struct CommodityPriceRow {
 }
 
 /// An object for writing commodity prices to file
-pub struct CommodityPricesWriter(csv::Writer<File>);
+pub struct DataWriter {
+    prices_writer: csv::Writer<File>,
+}
 
-impl CommodityPricesWriter {
-    /// Create a new CSV file to write commodity prices to
+impl DataWriter {
+    /// Create a new CSV files to write output data to
     pub fn create(output_path: &Path) -> Result<Self> {
-        let file_path = output_path.join(COMMODITY_PRICES_FILE_NAME);
-        Ok(Self(csv::Writer::from_path(file_path)?))
+        let new_writer = |file_name| {
+            let file_path = output_path.join(file_name);
+            csv::Writer::from_path(file_path)
+        };
+
+        Ok(Self {
+            prices_writer: new_writer(COMMODITY_PRICES_FILE_NAME)?,
+        })
     }
 
     /// Write commodity prices to a CSV file
-    pub fn write(&mut self, milestone_year: u32, prices: &CommodityPrices) -> Result<()> {
+    pub fn write_prices(&mut self, milestone_year: u32, prices: &CommodityPrices) -> Result<()> {
         for (commodity_id, time_slice, price) in prices.iter() {
             let row = CommodityPriceRow {
                 milestone_year,
@@ -68,7 +76,7 @@ impl CommodityPricesWriter {
                 time_slice: time_slice.to_string(),
                 price,
             };
-            self.0.serialize(row)?;
+            self.prices_writer.serialize(row)?;
         }
 
         Ok(())
@@ -76,7 +84,7 @@ impl CommodityPricesWriter {
 
     /// Flush the underlying stream
     pub fn flush(&mut self) -> Result<()> {
-        Ok(self.0.flush()?)
+        Ok(self.prices_writer.flush()?)
     }
 }
 
@@ -90,7 +98,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn test_commodity_prices_writer() {
+    fn test_write_prices() {
         let commodity_id = "commodity1".into();
         let time_slice = TimeSliceID {
             season: "winter".into(),
@@ -105,9 +113,9 @@ mod tests {
 
         // Write a price
         {
-            let mut prices_wtr = CommodityPricesWriter::create(dir.path()).unwrap();
-            prices_wtr.write(milestone_year, &prices).unwrap();
-            prices_wtr.flush().unwrap();
+            let mut writer = DataWriter::create(dir.path()).unwrap();
+            writer.write_prices(milestone_year, &prices).unwrap();
+            writer.flush().unwrap();
         }
 
         // Read back and compare
