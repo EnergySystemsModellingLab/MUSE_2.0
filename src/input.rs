@@ -205,7 +205,6 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let regions = read_regions(model_dir.as_ref())?;
     let region_ids = regions.keys().cloned().collect();
     let years = &model_file.milestone_years.years;
-    let year_range = *years.first().unwrap()..=*years.last().unwrap();
 
     let commodities = read_commodities(model_dir.as_ref(), &region_ids, &time_slice_info, years)?;
     let processes = read_processes(
@@ -213,7 +212,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
         &commodities,
         &region_ids,
         &time_slice_info,
-        &year_range,
+        years,
     )?;
     let agents = read_agents(model_dir.as_ref(), &commodities, &processes, &region_ids)?;
     let agent_ids = agents.keys().cloned().collect();
