@@ -143,7 +143,9 @@ pub fn perform_dispatch_optimisation<'a>(
         add_asset_contraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
-    let highs_model = problem.optimise(Sense::Minimise);
+    let mut highs_model = problem.optimise(Sense::Minimise);
+    highs_model.set_option("log_to_console", true);
+    highs_model.set_option("output_flag", true);
     let solution = highs_model.solve();
 
     match solution.status() {
