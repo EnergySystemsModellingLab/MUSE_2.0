@@ -68,12 +68,16 @@ impl VariableMapKey {
 /// Indicates the commodity ID and time slice selection covered by each commodity constraint
 type CommodityConstraintKeys = Vec<(Rc<str>, TimeSliceSelection)>;
 
+/// Asset, commodity, time slice
+type FixedAssetConstraintsKeys = Vec<(AssetID, Rc<str>, TimeSliceID)>;
+
 /// The solution to the dispatch optimisation problem
 pub struct Solution<'a> {
     solution: highs::Solution,
     variables: VariableMap,
     time_slice_info: &'a TimeSliceInfo,
     commodity_constraint_keys: CommodityConstraintKeys,
+    fixed_asset_keys: FixedAssetConstraintsKeys,
 }
 
 impl Solution<'_> {
@@ -114,6 +118,22 @@ impl Solution<'_> {
                     .map(move |(ts, _)| (commodity_id, ts, *price))
             })
     }
+
+    /// Keys and dual values for fixed assets
+    pub fn iter_fixed_asset_duals(
+        &self,
+    ) -> impl Iterator<Item = (AssetID, &Rc<str>, &TimeSliceID, f64)> {
+        self.fixed_asset_keys
+            .iter()
+            .zip(
+                self.solution.dual_rows()[self.commodity_constraint_keys.len()..]
+                    .iter()
+                    .copied(),
+            )
+            .map(|((asset_id, commodity_id, time_slice), dual)| {
+                (*asset_id, commodity_id, time_slice, dual)
+            })
+    }
 }
 
 /// Perform the dispatch optimisation.
@@ -141,7 +161,7 @@ pub fn perform_dispatch_optimisation<'a>(
     let variables = add_variables(&mut problem, model, assets, year);
 
     // Add constraints
-    let commodity_constraint_keys =
+    let (commodity_constraint_keys, fixed_asset_keys) =
         add_asset_contraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
@@ -156,6 +176,7 @@ pub fn perform_dispatch_optimisation<'a>(
             variables,
             time_slice_info: &model.time_slice_info,
             commodity_constraint_keys,
+            fixed_asset_keys,
         }),
         status => Err(anyhow!("Could not solve: {status:?}")),
     }
@@ -248,7 +269,7 @@ fn add_asset_contraints(
     model: &Model,
     assets: &AssetPool,
     year: u32,
-) -> CommodityConstraintKeys {
+) -> (CommodityConstraintKeys, FixedAssetConstraintsKeys) {
     let commodity_constraint_keys =
         add_commodity_balance_constraints(problem, variables, model, assets, year);
 
@@ -257,11 +278,12 @@ fn add_asset_contraints(
     // need to add different constraints for assets with flexible and non-flexible flows.
     //
     // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
-    add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
+    let fixed_asset_keys =
+        add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
 
     add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
 
-    commodity_constraint_keys
+    (commodity_constraint_keys, fixed_asset_keys)
 }
 
 /// Add asset-level input-output commodity balances.
@@ -359,7 +381,8 @@ fn add_fixed_asset_constraints(
     variables: &VariableMap,
     assets: &AssetPool,
     time_slice_info: &TimeSliceInfo,
-) {
+) -> FixedAssetConstraintsKeys {
+    let mut keys = FixedAssetConstraintsKeys::new();
     for asset in assets.iter() {
         // Get first PAC. unwrap is safe because all processes have at least one PAC.
         let pac1 = asset.process.iter_pacs().next().unwrap();
@@ -377,9 +400,13 @@ fn add_fixed_asset_constraints(
                 // We are enforcing that (var / flow) - (pac_var / pac_flow) = 0
                 let var = variables.get(asset.id, &flow.commodity.id, time_slice);
                 problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
+
+                keys.push((asset.id, Rc::clone(&flow.commodity.id), time_slice.clone()));
             }
         }
     }
+
+    keys
 }
 
 /// Add asset-level capacity and availability constraints.

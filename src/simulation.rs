@@ -1,7 +1,9 @@
 //! Functionality for running the MUSE 2.0 simulation.
 use crate::agent::AssetPool;
 use crate::model::Model;
-use crate::output::{AssetsWriter, CommodityFlowWriter, CommodityPricesWriter};
+use crate::output::{
+    AssetsWriter, CommodityFlowWriter, CommodityPricesWriter, FixedAssetsDualsWriter,
+};
 use anyhow::Result;
 use log::{error, info};
 use std::path::Path;
@@ -23,6 +25,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
     let mut assets_wtr = AssetsWriter::create(output_path)?;
     let mut flows_wtr = CommodityFlowWriter::create(output_path)?;
     let mut prices_wtr = CommodityPricesWriter::create(output_path)?;
+    let mut fixed_duals_wtr = FixedAssetsDualsWriter::create(output_path)?;
 
     let mut opt_solution = None;
     for year in model.iter_years() {
@@ -56,6 +59,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         // Write result of dispatch optimisation to file
         flows_wtr.write(year, &assets, solution.iter_commodity_flows_for_assets())?;
         prices_wtr.write(year, &prices)?;
+        fixed_duals_wtr.write(year, &assets, solution.iter_fixed_asset_duals())?;
 
         opt_solution = Some(solution);
     }

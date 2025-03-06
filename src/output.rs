@@ -171,6 +171,44 @@ impl AssetsWriter {
     }
 }
 
+/// Part of row for `FixedAssetsDualsWriter`
+#[derive(Serialize)]
+pub struct FixedAssetsDualRow {
+    commodity_id: Rc<str>,
+    time_slice: String,
+    dual: f64,
+}
+
+/// For writing dual values for fixed asset constraints
+pub struct FixedAssetsDualsWriter(csv::Writer<File>);
+
+impl FixedAssetsDualsWriter {
+    /// Create a new CSV file to write assets to
+    pub fn create(output_path: &Path) -> Result<Self> {
+        let file_path = output_path.join("fixed_assets_duals.csv");
+        Ok(Self(csv::Writer::from_path(file_path)?))
+    }
+
+    /// Write assets to a CSV file
+    pub fn write<'a, I>(&mut self, milestone_year: u32, assets: &AssetPool, duals: I) -> Result<()>
+    where
+        I: Iterator<Item = (AssetID, &'a Rc<str>, &'a TimeSliceID, f64)>,
+    {
+        for (asset_id, commodity_id, time_slice, dual) in duals {
+            let asset = assets.get(asset_id);
+            let asset_row = AssetRow::new(milestone_year, asset);
+            let fixed_row = FixedAssetsDualRow {
+                commodity_id: Rc::clone(commodity_id),
+                time_slice: time_slice.to_string(),
+                dual,
+            };
+            self.0.serialize((asset_row, fixed_row))?;
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::{collections::HashMap, iter};
