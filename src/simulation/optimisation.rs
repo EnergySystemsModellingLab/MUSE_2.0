@@ -143,9 +143,7 @@ pub fn perform_dispatch_optimisation<'a>(
         add_asset_contraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
-    let mut highs_model = problem.optimise(Sense::Minimise);
-    highs_model.set_option("ranging", "on");
-    let solution = highs_model.solve();
+    let solution = problem.optimise(Sense::Minimise).solve();
 
     match solution.status() {
         HighsModelStatus::Optimal => Ok(Solution {
