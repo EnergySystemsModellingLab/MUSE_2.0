@@ -21,6 +21,6 @@ fn test_handle_run_command() {
             .next()
             .unwrap()
             .to_string(),
-        "Failed to initialize logging."
+        "Failed to initialise logging."
     );
 }

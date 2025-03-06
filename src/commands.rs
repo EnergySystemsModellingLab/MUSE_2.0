@@ -2,7 +2,7 @@
 use crate::output::create_output_directory;
 use crate::settings::Settings;
 use crate::{input::load_model, log};
-use ::log::info;
+use ::log::{error, info};
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use include_dir::{include_dir, Dir, DirEntry};
@@ -52,25 +52,32 @@ pub enum ExampleSubcommands {
 }
 
 /// Handle the `run` command.
-pub fn handle_run_command(model_dir: &Path) -> Result<()> {
+pub fn handle_run_command(model_path: &Path) -> Result<()> {
     // Load program settings
-    let settings = Settings::from_path(model_dir).context("Failed to load settings.")?;
+    let settings = Settings::from_path(model_path).context("Failed to load settings.")?;
 
     // Create output folder
     let output_path =
-        create_output_directory(model_dir).context("Failed to create output directory.")?;
+        create_output_directory(model_path).context("Failed to create output directory.")?;
 
     // Initialise program logger
     log::init(settings.log_level.as_deref(), &output_path)
-        .context("Failed to initialize logging.")?;
+        .context("Failed to initialise logging.")?;
 
-    // Load the model to run
-    let (model, assets) = load_model(model_dir).context("Failed to load model.")?;
-    info!("Loaded model from {}", model_dir.display());
-    info!("Output data will be written to {}", output_path.display());
+    let load_and_run_model = || {
+        // Load the model to run
+        let (model, assets) = load_model(model_path).context("Failed to load model.")?;
+        info!("Loaded model from {}", model_path.display());
+        info!("Output data will be written to {}", output_path.display());
 
-    // Run the simulation
-    crate::simulation::run(model, assets, &output_path)?;
+        // Run the simulation
+        crate::simulation::run(model, assets, &output_path)
+    };
+
+    // Once the logger is initialised, we can write fatal errors to log
+    if let Err(err) = load_and_run_model() {
+        error!("{err:?}");
+    }
 
     Ok(())
 }
