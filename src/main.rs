@@ -19,10 +19,12 @@ fn main() {
 
 fn execute_cli_command(command: Commands) -> Result<()> {
     match command {
-        Commands::Run { model_dir } => handle_run_command(&model_dir),
+        Commands::Run { model_dir } => handle_run_command(&model_dir)?,
         Commands::Example { subcommand } => match subcommand {
             ExampleSubcommands::List => handle_example_list_command(),
-            ExampleSubcommands::Run { name } => handle_example_run_command(&name),
+            ExampleSubcommands::Run { name } => handle_example_run_command(&name)?,
         },
     }
+
+    Ok(())
 }

@@ -65,6 +65,13 @@ pub fn handle_run_command(model_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Handle the `example list` command.
+pub fn handle_example_list_command() {
+    for entry in EXAMPLES_DIR.dirs() {
+        println!("{}", entry.path().display());
+    }
+}
+
 /// Handle the `example run` command.
 pub fn handle_example_run_command(name: &str) -> Result<()> {
     // Find the subdirectory in EXAMPLES_DIR whose name matches `name`.
@@ -88,12 +95,4 @@ pub fn handle_example_run_command(name: &str) -> Result<()> {
     }
 
     handle_run_command(&temp_path)
-}
-
-/// Handle the `example list` command.
-pub fn handle_example_list_command() -> Result<()> {
-    for entry in EXAMPLES_DIR.dirs() {
-        println!("{}", entry.path().display());
-    }
-    Ok(())
 }
