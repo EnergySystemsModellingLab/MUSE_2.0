@@ -67,7 +67,7 @@ pub fn handle_run_command(model_dir: &Path) -> Result<()> {
 
     // Load the model to run
     let (model, assets) = load_model(model_dir).context("Failed to load model.")?;
-    info!("Model loaded successfully.");
+    info!("Loaded model from {}", model_dir.display());
 
     // Run the simulation
     crate::simulation::run(model, assets, &output_path)?;
