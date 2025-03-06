@@ -388,9 +388,9 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "highs"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4891dce1acd34a0e4db28a016c47140e5fec2e4137ca02517781034a81aa1d1"
+checksum = "101ea2bf9eb4d91b5ea1d563ba7650e3cb5756659d39d86fd76daba750637f69"
 dependencies = [
  "highs-sys",
  "log",

@@ -26,6 +26,6 @@ fern = {version = "0.7.1", features = ["chrono", "colored"]}
 chrono = "0.4"
 clap = {version = "4.5.30", features = ["cargo", "derive"]}
 include_dir = "0.7.4"
-highs = "1.6.1"
+highs = "1.8.0"
 indexmap = "2.7.1"
 human-panic = "2.0.2"
