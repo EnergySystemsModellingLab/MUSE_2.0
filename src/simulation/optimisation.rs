@@ -71,6 +71,9 @@ type CommodityConstraintKeys = Vec<(Rc<str>, TimeSliceSelection)>;
 /// Asset, commodity, time slice
 type FixedAssetConstraintsKeys = Vec<(AssetID, Rc<str>, TimeSliceID)>;
 
+/// Asset, time slice
+type CapacityConstraintsKeys = Vec<(AssetID, TimeSliceID)>;
+
 /// The solution to the dispatch optimisation problem
 pub struct Solution<'a> {
     solution: highs::Solution,
@@ -78,6 +81,7 @@ pub struct Solution<'a> {
     time_slice_info: &'a TimeSliceInfo,
     commodity_constraint_keys: CommodityConstraintKeys,
     fixed_asset_keys: FixedAssetConstraintsKeys,
+    capacity_keys: CapacityConstraintsKeys,
 }
 
 impl Solution<'_> {
@@ -134,6 +138,19 @@ impl Solution<'_> {
                 (*asset_id, commodity_id, time_slice, dual)
             })
     }
+
+    /// Keys and dual values for capacity constraints
+    pub fn iter_capacity_duals(&self) -> impl Iterator<Item = (AssetID, &TimeSliceID, f64)> {
+        self.capacity_keys
+            .iter()
+            .zip(
+                self.solution.dual_rows()
+                    [(self.commodity_constraint_keys.len() + self.fixed_asset_keys.len())..]
+                    .iter()
+                    .copied(),
+            )
+            .map(|((asset_id, time_slice), dual)| (*asset_id, time_slice, dual))
+    }
 }
 
 /// Perform the dispatch optimisation.
@@ -161,8 +178,9 @@ pub fn perform_dispatch_optimisation<'a>(
     let variables = add_variables(&mut problem, model, assets, year);
 
     // Add constraints
-    let (commodity_constraint_keys, fixed_asset_keys) =
+    let (commodity_constraint_keys, fixed_asset_keys, capacity_keys) =
         add_asset_contraints(&mut problem, &variables, model, assets, year);
+    let nrows = problem.num_rows();
 
     // Solve problem
     let mut highs_model = problem.optimise(Sense::Minimise);
@@ -171,13 +189,18 @@ pub fn perform_dispatch_optimisation<'a>(
     let solution = highs_model.solve();
 
     match solution.status() {
-        HighsModelStatus::Optimal => Ok(Solution {
-            solution: solution.get_solution(),
-            variables,
-            time_slice_info: &model.time_slice_info,
-            commodity_constraint_keys,
-            fixed_asset_keys,
-        }),
+        HighsModelStatus::Optimal => {
+            let solution = Solution {
+                solution: solution.get_solution(),
+                variables,
+                time_slice_info: &model.time_slice_info,
+                commodity_constraint_keys,
+                fixed_asset_keys,
+                capacity_keys,
+            };
+            assert!(nrows == solution.solution.dual_rows().len());
+            Ok(solution)
+        }
         status => Err(anyhow!("Could not solve: {status:?}")),
     }
 }
@@ -269,7 +292,11 @@ fn add_asset_contraints(
     model: &Model,
     assets: &AssetPool,
     year: u32,
-) -> (CommodityConstraintKeys, FixedAssetConstraintsKeys) {
+) -> (
+    CommodityConstraintKeys,
+    FixedAssetConstraintsKeys,
+    CapacityConstraintsKeys,
+) {
     let commodity_constraint_keys =
         add_commodity_balance_constraints(problem, variables, model, assets, year);
 
@@ -281,9 +308,10 @@ fn add_asset_contraints(
     let fixed_asset_keys =
         add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
 
-    add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
+    let capacity_keys =
+        add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
 
-    (commodity_constraint_keys, fixed_asset_keys)
+    (commodity_constraint_keys, fixed_asset_keys, capacity_keys)
 }
 
 /// Add asset-level input-output commodity balances.
@@ -423,7 +451,8 @@ fn add_asset_capacity_constraints(
     variables: &VariableMap,
     assets: &AssetPool,
     time_slice_info: &TimeSliceInfo,
-) {
+) -> CapacityConstraintsKeys {
+    let mut keys = CapacityConstraintsKeys::new();
     let mut terms = Vec::new();
     for asset in assets.iter() {
         for time_slice in time_slice_info.iter_ids() {
@@ -443,8 +472,11 @@ fn add_asset_capacity_constraints(
             }
 
             problem.add_row(limits, terms.drain(0..));
+            keys.push((asset.id, time_slice.clone()));
         }
     }
+
+    keys
 }
 
 #[cfg(test)]

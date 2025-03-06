@@ -173,7 +173,7 @@ impl AssetsWriter {
 
 /// Part of row for `FixedAssetsDualsWriter`
 #[derive(Serialize)]
-pub struct FixedAssetsDualRow {
+struct FixedAssetsDualRow {
     commodity_id: Rc<str>,
     time_slice: String,
     dual: f64,
@@ -203,6 +203,42 @@ impl FixedAssetsDualsWriter {
                 dual,
             };
             self.0.serialize((asset_row, fixed_row))?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Part of row for `CapacityDualsWriter`
+#[derive(Serialize)]
+struct CapacityDualRow {
+    time_slice: String,
+    dual: f64,
+}
+
+/// For writing dual values for capacity constraints
+pub struct CapacityDualsWriter(csv::Writer<File>);
+
+impl CapacityDualsWriter {
+    /// Create a new CSV file to write assets to
+    pub fn create(output_path: &Path) -> Result<Self> {
+        let file_path = output_path.join("capacity_duals.csv");
+        Ok(Self(csv::Writer::from_path(file_path)?))
+    }
+
+    /// Write assets to a CSV file
+    pub fn write<'a, I>(&mut self, milestone_year: u32, assets: &AssetPool, duals: I) -> Result<()>
+    where
+        I: Iterator<Item = (AssetID, &'a TimeSliceID, f64)>,
+    {
+        for (asset_id, time_slice, dual) in duals {
+            let asset = assets.get(asset_id);
+            let asset_row = AssetRow::new(milestone_year, asset);
+            let capacity_row = CapacityDualRow {
+                time_slice: time_slice.to_string(),
+                dual,
+            };
+            self.0.serialize((asset_row, capacity_row))?;
         }
 
         Ok(())
