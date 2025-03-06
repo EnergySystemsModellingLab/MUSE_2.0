@@ -56,6 +56,7 @@ struct CommodityFlowRow {
     commodity_id: Rc<str>,
     time_slice: String,
     flow: f64,
+    dual: f64,
 }
 
 /// An object for writing commodity flows to file
@@ -71,15 +72,16 @@ impl CommodityFlowWriter {
     /// Write commodity flows to a CSV file
     pub fn write<'a, I>(&mut self, milestone_year: u32, assets: &AssetPool, flows: I) -> Result<()>
     where
-        I: Iterator<Item = (AssetID, &'a Rc<str>, &'a TimeSliceID, f64)>,
+        I: Iterator<Item = (AssetID, &'a Rc<str>, &'a TimeSliceID, f64, f64)>,
     {
-        for (asset_id, commodity_id, time_slice, flow) in flows {
+        for (asset_id, commodity_id, time_slice, flow, dual) in flows {
             let asset = assets.get(asset_id);
             let asset_row = AssetRow::new(milestone_year, asset);
             let flow_row = CommodityFlowRow {
                 commodity_id: Rc::clone(commodity_id),
                 time_slice: time_slice.to_string(),
                 flow,
+                dual,
             };
             self.0.serialize((asset_row, flow_row))?;
         }

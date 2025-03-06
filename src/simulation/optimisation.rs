@@ -9,6 +9,7 @@ use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
+use itertools::izip;
 use std::rc::Rc;
 
 /// A decision variable in the optimisation
@@ -86,12 +87,13 @@ impl Solution<'_> {
     /// An iterator of tuples containing an asset ID, commodity, time slice and flow.
     pub fn iter_commodity_flows_for_assets(
         &self,
-    ) -> impl Iterator<Item = (AssetID, &Rc<str>, &TimeSliceID, f64)> {
-        self.variables
-            .0
-            .keys()
-            .zip(self.solution.columns().iter().copied())
-            .map(|(key, flow)| (key.asset_id, &key.commodity_id, &key.time_slice, flow))
+    ) -> impl Iterator<Item = (AssetID, &Rc<str>, &TimeSliceID, f64, f64)> {
+        izip!(
+            self.variables.0.keys(),
+            self.solution.columns().iter().copied(),
+            self.solution.dual_columns().iter().copied()
+        )
+        .map(|(key, flow, dual)| (key.asset_id, &key.commodity_id, &key.time_slice, flow, dual))
     }
 
     /// Iterate over the newly calculated commodity prices for each time slice.
