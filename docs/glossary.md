@@ -22,7 +22,7 @@ sufficient to serve base year demands (i.e. a calibrated base year, based on use
 *Process* delivers over a period. The time period could be a single time slice, a season, or a year.
 
 **Base Year:** The starting year of a model run. The base year is typically calibrated to known
-data, including technology stock (i.e. existing *Process*es) and commodity consumption/production.
+data, including **Process** stock and commodity consumption/production.
 
 **Calibration:** The act of ensuring that the model represents the system being modelled in a
 historical base year.
@@ -83,13 +83,12 @@ the next most expensive, etc, until demand is served. Also called “unit commit
 capacity. The combined output of all PACs cannot exceed the *Asset's* capacity. A user can define
 which output/s are PACs. Most, but not all *Process*es will have only one PAC.
 
-**Process/Technology:** A blueprint of an available *Process* that converts input commodities to
-output commodities. *Process*es have economic attributes of capital cost, fixed operating cost per
-unit capacity, non-fuel variable operating cost per unit activity, and technology risk discount
-rate. They have physical attributes of quantity and type of input and output commodities (which
-implicitly specify efficiency), *Availability* limits (by time slice, season and/or year), lifetime
-(years). When a *Process* is selected by an *Agent* for investment an instance of it called an
-*Asset* is created.
+**Process:** A blueprint of an available *Process* that converts input commodities to output
+commodities. *Process*es have economic attributes of capital cost, fixed operating cost per unit
+capacity, non-fuel variable operating cost per unit activity, and risk discount rate. They have
+physical attributes of quantity and type of input and output commodities (which implicitly specify
+efficiency), *Availability* limits (by time slice, season and/or year), lifetime (years). When a
+*Process* is selected by an *Agent* for investment an instance of it called an *Asset* is created.
 
 **Region:** A geographical area that is modelled. Regions primarily determine trade boundaries.
 
@@ -103,9 +102,9 @@ sector, etc.
 **Service Demand:** A Service Demand is a type of commodity that is consumed at the boundary of the
 modelled system. For example, tonne-kilometers of road freight, PJ of useful heat demand, etc.
 
-**Technology Discount Rate:** The discount rate used to calculate any technology-specific agent
-economic objectives that require a discount rate. For example, Equivalent Annual Cost, Net Present
-Value, Levelised Cost of X, etc.
+**Discount Rate:** The discount rate used to calculate any process-specific agent economic
+objectives that require a discount rate. For example, Equivalent Annual Cost, Net Present Value,
+Levelised Cost of X, etc.
 
 **Time Horizon:** The overall period modelled. For example, 2025&ndash;2100.
 
