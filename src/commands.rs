@@ -59,7 +59,6 @@ pub fn handle_run_command(model_dir: &Path) -> Result<()> {
     // Create output folder
     let output_path =
         create_output_directory(model_dir).context("Failed to create output directory.")?;
-    info!("Output directory created: {}", output_path.display());
 
     // Initialise program logger
     log::init(settings.log_level.as_deref(), &output_path)
@@ -68,6 +67,7 @@ pub fn handle_run_command(model_dir: &Path) -> Result<()> {
     // Load the model to run
     let (model, assets) = load_model(model_dir).context("Failed to load model.")?;
     info!("Loaded model from {}", model_dir.display());
+    info!("Output data will be written to {}", output_path.display());
 
     // Run the simulation
     crate::simulation::run(model, assets, &output_path)?;
