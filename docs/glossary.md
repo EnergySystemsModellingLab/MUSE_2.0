@@ -84,7 +84,7 @@ capacity. The combined output of all PACs cannot exceed the *Asset's* capacity. 
 which output/s are PACs. Most, but not all *Process*es will have only one PAC.
 
 **Process/Technology:** A blueprint of an available *Process* that converts input commodities to
-output commodities. Processes have economic attributes of capital cost, fixed operating cost per
+output commodities. *Process*es have economic attributes of capital cost, fixed operating cost per
 unit capacity, non-fuel variable operating cost per unit activity, and technology risk discount
 rate. They have physical attributes of quantity and type of input and output commodities (which
 implicitly specify efficiency), *Availability* limits (by time slice, season and/or year), lifetime
