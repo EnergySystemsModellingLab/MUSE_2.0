@@ -144,7 +144,7 @@ impl DemandMap {
                 time_slice: time_slice.clone(),
             })
             .copied()
-            .expect("Missing demand entry")
+            .unwrap_or_else(|| panic!("Missing demand entry: {region_id}, {year}, {time_slice}"))
     }
 
     /// Insert a new demand entry for the specified region, year and time slice
