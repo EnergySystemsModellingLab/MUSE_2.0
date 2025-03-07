@@ -6,9 +6,9 @@ use crate::commodity::{BalanceType, CommodityType};
 use crate::model::Model;
 use crate::process::ProcessFlow;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
+use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
-use log::{error, info};
 use std::rc::Rc;
 
 /// A decision variable in the optimisation
@@ -47,7 +47,7 @@ impl VariableMap {
 
 /// A key for a [`VariableMap`]
 #[derive(Eq, PartialEq, Hash)]
-pub struct VariableMapKey {
+struct VariableMapKey {
     asset_id: AssetID,
     commodity_id: Rc<str>,
     time_slice: TimeSliceID,
@@ -80,11 +80,18 @@ impl Solution<'_> {
     ///
     /// Note that this only includes commodity flows which relate to assets, so not every commodity
     /// in the simulation will necessarily be represented.
-    pub fn iter_commodity_flows_for_assets(&self) -> impl Iterator<Item = (&VariableMapKey, f64)> {
+    ///
+    /// # Returns
+    ///
+    /// An iterator of tuples containing an asset ID, commodity, time slice and flow.
+    pub fn iter_commodity_flows_for_assets(
+        &self,
+    ) -> impl Iterator<Item = (AssetID, &Rc<str>, &TimeSliceID, f64)> {
         self.variables
             .0
             .keys()
             .zip(self.solution.columns().iter().copied())
+            .map(|(key, flow)| (key.asset_id, &key.commodity_id, &key.time_slice, flow))
     }
 
     /// Iterate over the newly calculated commodity prices for each time slice.
@@ -126,9 +133,7 @@ pub fn perform_dispatch_optimisation<'a>(
     model: &'a Model,
     assets: &AssetPool,
     year: u32,
-) -> Solution<'a> {
-    info!("Performing dispatch optimisation...");
-
+) -> Result<Solution<'a>> {
     // Set up problem
     let mut problem = Problem::default();
     let variables = add_variables(&mut problem, model, assets, year);
@@ -140,17 +145,14 @@ pub fn perform_dispatch_optimisation<'a>(
     // Solve problem
     let solution = problem.optimise(Sense::Minimise).solve();
 
-    let status = solution.status();
-    if status != HighsModelStatus::Optimal {
-        // **TODO**: Make this a hard error once the problem is actually solvable
-        error!("Could not solve: {status:?}");
-    }
-
-    Solution {
-        solution: solution.get_solution(),
-        variables,
-        time_slice_info: &model.time_slice_info,
-        commodity_constraint_keys,
+    match solution.status() {
+        HighsModelStatus::Optimal => Ok(Solution {
+            solution: solution.get_solution(),
+            variables,
+            time_slice_info: &model.time_slice_info,
+            commodity_constraint_keys,
+        }),
+        status => Err(anyhow!("Could not solve: {status:?}")),
     }
 }
 
@@ -172,7 +174,6 @@ fn add_variables(
     assets: &AssetPool,
     year: u32,
 ) -> VariableMap {
-    info!("Adding variables to problem...");
     let mut variables = VariableMap::default();
 
     for asset in assets.iter() {
@@ -276,8 +277,6 @@ fn add_commodity_balance_constraints(
     assets: &AssetPool,
     year: u32,
 ) -> CommodityConstraintKeys {
-    info!("Adding commodity balance constraints...");
-
     // Sanity check: we rely on the first n values of the dual row values corresponding to the
     // commodity constraints, so these must be the first rows
     assert!(
@@ -360,8 +359,6 @@ fn add_fixed_asset_constraints(
     assets: &AssetPool,
     time_slice_info: &TimeSliceInfo,
 ) {
-    info!("Adding constraints for non-flexible assets...");
-
     for asset in assets.iter() {
         // Get first PAC. unwrap is safe because all processes have at least one PAC.
         let pac1 = asset.process.iter_pacs().next().unwrap();
@@ -399,8 +396,6 @@ fn add_asset_capacity_constraints(
     assets: &AssetPool,
     time_slice_info: &TimeSliceInfo,
 ) {
-    info!("Adding asset-level capacity and availability constraints...");
-
     let mut terms = Vec::new();
     for asset in assets.iter() {
         for time_slice in time_slice_info.iter_ids() {

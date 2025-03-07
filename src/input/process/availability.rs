@@ -87,7 +87,7 @@ where
             let value = record.value * ts_length;
             let bounds = match record.limit_type {
                 LimitType::LowerBound => value..=f64::INFINITY,
-                LimitType::UpperBound => f64::NEG_INFINITY..=value,
+                LimitType::UpperBound => 0.0..=value,
                 LimitType::Equality => value..=value,
             };
 
@@ -195,7 +195,7 @@ mod tests {
 
         let result = value * 0.5; // time slice lengths are 0.5
         check_with_limit_type!(LimitType::LowerBound, result..=f64::INFINITY);
-        check_with_limit_type!(LimitType::UpperBound, f64::NEG_INFINITY..=result);
+        check_with_limit_type!(LimitType::UpperBound, 0.0..=result);
         check_with_limit_type!(LimitType::Equality, result..=result);
     }
 
