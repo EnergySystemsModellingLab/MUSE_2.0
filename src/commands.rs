@@ -44,9 +44,9 @@ pub enum Commands {
 pub enum ExampleSubcommands {
     /// List available examples.
     List,
-    /// Copy an example model configuration.
-    Copy {
-        /// The name of the example to copy.
+    /// Extract an example model configuration to a new directory.
+    Extract {
+        /// The name of the example to extract.
         name: String,
         /// The destination folder for the example.
         dest: Option<PathBuf>,
@@ -96,14 +96,14 @@ pub fn handle_example_list_command() {
     }
 }
 
-/// Handle the `example copy` command
-pub fn handle_example_copy_command(name: &str, dest: Option<&Path>) -> Result<()> {
+/// Handle the `example extract` command
+pub fn handle_example_extract_command(name: &str, dest: Option<&Path>) -> Result<()> {
     let dest = dest.unwrap_or(Path::new(name));
-    copy_example(name, dest)
+    extract_example(name, dest)
 }
 
-/// Copy the specified example to a new directory
-fn copy_example(name: &str, dest: &Path) -> Result<()> {
+/// Extract the specified example to a new directory
+fn extract_example(name: &str, dest: &Path) -> Result<()> {
     // Find the subdirectory in EXAMPLES_DIR whose name matches `name`.
     let sub_dir = EXAMPLES_DIR.get_dir(name).context("Example not found.")?;
 
@@ -133,6 +133,6 @@ fn copy_example(name: &str, dest: &Path) -> Result<()> {
 pub fn handle_example_run_command(name: &str) -> Result<()> {
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
     let model_path = temp_dir.path().join(name);
-    copy_example(name, &model_path)?;
+    extract_example(name, &model_path)?;
     handle_run_command(&model_path)
 }
