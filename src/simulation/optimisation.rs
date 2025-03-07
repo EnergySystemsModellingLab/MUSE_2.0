@@ -232,7 +232,11 @@ fn calculate_cost_coefficient(
 
     // If flow is negative (representing an input), we multiply by -1 to ensure impact of
     // coefficient on objective function is a positive cost
-    coeff.copysign(flow.flow)
+    if flow.flow > 0.0 {
+        coeff
+    } else {
+        -coeff
+    }
 }
 
 /// Add asset-level constraints
