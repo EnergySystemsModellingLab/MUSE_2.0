@@ -21,9 +21,10 @@ fn execute_cli_command(command: Commands) -> Result<()> {
         Commands::Run { model_dir } => handle_run_command(&model_dir)?,
         Commands::Example { subcommand } => match subcommand {
             ExampleSubcommands::List => handle_example_list_command(),
-            ExampleSubcommands::Extract { name, dest } => {
-                handle_example_extract_command(&name, dest.as_deref())?
-            }
+            ExampleSubcommands::Extract {
+                name,
+                new_path: dest,
+            } => handle_example_extract_command(&name, dest.as_deref())?,
             ExampleSubcommands::Run { name } => handle_example_run_command(&name)?,
         },
     }

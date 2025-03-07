@@ -49,7 +49,7 @@ pub enum ExampleSubcommands {
         /// The name of the example to extract.
         name: String,
         /// The destination folder for the example.
-        dest: Option<PathBuf>,
+        new_path: Option<PathBuf>,
     },
     /// Run an example.
     Run {
@@ -103,24 +103,24 @@ pub fn handle_example_extract_command(name: &str, dest: Option<&Path>) -> Result
 }
 
 /// Extract the specified example to a new directory
-fn extract_example(name: &str, dest: &Path) -> Result<()> {
+fn extract_example(name: &str, new_path: &Path) -> Result<()> {
     // Find the subdirectory in EXAMPLES_DIR whose name matches `name`.
     let sub_dir = EXAMPLES_DIR.get_dir(name).context("Example not found.")?;
 
     ensure!(
-        !dest.exists(),
-        "Destination directory {} already exists, not overwriting",
-        dest.display()
+        !new_path.exists(),
+        "Destination directory {} already exists",
+        new_path.display()
     );
 
     // Copy the contents of the subdirectory to the destination
-    fs::create_dir(dest)?;
+    fs::create_dir(new_path)?;
     for entry in sub_dir.entries() {
         match entry {
             DirEntry::Dir(_) => panic!("Subdirectories in examples not supported"),
             DirEntry::File(f) => {
                 let file_name = f.path().file_name().unwrap();
-                let file_path = dest.join(file_name);
+                let file_path = new_path.join(file_name);
                 fs::write(&file_path, f.contents())?;
             }
         }
