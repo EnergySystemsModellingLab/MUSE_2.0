@@ -71,7 +71,7 @@ where
 
 /// Format an error message to include the file path. To be used with `anyhow::Context`.
 pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
-    format!("Error reading {}", file_path.as_ref().to_string_lossy())
+    format!("Error reading {}", file_path.as_ref().display())
 }
 
 /// Indicates that the struct has an ID field

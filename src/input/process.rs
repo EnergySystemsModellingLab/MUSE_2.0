@@ -419,7 +419,7 @@ mod tests {
         // Create a dummy demand map for the non-SED commodity
         let mut demand_map = DemandMap::new();
         for region in data.region_ids.iter() {
-            for year in milestone_years.clone() {
+            for year in milestone_years {
                 for time_slice in time_slice_info.iter_ids() {
                     demand_map.insert(region.clone(), year, time_slice.clone(), 0.5);
                 }
