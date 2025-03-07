@@ -64,8 +64,9 @@ impl VariableMapKey {
     }
 }
 
-/// Indicates the commodity ID and time slice selection covered by each commodity constraint
-type CommodityConstraintKeys = Vec<(Rc<str>, TimeSliceSelection)>;
+/// Indicates the region ID, commodity ID and time slice selection covered by each commodity balance
+/// constraint.
+type CommodityConstraintKeys = Vec<(Rc<str>, Rc<str>, TimeSliceSelection)>;
 
 /// The solution to the dispatch optimisation problem
 pub struct Solution<'a> {
@@ -91,7 +92,9 @@ impl Solution<'_> {
     ///
     /// Note that there may only be prices for a subset of the commodities; the rest will need to be
     /// calculated in another way.
-    pub fn iter_commodity_prices(&self) -> impl Iterator<Item = (&Rc<str>, &TimeSliceID, f64)> {
+    pub fn iter_commodity_prices(
+        &self,
+    ) -> impl Iterator<Item = (&Rc<str>, &Rc<str>, &TimeSliceID, f64)> {
         // We can get the prices by looking at the dual row values for commodity balance
         // constraints. Each commodity balance constraint applies to a particular time slice
         // selection (depending on time slice level), but we want to return prices for each time
@@ -99,10 +102,10 @@ impl Solution<'_> {
         self.commodity_constraint_keys
             .iter()
             .zip(self.solution.dual_rows())
-            .flat_map(|((commodity_id, ts_selection), price)| {
+            .flat_map(|((region_id, commodity_id, ts_selection), price)| {
                 self.time_slice_info
                     .iter_selection(ts_selection)
-                    .map(move |(ts, _)| (commodity_id, ts, *price))
+                    .map(move |(ts, _)| (region_id, commodity_id, ts, *price))
             })
     }
 }
@@ -335,7 +338,11 @@ fn add_commodity_balance_constraints(
                 problem.add_row(rhs..=rhs, terms.drain(0..));
 
                 // Keep track of the order in which constraints were added
-                keys.push((Rc::clone(&commodity.id), ts_selection));
+                keys.push((
+                    Rc::clone(&region_id),
+                    Rc::clone(&commodity.id),
+                    ts_selection,
+                ));
             }
         }
     }
