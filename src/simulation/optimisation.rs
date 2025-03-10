@@ -143,9 +143,18 @@ pub fn perform_dispatch_optimisation<'a>(
         add_asset_contraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
-    let highs_model = problem.optimise(Sense::Minimise);
-    let solution = highs_model.solve();
+    let mut highs_model = problem.optimise(Sense::Minimise);
 
+    // **HACK**: Dump output of HiGHS solver to stdout. Among other things, this includes the
+    // objective value for the solution. Sadly it doesn't go via our logger, so this information
+    // will not be included in the log file.
+    //
+    // Should be removed when we write the objective value to output data properly. See:
+    //   https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/428
+    enable_highs_logging(&mut highs_model);
+
+    // Solve model
+    let solution = highs_model.solve();
     match solution.status() {
         HighsModelStatus::Optimal => Ok(Solution {
             solution: solution.get_solution(),
@@ -155,6 +164,19 @@ pub fn perform_dispatch_optimisation<'a>(
         }),
         status => Err(anyhow!("Could not solve: {status:?}")),
     }
+}
+
+/// Enable logging for the HiGHS solver
+fn enable_highs_logging(model: &mut highs::Model) {
+    // **HACK**: Skip this step if logging is disabled (e.g. when running tests)
+    if let Ok(log_level) = std::env::var("MUSE2_LOG_LEVEL") {
+        if log_level.eq_ignore_ascii_case("off") {
+            return;
+        }
+    }
+
+    model.set_option("log_to_console", true);
+    model.set_option("output_flag", true);
 }
 
 /// Add variables to the optimisation problem.
