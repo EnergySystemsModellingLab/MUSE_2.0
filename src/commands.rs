@@ -3,7 +3,7 @@ use crate::output::create_output_directory;
 use crate::settings::Settings;
 use crate::{input::load_model, log};
 use ::log::{error, info};
-use anyhow::{Context, Result};
+use anyhow::{ensure, Context, Result};
 use clap::{Parser, Subcommand};
 use include_dir::{include_dir, Dir, DirEntry};
 use std::fs;
@@ -44,6 +44,13 @@ pub enum Commands {
 pub enum ExampleSubcommands {
     /// List available examples.
     List,
+    /// Extract an example model configuration to a new directory.
+    Extract {
+        /// The name of the example to extract.
+        name: String,
+        /// The destination folder for the example.
+        new_path: Option<PathBuf>,
+    },
     /// Run an example.
     Run {
         /// The name of the example to run.
@@ -89,27 +96,43 @@ pub fn handle_example_list_command() {
     }
 }
 
-/// Handle the `example run` command.
-pub fn handle_example_run_command(name: &str) -> Result<()> {
+/// Handle the `example extract` command
+pub fn handle_example_extract_command(name: &str, dest: Option<&Path>) -> Result<()> {
+    let dest = dest.unwrap_or(Path::new(name));
+    extract_example(name, dest)
+}
+
+/// Extract the specified example to a new directory
+fn extract_example(name: &str, new_path: &Path) -> Result<()> {
     // Find the subdirectory in EXAMPLES_DIR whose name matches `name`.
     let sub_dir = EXAMPLES_DIR.get_dir(name).context("Example not found.")?;
 
-    // Creates temporary directory
-    let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
-    let temp_path = temp_dir.path().join(name);
-    fs::create_dir(&temp_path)?;
+    ensure!(
+        !new_path.exists(),
+        "Destination directory {} already exists",
+        new_path.display()
+    );
 
-    // Copies the contents of the subdirectory to the temporary directory
+    // Copy the contents of the subdirectory to the destination
+    fs::create_dir(new_path)?;
     for entry in sub_dir.entries() {
         match entry {
             DirEntry::Dir(_) => panic!("Subdirectories in examples not supported"),
             DirEntry::File(f) => {
                 let file_name = f.path().file_name().unwrap();
-                let file_path = temp_path.join(file_name);
+                let file_path = new_path.join(file_name);
                 fs::write(&file_path, f.contents())?;
             }
         }
     }
 
-    handle_run_command(&temp_path)
+    Ok(())
+}
+
+/// Handle the `example run` command.
+pub fn handle_example_run_command(name: &str) -> Result<()> {
+    let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
+    let model_path = temp_dir.path().join(name);
+    extract_example(name, &model_path)?;
+    handle_run_command(&model_path)
 }
