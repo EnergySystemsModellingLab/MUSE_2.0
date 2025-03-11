@@ -1,0 +1,5 @@
+agent_id,commodity_id,year,capex_limit,annual_cost_limit
+A0_GEX,GASPRD,,,
+A0_GPR,GASNAT,,,
+A0_ELC,ELCTRI,,,
+A0_RES,RSHEAT,,,

@@ -1,0 +1,5 @@
+agent_id,commodity_id,year,commodity_portion
+A0_GEX,GASPRD,,1
+A0_GPR,GASNAT,,1
+A0_ELC,ELCTRI,,1
+A0_RES,RSHEAT,,1
