@@ -1,4 +1,4 @@
-agent_id,decision_rule,decision_lex_tol
+agent_id,decision_rule,decision_lexico_tolerance
 A0_GEX,single,
 A0_GPR,single,
 A0_ELC,single,
