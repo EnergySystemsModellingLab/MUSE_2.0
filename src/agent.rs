@@ -143,7 +143,7 @@ impl Asset {
 
     /// Get the activity limits for this asset in a particular time slice
     pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
-        let limits = self.process.capacity_fractions.get(time_slice).unwrap();
+        let limits = self.process.activity_limits.get(time_slice).unwrap();
         let max_act = self.maximum_activity();
 
         // Multiply the fractional capacity in self.process by this asset's actual capacity
@@ -251,7 +251,7 @@ impl AssetPool {
 mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{FlowType, Process, ProcessCapacityMap, ProcessFlow, ProcessParameter};
+    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter};
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
     use std::iter;
@@ -289,11 +289,11 @@ mod tests {
             is_pac: true,
         };
         let fraction_limits = 1.0..=f64::INFINITY;
-        let capacity_fractions = iter::once((time_slice.clone(), fraction_limits)).collect();
+        let activity_limits = iter::once((time_slice.clone(), fraction_limits)).collect();
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            capacity_fractions,
+            activity_limits,
             flows: vec![flow.clone()],
             parameter: process_param.clone(),
             regions: RegionSelection::All,
@@ -324,7 +324,7 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            capacity_fractions: ProcessCapacityMap::new(),
+            activity_limits: ActivityLimitsMap::new(),
             flows: vec![],
             parameter: process_param.clone(),
             regions: RegionSelection::All,
