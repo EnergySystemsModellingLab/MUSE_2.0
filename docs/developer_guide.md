@@ -23,6 +23,13 @@ of date. You can update to the latest version with:
 rustup update stable
 ```
 
+## Installing C++ tools for HiGHS
+
+The `highs-sys` crate requires a C++ compiler and cmake to be installed on your system.
+These may be installed already, but if you encounter errors during the build process for `highs-sys`
+(e.g. "Unable to find libclang"), you should follow the instructions [here](https://github.com/rust-or/highs-sys)
+under "Building HiGHS".
+
 ## Working with the project
 
 To build the project, run:
