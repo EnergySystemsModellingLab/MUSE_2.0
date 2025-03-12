@@ -1,9 +1,1 @@
 agent_id,commodity_id,year,capex_limit,annual_cost_limit
-A0_GEX,GASPRD,2020,,
-A0_GEX,GASPRD,2030,,
-A0_GPR,GASNAT,2020,,
-A0_GPR,GASNAT,2030,,
-A0_ELC,ELCTRI,2020,,
-A0_ELC,ELCTRI,2030,,
-A0_RES,RSHEAT,2020,,
-A0_RES,RSHEAT,2030,,
