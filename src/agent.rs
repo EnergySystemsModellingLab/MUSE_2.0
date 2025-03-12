@@ -150,9 +150,7 @@ impl Asset {
         (max_act * limits.start())..=(max_act * limits.end())
     }
 
-    /// Maximum activity for this asset in a year.
-    ///
-    /// This was referred to as `capacity_a` in MUSE 1.0.
+    /// Maximum activity for this asset in a year
     pub fn maximum_activity(&self) -> f64 {
         self.capacity * self.process.parameter.capacity_to_activity
     }
