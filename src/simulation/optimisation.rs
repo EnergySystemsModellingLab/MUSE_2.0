@@ -64,8 +64,8 @@ impl VariableMapKey {
     }
 }
 
-/// Indicates the commodity ID and time slice selection covered by each commodity constraint
-type CommodityConstraintKeys = Vec<(Rc<str>, TimeSliceSelection)>;
+/// Indicates the commodity ID and time slice selection covered by each commodity balance constraint
+type CommodityBalanceConstraintKeys = Vec<(Rc<str>, TimeSliceSelection)>;
 
 /// Indicates the asset ID and time slice covered by each capacity constraint
 type CapacityConstraintKeys = Vec<(AssetID, TimeSliceID)>;
@@ -75,7 +75,7 @@ pub struct Solution<'a> {
     solution: highs::Solution,
     variables: VariableMap,
     time_slice_info: &'a TimeSliceInfo,
-    commodity_constraint_keys: CommodityConstraintKeys,
+    commodity_balance_constraint_keys: CommodityBalanceConstraintKeys,
     capacity_constraint_keys: CapacityConstraintKeys,
 }
 
@@ -102,11 +102,10 @@ impl Solution<'_> {
     pub fn iter_commodity_balance_duals(
         &self,
     ) -> impl Iterator<Item = (&Rc<str>, &TimeSliceID, f64)> {
-        // We can get the prices by looking at the dual row values for commodity balance
-        // constraints. Each commodity balance constraint applies to a particular time slice
-        // selection (depending on time slice level), but we want to return prices for each time
-        // slice, so if the selection covers multiple time slices we return the same price for each.
-        self.commodity_constraint_keys
+        // Each commodity balance constraint applies to a particular time slice
+        // selection (depending on time slice level). Where this covers multiple timeslices,
+        // we return the same dual for each individual timeslice.
+        self.commodity_balance_constraint_keys
             .iter()
             .zip(self.solution.dual_rows())
             .flat_map(|((commodity_id, ts_selection), price)| {
@@ -121,7 +120,7 @@ impl Solution<'_> {
         self.capacity_constraint_keys
             .iter()
             .zip(
-                self.solution.dual_rows()[self.commodity_constraint_keys.len()..]
+                self.solution.dual_rows()[self.commodity_balance_constraint_keys.len()..]
                     .iter()
                     .copied(),
             )
@@ -154,7 +153,7 @@ pub fn perform_dispatch_optimisation<'a>(
     let variables = add_variables(&mut problem, model, assets, year);
 
     // Add constraints
-    let (commodity_constraint_keys, capacity_constraint_keys) =
+    let (commodity_balance_constraint_keys, capacity_constraint_keys) =
         add_asset_constraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
@@ -175,7 +174,7 @@ pub fn perform_dispatch_optimisation<'a>(
             solution: solution.get_solution(),
             variables,
             time_slice_info: &model.time_slice_info,
-            commodity_constraint_keys,
+            commodity_balance_constraint_keys,
             capacity_constraint_keys,
         }),
         status => Err(anyhow!("Could not solve: {status:?}")),
@@ -294,16 +293,16 @@ fn calculate_cost_coefficient(
 ///
 /// # Returns:
 ///
-/// * A list of keys for commodity balance constraints
-/// * A list of keys for capacity constraints
+/// * A vector of keys for commodity balance constraints
+/// * A vector of keys for capacity constraints
 fn add_asset_constraints(
     problem: &mut Problem,
     variables: &VariableMap,
     model: &Model,
     assets: &AssetPool,
     year: u32,
-) -> (CommodityConstraintKeys, CapacityConstraintKeys) {
-    let commodity_constraint_keys =
+) -> (CommodityBalanceConstraintKeys, CapacityConstraintKeys) {
+    let commodity_balance_constraint_keys =
         add_commodity_balance_constraints(problem, variables, model, assets, year);
 
     let capacity_constraint_keys = add_asset_capacity_constraints(
@@ -311,7 +310,7 @@ fn add_asset_constraints(
         variables,
         assets,
         &model.time_slice_info,
-        &commodity_constraint_keys,
+        &commodity_balance_constraint_keys,
     );
 
     // **TODO**: Currently it's safe to assume all process flows are non-flexible, as we enforce
@@ -322,7 +321,7 @@ fn add_asset_constraints(
     add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
 
     // Return constraint keys which are required to calculate commodity prices
-    (commodity_constraint_keys, capacity_constraint_keys)
+    (commodity_balance_constraint_keys, capacity_constraint_keys)
 }
 
 /// Add asset-level input-output commodity balances.
@@ -338,7 +337,7 @@ fn add_commodity_balance_constraints(
     model: &Model,
     assets: &AssetPool,
     year: u32,
-) -> CommodityConstraintKeys {
+) -> CommodityBalanceConstraintKeys {
     // Sanity check: we rely on the first n values of the dual row values corresponding to the
     // commodity constraints, so these must be the first rows
     assert!(
@@ -347,7 +346,7 @@ fn add_commodity_balance_constraints(
     );
 
     let mut terms = Vec::new();
-    let mut keys = CommodityConstraintKeys::new();
+    let mut keys = CommodityBalanceConstraintKeys::new();
     for commodity in model.commodities.values() {
         if commodity.kind != CommodityType::SupplyEqualsDemand
             && commodity.kind != CommodityType::ServiceDemand
@@ -457,12 +456,12 @@ fn add_asset_capacity_constraints(
     variables: &VariableMap,
     assets: &AssetPool,
     time_slice_info: &TimeSliceInfo,
-    commodity_constraint_keys: &CommodityConstraintKeys,
+    commodity_balance_constraint_keys: &CommodityBalanceConstraintKeys,
 ) -> CapacityConstraintKeys {
     // Sanity check: we rely on the dual rows corresponding to the capacity constraints being
-    // immediately after the commodity constraints in `problem`.
+    // immediately after the commodity balance constraints in `problem`.
     assert!(
-        problem.num_rows() == commodity_constraint_keys.len(),
+        problem.num_rows() == commodity_balance_constraint_keys.len(),
         "Capacity constraints must be added immediately after commodity constraints."
     );
 
