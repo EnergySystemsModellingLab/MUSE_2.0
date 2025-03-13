@@ -49,7 +49,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
 
         // Dispatch optimisation
         let solution = perform_dispatch_optimisation(&model, &assets, year)?;
-        let prices = CommodityPrices::from_model_and_solution(&model, &solution);
+        let prices = CommodityPrices::from_model_and_solution(&model, &solution, &assets);
 
         // Write current commodity prices to CSV
         write_commodity_prices_to_csv(&mut file, year, &prices)?;
