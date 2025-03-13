@@ -73,13 +73,13 @@ impl CommodityPrices {
             }
         }
 
-        // Insert the highest duals into the prices map
+        // Insert the highest capacity duals into the prices map
         for ((commodity_id, time_slice), dual) in highest_duals.iter() {
             self.insert(commodity_id, time_slice, *dual);
             commodities_updated.insert(Rc::clone(commodity_id));
         }
 
-        // Combine with commodity balance duals
+        // Sum with the commodity balance duals
         for (commodity_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
             let key = (Rc::clone(commodity_id), time_slice.clone());
             let _combined_dual = self
