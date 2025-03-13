@@ -44,7 +44,7 @@ impl CommodityPrices {
     fn add_from_solution(&mut self, solution: &Solution) -> HashSet<Rc<str>> {
         let mut commodities_updated = HashSet::new();
 
-        for (commodity_id, time_slice, price) in solution.iter_commodity_prices() {
+        for (commodity_id, time_slice, price) in solution.iter_commodity_balance_duals() {
             self.insert(commodity_id, time_slice, price);
             commodities_updated.insert(Rc::clone(commodity_id));
         }

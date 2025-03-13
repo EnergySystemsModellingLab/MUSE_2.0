@@ -98,23 +98,10 @@ impl Solution<'_> {
             .map(|(key, flow)| (key.asset_id, &key.commodity_id, &key.time_slice, flow))
     }
 
-    /// Iterate over the newly calculated commodity prices for each time slice.
-    ///
-    /// Note that there may only be prices for a subset of the commodities; the rest will need to be
-    /// calculated in another way.
-    pub fn iter_commodity_prices(&self) -> impl Iterator<Item = (&Rc<str>, &TimeSliceID, f64)> {
-        // Calculate commodity balance duals
-        let commodity_duals = self.iter_commodity_balance_duals();
-
-        // Calculate capacity duals
-        let _capacity_duals = self.iter_capacity_duals();
-
-        // Calculate prices (for now this is just the commodity duals)
-        commodity_duals
-    }
-
     /// Keys and dual values for commodity balance constraints.
-    fn iter_commodity_balance_duals(&self) -> impl Iterator<Item = (&Rc<str>, &TimeSliceID, f64)> {
+    pub fn iter_commodity_balance_duals(
+        &self,
+    ) -> impl Iterator<Item = (&Rc<str>, &TimeSliceID, f64)> {
         // We can get the prices by looking at the dual row values for commodity balance
         // constraints. Each commodity balance constraint applies to a particular time slice
         // selection (depending on time slice level), but we want to return prices for each time
@@ -130,7 +117,7 @@ impl Solution<'_> {
     }
 
     /// Keys and dual values for capacity constraints.
-    fn iter_capacity_duals(&self) -> impl Iterator<Item = (AssetID, &TimeSliceID, f64)> {
+    pub fn iter_capacity_duals(&self) -> impl Iterator<Item = (AssetID, &TimeSliceID, f64)> {
         self.capacity_constraint_keys
             .iter()
             .zip(
