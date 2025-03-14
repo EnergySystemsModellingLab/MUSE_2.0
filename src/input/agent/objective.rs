@@ -22,16 +22,18 @@ define_id_getter! {Agent}
 pub fn read_agent_objectives(
     model_dir: &Path,
     agents: &AgentMap,
+    milestone_years: &[u32],
 ) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>> {
     let file_path = model_dir.join(AGENT_OBJECTIVES_FILE_NAME);
     let agent_objectives_csv = read_csv(&file_path)?;
-    read_agent_objectives_from_iter(agent_objectives_csv, agents)
+    read_agent_objectives_from_iter(agent_objectives_csv, agents, milestone_years)
         .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_agent_objectives_from_iter<I>(
     iter: I,
     agents: &AgentMap,
+    milestone_years: &[u32],
 ) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>>
 where
     I: Iterator<Item = AgentObjective>,
@@ -52,10 +54,21 @@ where
             .push(objective);
     }
 
-    ensure!(
-        objectives.len() >= agents.len(),
-        "All agents must have at least one objective"
-    );
+    // Validate that each agent has at least one objective for each milestone year
+    for (agent_id, _agent) in agents {
+        let agent_objectives = objectives
+            .get(agent_id)
+            .with_context(|| format!("Agent {} has no objectives", agent_id))?;
+        for &year in milestone_years {
+            if !agent_objectives.iter().any(|obj| obj.year == year) {
+                return Err(anyhow::anyhow!(
+                    "Agent {} is missing objectives for milestone year {}",
+                    agent_id,
+                    year
+                ));
+            }
+        }
+    }
 
     Ok(objectives)
 }
@@ -119,6 +132,7 @@ mod tests {
             ($decision_weight:expr, $decision_lexico_tolerance:expr) => {
                 AgentObjective {
                     agent_id: "agent".into(),
+                    year: 2020,
                     objective_type: ObjectiveType::EquivalentAnnualCost,
                     decision_weight: $decision_weight,
                     decision_lexico_tolerance: $decision_lexico_tolerance,
@@ -181,10 +195,12 @@ mod tests {
         )]
         .into_iter()
         .collect();
+        let milestone_years = [2020];
 
         // Valid
         let objective = AgentObjective {
             agent_id: "agent".into(),
+            year: 2020,
             objective_type: ObjectiveType::EquivalentAnnualCost,
             decision_weight: None,
             decision_lexico_tolerance: None,
@@ -192,19 +208,29 @@ mod tests {
         let expected = [("agent".into(), vec![objective.clone()])]
             .into_iter()
             .collect();
-        let actual = read_agent_objectives_from_iter([objective].into_iter(), &agents).unwrap();
+        let actual =
+            read_agent_objectives_from_iter([objective].into_iter(), &agents, &milestone_years)
+                .unwrap();
         assert_eq!(actual, expected);
 
         // Missing objective for agent
-        assert!(read_agent_objectives_from_iter([].into_iter(), &agents).is_err());
+        assert!(
+            read_agent_objectives_from_iter([].into_iter(), &agents, &milestone_years).is_err()
+        );
 
         // Bad parameter
         let objective = AgentObjective {
             agent_id: "agent".into(),
+            year: 2020,
             objective_type: ObjectiveType::EquivalentAnnualCost,
             decision_weight: Some(1.0),
             decision_lexico_tolerance: None,
         };
-        assert!(read_agent_objectives_from_iter([objective].into_iter(), &agents).is_err());
+        assert!(read_agent_objectives_from_iter(
+            [objective].into_iter(),
+            &agents,
+            &milestone_years
+        )
+        .is_err());
     }
 }
