@@ -35,15 +35,25 @@ impl CommodityPrices {
 
     /// Add commodity prices for which there are values in the solution
     ///
+    /// Commodity prices are calculated as the sum of the commodity balance duals and the highest
+    /// capacity dual for each commodity/timeslice.
+    ///
     /// # Arguments
     ///
     /// * `solution` - The solution to the dispatch optimisation
+    /// * `assets` - The asset pool
     ///
     /// # Returns
     ///
     /// The set of commodities for which prices were added.
     fn add_from_solution(&mut self, solution: &Solution, assets: &AssetPool) -> HashSet<Rc<str>> {
         let mut commodities_updated = HashSet::new();
+
+        // Insert commodity balance duals into the prices map
+        for (commodity_id, time_slice, price) in solution.iter_commodity_balance_duals() {
+            self.insert(commodity_id, time_slice, price);
+            commodities_updated.insert(Rc::clone(commodity_id));
+        }
 
         // Calculate highest capacity dual for each commodity/timeslice
         let mut highest_duals: IndexMap<CommodityPriceKey, f64> = IndexMap::new();
@@ -69,12 +79,6 @@ impl CommodityPrices {
                         .or_insert(dual);
                 }
             }
-        }
-
-        // Insert commodity balance duals into the prices map
-        for (commodity_id, time_slice, price) in solution.iter_commodity_balance_duals() {
-            self.insert(commodity_id, time_slice, price);
-            commodities_updated.insert(Rc::clone(commodity_id));
         }
 
         // Add the highest capacity dual for each commodity/timeslice
