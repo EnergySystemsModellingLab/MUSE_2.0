@@ -48,13 +48,11 @@ impl CommodityPrices {
         // Calculate highest capacity dual for each commodity/timeslice
         let mut highest_duals: IndexMap<CommodityPriceKey, f64> = IndexMap::new();
         for (asset_id, time_slice, dual) in solution.iter_capacity_duals() {
-            // Get the asset
             let asset = assets.get(asset_id).unwrap();
 
             // Iterate over process pacs
             let process_pacs = asset.process.iter_pacs();
             for pac in process_pacs {
-                // Get the commodity
                 let commodity = &pac.commodity;
 
                 // If the commodity flow is positive (produced PAC)
@@ -73,23 +71,18 @@ impl CommodityPrices {
             }
         }
 
-        // Insert the highest capacity duals into the prices map
-        for ((commodity_id, time_slice), dual) in highest_duals.iter() {
-            self.insert(commodity_id, time_slice, *dual);
+        // Insert commodity balance duals into the prices map
+        for (commodity_id, time_slice, price) in solution.iter_commodity_balance_duals() {
+            self.insert(commodity_id, time_slice, price);
             commodities_updated.insert(Rc::clone(commodity_id));
         }
 
-        // Sum with the commodity balance duals
-        for (commodity_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
+        // Add the highest capacity dual for each commodity/timeslice
+        for ((commodity_id, time_slice), dual) in highest_duals.iter() {
             let key = (Rc::clone(commodity_id), time_slice.clone());
-            let _combined_dual = self
-                .0
-                .entry(key)
-                .and_modify(|current_dual| {
-                    *current_dual += dual;
-                })
-                .or_insert(dual);
-            commodities_updated.insert(Rc::clone(commodity_id));
+            if let Some(current_price) = self.0.get_mut(&key) {
+                *current_price += dual;
+            }
         }
 
         commodities_updated
