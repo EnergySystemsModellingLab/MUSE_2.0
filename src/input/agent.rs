@@ -57,13 +57,14 @@ pub fn read_agents(
     commodities: &CommodityMap,
     processes: &ProcessMap,
     region_ids: &HashSet<Rc<str>>,
+    milestone_years: &[u32],
 ) -> Result<AgentMap> {
     let process_ids = processes.keys().cloned().collect();
     let mut agents = read_agents_file(model_dir, commodities, &process_ids)?;
     let agent_ids = agents.keys().cloned().collect();
 
     let mut agent_regions = read_agent_regions(model_dir, &agent_ids, region_ids)?;
-    let mut objectives = read_agent_objectives(model_dir, &agents)?;
+    let mut objectives = read_agent_objectives(model_dir, &agents, milestone_years)?;
 
     for (id, agent) in agents.iter_mut() {
         agent.regions = agent_regions.remove(id).unwrap();

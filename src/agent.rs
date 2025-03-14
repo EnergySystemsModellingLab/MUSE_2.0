@@ -67,6 +67,8 @@ pub enum DecisionRule {
 pub struct AgentObjective {
     /// Unique agent id identifying the agent this objective belongs to
     pub agent_id: String,
+    /// The year the objective is relevant for
+    pub year: u32,
     /// Acronym identifying the objective (e.g. LCOX)
     pub objective_type: ObjectiveType,
     /// For the weighted sum objective, the set of weights to apply to each objective.
