@@ -20,8 +20,8 @@ pub struct Process {
     pub id: Rc<str>,
     /// A human-readable description for the process (e.g. dry gas extraction)
     pub description: String,
-    /// The capacity limits for each time slice (as a fraction of maximum)
-    pub capacity_fractions: ProcessCapacityMap,
+    /// The activity limits for each time slice (as a fraction of maximum)
+    pub activity_limits: ActivityLimitsMap,
     /// Commodity flows for this process
     pub flows: Vec<ProcessFlow>,
     /// Additional parameters for this process
@@ -44,15 +44,15 @@ impl Process {
     }
 }
 
-/// A map indicating capacity limits for a [`Process`] throughout the year.
+/// A map indicating activity limits for a [`Process`] throughout the year.
 ///
-/// The capacity value is calculated as availability multiplied by time slice length. Note that it
-/// is a *fraction* of capacity for the year; to calculate *actual* capacity for a given time slice
-/// you need to know the maximum capacity for the specific instance of a [`Process`] in use.
+/// The value is calculated as availability multiplied by time slice length. Note that it is a
+/// **fraction** of activity for the year; to calculate **actual** activity for a given time slice
+/// you need to know the maximum activity for the specific instance of a [`Process`] in use.
 ///
-/// The capacity is given as a range, depending on the user-specified limit type and value for
+/// The limits are given as ranges, depending on the user-specified limit type and value for
 /// availability.
-pub type ProcessCapacityMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
+pub type ActivityLimitsMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
 
 /// Represents a commodity flow for a given process
 #[derive(PartialEq, Debug, Deserialize, Clone)]
@@ -107,10 +107,11 @@ pub struct ProcessParameter {
     pub lifetime: u32,
     /// Process-specific discount rate
     pub discount_rate: f64,
-    /// Factor for calculating the maximum PAC output over a year ("capacity to activity").
+    /// Factor for calculating the maximum PAC output over a year.
     ///
     /// Used for converting one unit of capacity to maximum activity of the PAC per year. For
-    /// example, if capacity is measured in GW and activity is measured in PJ, the cap2act for the
-    /// process is 31.536 because 1 GW of capacity can produce 31.536 PJ energy output in a year.
-    pub cap2act: f64,
+    /// example, if capacity is measured in GW and activity is measured in PJ, the
+    /// capacity_to_activity for the process is 31.536 because 1 GW of capacity can produce 31.536
+    /// PJ energy output in a year.
+    pub capacity_to_activity: f64,
 }
