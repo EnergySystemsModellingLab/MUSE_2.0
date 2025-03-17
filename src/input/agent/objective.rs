@@ -47,6 +47,13 @@ where
         // Check that required parameters are present and others are absent
         check_objective_parameter(&objective, &agent.decision_rule)?;
 
+        // Check that the year is a valid milestone year
+        ensure!(
+            milestone_years.contains(&objective.year),
+            "Invalid milestone year {}",
+            objective.year
+        );
+
         // Append to Vec with the corresponding key or create
         objectives
             .entry(Rc::clone(id))
@@ -208,9 +215,12 @@ mod tests {
         let expected = [("agent".into(), vec![objective.clone()])]
             .into_iter()
             .collect();
-        let actual =
-            read_agent_objectives_from_iter([objective].into_iter(), &agents, &milestone_years)
-                .unwrap();
+        let actual = read_agent_objectives_from_iter(
+            [objective.clone()].into_iter(),
+            &agents,
+            &milestone_years,
+        )
+        .unwrap();
         assert_eq!(actual, expected);
 
         // Missing objective for agent
@@ -218,16 +228,22 @@ mod tests {
             read_agent_objectives_from_iter([].into_iter(), &agents, &milestone_years).is_err()
         );
 
+        // Missing objective for milestone year
+        assert!(
+            read_agent_objectives_from_iter([objective].into_iter(), &agents, &[2020, 2030])
+                .is_err()
+        );
+
         // Bad parameter
-        let objective = AgentObjective {
+        let bad_objective = AgentObjective {
             agent_id: "agent".into(),
             year: 2020,
             objective_type: ObjectiveType::EquivalentAnnualCost,
-            decision_weight: Some(1.0),
+            decision_weight: Some(1.0), // Should only accept None for DecisionRule::Single
             decision_lexico_tolerance: None,
         };
         assert!(read_agent_objectives_from_iter(
-            [objective].into_iter(),
+            [bad_objective].into_iter(),
             &agents,
             &milestone_years
         )
