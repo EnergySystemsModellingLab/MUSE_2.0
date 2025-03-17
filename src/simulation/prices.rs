@@ -5,7 +5,7 @@ use crate::model::Model;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use indexmap::IndexMap;
 use log::warn;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// A combination of commodity ID and time slice
@@ -49,14 +49,8 @@ impl CommodityPrices {
     fn add_from_solution(&mut self, solution: &Solution, assets: &AssetPool) -> HashSet<Rc<str>> {
         let mut commodities_updated = HashSet::new();
 
-        // Insert commodity balance duals into the prices map
-        for (commodity_id, time_slice, price) in solution.iter_commodity_balance_duals() {
-            self.insert(commodity_id, time_slice, price);
-            commodities_updated.insert(Rc::clone(commodity_id));
-        }
-
         // Calculate highest capacity dual for each commodity/timeslice
-        let mut highest_duals: IndexMap<CommodityPriceKey, f64> = IndexMap::new();
+        let mut highest_duals = HashMap::new();
         for (asset_id, time_slice, dual) in solution.iter_capacity_duals() {
             let asset = assets.get(asset_id).unwrap();
 
@@ -81,12 +75,12 @@ impl CommodityPrices {
             }
         }
 
-        // Add the highest capacity dual for each commodity/timeslice
-        for ((commodity_id, time_slice), dual) in highest_duals.iter() {
+        // Add the highest capacity dual for each commodity/timeslice to each commodity balance dual
+        for (commodity_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
             let key = (Rc::clone(commodity_id), time_slice.clone());
-            if let Some(current_price) = self.0.get_mut(&key) {
-                *current_price += dual;
-            }
+            let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
+            self.insert(commodity_id, time_slice, price);
+            commodities_updated.insert(Rc::clone(commodity_id));
         }
 
         commodities_updated
