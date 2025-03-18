@@ -33,7 +33,7 @@ struct AgentRaw {
     /// by semicolons or `None`, meaning all processes.
     search_space: Option<String>,
     /// The decision rule that the agent uses to decide investment.
-    decision_rule: DecisionRule,
+    decision_rule: String,
     /// The maximum capital cost the agent will pay.
     capex_limit: Option<f64>,
     /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
@@ -126,18 +126,35 @@ where
             }
         };
 
+        // Parse decision rule
+        let decision_rule = match agent_raw.decision_rule.as_str() {
+            "single" => DecisionRule::Single,
+            "weighted" => DecisionRule::Weighted,
+            "lexico" => {
+                let tolerance = agent_raw
+                    .decision_lexico_tolerance
+                    .ok_or_else(|| anyhow::anyhow!("Missing tolerance for lexico decision rule"))?;
+                ensure!(
+                    tolerance >= 0.0,
+                    "Lexico tolerance must be non-negative, got {}",
+                    tolerance
+                );
+                DecisionRule::Lexicographical { tolerance }
+            }
+            invalid_rule => return Err(anyhow::anyhow!("Invalid decision rule: {}", invalid_rule)),
+        };
+
         let agent = Agent {
             id: Rc::clone(&agent_raw.id),
             description: agent_raw.description,
             commodity: Rc::clone(commodity),
             commodity_portion: agent_raw.commodity_portion,
             search_space,
-            decision_rule: agent_raw.decision_rule,
+            decision_rule,
             capex_limit: agent_raw.capex_limit,
             annual_cost_limit: agent_raw.annual_cost_limit,
             regions: RegionSelection::default(),
             objectives: Vec::new(),
-            decision_lexico_tolerance: agent_raw.decision_lexico_tolerance,
         };
 
         ensure!(
@@ -179,7 +196,7 @@ mod tests {
             commodity_id: "commodity1".into(),
             commodity_portion: 1.0,
             search_space: Some("A;B".into()),
-            decision_rule: DecisionRule::Single,
+            decision_rule: "single".into(),
             capex_limit: None,
             annual_cost_limit: None,
             decision_lexico_tolerance: None,
@@ -195,7 +212,6 @@ mod tests {
             annual_cost_limit: None,
             regions: RegionSelection::default(),
             objectives: Vec::new(),
-            decision_lexico_tolerance: None,
         };
         let expected = AgentMap::from_iter(iter::once(("agent".into(), agent_out)));
         let actual =
@@ -209,7 +225,7 @@ mod tests {
             commodity_id: "made_up_commodity".into(),
             commodity_portion: 1.0,
             search_space: None,
-            decision_rule: DecisionRule::Single,
+            decision_rule: "single".into(),
             capex_limit: None,
             annual_cost_limit: None,
             decision_lexico_tolerance: None,
@@ -223,7 +239,7 @@ mod tests {
             commodity_id: "commodity1".into(),
             commodity_portion: 1.0,
             search_space: Some("A;D".into()),
-            decision_rule: DecisionRule::Single,
+            decision_rule: "single".into(),
             capex_limit: None,
             annual_cost_limit: None,
             decision_lexico_tolerance: None,
@@ -238,7 +254,7 @@ mod tests {
                 commodity_id: "commodity1".into(),
                 commodity_portion: 1.0,
                 search_space: None,
-                decision_rule: DecisionRule::Single,
+                decision_rule: "single".into(),
                 capex_limit: None,
                 annual_cost_limit: None,
                 decision_lexico_tolerance: None,
@@ -249,7 +265,7 @@ mod tests {
                 commodity_id: "commodity1".into(),
                 commodity_portion: 1.0,
                 search_space: None,
-                decision_rule: DecisionRule::Single,
+                decision_rule: "single".into(),
                 capex_limit: None,
                 annual_cost_limit: None,
                 decision_lexico_tolerance: None,
@@ -258,5 +274,19 @@ mod tests {
         assert!(
             read_agents_file_from_iter(agents.into_iter(), &commodities, &process_ids).is_err()
         );
+
+        // Lexico tolerance missing for lexico decision rule
+        let agent = AgentRaw {
+            id: "agent".into(),
+            description: "".into(),
+            commodity_id: "commodity1".into(),
+            commodity_portion: 1.0,
+            search_space: None,
+            decision_rule: "lexico".into(),
+            capex_limit: None,
+            annual_cost_limit: None,
+            decision_lexico_tolerance: None,
+        };
+        assert!(read_agents_file_from_iter(iter::once(agent), &commodities, &process_ids).is_err());
     }
 }

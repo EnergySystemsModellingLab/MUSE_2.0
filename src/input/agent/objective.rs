@@ -113,7 +113,7 @@ fn check_objective_parameter(
         DecisionRule::Weighted => {
             check_field_some!(decision_weight);
         }
-        DecisionRule::Lexicographical => {
+        DecisionRule::Lexicographical { tolerance: _ } => {
             check_field_none!(decision_weight);
         }
     };
@@ -157,7 +157,7 @@ mod tests {
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
 
         // DecisionRule::Lexicographical
-        let decision_rule = DecisionRule::Lexicographical;
+        let decision_rule = DecisionRule::Lexicographical { tolerance: 1.0 };
         let objective = objective!(None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
         let objective = objective!(Some(1.0));
@@ -187,7 +187,6 @@ mod tests {
                 annual_cost_limit: None,
                 regions: RegionSelection::All,
                 objectives: Vec::new(),
-                decision_lexico_tolerance: None,
             },
         )]
         .into_iter()
