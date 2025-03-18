@@ -49,7 +49,7 @@ where
 
         // Check that the year is a valid milestone year
         ensure!(
-            milestone_years.contains(&objective.year),
+            milestone_years.binary_search(&objective.year).is_ok(),
             "Invalid milestone year {}",
             objective.year
         );
@@ -67,13 +67,12 @@ where
             .get(agent_id)
             .with_context(|| format!("Agent {} has no objectives", agent_id))?;
         for &year in milestone_years {
-            if !agent_objectives.iter().any(|obj| obj.year == year) {
-                return Err(anyhow::anyhow!(
-                    "Agent {} is missing objectives for milestone year {}",
-                    agent_id,
-                    year
-                ));
-            }
+            ensure!(
+                agent_objectives.iter().any(|obj| obj.year == year),
+                "Agent {} is missing objectives for milestone year {}",
+                agent_id,
+                year
+            );
         }
     }
 
