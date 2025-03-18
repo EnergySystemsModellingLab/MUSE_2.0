@@ -57,7 +57,7 @@ pub enum DecisionRule {
     Weighted,
     /// Objectives are considered in a specific order
     Lexicographical {
-        /// The tolerance around the main objective to consider secondary objectives
+        /// The tolerance around the main objective to consider secondary objectives. This is an absolute value of maximum deviation in the units of the main objective.
         tolerance: f64,
     },
 }
