@@ -16,6 +16,7 @@ transition, usually in the context of climate change mitigation.
 
 ### Model Scope
 
+<!-- markdown-link-check-disable-next-line -->
 MUSE is an [Integrated Assessment Modelling](https://unfccc.int/topics/mitigation/workstreams/response-measures/modelling-tools-to-assess-the-impact-of-the-implementation-of-response-measures/integrated-assessment-models-iams-and-energy-environment-economy-e3-models)
 framework that is designed to enable users to create and apply an agent-based model that simulates a
 market equilibrium on a set of user-defined commodities, over a user-defined time period, for a
