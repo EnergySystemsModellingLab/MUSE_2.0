@@ -73,8 +73,6 @@ pub struct AgentObjective {
     pub objective_type: ObjectiveType,
     /// For the weighted sum objective, the set of weights to apply to each objective.
     pub decision_weight: Option<f64>,
-    /// The tolerance around the main objective to consider secondary objectives. This is an absolute value of maximum deviation in the units of the main objective.
-    pub decision_lexico_tolerance: Option<f64>,
 }
 
 /// The type of objective for the agent

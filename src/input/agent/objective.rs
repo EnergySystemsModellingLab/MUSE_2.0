@@ -109,15 +109,12 @@ fn check_objective_parameter(
     match decision_rule {
         DecisionRule::Single => {
             check_field_none!(decision_weight);
-            check_field_none!(decision_lexico_tolerance);
         }
         DecisionRule::Weighted => {
-            check_field_none!(decision_lexico_tolerance);
             check_field_some!(decision_weight);
         }
         DecisionRule::Lexicographical => {
             check_field_none!(decision_weight);
-            check_field_some!(decision_lexico_tolerance);
         }
     };
 
@@ -135,42 +132,35 @@ mod tests {
     #[test]
     fn test_check_objective_parameter() {
         macro_rules! objective {
-            ($decision_weight:expr, $decision_lexico_tolerance:expr) => {
+            ($decision_weight:expr) => {
                 AgentObjective {
                     agent_id: "agent".into(),
                     year: 2020,
                     objective_type: ObjectiveType::EquivalentAnnualCost,
                     decision_weight: $decision_weight,
-                    decision_lexico_tolerance: $decision_lexico_tolerance,
                 }
             };
         }
 
         // DecisionRule::Single
         let decision_rule = DecisionRule::Single;
-        let objective = objective!(None, None);
+        let objective = objective!(None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
-        let objective = objective!(Some(1.0), None);
-        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
-        let objective = objective!(None, Some(1.0));
+        let objective = objective!(Some(1.0));
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
 
         // DecisionRule::Weighted
         let decision_rule = DecisionRule::Weighted;
-        let objective = objective!(Some(1.0), None);
+        let objective = objective!(Some(1.0));
         assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
-        let objective = objective!(None, None);
-        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
-        let objective = objective!(None, Some(1.0));
+        let objective = objective!(None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
 
         // DecisionRule::Lexicographical
         let decision_rule = DecisionRule::Lexicographical;
-        let objective = objective!(None, Some(1.0));
+        let objective = objective!(None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
-        let objective = objective!(None, None);
-        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
-        let objective = objective!(Some(1.0), None);
+        let objective = objective!(Some(1.0));
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
     }
 
@@ -209,7 +199,6 @@ mod tests {
             year: 2020,
             objective_type: ObjectiveType::EquivalentAnnualCost,
             decision_weight: None,
-            decision_lexico_tolerance: None,
         };
         let expected = [("agent".into(), vec![objective.clone()])]
             .into_iter()
@@ -239,7 +228,6 @@ mod tests {
             year: 2020,
             objective_type: ObjectiveType::EquivalentAnnualCost,
             decision_weight: Some(1.0), // Should only accept None for DecisionRule::Single
-            decision_lexico_tolerance: None,
         };
         assert!(read_agent_objectives_from_iter(
             [bad_objective].into_iter(),
