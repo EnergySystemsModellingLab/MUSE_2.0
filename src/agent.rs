@@ -67,6 +67,8 @@ pub enum DecisionRule {
 pub struct AgentObjective {
     /// Unique agent id identifying the agent this objective belongs to
     pub agent_id: String,
+    /// The year the objective is relevant for
+    pub year: u32,
     /// Acronym identifying the objective (e.g. LCOX)
     pub objective_type: ObjectiveType,
     /// For the weighted sum objective, the set of weights to apply to each objective.
@@ -238,6 +240,23 @@ impl AssetPool {
         self.iter_for_region(region_id)
             .filter(|asset| asset.process.contains_commodity_flow(commodity))
     }
+
+    /// Retain all assets whose IDs are in `assets_to_keep`.
+    ///
+    /// Other assets will be decommissioned. Assets which have not yet been commissioned will not be
+    /// affected.
+    pub fn retain(&mut self, assets_to_keep: &HashSet<AssetID>) {
+        // Sanity check: all IDs should be valid. As this check is slow, only do it for debug
+        // builds.
+        debug_assert!(
+            assets_to_keep.iter().all(|id| self.get(*id).is_some()),
+            "One or more asset IDs were invalid"
+        );
+
+        self.assets.retain(|asset| {
+            assets_to_keep.contains(&asset.id) || asset.commission_year > self.current_year
+        });
+    }
 }
 
 #[cfg(test)]
@@ -391,5 +410,28 @@ mod tests {
         assets.commission_new(2020);
         assert!(assets.get(AssetID(0)) == Some(&assets.assets[0]));
         assert!(assets.get(AssetID(1)) == Some(&assets.assets[1]));
+    }
+
+    #[test]
+    fn test_asset_pool_retain() {
+        let mut assets = create_asset_pool();
+
+        // Even though we are retaining no assets, none have been commissioned so the asset pool
+        // should not be changed
+        assets.retain(&HashSet::new());
+        assert_eq!(assets.assets.len(), 2);
+
+        // Decommission all active assets
+        assets.commission_new(2010); // Commission first asset
+        assets.retain(&HashSet::new());
+        assert_eq!(assets.assets.len(), 1);
+        assert_eq!(assets.assets[0].id, AssetID(1));
+
+        // Decommission single asset
+        let mut assets = create_asset_pool();
+        assets.commission_new(2020); // Commission all assets
+        assets.retain(&iter::once(AssetID(1)).collect());
+        assert_eq!(assets.assets.len(), 1);
+        assert_eq!(assets.assets[0].id, AssetID(1));
     }
 }
