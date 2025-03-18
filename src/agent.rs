@@ -37,6 +37,8 @@ pub struct Agent {
     pub regions: RegionSelection,
     /// The agent's objectives.
     pub objectives: Vec<AgentObjective>,
+    /// The tolerance around the main objective to consider secondary objectives
+    pub decision_lexico_tolerance: Option<f64>,
 }
 
 /// Which processes apply to this agent

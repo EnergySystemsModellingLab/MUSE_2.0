@@ -38,6 +38,8 @@ struct AgentRaw {
     capex_limit: Option<f64>,
     /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
     annual_cost_limit: Option<f64>,
+    /// The tolerance around the main objective to consider secondary objectives.
+    decision_lexico_tolerance: Option<f64>,
 }
 
 /// Read agents info from various CSV files.
@@ -135,6 +137,7 @@ where
             annual_cost_limit: agent_raw.annual_cost_limit,
             regions: RegionSelection::default(),
             objectives: Vec::new(),
+            decision_lexico_tolerance: agent_raw.decision_lexico_tolerance,
         };
 
         ensure!(
@@ -179,6 +182,7 @@ mod tests {
             decision_rule: DecisionRule::Single,
             capex_limit: None,
             annual_cost_limit: None,
+            decision_lexico_tolerance: None,
         };
         let agent_out = Agent {
             id: "agent".into(),
@@ -191,6 +195,7 @@ mod tests {
             annual_cost_limit: None,
             regions: RegionSelection::default(),
             objectives: Vec::new(),
+            decision_lexico_tolerance: None,
         };
         let expected = AgentMap::from_iter(iter::once(("agent".into(), agent_out)));
         let actual =
@@ -207,6 +212,7 @@ mod tests {
             decision_rule: DecisionRule::Single,
             capex_limit: None,
             annual_cost_limit: None,
+            decision_lexico_tolerance: None,
         };
         assert!(read_agents_file_from_iter(iter::once(agent), &commodities, &process_ids).is_err());
 
@@ -220,6 +226,7 @@ mod tests {
             decision_rule: DecisionRule::Single,
             capex_limit: None,
             annual_cost_limit: None,
+            decision_lexico_tolerance: None,
         };
         assert!(read_agents_file_from_iter(iter::once(agent), &commodities, &process_ids).is_err());
 
@@ -234,6 +241,7 @@ mod tests {
                 decision_rule: DecisionRule::Single,
                 capex_limit: None,
                 annual_cost_limit: None,
+                decision_lexico_tolerance: None,
             },
             AgentRaw {
                 id: "agent".into(),
@@ -244,6 +252,7 @@ mod tests {
                 decision_rule: DecisionRule::Single,
                 capex_limit: None,
                 annual_cost_limit: None,
+                decision_lexico_tolerance: None,
             },
         ];
         assert!(
