@@ -61,18 +61,17 @@ where
             .push(objective);
     }
 
-    // Validate that each agent has at least one objective for each milestone year
-    for (agent_id, _agent) in agents {
+    // Check that agents have appropriate objectives for their decision rule every year
+    for (agent_id, agent) in agents {
         let agent_objectives = objectives
             .get(agent_id)
             .with_context(|| format!("Agent {} has no objectives", agent_id))?;
         for &year in milestone_years {
-            ensure!(
-                agent_objectives.iter().any(|obj| obj.year == year),
-                "Agent {} is missing objectives for milestone year {}",
-                agent_id,
-                year
-            );
+            let objectives_for_year: Vec<_> = agent_objectives
+                .iter()
+                .filter(|obj| obj.year == year)
+                .collect();
+            check_agent_objectives(&objectives_for_year, &agent.decision_rule, agent_id, year)?;
         }
     }
 
@@ -120,6 +119,52 @@ fn check_objective_parameter(
             check_field_some!(decision_lexico_order);
         }
     };
+
+    Ok(())
+}
+
+/// Check that a set of objectives meets the requirements of a decision rule
+fn check_agent_objectives(
+    objectives: &[&AgentObjective],
+    decision_rule: &DecisionRule,
+    agent_id: &str,
+    year: u32,
+) -> Result<()> {
+    let count = objectives.len();
+    match decision_rule {
+        DecisionRule::Single => {
+            ensure!(
+                count == 1,
+                "Agent {} has {} objectives for milestone year {} but should have exactly 1",
+                agent_id,
+                count,
+                year
+            );
+        }
+        DecisionRule::Weighted => {
+            ensure!(
+                count > 1,
+                "Agent {} has {} objectives for milestone year {} but should have more than 1",
+                agent_id,
+                count,
+                year
+            );
+        }
+        DecisionRule::Lexicographical { tolerance: _ } => {
+            let mut lexico_orders: Vec<u32> = objectives
+                .iter()
+                .filter_map(|obj| obj.decision_lexico_order)
+                .collect();
+            lexico_orders.sort_unstable();
+            ensure!(
+                lexico_orders == [1, 2],
+                "Agent {} must have objectives with decision_lexico_order values of 1 and 2 for milestone year {}, but found {:?}",
+                agent_id,
+                year,
+                lexico_orders
+            );
+        }
+    }
 
     Ok(())
 }
