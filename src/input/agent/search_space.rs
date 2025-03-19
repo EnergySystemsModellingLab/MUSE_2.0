@@ -28,6 +28,7 @@ impl AgentSearchSpaceRaw {
         &self,
         process_ids: &HashSet<Rc<str>>,
         commodities: &CommodityMap,
+        milestone_years: &[u32],
     ) -> Result<AgentSearchSpace> {
         // Parse search_space string
         let search_space = match &self.search_space {
@@ -45,6 +46,13 @@ impl AgentSearchSpaceRaw {
         let commodity = commodities
             .get(self.commodity_id.as_str())
             .context("Invalid commodity ID")?;
+
+        // Check that the year is a valid milestone year
+        ensure!(
+            milestone_years.binary_search(&self.year).is_ok(),
+            "Invalid milestone year {}",
+            self.year
+        );
 
         // Create AgentSearchSpace
         Ok(AgentSearchSpace {
@@ -70,10 +78,11 @@ pub fn read_agent_search_space(
     agents: &AgentMap,
     process_ids: &HashSet<Rc<str>>,
     commodities: &CommodityMap,
+    milestone_years: &[u32],
 ) -> Result<HashMap<Rc<str>, Vec<AgentSearchSpace>>> {
     let file_path = model_dir.join(AGENT_SEARCH_SPACE_FILE_NAME);
     let iter = read_csv::<AgentSearchSpaceRaw>(&file_path)?;
-    read_agent_search_space_from_iter(iter, agents, process_ids, commodities)
+    read_agent_search_space_from_iter(iter, agents, process_ids, commodities, milestone_years)
         .with_context(|| input_err_msg(&file_path))
 }
 
@@ -82,13 +91,15 @@ fn read_agent_search_space_from_iter<I>(
     agents: &AgentMap,
     process_ids: &HashSet<Rc<str>>,
     commodities: &CommodityMap,
+    milestone_years: &[u32],
 ) -> Result<HashMap<Rc<str>, Vec<AgentSearchSpace>>>
 where
     I: Iterator<Item = AgentSearchSpaceRaw>,
 {
     let mut search_spaces = HashMap::new();
     for search_space in iter {
-        let search_space = search_space.to_agent_search_space(process_ids, commodities)?;
+        let search_space =
+            search_space.to_agent_search_space(process_ids, commodities, milestone_years)?;
 
         let (id, _agent) = agents
             .get_key_value(search_space.agent_id.as_str())
@@ -132,7 +143,7 @@ mod tests {
             search_space: Some("A;B".into()),
         };
         assert!(raw
-            .to_agent_search_space(&process_ids, &commodities)
+            .to_agent_search_space(&process_ids, &commodities, &[2020])
             .is_ok());
 
         // Invalid commodity ID
@@ -143,7 +154,7 @@ mod tests {
             search_space: Some("A;B".into()),
         };
         assert!(raw
-            .to_agent_search_space(&process_ids, &commodities)
+            .to_agent_search_space(&process_ids, &commodities, &[2020])
             .is_err());
 
         // Invalid process ID
@@ -154,7 +165,7 @@ mod tests {
             search_space: Some("A;D".into()),
         };
         assert!(raw
-            .to_agent_search_space(&process_ids, &commodities)
+            .to_agent_search_space(&process_ids, &commodities, &[2020])
             .is_err());
     }
 }
