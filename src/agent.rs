@@ -48,6 +48,19 @@ pub enum SearchSpace {
     Some(HashSet<Rc<str>>),
 }
 
+/// Search space for an agent
+#[derive(Debug, Clone, PartialEq)]
+pub struct AgentSearchSpace {
+    /// Unique agent id identifying the agent this search space belongs to
+    pub agent_id: String,
+    /// The year the objective is relevant for
+    pub year: u32,
+    /// The commodity to apply the search space to
+    pub commodity: Rc<Commodity>,
+    /// The agent's search space
+    pub search_space: SearchSpace,
+}
+
 /// The decision rule for a particular objective
 #[derive(Debug, Clone, PartialEq)]
 pub enum DecisionRule {
