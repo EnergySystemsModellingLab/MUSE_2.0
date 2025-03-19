@@ -12,9 +12,14 @@ const AGENT_SEARCH_SPACE_FILE_NAME: &str = "agent_search_space.csv";
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct AgentSearchSpaceRaw {
+    /// The agent to apply the search space to.
     pub agent_id: String,
+    /// The commodity to apply the search space to.
     pub commodity_id: String,
+    /// The year to apply the search space to.
     pub year: u32,
+    /// The processes that the agent will consider investing in. Expressed as process IDs separated
+    /// by semicolons or `None`, meaning all processes.
     pub search_space: Option<String>,
 }
 
