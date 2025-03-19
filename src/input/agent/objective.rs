@@ -293,4 +293,43 @@ mod tests {
         )
         .is_err());
     }
+
+    #[test]
+    fn test_check_agent_objectives() {
+        let objective1 = AgentObjective {
+            agent_id: "agent".into(),
+            year: 2020,
+            objective_type: ObjectiveType::EquivalentAnnualCost,
+            decision_weight: None,
+            decision_lexico_order: Some(1),
+        };
+        let objective2 = AgentObjective {
+            agent_id: "agent".into(),
+            year: 2020,
+            objective_type: ObjectiveType::EquivalentAnnualCost,
+            decision_weight: None,
+            decision_lexico_order: Some(2),
+        };
+
+        // DecisionRule::Single
+        let decision_rule = DecisionRule::Single;
+        let objectives = [&objective1];
+        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_ok());
+        let objectives = [&objective1, &objective2];
+        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_err());
+
+        // DecisionRule::Weighted
+        let decision_rule = DecisionRule::Weighted;
+        let objectives = [&objective1, &objective2];
+        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_ok());
+        let objectives = [&objective1];
+        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_err());
+
+        // DecisionRule::Lexicographical
+        let decision_rule = DecisionRule::Lexicographical { tolerance: 1.0 };
+        let objectives = [&objective1, &objective2];
+        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_ok());
+        let objectives = [&objective1, &objective1];
+        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_err());
+    }
 }
