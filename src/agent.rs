@@ -49,17 +49,17 @@ pub enum SearchSpace {
 }
 
 /// The decision rule for a particular objective
-#[derive(Debug, Clone, PartialEq, DeserializeLabeledStringEnum)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DecisionRule {
     /// Used when there is only a single objective
-    #[string = "single"]
     Single,
     /// A simple weighting of objectives
-    #[string = "weighted"]
     Weighted,
     /// Objectives are considered in a specific order
-    #[string = "lexico"]
-    Lexicographical,
+    Lexicographical {
+        /// The tolerance around the main objective to consider secondary objectives. This is an absolute value of maximum deviation in the units of the main objective.
+        tolerance: f64,
+    },
 }
 
 /// An objective for an agent with associated parameters
@@ -73,8 +73,6 @@ pub struct AgentObjective {
     pub objective_type: ObjectiveType,
     /// For the weighted sum objective, the set of weights to apply to each objective.
     pub decision_weight: Option<f64>,
-    /// The tolerance around the main objective to consider secondary objectives. This is an absolute value of maximum deviation in the units of the main objective.
-    pub decision_lexico_tolerance: Option<f64>,
 }
 
 /// The type of objective for the agent
