@@ -109,12 +109,15 @@ fn check_objective_parameter(
     match decision_rule {
         DecisionRule::Single => {
             check_field_none!(decision_weight);
+            check_field_none!(decision_lexico_order);
         }
         DecisionRule::Weighted => {
             check_field_some!(decision_weight);
+            check_field_none!(decision_lexico_order);
         }
         DecisionRule::Lexicographical { tolerance: _ } => {
             check_field_none!(decision_weight);
+            check_field_some!(decision_lexico_order);
         }
     };
 
@@ -132,36 +135,42 @@ mod tests {
     #[test]
     fn test_check_objective_parameter() {
         macro_rules! objective {
-            ($decision_weight:expr) => {
+            ($decision_weight:expr, $decision_lexico_order:expr) => {
                 AgentObjective {
                     agent_id: "agent".into(),
                     year: 2020,
                     objective_type: ObjectiveType::EquivalentAnnualCost,
                     decision_weight: $decision_weight,
-                    decision_lexico_order: None,
+                    decision_lexico_order: $decision_lexico_order,
                 }
             };
         }
 
         // DecisionRule::Single
         let decision_rule = DecisionRule::Single;
-        let objective = objective!(None);
+        let objective = objective!(None, None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
-        let objective = objective!(Some(1.0));
+        let objective = objective!(Some(1.0), None);
+        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
+        let objective = objective!(None, Some(1));
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
 
         // DecisionRule::Weighted
         let decision_rule = DecisionRule::Weighted;
-        let objective = objective!(Some(1.0));
+        let objective = objective!(Some(1.0), None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
-        let objective = objective!(None);
+        let objective = objective!(None, None);
+        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
+        let objective = objective!(None, Some(1));
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
 
         // DecisionRule::Lexicographical
         let decision_rule = DecisionRule::Lexicographical { tolerance: 1.0 };
-        let objective = objective!(None);
+        let objective = objective!(None, Some(1));
         assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
-        let objective = objective!(Some(1.0));
+        let objective = objective!(None, None);
+        assert!(check_objective_parameter(&objective, &decision_rule).is_err());
+        let objective = objective!(Some(1.0), None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
     }
 
