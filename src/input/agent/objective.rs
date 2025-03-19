@@ -138,6 +138,7 @@ mod tests {
                     year: 2020,
                     objective_type: ObjectiveType::EquivalentAnnualCost,
                     decision_weight: $decision_weight,
+                    decision_lexico_order: None,
                 }
             };
         }
@@ -199,6 +200,7 @@ mod tests {
             year: 2020,
             objective_type: ObjectiveType::EquivalentAnnualCost,
             decision_weight: None,
+            decision_lexico_order: None,
         };
         let expected = [("agent".into(), vec![objective.clone()])]
             .into_iter()
@@ -228,6 +230,7 @@ mod tests {
             year: 2020,
             objective_type: ObjectiveType::EquivalentAnnualCost,
             decision_weight: Some(1.0), // Should only accept None for DecisionRule::Single
+            decision_lexico_order: None,
         };
         assert!(read_agent_objectives_from_iter(
             [bad_objective].into_iter(),

@@ -71,8 +71,10 @@ pub struct AgentObjective {
     pub year: u32,
     /// Acronym identifying the objective (e.g. LCOX)
     pub objective_type: ObjectiveType,
-    /// For the weighted sum objective, the set of weights to apply to each objective.
+    /// For the weighted sum decision rule, the set of weights to apply to each objective.
     pub decision_weight: Option<f64>,
+    /// For the lexico decision rule, the order in which to consider objectives.
+    pub decision_lexico_order: Option<u32>,
 }
 
 /// The type of objective for the agent
