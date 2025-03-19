@@ -4,7 +4,7 @@ use crate::agent::{Agent, AgentMap, DecisionRule, SearchSpace};
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
 use crate::region::RegionSelection;
-use anyhow::{ensure, Context, Result};
+use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::path::Path;
@@ -127,13 +127,13 @@ where
         };
 
         // Parse decision rule
-        let decision_rule = match agent_raw.decision_rule.as_str() {
+        let decision_rule = match agent_raw.decision_rule.to_ascii_lowercase().as_str() {
             "single" => DecisionRule::Single,
             "weighted" => DecisionRule::Weighted,
             "lexico" => {
                 let tolerance = agent_raw
                     .decision_lexico_tolerance
-                    .ok_or_else(|| anyhow::anyhow!("Missing tolerance for lexico decision rule"))?;
+                    .with_context(|| "Missing tolerance for lexico decision rule")?;
                 ensure!(
                     tolerance >= 0.0,
                     "Lexico tolerance must be non-negative, got {}",
@@ -141,7 +141,7 @@ where
                 );
                 DecisionRule::Lexicographical { tolerance }
             }
-            invalid_rule => return Err(anyhow::anyhow!("Invalid decision rule: {}", invalid_rule)),
+            invalid_rule => bail!("Invalid decision rule: {}", invalid_rule),
         };
 
         let agent = Agent {
