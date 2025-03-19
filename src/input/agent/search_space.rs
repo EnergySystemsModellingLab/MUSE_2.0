@@ -15,7 +15,7 @@ struct AgentSearchSpaceRaw {
     pub agent_id: String,
     pub commodity_id: String,
     pub year: u32,
-    pub process_option: Option<String>,
+    pub search_space: Option<String>,
 }
 
 impl AgentSearchSpaceRaw {
@@ -24,8 +24,8 @@ impl AgentSearchSpaceRaw {
         process_ids: &HashSet<Rc<str>>,
         commodities: &CommodityMap,
     ) -> Result<AgentSearchSpace> {
-        // Parse process_option string
-        let search_space = match &self.process_option {
+        // Parse search_space string
+        let search_space = match &self.search_space {
             None => SearchSpace::AllProcesses,
             Some(processes) => {
                 let mut set = HashSet::new();
@@ -124,7 +124,7 @@ mod tests {
             agent_id: "agent1".into(),
             commodity_id: "commodity1".into(),
             year: 2020,
-            process_option: Some("A;B".into()),
+            search_space: Some("A;B".into()),
         };
         assert!(raw
             .to_agent_search_space(&process_ids, &commodities)
@@ -135,7 +135,7 @@ mod tests {
             agent_id: "agent1".into(),
             commodity_id: "invalid_commodity".into(),
             year: 2020,
-            process_option: Some("A;B".into()),
+            search_space: Some("A;B".into()),
         };
         assert!(raw
             .to_agent_search_space(&process_ids, &commodities)
@@ -146,7 +146,7 @@ mod tests {
             agent_id: "agent1".into(),
             commodity_id: "commodity1".into(),
             year: 2020,
-            process_option: Some("A;D".into()),
+            search_space: Some("A;D".into()),
         };
         assert!(raw
             .to_agent_search_space(&process_ids, &commodities)
