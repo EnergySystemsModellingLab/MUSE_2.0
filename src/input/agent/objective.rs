@@ -124,7 +124,7 @@ fn check_objective_parameter(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::{ObjectiveType, SearchSpace};
+    use crate::agent::ObjectiveType;
     use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
@@ -181,7 +181,7 @@ mod tests {
                 description: "".into(),
                 commodity,
                 commodity_portion: 1.0,
-                search_space: SearchSpace::AllProcesses,
+                search_space: Vec::new(),
                 decision_rule: DecisionRule::Single,
                 capex_limit: None,
                 annual_cost_limit: None,

@@ -26,7 +26,7 @@ pub struct Agent {
     /// The proportion of the commodity production that the agent is responsible for.
     pub commodity_portion: f64,
     /// The processes that the agent will consider investing in.
-    pub search_space: SearchSpace,
+    pub search_space: Vec<AgentSearchSpace>,
     /// The decision rule that the agent uses to decide investment.
     pub decision_rule: DecisionRule,
     /// The maximum capital cost the agent will pay.
