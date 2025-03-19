@@ -98,3 +98,58 @@ where
 
     Ok(search_spaces)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
+    use crate::time_slice::TimeSliceLevel;
+    use std::iter;
+
+    #[test]
+    fn test_search_space_raw_into_search_space() {
+        let process_ids = ["A".into(), "B".into(), "C".into()].into_iter().collect();
+        let commodity = Rc::new(Commodity {
+            id: "commodity1".into(),
+            description: "A commodity".into(),
+            kind: CommodityType::SupplyEqualsDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand: DemandMap::new(),
+        });
+        let commodities = iter::once(("commodity1".into(), Rc::clone(&commodity))).collect();
+
+        // Valid search space
+        let raw = AgentSearchSpaceRaw {
+            agent_id: "agent1".into(),
+            commodity_id: "commodity1".into(),
+            year: 2020,
+            process_option: Some("A;B".into()),
+        };
+        assert!(raw
+            .to_agent_search_space(&process_ids, &commodities)
+            .is_ok());
+
+        // Invalid commodity ID
+        let raw = AgentSearchSpaceRaw {
+            agent_id: "agent1".into(),
+            commodity_id: "invalid_commodity".into(),
+            year: 2020,
+            process_option: Some("A;B".into()),
+        };
+        assert!(raw
+            .to_agent_search_space(&process_ids, &commodities)
+            .is_err());
+
+        // Invalid process ID
+        let raw = AgentSearchSpaceRaw {
+            agent_id: "agent1".into(),
+            commodity_id: "commodity1".into(),
+            year: 2020,
+            process_option: Some("A;D".into()),
+        };
+        assert!(raw
+            .to_agent_search_space(&process_ids, &commodities)
+            .is_err());
+    }
+}
