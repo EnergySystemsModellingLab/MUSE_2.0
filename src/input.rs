@@ -1,7 +1,7 @@
 //! Common routines for handling input data.
 use crate::agent::AssetPool;
 use crate::model::{Model, ModelFile};
-use anyhow::{ensure, Context, Result};
+use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -26,17 +26,41 @@ pub use time_slice::read_time_slice_info;
 
 /// Read a series of type `T`s from a CSV file.
 ///
+/// Will raise an error if the file is empty.
+///
 /// # Arguments
 ///
 /// * `file_path` - Path to the CSV file
 pub fn read_csv<'a, T: DeserializeOwned + 'a>(
     file_path: &'a Path,
 ) -> Result<impl Iterator<Item = T> + 'a> {
+    _read_csv_internal(file_path, true)
+}
+
+/// Read a series of type `T`s from a CSV file.
+///
+/// # Arguments
+///
+/// * `file_path` - Path to the CSV file
+pub fn read_csv_optional<'a, T: DeserializeOwned + 'a>(
+    file_path: &'a Path,
+) -> Result<impl Iterator<Item = T> + 'a> {
+    _read_csv_internal(file_path, false)
+}
+
+fn _read_csv_internal<'a, T: DeserializeOwned + 'a>(
+    file_path: &'a Path,
+    check_empty: bool,
+) -> Result<impl Iterator<Item = T> + 'a> {
     let vec = csv::Reader::from_path(file_path)
         .with_context(|| input_err_msg(file_path))?
         .into_deserialize()
         .process_results(|iter| iter.collect_vec())
         .with_context(|| input_err_msg(file_path))?;
+
+    if check_empty && vec.is_empty() {
+        bail!("CSV file {} cannot be empty", file_path.display());
+    }
 
     Ok(vec.into_iter())
 }
