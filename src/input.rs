@@ -309,6 +309,14 @@ mod tests {
                 }
             ]
         );
+
+        // File with no data (only column headers)
+        let file_path = create_csv_file(dir.path(), "id,value\n");
+        assert!(read_csv::<Record>(&file_path).is_err());
+        assert!(read_csv_optional::<Record>(&file_path)
+            .unwrap()
+            .next()
+            .is_none());
     }
 
     #[test]
