@@ -26,7 +26,7 @@ pub struct Agent {
     /// The proportion of the commodity production that the agent is responsible for.
     pub commodity_portion: f64,
     /// The processes that the agent will consider investing in.
-    pub search_space: SearchSpace,
+    pub search_space: Vec<AgentSearchSpace>,
     /// The decision rule that the agent uses to decide investment.
     pub decision_rule: DecisionRule,
     /// The maximum capital cost the agent will pay.
@@ -46,6 +46,19 @@ pub enum SearchSpace {
     AllProcesses,
     /// Only these specific processes are considered
     Some(HashSet<Rc<str>>),
+}
+
+/// Search space for an agent
+#[derive(Debug, Clone, PartialEq)]
+pub struct AgentSearchSpace {
+    /// Unique agent id identifying the agent this search space belongs to
+    pub agent_id: String,
+    /// The year the objective is relevant for
+    pub year: u32,
+    /// The commodity to apply the search space to
+    pub commodity: Rc<Commodity>,
+    /// The agent's search space
+    pub search_space: SearchSpace,
 }
 
 /// The decision rule for a particular objective
