@@ -1,6 +1,6 @@
 //! Code for reading process availabilities CSV file
 use crate::input::*;
-use crate::process::ProcessCapacityMap;
+use crate::process::ActivityLimitsMap;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -44,25 +44,25 @@ enum LimitType {
 ///
 /// # Returns
 ///
-/// A [`HashMap`] with process IDs as the keys and [`ProcessCapacityMap`]s as the values or an
+/// A [`HashMap`] with process IDs as the keys and [`ActivityLimitsMap`]s as the values or an
 /// error.
 pub fn read_process_availabilities(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<Rc<str>, ProcessCapacityMap>> {
+) -> Result<HashMap<Rc<str>, ActivityLimitsMap>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let process_availabilities_csv = read_csv(&file_path)?;
     read_process_availabilities_from_iter(process_availabilities_csv, process_ids, time_slice_info)
         .with_context(|| input_err_msg(&file_path))
 }
 
-/// Process raw process availabilities input data into [`ProcessCapacityMap`]s
+/// Process raw process availabilities input data into [`ActivityLimitsMap`]s
 fn read_process_availabilities_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<Rc<str>, ProcessCapacityMap>>
+) -> Result<HashMap<Rc<str>, ActivityLimitsMap>>
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
@@ -78,9 +78,7 @@ where
 
         let ts_selection = time_slice_info.get_selection(&record.time_slice)?;
 
-        let map = map
-            .entry(process_id)
-            .or_insert_with(ProcessCapacityMap::new);
+        let map = map.entry(process_id).or_insert_with(ActivityLimitsMap::new);
 
         for (time_slice, ts_length) in time_slice_info.iter_selection(&ts_selection) {
             // Calculate fraction of annual capacity as availability multiplied by time slice length
@@ -109,7 +107,7 @@ where
 
 /// Check that every capacity map has an entry for every time slice
 fn validate_capacity_maps(
-    map: &HashMap<Rc<str>, ProcessCapacityMap>,
+    map: &HashMap<Rc<str>, ActivityLimitsMap>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
     for (process_id, map) in map.iter() {

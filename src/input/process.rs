@@ -1,7 +1,7 @@
 //! Code for reading process-related information from CSV files.
 use crate::commodity::{Commodity, CommodityMap, CommodityType};
 use crate::input::*;
-use crate::process::{Process, ProcessCapacityMap, ProcessFlow, ProcessMap, ProcessParameter};
+use crate::process::{ActivityLimitsMap, Process, ProcessFlow, ProcessMap, ProcessParameter};
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
@@ -95,7 +95,7 @@ struct ValidationParams<'a> {
     milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
     parameters: &'a HashMap<Rc<str>, ProcessParameter>,
-    availabilities: &'a HashMap<Rc<str>, ProcessCapacityMap>,
+    availabilities: &'a HashMap<Rc<str>, ActivityLimitsMap>,
 }
 
 /// Perform consistency checks for commodity flows.
@@ -106,7 +106,7 @@ fn validate_commodities(
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
     parameters: &HashMap<Rc<str>, ProcessParameter>,
-    availabilities: &HashMap<Rc<str>, ProcessCapacityMap>,
+    availabilities: &HashMap<Rc<str>, ActivityLimitsMap>,
 ) -> anyhow::Result<()> {
     let params = ValidationParams {
         flows,
@@ -213,7 +213,7 @@ fn validate_svd_commodity(
 
 fn create_process_map<I>(
     descriptions: I,
-    mut availabilities: HashMap<Rc<str>, ProcessCapacityMap>,
+    mut availabilities: HashMap<Rc<str>, ActivityLimitsMap>,
     mut flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
     mut parameters: HashMap<Rc<str>, ProcessParameter>,
     mut regions: HashMap<Rc<str>, RegionSelection>,
@@ -240,7 +240,7 @@ where
             let process = Process {
                 id: Rc::clone(id),
                 description: description.description,
-                capacity_fractions: availabilities,
+                activity_limits: availabilities,
                 flows,
                 parameter,
                 regions,
@@ -263,7 +263,7 @@ mod tests {
 
     struct ProcessData {
         descriptions: Vec<ProcessDescription>,
-        availabilities: HashMap<Rc<str>, ProcessCapacityMap>,
+        availabilities: HashMap<Rc<str>, ActivityLimitsMap>,
         flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
         parameters: HashMap<Rc<str>, ProcessParameter>,
         regions: HashMap<Rc<str>, RegionSelection>,
@@ -286,7 +286,7 @@ mod tests {
         let availabilities = ["process1", "process2"]
             .into_iter()
             .map(|id| {
-                let mut map = ProcessCapacityMap::new();
+                let mut map = ActivityLimitsMap::new();
                 map.insert(
                     TimeSliceID {
                         season: "winter".into(),
@@ -314,7 +314,7 @@ mod tests {
                     variable_operating_cost: 0.0,
                     lifetime: 1,
                     discount_rate: 1.0,
-                    cap2act: 0.0,
+                    capacity_to_activity: 0.0,
                 };
 
                 (id.into(), parameter)
