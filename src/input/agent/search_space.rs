@@ -81,7 +81,7 @@ pub fn read_agent_search_space(
     milestone_years: &[u32],
 ) -> Result<HashMap<Rc<str>, Vec<AgentSearchSpace>>> {
     let file_path = model_dir.join(AGENT_SEARCH_SPACE_FILE_NAME);
-    let iter = read_csv::<AgentSearchSpaceRaw>(&file_path)?;
+    let iter = read_csv_optional::<AgentSearchSpaceRaw>(&file_path)?;
     read_agent_search_space_from_iter(iter, agents, process_ids, commodities, milestone_years)
         .with_context(|| input_err_msg(&file_path))
 }
