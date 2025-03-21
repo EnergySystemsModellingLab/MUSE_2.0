@@ -34,7 +34,11 @@ pub use time_slice::read_time_slice_info;
 pub fn read_csv<'a, T: DeserializeOwned + 'a>(
     file_path: &'a Path,
 ) -> Result<impl Iterator<Item = T> + 'a> {
-    _read_csv_internal(file_path, true)
+    let vec = _read_csv_internal(file_path)?;
+    if vec.is_empty() {
+        bail!("CSV file {} cannot be empty", file_path.display());
+    }
+    Ok(vec.into_iter())
 }
 
 /// Read a series of type `T`s from a CSV file.
@@ -45,24 +49,18 @@ pub fn read_csv<'a, T: DeserializeOwned + 'a>(
 pub fn read_csv_optional<'a, T: DeserializeOwned + 'a>(
     file_path: &'a Path,
 ) -> Result<impl Iterator<Item = T> + 'a> {
-    _read_csv_internal(file_path, false)
+    let vec = _read_csv_internal(file_path)?;
+    Ok(vec.into_iter())
 }
 
-fn _read_csv_internal<'a, T: DeserializeOwned + 'a>(
-    file_path: &'a Path,
-    check_empty: bool,
-) -> Result<impl Iterator<Item = T> + 'a> {
+fn _read_csv_internal<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> Result<Vec<T>> {
     let vec = csv::Reader::from_path(file_path)
         .with_context(|| input_err_msg(file_path))?
         .into_deserialize()
         .process_results(|iter| iter.collect_vec())
         .with_context(|| input_err_msg(file_path))?;
 
-    if check_empty && vec.is_empty() {
-        bail!("CSV file {} cannot be empty", file_path.display());
-    }
-
-    Ok(vec.into_iter())
+    Ok(vec)
 }
 
 /// Parse a TOML file at the specified path.
