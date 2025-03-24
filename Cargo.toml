@@ -19,13 +19,13 @@ float-cmp = "0.10.0"
 itertools = "0.14.0"
 serde = {version = "1.0.219", features = ["derive", "rc"]}
 serde_string_enum = "0.2.1"
-tempfile = "3.18.0"
+tempfile = "3.19.0"
 toml = "0.8.20"
 unicase = "2.8.1"
 fern = {version = "0.7.1", features = ["chrono", "colored"]}
 chrono = "0.4"
-clap = {version = "4.5.31", features = ["cargo", "derive"]}
+clap = {version = "4.5.32", features = ["cargo", "derive"]}
 include_dir = "0.7.4"
 highs = "1.8.0"
-indexmap = "2.7.1"
+indexmap = "2.8.0"
 human-panic = "2.0.2"

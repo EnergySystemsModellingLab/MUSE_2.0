@@ -1,7 +1,7 @@
 //! Common routines for handling input data.
 use crate::agent::AssetPool;
 use crate::model::{Model, ModelFile};
-use anyhow::{ensure, Context, Result};
+use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -26,19 +26,41 @@ pub use time_slice::read_time_slice_info;
 
 /// Read a series of type `T`s from a CSV file.
 ///
+/// Will raise an error if the file is empty.
+///
 /// # Arguments
 ///
 /// * `file_path` - Path to the CSV file
 pub fn read_csv<'a, T: DeserializeOwned + 'a>(
     file_path: &'a Path,
 ) -> Result<impl Iterator<Item = T> + 'a> {
+    let vec = _read_csv_internal(file_path)?;
+    if vec.is_empty() {
+        bail!("CSV file {} cannot be empty", file_path.display());
+    }
+    Ok(vec.into_iter())
+}
+
+/// Read a series of type `T`s from a CSV file.
+///
+/// # Arguments
+///
+/// * `file_path` - Path to the CSV file
+pub fn read_csv_optional<'a, T: DeserializeOwned + 'a>(
+    file_path: &'a Path,
+) -> Result<impl Iterator<Item = T> + 'a> {
+    let vec = _read_csv_internal(file_path)?;
+    Ok(vec.into_iter())
+}
+
+fn _read_csv_internal<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> Result<Vec<T>> {
     let vec = csv::Reader::from_path(file_path)
         .with_context(|| input_err_msg(file_path))?
         .into_deserialize()
         .process_results(|iter| iter.collect_vec())
         .with_context(|| input_err_msg(file_path))?;
 
-    Ok(vec.into_iter())
+    Ok(vec)
 }
 
 /// Parse a TOML file at the specified path.
@@ -214,7 +236,13 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
         &time_slice_info,
         years,
     )?;
-    let agents = read_agents(model_dir.as_ref(), &commodities, &processes, &region_ids)?;
+    let agents = read_agents(
+        model_dir.as_ref(),
+        &commodities,
+        &processes,
+        &region_ids,
+        years,
+    )?;
     let agent_ids = agents.keys().cloned().collect();
     let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
 
@@ -279,6 +307,14 @@ mod tests {
                 }
             ]
         );
+
+        // File with no data (only column headers)
+        let file_path = create_csv_file(dir.path(), "id,value\n");
+        assert!(read_csv::<Record>(&file_path).is_err());
+        assert!(read_csv_optional::<Record>(&file_path)
+            .unwrap()
+            .next()
+            .is_none());
     }
 
     #[test]

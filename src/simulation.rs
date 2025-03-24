@@ -1,10 +1,9 @@
 //! Functionality for running the MUSE 2.0 simulation.
 use crate::agent::AssetPool;
 use crate::model::Model;
-use crate::output::write_commodity_prices_to_csv;
+use crate::output::DataWriter;
 use anyhow::{bail, Result};
 use log::info;
-use std::fs::OpenOptions;
 use std::path::Path;
 
 pub mod optimisation;
@@ -21,11 +20,7 @@ pub use prices::CommodityPrices;
 /// * `model` - The model to run
 /// * `assets` - The asset pool
 pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()> {
-    let file_path = output_path.join("commodity_prices.csv");
-    let mut file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(file_path)?;
+    let mut writer = DataWriter::create(output_path)?;
 
     let mut opt_results = None; // all results of dispatch optimisation
     for year in model.iter_years() {
@@ -47,15 +42,22 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         // year before agents have the option of decommissioning them
         assets.commission_new(year);
 
+        // Write current assets to CSV. This indicates the set of assets fed into the dispatch
+        // optimisation, so we *must* do it after agent investment and new assets are commissioned
+        writer.write_assets(year, assets.iter())?;
+
         // Dispatch optimisation
         let solution = perform_dispatch_optimisation(&model, &assets, year)?;
-        let prices = CommodityPrices::from_model_and_solution(&model, &solution);
+        let prices = CommodityPrices::from_model_and_solution(&model, &solution, &assets);
 
-        // Write current commodity prices to CSV
-        write_commodity_prices_to_csv(&mut file, year, &prices)?;
+        // Write result of dispatch optimisation to file
+        writer.write_flows(year, &assets, solution.iter_commodity_flows_for_assets())?;
+        writer.write_prices(year, &prices)?;
 
         opt_results = Some((solution, prices));
     }
+
+    writer.flush()?;
 
     Ok(())
 }

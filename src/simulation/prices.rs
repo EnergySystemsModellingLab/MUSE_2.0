@@ -1,10 +1,11 @@
 //! Code for updating the simulation state.
 use super::optimisation::Solution;
+use crate::agent::AssetPool;
 use crate::model::Model;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use indexmap::IndexMap;
 use log::warn;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 /// A combination of commodity ID and time slice
@@ -18,9 +19,9 @@ impl CommodityPrices {
     /// Calculate commodity prices based on the result of the dispatch optimisation.
     ///
     /// Missing prices will be calculated directly from the input data
-    pub fn from_model_and_solution(model: &Model, solution: &Solution) -> Self {
+    pub fn from_model_and_solution(model: &Model, solution: &Solution, assets: &AssetPool) -> Self {
         let mut prices = CommodityPrices::default();
-        let commodities_updated = prices.add_from_solution(solution);
+        let commodities_updated = prices.add_from_solution(solution, assets);
 
         // Find commodities not updated in last step
         let remaining_commodities = model
@@ -34,17 +35,50 @@ impl CommodityPrices {
 
     /// Add commodity prices for which there are values in the solution
     ///
+    /// Commodity prices are calculated as the sum of the commodity balance duals and the highest
+    /// capacity dual for each commodity/timeslice.
+    ///
     /// # Arguments
     ///
     /// * `solution` - The solution to the dispatch optimisation
+    /// * `assets` - The asset pool
     ///
     /// # Returns
     ///
     /// The set of commodities for which prices were added.
-    fn add_from_solution(&mut self, solution: &Solution) -> HashSet<Rc<str>> {
+    fn add_from_solution(&mut self, solution: &Solution, assets: &AssetPool) -> HashSet<Rc<str>> {
         let mut commodities_updated = HashSet::new();
 
-        for (commodity_id, time_slice, price) in solution.iter_commodity_prices() {
+        // Calculate highest capacity dual for each commodity/timeslice
+        let mut highest_duals = HashMap::new();
+        for (asset_id, time_slice, dual) in solution.iter_capacity_duals() {
+            let asset = assets.get(asset_id).unwrap();
+
+            // Iterate over process pacs
+            let process_pacs = asset.process.iter_pacs();
+            for pac in process_pacs {
+                let commodity = &pac.commodity;
+
+                // If the commodity flow is positive (produced PAC)
+                if pac.flow > 0.0 {
+                    let key: CommodityPriceKey = (commodity.id.clone(), time_slice.clone());
+                    // Update the highest dual for this commodity/timeslice
+                    highest_duals
+                        .entry(key)
+                        .and_modify(|current_dual| {
+                            if dual > *current_dual {
+                                *current_dual = dual;
+                            }
+                        })
+                        .or_insert(dual);
+                }
+            }
+        }
+
+        // Add the highest capacity dual for each commodity/timeslice to each commodity balance dual
+        for (commodity_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
+            let key = (Rc::clone(commodity_id), time_slice.clone());
+            let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
             self.insert(commodity_id, time_slice, price);
             commodities_updated.insert(Rc::clone(commodity_id));
         }

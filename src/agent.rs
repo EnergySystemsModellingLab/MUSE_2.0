@@ -26,7 +26,7 @@ pub struct Agent {
     /// The proportion of the commodity production that the agent is responsible for.
     pub commodity_portion: f64,
     /// The processes that the agent will consider investing in.
-    pub search_space: SearchSpace,
+    pub search_space: Vec<AgentSearchSpace>,
     /// The decision rule that the agent uses to decide investment.
     pub decision_rule: DecisionRule,
     /// The maximum capital cost the agent will pay.
@@ -48,18 +48,31 @@ pub enum SearchSpace {
     Some(HashSet<Rc<str>>),
 }
 
+/// Search space for an agent
+#[derive(Debug, Clone, PartialEq)]
+pub struct AgentSearchSpace {
+    /// Unique agent id identifying the agent this search space belongs to
+    pub agent_id: String,
+    /// The year the objective is relevant for
+    pub year: u32,
+    /// The commodity to apply the search space to
+    pub commodity: Rc<Commodity>,
+    /// The agent's search space
+    pub search_space: SearchSpace,
+}
+
 /// The decision rule for a particular objective
-#[derive(Debug, Clone, PartialEq, DeserializeLabeledStringEnum)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum DecisionRule {
     /// Used when there is only a single objective
-    #[string = "single"]
     Single,
     /// A simple weighting of objectives
-    #[string = "weighted"]
     Weighted,
     /// Objectives are considered in a specific order
-    #[string = "lexico"]
-    Lexicographical,
+    Lexicographical {
+        /// The tolerance around the main objective to consider secondary objectives. This is an absolute value of maximum deviation in the units of the main objective.
+        tolerance: f64,
+    },
 }
 
 /// An objective for an agent with associated parameters
@@ -67,12 +80,14 @@ pub enum DecisionRule {
 pub struct AgentObjective {
     /// Unique agent id identifying the agent this objective belongs to
     pub agent_id: String,
+    /// The year the objective is relevant for
+    pub year: u32,
     /// Acronym identifying the objective (e.g. LCOX)
     pub objective_type: ObjectiveType,
-    /// For the weighted sum objective, the set of weights to apply to each objective.
+    /// For the weighted sum decision rule, the set of weights to apply to each objective.
     pub decision_weight: Option<f64>,
-    /// The tolerance around the main objective to consider secondary objectives. This is an absolute value of maximum deviation in the units of the main objective.
-    pub decision_lexico_tolerance: Option<f64>,
+    /// For the lexico decision rule, the order in which to consider objectives.
+    pub decision_lexico_order: Option<u32>,
 }
 
 /// The type of objective for the agent
@@ -243,6 +258,23 @@ impl AssetPool {
         self.iter_for_region(region_id)
             .filter(|asset| asset.process.contains_commodity_flow(commodity))
     }
+
+    /// Retain all assets whose IDs are in `assets_to_keep`.
+    ///
+    /// Other assets will be decommissioned. Assets which have not yet been commissioned will not be
+    /// affected.
+    pub fn retain(&mut self, assets_to_keep: &HashSet<AssetID>) {
+        // Sanity check: all IDs should be valid. As this check is slow, only do it for debug
+        // builds.
+        debug_assert!(
+            assets_to_keep.iter().all(|id| self.get(*id).is_some()),
+            "One or more asset IDs were invalid"
+        );
+
+        self.assets.retain(|asset| {
+            assets_to_keep.contains(&asset.id) || asset.commission_year > self.current_year
+        });
+    }
 }
 
 #[cfg(test)]
@@ -396,5 +428,28 @@ mod tests {
         assets.commission_new(2020);
         assert!(assets.get(AssetID(0)) == Some(&assets.assets[0]));
         assert!(assets.get(AssetID(1)) == Some(&assets.assets[1]));
+    }
+
+    #[test]
+    fn test_asset_pool_retain() {
+        let mut assets = create_asset_pool();
+
+        // Even though we are retaining no assets, none have been commissioned so the asset pool
+        // should not be changed
+        assets.retain(&HashSet::new());
+        assert_eq!(assets.assets.len(), 2);
+
+        // Decommission all active assets
+        assets.commission_new(2010); // Commission first asset
+        assets.retain(&HashSet::new());
+        assert_eq!(assets.assets.len(), 1);
+        assert_eq!(assets.assets[0].id, AssetID(1));
+
+        // Decommission single asset
+        let mut assets = create_asset_pool();
+        assets.commission_new(2020); // Commission all assets
+        assets.retain(&iter::once(AssetID(1)).collect());
+        assert_eq!(assets.assets.len(), 1);
+        assert_eq!(assets.assets[0].id, AssetID(1));
     }
 }
