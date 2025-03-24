@@ -196,12 +196,12 @@ mod tests {
             variable_operating_cost: 1.0,
             lifetime: 5,
             discount_rate: 0.9,
-            cap2act: 3.0,
+            capacity_to_activity: 3.0,
         };
         let process = Rc::new(Process {
             id: Rc::clone(&process_id),
             description: "Description".into(),
-            capacity_fractions: HashMap::new(),
+            activity_limits: HashMap::new(),
             flows: vec![],
             parameter: process_param.clone(),
             regions: RegionSelection::All,
