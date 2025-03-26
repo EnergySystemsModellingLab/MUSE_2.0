@@ -497,7 +497,7 @@ fn add_asset_capacity_constraints(
 mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{FlowType, Process, ProcessCapacityMap, ProcessParameter};
+    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessParameter};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
@@ -516,7 +516,7 @@ mod tests {
             variable_operating_cost: 1.0,
             lifetime: 5,
             discount_rate: 0.9,
-            cap2act: 1.0,
+            capacity_to_activity: 1.0,
         };
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
@@ -537,7 +537,7 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            capacity_fractions: ProcessCapacityMap::new(),
+            activity_limits: ActivityLimitsMap::new(),
             flows: vec![flow.clone()],
             parameter: process_param.clone(),
             regions: RegionSelection::All,
