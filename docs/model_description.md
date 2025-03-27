@@ -91,203 +91,187 @@ for a system change pathway:
 2) [Commodity Price Discovery](#2-commodity-price-discovery)
 3) [Agent Investment](#3-agent-investment)
 4) [Carbon Budget Solution (or CO<sub>2</sub> Price Responsiveness)](#4-carbon-budget-solution-or-co2-price-responsiveness)
-5) [Find Prices for Next Milestone Year](#5-find-prices-for-next-milestone-year)
-6) [Recursively Solve Using Steps (3)-(5) for Each Milestone Year until End](#6-recursively-solve-using-steps-3-5-for-each-milestone-year-until-end)
+5) [Recursively Solve Using Steps (2) to (5) for Each Milestone Year until End](#5-recursively-solve-using-steps-2-to-5-for-each-milestone-year-until-end)
 
 ## Framework Processing Flow
 
-At a high level, the MUSE 2.0 iterative solution concept is as follows:
+The MUSE 2.0 solution concept is as follows:
 
 ### 1. Initialisation
 
 Read input data, performing basic temporal set up, commodity and process/asset information.
-Consistency check is performed.
+A range of input data consistency checks are performed.
 
 ### 2. Commodity Price Discovery
 
-Dispatch Optimimisation (hereon "Dispatch") is executed to determine commodity production
-and consumption, with fixed asset capacities. In the first time period - the calibrated
-base year (*t<sub>0</sub>*) - this step is performed before any agent investment step.
+Dispatch Optimimisation (hereon "dispatch") is executed to determine commodity production
+and consumption, with fixed asset capacities. In the first milestone year - the calibrated
+base year - this step is performed before any agent investment step. In later
+milestone years, it is performed after agent investment is complete to determine prices for the
+following milestone year alongside production/consumption of all commodities.
 
-1. Asset dispatch is merit order based but is subject to
-    constraints that represent technical or other limits.
+#### A. Price discovery via asset dispatch optimisation using dual solution
 
-    - For assets/processes, dispatch limits are user-defined minimum, maximum
-        and fixed availability factors (i.e. percentage of capacity) that can
-        be defined per time slice, season or year.
+Asset dispatch is determined via linear programming, where the objective function is the cost of
+operating the system over a year, which must be minimised. The dual solution of this optimisation
+are used to discover commodity price. The methodology for dispatch is described in detail in the
+**Dispatch Optimisation** section of this documentation.
 
-    - For commodities, user-defined limits can be minimum, maximum
-        or fixed total or regional output, input or net production
-        by time slice, season or year.
+**Price** is discovered for each commodity, for each time slice, and for each region, using the
+dual solution from the dispatch optimisation. Price is determined for each time slice by
+(a) taking the dual value for the commodity balance constraint, (b) subtracting the dual value
+of the capacity/availability constraint (this step is performed separately for each asset/process),
+and then (c) taking the maximum value from the set of results from steps a-b.
 
-2. Dispatch can be solved for all assets and commodities in the system
-    simultaneously, where existing assets (known from calibrated
-    input data) are operated to meet demand, and to produce/consume
-    any intermediate commodities required, and to meet environmental
-    or other constraints if specified. Dispatch can also be solved for
-    a subset of the whole system (e.g. where commodity demands are needed
-    for end-use sectors in order to determine upstream capacity requirements).
+The result is a time sliced price for each commodity in each region.
 
-3. **Price discovery** is implemented via linear programming (cost
-    minimisation via the Dispatch Optimisation). The objective
-    function is the cost of operating the system over a year, which
-    must be minimised. The decision variables are the commodity inputs
-    and outputs of each asset, for each time slice. These are constrained
-    by (a) the capacity of the asset and (b) the availability limits
-    by time slice/season/year. Energy commodity supply/demand must
-    balance for SED (supply equals demand) type commodities, and all
-    service demands (SVD commodities) must be met. Commodity production
-    or consumption may be subject to constraints (usually annual but
-    could be time slice/season level).
+#### B. Price discovery for commodities not produced
 
-4. Based on the resulting dispatch a time sliced price is
-    observed for each commodity in each region using marginal pricing (i.e. the
-    system cost for operating the most expensive process serving a
-    commodity demand). The result of this step is model-generated
-    time sliced commodity prices.
+We also calculate the prices of commodities that are not present in the dispatch
+solution, but could exist in the solution for the next milestone year. These are calculated
+directly from input data. This is done by calculating the marginal price of the process producing
+the commodity in question with the best decision value, where decision values are calculated
+using the utilisation of the next most expensive (marginal cost) asset in the dispatch stack,
+adjusted for availability differences, and commodity prices from the price discovery at step 2(A).
 
-5. The model then also calculates the prices of commodities that
-    are not present in the dispatch solution, but could exist in the
-    solution for next period. These are calculated directly from input data.
-    This is done by calculating the marginal price of the process
-    producing the commodity in question with the best objective
-    value, where objective values are calculated using the
-    utilisation of the next most expensive (marginal cost) asset in
-    the dispatch stack, adjusted for availability differences, and
-    commodity prices from the price discovery at step 3 above.
+  > **Issue 1:** There may be a better way to do this step 2(B).
+  One could add all processes that could potetentially exist in the
+  milestone year to the dispatch optimisation formulation, even
+  those that do not have a related asset (i.e. they have no
+  capacity in the milestone year). A commodity balance constraint
+  could then be created for every commodity, even those that are
+  not yet produced. Marginal prices could be observed from the
+  dispatch optimisation result as per other commodity prices.
+  This would need to be tried out to see if it works.
 
 ### 3. Agent Investment
 
 The capacity investment of new assets required in the next milestone year are calculated as follows:
 
-1. **End-of-life capacity decommissioning:** Decommission assets
-    that have reached the end of their life in the milestone year.
+#### A. End-of-life capacity decommissioning
 
-2. **Agent investment (service demand):** For each service demand,
-    for each agent that is responsible for a portion of that demand:
+  We decommission assets that have reached the end of their life in the milestone year.
 
-    - For assets, calculate objective value/s assuming the
-        utilisation observed from dispatch for that asset in
-        step (2) will persist. For assets this calculation does not
-        include capital cost as this is sunk cost because the asset
-        already exists.
+#### B. Agent investment
 
-    - For processes, calculate objective value/s assuming the
-        utilisation observed from dispatch in step (2) for the asset
-        with the marginal cost immediately above the marginal cost
-        of this process (and respecting the processes' availability
-        constraints). If the process has lower marginal cost than
-        any asset, then assume full dispatch (subject to its
-        availability constraints). If the process has the same
-        marginal cost as an asset, assume the same utilisation as
-        that asset. If the process has marginal cost higher than any
-        asset, assume zero utilisation.
+  Starting with each service demand (SVD) commodity, for each agent that produces that commodity:
 
-        > **Issue 1:** It is possible to calculate utilisation
-        using time slice level utilisation of asset
-        with marginal cost immediately above the process, also
-        taking into account availability constraints. This would be
-        more accurate in most cases (but there are some complications,
-        e.g. where asset/process has conflicting availability
-        constraints/utilisation).
+##### i. Determine potential utilisation at time slice level
 
-    - Add assets/processes to the capacity mix starting with the
-          one with the best objective value and keep adding them
-          until sufficient capacity exists to meet all demand in the
-          milestone year. This step must respect process capacity
-          constraints (growth, addition and overall limits).
+  For each asset/process that produces the commodity, we calculate the potential dispatch
+  in each time slice. This is done by observing the amount of demand that is above the
+  marginal cost of this process in the solution for the previous milestone year (i.e. demand
+  that the process could competitively serve assuming nothing changes from the previous
+  milestone year).
 
-        > **Issue 2:** There is a circularity here. E.g. asset choices
-        influence the dispatch of other assets, which in turn can
-        influence objective values, which in turn can influence
-        asset choices. An heuristic solution is to run dispatch
-        again, update utilisations of assets and proposed new
-        assets, and repeat step 3.2 again, to see if
-        any asset's objective has deteriorated to the point where it
-        can be replaced, and keep going around this loop until
-        nothing changes between loops - but there will certainly be
-        cases where this does not converge.
+  > For example, if demand is 8 units, and asset A serves 2 units
+  of that at a marginal cost of $3, and asset B serves 4 units at
+  a marginal cost of $5, but process C has a marginal cost of $4,
+  then the algorithm assumes that process C could serve up to 6 units
+  of demand in that time slice (though also limited by its
+  capacity/availability constraints in this and other time slices, etc).
 
-        > **Issue 3:** Also, commodity prices influence dispatch (and thus
-        objective value, and thus asset choices), so upstream decisions
-        also impact outcome here. However, this as it's a deliberate
-        feature of MUSE - investors are assuming observed prices from the
-        previous period persist.
+  If the asset/process has lower marginal cost than any asset in a time slice, we assume
+  dispatch only limited by capacity/availability constraints and demand level. If the
+  process has the same marginal cost as an asset, we assume that asset is NOT displaced.
+  If the process has marginal cost higher than any asset, we assume it can only serve demand
+  currently unserved (i.e. due to asset decommissing at 3(A) or demadn increase), if any exists.
+  If there is no asset (e.g. where demand was zero in previous milestone year, or all existing
+  assets were decommissioned) then we assume dispatch only limited by process capacity/availability
+  constraints and demand level.
 
-3. **Agent investment (commodities):** For each commodity consumed,
-    starting with those commodities consumed by the end-use assets
-    (i.e. those assets that output a service demand), calculate
-    the capacity investments required to serve these commodity
-    demands:
+##### ii. Calculate objective and decicion values for each asset/process
 
-    - Run dispatch of partial system to determine final commodity demand
-        related to all end use technologies. Determine production capacity
-        required (maximum of outputs across time slices) to serve this
-        demand, for each commodity.
+  Using the resulting set of time sliced potential utilisations, we then calculate the objective
+  value/s and decision for the asset/process. For assets, the objective value is
+  calculated without including capital costs (which are sunk unrecoverable costs).
 
-    - Follows step 3.2 above to determine capacity mix for each commodity.
+  > **Issue 2:** There are some complications here, e.g. where an
+  asset/process has availability constraints that interact across
+  time slices, so one cannot consider one time slice at a time.
+  Or when a process has both annual and time slice level
+  availability constraints, which interact.
 
-    - Continue this process, moving further upstream, until there
-          are no commodity demands left to serve.
+##### iii. Add new asset or confirm asset not decommissioned
 
-        > **Issue 4:** Circularities here, e.g. power system capacity is
-        required to produce H2, but also H2 can be consumed in the
-        power sector so H2 capacity is needed to produce it, which
-        in turn requires more power system capacity. One possible approach
-        is to check if peak demand for each commodity has changed at the end
-        of a run through all commodities, and if it has then run the capacity
-        investment algorithm again for that commodity. Again, this is a
-        heuristic solution that may lead to mathematical instabilities or poor
-        quality solutions.
+  We add the best asset/process (based on objective/s and decision rule) to the capacity mix. If
+  an asset, this confirms that the asset will not be decommissioned. If a process, this
+  confirms the process becomes an asset. The capacity of this asset is the maximum possible,
+  as limited by capacity growth, addition or aggregate limit constraints, and further limited by
+  the demand level (i.e. capacity is not installed if it is more than needed to serve demand).
 
-        > **Issue 5:** What about commodities that are consumed but not
-        produced, or produced but not consumed? Do this capacity
-        investment step only for SED commodities? And also check for
-        processes that consume or produce non-balance commodities, and
-        check if they can make money - invest in them if they do - requires
-        specific objective of NPV.
+ > **Issue 3:** It is likely that through this iterative process we will end up with assets that
+ are not performing well (as measured by objectives/decision), because their utilisation will
+ change as other assets are added/confirmed. One partial solution is to continue the process -
+ including recalculation of all assets' objectives/decisions at each iteration - until
+ nothing changes between iterations (i.e. no new/confirmed assets) but such as approach may
+ result in unintended consequences (e.g. process with nominally 2nd-best objective but low
+ marginal cost being adpoted). There would likely also be convergence instabilities and complex
+ interactions between assets' objectives and utilisation.
 
-4. **Decision-rule-based capacity decommissioning:** Decommission
-    assets that have a utilisation of zero after steps 3.2-3.3. These assets
-    have become stranded. This could happen when, for example, carbon prices
-    are high and emitting assets become unfavorable as a result (e.g. operating
-    them is too expensive and cannot compete with new technology even though
-    the latter has capital cost included).
+##### iv.  Repeat step 3(B)i - iii until all demand is served, then decommission any unused assets
 
-### 4. Carbon budget solution (or CO<sub>2</sub> price responsiveness)
+  Once all demand is served, we decommission assets that have a utilisation of zero in all
+  time slices. These assets have become stranded. This could happen when, for example,
+  carbon prices are high and emitting assets become unfavorable as a result (e.g. operating them
+  is too expensive and cannot compete with new technology even though the latter has capital
+  cost included).
+
+#### C. Complete agent investment
+
+  Repeat step 3(B) for each commodity in the model, and repeat until all commodities have
+  been processed.
+
+  > **Issue 4:** The order in which this is done is important, as
+  all downstream commodity demand must be known prior to agent
+  investment. Service demand commodities should probably go first,
+  but in most models there will be no other commodity without circular
+  dependencies as described below.
+
+  > **Issue 5:** Circularities here, e.g. power system capacity is
+  required to produce H2, but also H2 can be consumed in the
+  power sector so H2 capacity is needed to produce it, which
+  in turn requires more power system capacity. An imperfect approach
+  is to check if peak demand for each commodity has changed at the end
+  of a run through all commodities, and if it has then run the capacity
+  investment algorithm again for that commodity. Again, this is a
+  heuristic solution that may lead to mathematical instabilities or poor
+  quality solutions.
+
+  > **Issue 6:** What about commodities that are consumed but not
+  produced, or produced but not consumed? Do this capacity
+  investment step only for SVD and SED commodities? And also check for
+  processes that consume or produce non-balance commodities, and
+  check if they can make money - invest in them if they do - requires
+  specific objective of NPV.
+
+### 4. Carbon Budget Solution (or CO<sub>2</sub> price responsiveness)
 
 Where a CO<sub>2</sub> budget or price is specified, steps (2)-(3) are initially run with the
 CO<sub>2</sub> price from the previous milestone year. After completion, we run dispatch with a
 CO<sub>2</sub> budget equal to the user prescribed level (if it exists) for the new milestone year,
 and record the resulting CO<sub>2</sub> price (dual solution of the CO<sub>2</sub> constraint). If
 the CO<sub>2</sub> price is less than zero then re-run dispatch without the budget constraint and
-set CO<sub>2</sub> price to zero. **Alternatively,** a user might specify a CO<sub>2</sub> price for
+set CO<sub>2</sub> price to zero. If there is no solution to the dispatch optimisation,
+then the CO<sub>2</sub> budget cannot be met. In this case we re-run dispatch without the budget
+constraint but with the CO<sub>2</sub> price from the previous milestone year. We warn the user
+that the budget set was not met for the milestone year.
+
+**Alternatively,** a user might specify a CO<sub>2</sub> price for
 all or part of the time horizon, and no carbon budget, in which case the model runs dispatch with
 the specified carbon price relating to each milestone year in steps (2)-(3) and no further
 processing is needed here.
 
-If there is no solution to the dispatch optimisation, then the CO<sub>2</sub>
-budget cannot be met. In this case we re-run dispatch without the budget constraint but
-with the CO<sub>2</sub> price from the previous milestone year. We warn the user that the
-budget set was not met for the milestone year.
+### 5. Recursively Solve using Steps (2) to (5) for each Milestone Year until End
 
-### 5. Find prices for next milestone year
+Find commodity prices for the current milestone year as described in step (2).
+The model then moves to the next milestone time period and repeats steps (3)-(4),
+using these prices as inputs (i.e. assuming that prices from the previous milestone
+year persist in the next milestone year). This process continues until the end of
+the time horizon is reached.
 
-The dispatch solution from step (4) determines the prices and final
-commodity consumption and production for the present milestone year,
-and we record these results. We use these prices and perform steps (2)
-and (3) above for the next milestone year, alongside calculated prices
-for any commodities not present in the system (as per step 2.5).
-
-### 6. Recursively solve using steps (3)-(5) for each milestone year until end
-
-The model then moves to the next milestone time period
-and repeats the process, beginning with prices from the last-solved
-time period. This process continues until the end of the time
-horizon is reached.
-
-  > **Issue 6:** At this point we have commodity prices for every
+  > **Issue 7:** At this point we have commodity prices for every
   time period in the simulation. The model could then perform a
   "super-loop" where the entire process above is repeated, but agents
-  have some foresight of on commodity price. Super-loops we be considered
-  for inclusion is a later release of MUSE.
+  have some foresight of on commodity price. Super-loops will be considered
+  for inclusion in a later release of MUSE.
