@@ -173,9 +173,7 @@ fn check_agent_objectives(
 mod tests {
     use super::*;
     use crate::agent::ObjectiveType;
-    use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
     use crate::region::RegionSelection;
-    use crate::time_slice::TimeSliceLevel;
 
     #[test]
     fn test_check_objective_parameter() {
