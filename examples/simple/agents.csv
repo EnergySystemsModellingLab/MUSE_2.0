@@ -1,5 +1,5 @@
-id,description,commodity_id,commodity_portion,search_space,decision_rule,capex_limit,annual_cost_limit,decision_lexico_tolerance
-A0_GEX,Gas extractors,GASPRD,1,,single,,,
-A0_GPR,Gas processors,GASNAT,1,,single,,,
-A0_ELC,Electricity generators,ELCTRI,1,,single,,,
-A0_RES,Residential consumer,RSHEAT,1,,single,,,
+id,description,decision_rule,capex_limit,annual_cost_limit,decision_lexico_tolerance
+A0_GEX,Gas extractors,single,,,
+A0_GPR,Gas processors,single,,,
+A0_ELC,Electricity generators,single,,,
+A0_RES,Residential consumer,single,,,
