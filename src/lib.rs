@@ -1,6 +1,7 @@
 //! Common functionality for MUSE 2.0.
 #![warn(missing_docs)]
 pub mod agent;
+pub mod asset;
 pub mod commands;
 pub mod commodity;
 pub mod input;
