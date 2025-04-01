@@ -1,5 +1,5 @@
 //! Functionality for running the MUSE 2.0 simulation.
-use crate::agent::AssetPool;
+use crate::asset::AssetPool;
 use crate::model::Model;
 use crate::output::DataWriter;
 use anyhow::{bail, Result};

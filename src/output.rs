@@ -1,5 +1,5 @@
 //! The module responsible for writing output data to disk.
-use crate::agent::{Asset, AssetID, AssetPool};
+use crate::asset::{Asset, AssetID, AssetPool};
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
 use anyhow::{Context, Result};

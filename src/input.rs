@@ -1,5 +1,5 @@
 //! Common routines for handling input data.
-use crate::agent::AssetPool;
+use crate::asset::AssetPool;
 use crate::model::{Model, ModelFile};
 use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
