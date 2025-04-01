@@ -277,7 +277,7 @@ mod tests {
                 objectives: Vec::new(),
             },
         )]);
-        let commodities = IndexMap::from([(
+        let mut commodities = IndexMap::from([(
             Rc::from("commodity1"),
             Rc::new(Commodity {
                 id: "commodity1".into(),
@@ -309,13 +309,34 @@ mod tests {
         .is_ok());
 
         // Invalid case: portions do not sum to 1
-        let agent_commodity = AgentCommodity {
+        let agent_commodity_v2 = AgentCommodity {
             agent_id: "agent1".into(),
             year: 2020,
             commodity: Rc::clone(commodities.get("commodity1").unwrap()),
             commodity_portion: 0.5,
         };
-        let agent_commodities = HashMap::from([(Rc::from("agent1"), vec![agent_commodity])]);
+        let agent_commodities_v2 = HashMap::from([(Rc::from("agent1"), vec![agent_commodity_v2])]);
+        assert!(validate_agent_commodities(
+            &agent_commodities_v2,
+            &agents,
+            &commodities,
+            &region_ids,
+            &milestone_years
+        )
+        .is_err());
+
+        // Invalid case: SED commodity without associated commodity portions
+        commodities.insert(
+            Rc::from("commodity2"),
+            Rc::new(Commodity {
+                id: "commodity2".into(),
+                description: "Another commodity".into(),
+                kind: CommodityType::SupplyEqualsDemand,
+                time_slice_level: TimeSliceLevel::Annual,
+                costs: CommodityCostMap::new(),
+                demand: DemandMap::new(),
+            }),
+        );
         assert!(validate_agent_commodities(
             &agent_commodities,
             &agents,
