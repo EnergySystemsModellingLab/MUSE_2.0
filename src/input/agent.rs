@@ -71,7 +71,7 @@ pub fn read_agents(
         milestone_years,
     )?;
     let mut agent_commodities =
-        read_agent_commodities(model_dir, &agents, commodities, milestone_years)?;
+        read_agent_commodities(model_dir, &agents, commodities, region_ids, milestone_years)?;
 
     for (id, agent) in agents.iter_mut() {
         agent.regions = agent_regions.remove(id).unwrap();
