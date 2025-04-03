@@ -162,7 +162,7 @@ fn validate_agent_commodities(
     // We then check the map to ensure values for each key are 1
     for (key, portion) in summed_portions.iter() {
         ensure!(
-            (*portion - 1.0).abs() < f64::EPSILON,
+            approx_eq!(f64, *portion, 1.0, epsilon = 1e-5),
             "Commodity {} in year {} and region {} does not sum to 1.0",
             key.0,
             key.1,
@@ -173,7 +173,7 @@ fn validate_agent_commodities(
     // CHECK 3: All commodities of SVD or SED type must be covered for all regions and years
     // This checks the same summed_portions map as above, just checking the keys
     // We first need to create a list of SVD and SED commodities to check against
-    let svd_and_sed_commodities: Vec<Rc<str>> = commodities
+    let svd_and_sed_commodities = commodities
         .iter()
         .filter(|(_, commodity)| {
             matches!(
@@ -181,8 +181,7 @@ fn validate_agent_commodities(
                 CommodityType::SupplyEqualsDemand | CommodityType::ServiceDemand
             )
         })
-        .map(|(id, _)| Rc::clone(id))
-        .collect();
+        .map(|(id, _)| Rc::clone(id));
 
     // Check that summed_portions contains all SVD/SED commodities for all regions and milestone
     // years
