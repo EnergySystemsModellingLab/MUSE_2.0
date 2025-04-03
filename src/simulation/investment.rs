@@ -1,7 +1,7 @@
 //! Code for performing agent investment.
 use super::optimisation::Solution;
 use super::CommodityPrices;
-use crate::agent::AssetPool;
+use crate::asset::AssetPool;
 use crate::model::Model;
 use log::info;
 use std::collections::HashSet;
