@@ -43,7 +43,6 @@ impl AgentCommodityRaw {
 
         // Create AgentCommodity
         Ok(AgentCommodity {
-            agent_id: self.agent_id.clone(),
             year: self.year,
             commodity: Rc::clone(commodity),
             commodity_portion: self.commodity_portion,
@@ -90,11 +89,12 @@ where
     I: Iterator<Item = AgentCommodityRaw>,
 {
     let mut agent_commodities = HashMap::new();
-    for agent_commodity in iter {
-        let agent_commodity = agent_commodity.to_agent_commodity(commodities, milestone_years)?;
+    for agent_commodity_raw in iter {
+        let agent_commodity =
+            agent_commodity_raw.to_agent_commodity(commodities, milestone_years)?;
 
         let (id, _agent) = agents
-            .get_key_value(agent_commodity.agent_id.as_str())
+            .get_key_value(agent_commodity_raw.agent_id.as_str())
             .context("Invalid agent ID")?;
 
         // Append to Vec with the corresponding key or create
@@ -292,7 +292,6 @@ mod tests {
 
         // Valid case
         let agent_commodity = AgentCommodity {
-            agent_id: "agent1".into(),
             year: 2020,
             commodity: Rc::clone(commodities.get("commodity1").unwrap()),
             commodity_portion: 1.0,
@@ -309,7 +308,6 @@ mod tests {
 
         // Invalid case: portions do not sum to 1
         let agent_commodity_v2 = AgentCommodity {
-            agent_id: "agent1".into(),
             year: 2020,
             commodity: Rc::clone(commodities.get("commodity1").unwrap()),
             commodity_portion: 0.5,

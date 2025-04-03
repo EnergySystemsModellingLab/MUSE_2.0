@@ -88,8 +88,6 @@ pub struct AgentObjective {
 /// A commodity that the agent is responsible for servicing, with associated commodity portion
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct AgentCommodity {
-    /// Unique agent id identifying the agent.
-    pub agent_id: String,
     /// The year the commodity portion applies to.
     pub year: u32,
     /// The commodity that the agent is responsible for servicing.
