@@ -18,10 +18,8 @@ pub struct Agent {
     pub id: Rc<str>,
     /// A text description of the agent.
     pub description: String,
-    /// The commodity that the agent produces (could be a service demand too).
-    pub commodity: Rc<Commodity>,
-    /// The proportion of the commodity production that the agent is responsible for.
-    pub commodity_portion: f64,
+    /// The commodities that the agent is responsible for servicing.
+    pub commodities: Vec<AgentCommodity>,
     /// The processes that the agent will consider investing in.
     pub search_space: Vec<AgentSearchSpace>,
     /// The decision rule that the agent uses to decide investment.
@@ -85,6 +83,17 @@ pub struct AgentObjective {
     pub decision_weight: Option<f64>,
     /// For the lexico decision rule, the order in which to consider objectives.
     pub decision_lexico_order: Option<u32>,
+}
+
+/// A commodity that the agent is responsible for servicing, with associated commodity portion
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct AgentCommodity {
+    /// The year the commodity portion applies to.
+    pub year: u32,
+    /// The commodity that the agent is responsible for servicing.
+    pub commodity: Rc<Commodity>,
+    /// The proportion of the commodity production that the agent is responsible for.
+    pub commodity_portion: f64,
 }
 
 /// The type of objective for the agent

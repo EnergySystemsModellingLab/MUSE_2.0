@@ -173,9 +173,7 @@ fn check_agent_objectives(
 mod tests {
     use super::*;
     use crate::agent::ObjectiveType;
-    use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
     use crate::region::RegionSelection;
-    use crate::time_slice::TimeSliceLevel;
 
     #[test]
     fn test_check_objective_parameter() {
@@ -221,21 +219,12 @@ mod tests {
 
     #[test]
     fn test_read_agent_objectives_from_iter() {
-        let commodity = Rc::new(Commodity {
-            id: "commodity1".into(),
-            description: "A commodity".into(),
-            kind: CommodityType::SupplyEqualsDemand,
-            time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::new(),
-            demand: DemandMap::new(),
-        });
         let agents = [(
             "agent".into(),
             Agent {
                 id: "agent".into(),
                 description: "".into(),
-                commodity,
-                commodity_portion: 1.0,
+                commodities: Vec::new(),
                 search_space: Vec::new(),
                 decision_rule: DecisionRule::Single,
                 capex_limit: None,
