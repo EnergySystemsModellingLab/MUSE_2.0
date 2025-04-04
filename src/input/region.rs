@@ -19,7 +19,7 @@ pub trait HasRegionID {
 
 macro_rules! define_region_id_getter {
     ($t:ty) => {
-        impl super::super::region::HasRegionID for $t {
+        impl crate::input::region::HasRegionID for $t {
             fn get_region_id(&self) -> &str {
                 &self.region_id
             }
