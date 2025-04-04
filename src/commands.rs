@@ -1,7 +1,8 @@
 //! The command line interface for the simulation.
+use crate::input::load_model;
+use crate::log;
 use crate::output::create_output_directory;
 use crate::settings::Settings;
-use crate::{input::load_model, log};
 use ::log::{error, info};
 use anyhow::{ensure, Context, Result};
 use clap::{Parser, Subcommand};

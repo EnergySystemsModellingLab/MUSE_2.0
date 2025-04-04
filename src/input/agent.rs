@@ -10,13 +10,13 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::rc::Rc;
 
-pub mod objective;
+mod objective;
 use objective::read_agent_objectives;
-pub mod region;
+mod region;
 use region::read_agent_regions;
-pub mod search_space;
+mod search_space;
 use search_space::read_agent_search_space;
-pub mod commodity;
+mod commodity;
 use commodity::read_agent_commodities;
 
 const AGENT_FILE_NAME: &str = "agents.csv";
@@ -96,7 +96,7 @@ pub fn read_agents(
 /// # Returns
 ///
 /// A map of Agents, with the agent ID as the key
-pub fn read_agents_file(model_dir: &Path) -> Result<AgentMap> {
+fn read_agents_file(model_dir: &Path) -> Result<AgentMap> {
     let file_path = model_dir.join(AGENT_FILE_NAME);
     let agents_csv = read_csv(&file_path)?;
     read_agents_file_from_iter(agents_csv).with_context(|| input_err_msg(&file_path))

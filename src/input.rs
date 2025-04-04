@@ -11,18 +11,18 @@ use std::fs;
 use std::path::Path;
 use std::rc::Rc;
 
-pub mod agent;
-pub use agent::read_agents;
-pub mod asset;
+mod agent;
+use agent::read_agents;
+mod asset;
 use asset::read_assets;
-pub mod commodity;
-pub use commodity::read_commodities;
-pub mod process;
-pub use process::read_processes;
-pub mod region;
-pub use region::read_regions;
+mod commodity;
+use commodity::read_commodities;
+mod process;
+use process::read_processes;
+mod region;
+use region::read_regions;
 mod time_slice;
-pub use time_slice::read_time_slice_info;
+use time_slice::read_time_slice_info;
 
 /// Read a series of type `T`s from a CSV file.
 ///
@@ -79,7 +79,7 @@ pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
 }
 
 /// Read an f64, checking that it is between 0 and 1
-pub fn deserialise_proportion_nonzero<'de, D>(deserialiser: D) -> Result<f64, D::Error>
+fn deserialise_proportion_nonzero<'de, D>(deserialiser: D) -> Result<f64, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -142,7 +142,7 @@ impl IDCollection for HashSet<Rc<str>> {
 ///
 /// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
 /// the IDs for a given type), we use an ordered map to maintain the order in the input files.
-pub fn read_csv_id_file<T>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
+fn read_csv_id_file<T>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
 where
     T: HasID + DeserializeOwned,
 {
@@ -197,7 +197,7 @@ where
 }
 
 /// Check that fractions sum to (approximately) one
-pub fn check_fractions_sum_to_one<I>(fractions: I) -> Result<()>
+fn check_fractions_sum_to_one<I>(fractions: I) -> Result<()>
 where
     I: Iterator<Item = f64>,
 {

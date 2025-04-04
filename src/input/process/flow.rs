@@ -1,7 +1,7 @@
 //! Code for reading process flows file
+use super::super::*;
 use super::define_process_id_getter;
 use crate::commodity::CommodityMap;
-use crate::input::*;
 use crate::process::{FlowType, ProcessFlow};
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;

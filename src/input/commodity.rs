@@ -1,17 +1,17 @@
 //! Code for reading in commodity-related data from CSV files.
+use super::*;
 use crate::commodity::{Commodity, CommodityMap};
-use crate::input::*;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
 use std::collections::HashSet;
 use std::path::Path;
 use std::rc::Rc;
 
-pub mod cost;
+mod cost;
 use cost::read_commodity_costs;
-pub mod demand;
+mod demand;
 use demand::read_demand;
-pub mod demand_slicing;
+mod demand_slicing;
 
 const COMMODITY_FILE_NAME: &str = "commodities.csv";
 

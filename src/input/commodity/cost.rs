@@ -1,6 +1,6 @@
 //! Code for reading in the commodity cost CSV file.
+use super::super::*;
 use crate::commodity::{BalanceType, CommodityCost, CommodityCostMap};
-use crate::input::*;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -14,17 +14,17 @@ const COMMODITY_COSTS_FILE_NAME: &str = "commodity_costs.csv";
 #[derive(PartialEq, Debug, Deserialize, Clone)]
 struct CommodityCostRaw {
     /// Unique identifier for the commodity (e.g. "ELC")
-    pub commodity_id: String,
+    commodity_id: String,
     /// The region to which the commodity cost applies.
-    pub region_id: String,
+    region_id: String,
     /// Type of balance for application of cost.
-    pub balance_type: BalanceType,
+    balance_type: BalanceType,
     /// The year to which the cost applies.
-    pub year: u32,
+    year: u32,
     /// The time slice to which the cost applies.
-    pub time_slice: String,
+    time_slice: String,
     /// Cost per unit commodity. For example, if a CO2 price is specified in input data, it can be applied to net CO2 via this value.
-    pub value: f64,
+    value: f64,
 }
 
 /// Read costs associated with each commodity from commodity costs CSV file.
