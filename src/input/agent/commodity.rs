@@ -13,18 +13,18 @@ const AGENT_COMMODITIES_FILE_NAME: &str = "agent_commodities.csv";
 #[derive(PartialEq, Debug, Deserialize)]
 struct AgentCommodityRaw {
     /// Unique agent id identifying the agent.
-    pub agent_id: String,
+    agent_id: String,
     /// The commodity that the agent is responsible for.
-    pub commodity_id: String,
+    commodity_id: String,
     /// The year the commodity portion applies to.
-    pub year: u32,
+    year: u32,
     /// The proportion of the commodity production that the agent is responsible for.
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
-    pub commodity_portion: f64,
+    commodity_portion: f64,
 }
 
 impl AgentCommodityRaw {
-    pub fn to_agent_commodity(
+    fn to_agent_commodity(
         &self,
         commodities: &CommodityMap,
         milestone_years: &[u32],

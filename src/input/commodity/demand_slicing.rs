@@ -1,6 +1,6 @@
 //! Demand slicing determines how annual demand is distributed across the year.
+use super::super::*;
 use super::demand::*;
-use crate::input::*;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;

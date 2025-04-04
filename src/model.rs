@@ -2,7 +2,7 @@
 #![allow(missing_docs)]
 use crate::agent::AgentMap;
 use crate::commodity::CommodityMap;
-use crate::input::*;
+use crate::input::{input_err_msg, read_toml};
 use crate::process::ProcessMap;
 use crate::region::RegionMap;
 use crate::time_slice::TimeSliceInfo;

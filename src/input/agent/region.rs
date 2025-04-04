@@ -1,6 +1,6 @@
 //! Code for loading the agent regions CSV file.
-use crate::input::region::{define_region_id_getter, read_regions_for_entity};
-use crate::input::HasID;
+use super::super::region::{define_region_id_getter, read_regions_for_entity};
+use super::super::HasID;
 use crate::region::RegionSelection;
 use anyhow::Result;
 use serde::Deserialize;

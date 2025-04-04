@@ -1,5 +1,5 @@
 //! Code for reading process availabilities CSV file
-use crate::input::*;
+use super::super::*;
 use crate::process::ActivityLimitsMap;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{Context, Result};

@@ -1,8 +1,8 @@
 //! Code for working with demand for a given commodity. Demand can vary by region, year and time
 //! slice.
+use super::super::*;
 use super::demand_slicing::{read_demand_slices, DemandSliceMap, DemandSliceMapKey};
 use crate::commodity::DemandMap;
-use crate::input::*;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Result};
 use serde::Deserialize;

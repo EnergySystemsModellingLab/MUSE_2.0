@@ -1,7 +1,7 @@
 //! Code for reading the process region CSV file
+use super::super::region::{define_region_id_getter, read_regions_for_entity};
+use super::super::*;
 use super::define_process_id_getter;
-use crate::input::region::{define_region_id_getter, read_regions_for_entity};
-use crate::input::*;
 use crate::region::RegionSelection;
 use anyhow::Result;
 use serde::Deserialize;

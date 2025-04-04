@@ -1,6 +1,6 @@
 //! Code for reading process parameters CSV file
+use super::super::*;
 use super::define_process_id_getter;
-use crate::input::*;
 use crate::process::ProcessParameter;
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
@@ -14,15 +14,15 @@ const PROCESS_PARAMETERS_FILE_NAME: &str = "process_parameters.csv";
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessParameterRaw {
-    pub process_id: String,
-    pub start_year: Option<u32>,
-    pub end_year: Option<u32>,
-    pub capital_cost: f64,
-    pub fixed_operating_cost: f64,
-    pub variable_operating_cost: f64,
-    pub lifetime: u32,
-    pub discount_rate: Option<f64>,
-    pub capacity_to_activity: Option<f64>,
+    process_id: String,
+    start_year: Option<u32>,
+    end_year: Option<u32>,
+    capital_cost: f64,
+    fixed_operating_cost: f64,
+    variable_operating_cost: f64,
+    lifetime: u32,
+    discount_rate: Option<f64>,
+    capacity_to_activity: Option<f64>,
 }
 define_process_id_getter! {ProcessParameterRaw}
 

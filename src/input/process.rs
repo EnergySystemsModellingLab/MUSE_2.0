@@ -1,22 +1,22 @@
 //! Code for reading process-related information from CSV files.
+use super::*;
 use crate::commodity::{Commodity, CommodityMap, CommodityType};
-use crate::input::*;
 use crate::process::{ActivityLimitsMap, Process, ProcessFlow, ProcessMap, ProcessParameter};
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
-use anyhow::Result;
+use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
-pub mod availability;
+
+mod availability;
 use availability::read_process_availabilities;
-pub mod flow;
+mod flow;
 use flow::read_process_flows;
-pub mod parameter;
+mod parameter;
 use parameter::read_process_parameters;
-pub mod region;
-use anyhow::bail;
+mod region;
 use region::read_process_regions;
 
 const PROCESSES_FILE_NAME: &str = "processes.csv";
