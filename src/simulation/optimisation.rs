@@ -1,7 +1,7 @@
 //! Code for performing dispatch optimisation.
 //!
 //! This is used to calculate commodity flows and prices.
-use crate::agent::{Asset, AssetID, AssetPool};
+use crate::asset::{Asset, AssetID, AssetPool};
 use crate::commodity::{BalanceType, CommodityType};
 use crate::model::Model;
 use crate::process::ProcessFlow;

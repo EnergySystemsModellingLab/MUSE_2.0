@@ -1,6 +1,6 @@
 //! Code for updating the simulation state.
 use super::optimisation::Solution;
-use crate::agent::AssetPool;
+use crate::asset::AssetPool;
 use crate::model::Model;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use indexmap::IndexMap;
