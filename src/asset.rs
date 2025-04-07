@@ -56,10 +56,10 @@ impl Asset {
 
     /// The last year in which this asset should be decommissioned
     pub fn decommission_year(&self) -> u32 {
-        self.commission_year + self.process.parameter.lifetime
+        self.commission_year + self.process.parameter.get(self.commission_year).lifetime
     }
 
-    /// Get the activity limits for this asset in a particular time slice
+    /// Get the activity limits for this asset in a particular time slice and year.
     pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
         let limits = self.process.activity_limits.get(time_slice).unwrap();
         let max_act = self.maximum_activity();
@@ -70,7 +70,12 @@ impl Asset {
 
     /// Maximum activity for this asset in a year
     pub fn maximum_activity(&self) -> f64 {
-        self.capacity * self.process.parameter.capacity_to_activity
+        self.capacity
+            * self
+                .process
+                .parameter
+                .get(self.commission_year)
+                .capacity_to_activity
     }
 }
 

@@ -3,6 +3,7 @@
 use crate::commodity::Commodity;
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceID;
+use crate::year::AnnualField;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -25,7 +26,7 @@ pub struct Process {
     /// Commodity flows for this process
     pub flows: Vec<ProcessFlow>,
     /// Additional parameters for this process
-    pub parameter: ProcessParameter,
+    pub parameter: AnnualField<ProcessParameter>,
     /// The regions in which this process can operate
     pub regions: RegionSelection,
 }
@@ -93,8 +94,6 @@ pub enum FlowType {
 /// Additional parameters for a process
 #[derive(PartialEq, Clone, Debug, Deserialize)]
 pub struct ProcessParameter {
-    /// A unique identifier for the process
-    pub process_id: String,
     /// The years in which this process is available for investment
     pub years: RangeInclusive<u32>,
     /// Overnight capital cost per unit capacity

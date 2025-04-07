@@ -250,7 +250,7 @@ fn calculate_cost_coefficient(
 
     // Only applies if commodity is PAC
     if flow.is_pac {
-        coeff += asset.process.parameter.variable_operating_cost
+        coeff += asset.process.parameter.get(year).variable_operating_cost
     }
 
     // If there is a user-provided commodity cost for this combination of parameters, include it

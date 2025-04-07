@@ -2,6 +2,7 @@
 use super::super::*;
 use super::define_process_id_getter;
 use crate::process::ProcessParameter;
+use crate::year::{deserialize_year, AnnualField, Year};
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -23,6 +24,8 @@ struct ProcessParameterRaw {
     lifetime: u32,
     discount_rate: Option<f64>,
     capacity_to_activity: Option<f64>,
+    #[serde(deserialize_with = "deserialize_year")]
+    year: Year,
 }
 define_process_id_getter! {ProcessParameterRaw}
 
@@ -41,7 +44,6 @@ impl ProcessParameterRaw {
         self.validate()?;
 
         Ok(ProcessParameter {
-            process_id: self.process_id,
             years: start_year..=end_year,
             capital_cost: self.capital_cost,
             fixed_operating_cost: self.fixed_operating_cost,
@@ -110,7 +112,7 @@ pub fn read_process_parameters(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, ProcessParameter>> {
+) -> Result<HashMap<Rc<str>, AnnualField<ProcessParameter>>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
     read_process_parameters_from_iter(iter, process_ids, year_range)
@@ -121,18 +123,28 @@ fn read_process_parameters_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, ProcessParameter>>
+) -> Result<HashMap<Rc<str>, AnnualField<ProcessParameter>>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
-    let mut params = HashMap::new();
-    for param in iter {
-        let param = param.into_parameter(year_range)?;
-        let id = process_ids.get_id(&param.process_id)?;
-        ensure!(
-            params.insert(Rc::clone(&id), param).is_none(),
-            "More than one parameter provided for process {id}"
-        );
+    let mut params: HashMap<Rc<str>, AnnualField<ProcessParameter>> = HashMap::new();
+    for param_raw in iter {
+        let id = process_ids.get_id(&param_raw.process_id)?;
+        let year = param_raw.year;
+        let param = param_raw.into_parameter(year_range)?;
+
+        // Create AnnualField
+        let annual_field = match year {
+            Year::All => AnnualField::Constant(param),
+            Year::Single(year) => AnnualField::Variable([(year, param)].into_iter().collect()),
+        };
+
+        // Insert into the map
+        if let Some(existing) = params.get_mut(&id) {
+            existing.merge(&annual_field)?;
+        } else {
+            params.insert(Rc::clone(&id), annual_field);
+        }
     }
     Ok(params)
 }
@@ -158,6 +170,7 @@ mod tests {
             lifetime,
             discount_rate,
             capacity_to_activity,
+            year: Year::All,
         }
     }
 
@@ -167,7 +180,6 @@ mod tests {
         capacity_to_activity: f64,
     ) -> ProcessParameter {
         ProcessParameter {
-            process_id: "id".to_string(),
             years,
             capital_cost: 0.0,
             fixed_operating_cost: 0.0,
@@ -296,6 +308,7 @@ mod tests {
                 lifetime: 10,
                 discount_rate: Some(1.0),
                 capacity_to_activity: Some(1.0),
+                year: Year::All,
             },
             ProcessParameterRaw {
                 process_id: "B".into(),
@@ -307,14 +320,14 @@ mod tests {
                 lifetime: 10,
                 discount_rate: Some(1.0),
                 capacity_to_activity: Some(1.0),
+                year: Year::All,
             },
         ];
 
         let expected: HashMap<Rc<str>, _> = [
             (
                 "A".into(),
-                ProcessParameter {
-                    process_id: "A".into(),
+                AnnualField::Constant(ProcessParameter {
                     years: 2010..=2020,
                     capital_cost: 1.0,
                     fixed_operating_cost: 1.0,
@@ -322,12 +335,11 @@ mod tests {
                     lifetime: 10,
                     discount_rate: 1.0,
                     capacity_to_activity: 1.0,
-                },
+                }),
             ),
             (
                 "B".into(),
-                ProcessParameter {
-                    process_id: "B".into(),
+                AnnualField::Constant(ProcessParameter {
                     years: 2015..=2020,
                     capital_cost: 1.0,
                     fixed_operating_cost: 1.0,
@@ -335,7 +347,7 @@ mod tests {
                     lifetime: 10,
                     discount_rate: 1.0,
                     capacity_to_activity: 1.0,
-                },
+                }),
             ),
         ]
         .into_iter()
@@ -362,6 +374,7 @@ mod tests {
                 lifetime: 10,
                 discount_rate: Some(1.0),
                 capacity_to_activity: Some(1.0),
+                year: Year::All,
             },
             ProcessParameterRaw {
                 process_id: "B".into(),
@@ -373,6 +386,7 @@ mod tests {
                 lifetime: 10,
                 discount_rate: Some(1.0),
                 capacity_to_activity: Some(1.0),
+                year: Year::All,
             },
             ProcessParameterRaw {
                 process_id: "A".into(),
@@ -384,6 +398,7 @@ mod tests {
                 lifetime: 10,
                 discount_rate: Some(1.0),
                 capacity_to_activity: Some(1.0),
+                year: Year::All,
             },
         ];
 

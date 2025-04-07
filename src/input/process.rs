@@ -4,6 +4,7 @@ use crate::commodity::{Commodity, CommodityMap, CommodityType};
 use crate::process::{ActivityLimitsMap, Process, ProcessFlow, ProcessMap, ProcessParameter};
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
+use crate::year::AnnualField;
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -94,7 +95,7 @@ struct ValidationParams<'a> {
     region_ids: &'a HashSet<Rc<str>>,
     milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
-    parameters: &'a HashMap<Rc<str>, ProcessParameter>,
+    parameters: &'a HashMap<Rc<str>, AnnualField<ProcessParameter>>,
     availabilities: &'a HashMap<Rc<str>, ActivityLimitsMap>,
 }
 
@@ -105,7 +106,7 @@ fn validate_commodities(
     region_ids: &HashSet<Rc<str>>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
-    parameters: &HashMap<Rc<str>, ProcessParameter>,
+    parameters: &HashMap<Rc<str>, AnnualField<ProcessParameter>>,
     availabilities: &HashMap<Rc<str>, ActivityLimitsMap>,
 ) -> anyhow::Result<()> {
     let params = ValidationParams {
@@ -180,7 +181,6 @@ fn validate_svd_commodity(
                                 .parameters
                                 .get(&*flow.process_id)
                                 .unwrap()
-                                .years
                                 .contains(&year)
                             && params
                                 .availabilities
@@ -215,7 +215,7 @@ fn create_process_map<I>(
     descriptions: I,
     mut availabilities: HashMap<Rc<str>, ActivityLimitsMap>,
     mut flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
-    mut parameters: HashMap<Rc<str>, ProcessParameter>,
+    mut parameters: HashMap<Rc<str>, AnnualField<ProcessParameter>>,
     mut regions: HashMap<Rc<str>, RegionSelection>,
 ) -> Result<ProcessMap>
 where
@@ -265,7 +265,7 @@ mod tests {
         descriptions: Vec<ProcessDescription>,
         availabilities: HashMap<Rc<str>, ActivityLimitsMap>,
         flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
-        parameters: HashMap<Rc<str>, ProcessParameter>,
+        parameters: HashMap<Rc<str>, AnnualField<ProcessParameter>>,
         regions: HashMap<Rc<str>, RegionSelection>,
         region_ids: HashSet<Rc<str>>,
     }
@@ -307,7 +307,6 @@ mod tests {
             .into_iter()
             .map(|id| {
                 let parameter = ProcessParameter {
-                    process_id: id.to_string(),
                     years: 2010..=2020,
                     capital_cost: 0.0,
                     fixed_operating_cost: 0.0,
