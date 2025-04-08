@@ -4,9 +4,11 @@ use crate::commodity::{Commodity, CommodityMap, CommodityType};
 use crate::process::{ActivityLimitsMap, Process, ProcessFlow, ProcessMap, ProcessParameter};
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
-use anyhow::{bail, ensure, Context, Result};
+use crate::year::AnnualField;
+use anyhow::{bail, ensure, Context, Ok, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
+use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -32,12 +34,13 @@ macro_rules! define_process_id_getter {
 }
 use define_process_id_getter;
 
-#[derive(PartialEq, Debug, Deserialize)]
-struct ProcessDescription {
+#[derive(Debug, Deserialize, PartialEq, Clone)]
+struct ProcessRaw {
     id: Rc<str>,
     description: String,
+    start_year: Option<u32>,
+    end_year: Option<u32>,
 }
-define_id_getter! {ProcessDescription}
 
 /// Read process information from the specified CSV files.
 ///
@@ -59,15 +62,14 @@ pub fn read_processes(
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<ProcessMap> {
-    let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let descriptions = read_csv_id_file::<ProcessDescription>(&file_path)?;
-    let process_ids = HashSet::from_iter(descriptions.keys().cloned());
-
-    let availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
-    let flows = read_process_flows(model_dir, &process_ids, commodities)?;
     let year_range = milestone_years[0]..=milestone_years[milestone_years.len() - 1];
-    let parameters = read_process_parameters(model_dir, &process_ids, &year_range)?;
-    let regions = read_process_regions(model_dir, &process_ids, region_ids)?;
+    let mut processes = read_processes_file(model_dir, &year_range)?;
+    let process_ids = processes.keys().cloned().collect();
+
+    let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
+    let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
+    let mut parameters = read_process_parameters(model_dir, &process_ids)?;
+    let mut regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
     // Validate commodities after the flows have been read
     validate_commodities(
@@ -80,13 +82,80 @@ pub fn read_processes(
         &availabilities,
     )?;
 
-    create_process_map(
-        descriptions.into_values(),
-        availabilities,
-        flows,
-        parameters,
-        regions,
-    )
+    // Check parameters cover all years of the process
+    for (id, parameter) in parameters.iter() {
+        let year_range = processes.get(id).unwrap().years.clone();
+        let reference_years: HashSet<u32> = milestone_years
+            .iter()
+            .copied()
+            .filter(|year| year_range.contains(year))
+            .collect();
+        parameter.check_reference(&reference_years)?
+    }
+
+    // Add data to Process objects
+    for (id, process) in processes.iter_mut() {
+        process.activity_limits = availabilities.remove(id).unwrap();
+        process.flows = flows.remove(id).unwrap();
+        process.parameter = parameters.remove(id).unwrap();
+        process.regions = regions.remove(id).unwrap();
+    }
+
+    // Create ProcessMap
+    let mut process_map = ProcessMap::new();
+    for (id, process) in processes {
+        process_map.insert(id.clone(), process.into());
+    }
+
+    Ok(process_map)
+}
+
+fn read_processes_file(
+    model_dir: &Path,
+    year_range: &RangeInclusive<u32>,
+) -> Result<HashMap<Rc<str>, Process>> {
+    let file_path = model_dir.join(PROCESSES_FILE_NAME);
+    let processes_csv = read_csv(&file_path)?;
+    read_processes_file_from_iter(processes_csv, year_range)
+        .with_context(|| input_err_msg(&file_path))
+}
+
+fn read_processes_file_from_iter<I>(
+    iter: I,
+    year_range: &RangeInclusive<u32>,
+) -> Result<HashMap<Rc<str>, Process>>
+where
+    I: Iterator<Item = ProcessRaw>,
+{
+    let mut processes = HashMap::new();
+    for process_raw in iter {
+        let start_year = process_raw.start_year.unwrap_or(*year_range.start());
+        let end_year = process_raw.end_year.unwrap_or(*year_range.end());
+
+        // Check year range is valid
+        ensure!(
+            start_year <= end_year,
+            "Error in parameter for process {}: start_year > end_year",
+            process_raw.id
+        );
+
+        let process = Process {
+            id: process_raw.id.clone(),
+            description: process_raw.description,
+            years: start_year..=end_year,
+            activity_limits: ActivityLimitsMap::new(),
+            flows: Vec::new(),
+            parameter: AnnualField::Empty,
+            regions: RegionSelection::default(),
+        };
+
+        ensure!(
+            processes.insert(process_raw.id, process).is_none(),
+            "Duplicate process ID"
+        );
+    }
+
+    Ok(processes)
 }
 
 struct ValidationParams<'a> {
@@ -94,7 +163,7 @@ struct ValidationParams<'a> {
     region_ids: &'a HashSet<Rc<str>>,
     milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
-    parameters: &'a HashMap<Rc<str>, ProcessParameter>,
+    parameters: &'a HashMap<Rc<str>, AnnualField<ProcessParameter>>,
     availabilities: &'a HashMap<Rc<str>, ActivityLimitsMap>,
 }
 
@@ -105,7 +174,7 @@ fn validate_commodities(
     region_ids: &HashSet<Rc<str>>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
-    parameters: &HashMap<Rc<str>, ProcessParameter>,
+    parameters: &HashMap<Rc<str>, AnnualField<ProcessParameter>>,
     availabilities: &HashMap<Rc<str>, ActivityLimitsMap>,
 ) -> anyhow::Result<()> {
     let params = ValidationParams {
@@ -180,7 +249,6 @@ fn validate_svd_commodity(
                                 .parameters
                                 .get(&*flow.process_id)
                                 .unwrap()
-                                .years
                                 .contains(&year)
                             && params
                                 .availabilities
@@ -211,46 +279,6 @@ fn validate_svd_commodity(
     Ok(())
 }
 
-fn create_process_map<I>(
-    descriptions: I,
-    mut availabilities: HashMap<Rc<str>, ActivityLimitsMap>,
-    mut flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
-    mut parameters: HashMap<Rc<str>, ProcessParameter>,
-    mut regions: HashMap<Rc<str>, RegionSelection>,
-) -> Result<ProcessMap>
-where
-    I: Iterator<Item = ProcessDescription>,
-{
-    descriptions
-        .map(|description| {
-            let id = &description.id;
-            let availabilities = availabilities
-                .remove(id)
-                .with_context(|| format!("No availabilities defined for process {id}"))?;
-            let flows = flows
-                .remove(id)
-                .with_context(|| format!("No commodity flows defined for process {id}"))?;
-            let parameter = parameters
-                .remove(id)
-                .with_context(|| format!("No parameters defined for process {id}"))?;
-
-            // We've already checked that regions are defined for each process
-            let regions = regions.remove(id).unwrap();
-
-            let process = Process {
-                id: Rc::clone(id),
-                description: description.description,
-                activity_limits: availabilities,
-                flows,
-                parameter,
-                regions,
-            };
-
-            Ok((description.id, process.into()))
-        })
-        .try_collect()
-}
-
 #[cfg(test)]
 mod tests {
     use crate::commodity::{CommodityCostMap, DemandMap};
@@ -262,27 +290,13 @@ mod tests {
     use super::*;
 
     struct ProcessData {
-        descriptions: Vec<ProcessDescription>,
         availabilities: HashMap<Rc<str>, ActivityLimitsMap>,
-        flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
-        parameters: HashMap<Rc<str>, ProcessParameter>,
-        regions: HashMap<Rc<str>, RegionSelection>,
+        parameters: HashMap<Rc<str>, AnnualField<ProcessParameter>>,
         region_ids: HashSet<Rc<str>>,
     }
 
     /// Returns example data (without errors) for processes
     fn get_process_data() -> ProcessData {
-        let descriptions = vec![
-            ProcessDescription {
-                id: Rc::from("process1"),
-                description: "Process 1".to_string(),
-            },
-            ProcessDescription {
-                id: Rc::from("process2"),
-                description: "Process 2".to_string(),
-            },
-        ];
-
         let availabilities = ["process1", "process2"]
             .into_iter()
             .map(|id| {
@@ -298,93 +312,28 @@ mod tests {
             })
             .collect();
 
-        let flows = ["process1", "process2"]
-            .into_iter()
-            .map(|id| (id.into(), vec![]))
-            .collect();
-
         let parameters = ["process1", "process2"]
             .into_iter()
             .map(|id| {
-                let parameter = ProcessParameter {
-                    process_id: id.to_string(),
-                    years: 2010..=2020,
+                let parameter = AnnualField::Constant(ProcessParameter {
                     capital_cost: 0.0,
                     fixed_operating_cost: 0.0,
                     variable_operating_cost: 0.0,
                     lifetime: 1,
                     discount_rate: 1.0,
                     capacity_to_activity: 0.0,
-                };
-
+                });
                 (id.into(), parameter)
             })
-            .collect();
-
-        let regions = ["process1", "process2"]
-            .into_iter()
-            .map(|id| (id.into(), RegionSelection::All))
             .collect();
 
         let region_ids = HashSet::from_iter(iter::once("GBR".into()));
 
         ProcessData {
-            descriptions,
             availabilities,
-            flows,
             parameters,
-            regions,
             region_ids,
         }
-    }
-
-    #[test]
-    fn test_create_process_map_success() {
-        let data = get_process_data();
-        let result = create_process_map(
-            data.descriptions.into_iter(),
-            data.availabilities,
-            data.flows,
-            data.parameters,
-            data.regions,
-        )
-        .unwrap();
-
-        assert_eq!(result.len(), 2);
-        assert!(result.contains_key("process1"));
-        assert!(result.contains_key("process2"));
-    }
-
-    /// Generate code for a test with data missing for a given field
-    macro_rules! test_missing {
-        ($field:ident) => {
-            let mut data = get_process_data();
-            data.$field.remove("process1");
-
-            let result = create_process_map(
-                data.descriptions.into_iter(),
-                data.availabilities,
-                data.flows,
-                data.parameters,
-                data.regions,
-            );
-            assert!(result.is_err());
-        };
-    }
-
-    #[test]
-    fn test_create_process_map_missing_availabilities() {
-        test_missing!(availabilities);
-    }
-
-    #[test]
-    fn test_create_process_map_missing_flows() {
-        test_missing!(flows);
-    }
-
-    #[test]
-    fn test_create_process_map_missing_parameters() {
-        test_missing!(parameters);
     }
 
     #[test]

@@ -13,3 +13,4 @@ pub mod region;
 pub mod settings;
 pub mod simulation;
 pub mod time_slice;
+pub mod year;
