@@ -113,13 +113,18 @@ where
     let mut params: HashMap<Rc<str>, AnnualField<ProcessParameter>> = HashMap::new();
     for param_raw in iter {
         let id = process_ids.get_id(&param_raw.process_id)?;
-        let year = param_raw.year;
+        let year = param_raw.year.clone();
         let param = param_raw.into_parameter()?;
 
         // Create AnnualField
         let annual_field = match year {
             Year::All => AnnualField::Constant(param),
-            Year::Single(year) => AnnualField::Variable([(year, param)].into_iter().collect()),
+            Year::Single(year) => {
+                AnnualField::Variable([(year, param.clone())].into_iter().collect())
+            }
+            Year::Some(years) => {
+                AnnualField::Variable(years.iter().map(|y| (*y, param.clone())).collect())
+            }
         };
 
         // Insert into the map
