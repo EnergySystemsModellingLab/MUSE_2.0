@@ -250,7 +250,11 @@ fn calculate_cost_coefficient(
 
     // Only applies if commodity is PAC
     if flow.is_pac {
-        coeff += asset.process.parameter.get(year).variable_operating_cost
+        coeff += asset
+            .process
+            .parameter
+            .get(asset.commission_year)
+            .variable_operating_cost
     }
 
     // If there is a user-provided commodity cost for this combination of parameters, include it
@@ -282,6 +286,7 @@ mod tests {
     use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessParameter};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
+    use crate::year::AnnualField;
     use float_cmp::assert_approx_eq;
     use std::rc::Rc;
 
@@ -291,8 +296,6 @@ mod tests {
         costs: CommodityCostMap,
     ) -> (Asset, ProcessFlow) {
         let process_param = ProcessParameter {
-            process_id: "process1".into(),
-            years: 2010..=2020,
             capital_cost: 5.0,
             fixed_operating_cost: 2.0,
             variable_operating_cost: 1.0,
@@ -319,9 +322,10 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
+            years: 2010..=2020,
             activity_limits: ActivityLimitsMap::new(),
             flows: vec![flow.clone()],
-            parameter: process_param.clone(),
+            parameter: AnnualField::Constant(process_param),
             regions: RegionSelection::All,
         });
         let asset = Asset::new(
