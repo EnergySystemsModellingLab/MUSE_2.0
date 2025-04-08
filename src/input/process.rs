@@ -290,27 +290,13 @@ mod tests {
     use super::*;
 
     struct ProcessData {
-        descriptions: Vec<ProcessDescription>,
         availabilities: HashMap<Rc<str>, ActivityLimitsMap>,
-        flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
         parameters: HashMap<Rc<str>, AnnualField<ProcessParameter>>,
-        regions: HashMap<Rc<str>, RegionSelection>,
         region_ids: HashSet<Rc<str>>,
     }
 
     /// Returns example data (without errors) for processes
     fn get_process_data() -> ProcessData {
-        let descriptions = vec![
-            ProcessDescription {
-                id: Rc::from("process1"),
-                description: "Process 1".to_string(),
-            },
-            ProcessDescription {
-                id: Rc::from("process2"),
-                description: "Process 2".to_string(),
-            },
-        ];
-
         let availabilities = ["process1", "process2"]
             .into_iter()
             .map(|id| {
@@ -326,91 +312,28 @@ mod tests {
             })
             .collect();
 
-        let flows = ["process1", "process2"]
-            .into_iter()
-            .map(|id| (id.into(), vec![]))
-            .collect();
-
         let parameters = ["process1", "process2"]
             .into_iter()
             .map(|id| {
-                let parameter = ProcessParameter {
+                let parameter = AnnualField::Constant(ProcessParameter {
                     capital_cost: 0.0,
                     fixed_operating_cost: 0.0,
                     variable_operating_cost: 0.0,
                     lifetime: 1,
                     discount_rate: 1.0,
                     capacity_to_activity: 0.0,
-                };
-
+                });
                 (id.into(), parameter)
             })
-            .collect();
-
-        let regions = ["process1", "process2"]
-            .into_iter()
-            .map(|id| (id.into(), RegionSelection::All))
             .collect();
 
         let region_ids = HashSet::from_iter(iter::once("GBR".into()));
 
         ProcessData {
-            descriptions,
             availabilities,
-            flows,
             parameters,
-            regions,
             region_ids,
         }
-    }
-
-    #[test]
-    fn test_create_process_map_success() {
-        let data = get_process_data();
-        let result = create_process_map(
-            data.descriptions.into_iter(),
-            data.availabilities,
-            data.flows,
-            data.parameters,
-            data.regions,
-        )
-        .unwrap();
-
-        assert_eq!(result.len(), 2);
-        assert!(result.contains_key("process1"));
-        assert!(result.contains_key("process2"));
-    }
-
-    /// Generate code for a test with data missing for a given field
-    macro_rules! test_missing {
-        ($field:ident) => {
-            let mut data = get_process_data();
-            data.$field.remove("process1");
-
-            let result = create_process_map(
-                data.descriptions.into_iter(),
-                data.availabilities,
-                data.flows,
-                data.parameters,
-                data.regions,
-            );
-            assert!(result.is_err());
-        };
-    }
-
-    #[test]
-    fn test_create_process_map_missing_availabilities() {
-        test_missing!(availabilities);
-    }
-
-    #[test]
-    fn test_create_process_map_missing_flows() {
-        test_missing!(flows);
-    }
-
-    #[test]
-    fn test_create_process_map_missing_parameters() {
-        test_missing!(parameters);
     }
 
     #[test]
