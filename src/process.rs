@@ -21,6 +21,8 @@ pub struct Process {
     pub id: Rc<str>,
     /// A human-readable description for the process (e.g. dry gas extraction)
     pub description: String,
+    /// The years in which this process is available for investment
+    pub years: RangeInclusive<u32>,
     /// The activity limits for each time slice (as a fraction of maximum)
     pub activity_limits: ActivityLimitsMap,
     /// Commodity flows for this process
@@ -94,8 +96,6 @@ pub enum FlowType {
 /// Additional parameters for a process
 #[derive(PartialEq, Clone, Debug, Deserialize)]
 pub struct ProcessParameter {
-    /// The years in which this process is available for investment
-    pub years: RangeInclusive<u32>,
     /// Overnight capital cost per unit capacity
     pub capital_cost: f64,
     /// Annual operating cost per unit capacity

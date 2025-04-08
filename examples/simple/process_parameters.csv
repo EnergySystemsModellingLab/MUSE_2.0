@@ -1,7 +1,7 @@
-process_id,start_year,end_year,capital_cost,fixed_operating_cost,variable_operating_cost,lifetime,discount_rate,capacity_to_activity,year
-GASDRV,2020,2030,10.0,0.3,2.0,25,0.1,1.0,all
-GASPRC,2020,2030,7.0,0.21,0.5,25,0.1,1.0,all
-WNDFRM,2020,2030,1000.0,30.0,0.4,25,0.1,31.54,all
-GASCGT,2020,2030,700.0,21.0,0.55,30,0.1,31.54,all
-RGASBR,2020,2030,55.56,1.6668,0.16,15,0.1,1.0,all
-RELCHP,2020,2030,138.9,4.167,0.17,15,0.1,1.0,all
+process_id,capital_cost,fixed_operating_cost,variable_operating_cost,lifetime,discount_rate,capacity_to_activity,year
+GASDRV,10.0,0.3,2.0,25,0.1,1.0,all
+GASPRC,7.0,0.21,0.5,25,0.1,1.0,all
+WNDFRM,1000.0,30.0,0.4,25,0.1,31.54,all
+GASCGT,700.0,21.0,0.55,30,0.1,31.54,all
+RGASBR,55.56,1.6668,0.16,15,0.1,1.0,all
+RELCHP,138.9,4.167,0.17,15,0.1,1.0,all

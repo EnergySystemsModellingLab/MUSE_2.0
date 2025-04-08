@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub enum AnnualField<T> {
+    Empty,
     Constant(T),
     Variable(HashMap<u32, T>),
 }
@@ -13,6 +14,7 @@ pub enum AnnualField<T> {
 impl<T: Clone> AnnualField<T> {
     pub fn get(&self, year: u32) -> &T {
         match self {
+            AnnualField::Empty => panic!("AnnualField is empty."),
             AnnualField::Constant(value) => value,
             AnnualField::Variable(values) => values.get(&year).unwrap(),
         }
@@ -29,6 +31,10 @@ impl<T: Clone> AnnualField<T> {
                 }
                 values.insert(year, value);
                 Ok(())
+            }
+            AnnualField::Empty => {
+                *self = AnnualField::Variable(HashMap::new());
+                self.insert(year, value)
             }
         }
     }
@@ -53,6 +59,7 @@ impl<T: Clone> AnnualField<T> {
 
     pub fn contains(&self, year: &u32) -> bool {
         match self {
+            AnnualField::Empty => false,
             AnnualField::Constant(_) => true,
             AnnualField::Variable(values) => values.contains_key(year),
         }
@@ -60,6 +67,9 @@ impl<T: Clone> AnnualField<T> {
 
     pub fn check_reference(&self, reference_years: &HashSet<u32>) -> Result<()> {
         match self {
+            AnnualField::Empty => {
+                bail!("AnnualField is empty. Cannot check reference years.");
+            }
             AnnualField::Constant(_) => Ok(()),
             AnnualField::Variable(_) => {
                 for year in reference_years.iter() {

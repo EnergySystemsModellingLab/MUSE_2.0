@@ -59,7 +59,7 @@ impl Asset {
         self.commission_year + self.process.parameter.get(self.commission_year).lifetime
     }
 
-    /// Get the activity limits for this asset in a particular time slice and year.
+    /// Get the activity limits for this asset in a particular time slice.
     pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
         let limits = self.process.activity_limits.get(time_slice).unwrap();
         let max_act = self.maximum_activity();
