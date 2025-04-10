@@ -3,7 +3,6 @@
 use crate::commodity::Commodity;
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceID;
-use crate::year::AnnualField;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -28,7 +27,7 @@ pub struct Process {
     /// Commodity flows for this process
     pub flows: Vec<ProcessFlow>,
     /// Additional parameters for this process
-    pub parameter: AnnualField<ProcessParameter>,
+    pub parameter: ProcessParameterMap,
     /// The regions in which this process can operate
     pub regions: RegionSelection,
 }
@@ -56,6 +55,9 @@ impl Process {
 /// The limits are given as ranges, depending on the user-specified limit type and value for
 /// availability.
 pub type ActivityLimitsMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
+
+/// A map of [`ProcessParameter`]s, keyed by year
+pub type ProcessParameterMap = HashMap<u32, ProcessParameter>;
 
 /// Represents a commodity flow for a given process
 #[derive(PartialEq, Debug, Deserialize, Clone)]

@@ -1,8 +1,8 @@
 //! Code for reading process parameters CSV file
 use super::super::*;
 use super::define_process_id_getter;
-use crate::process::ProcessParameter;
-use crate::year::{deserialize_year, AnnualField, Year};
+use crate::process::{Process, ProcessParameter, ProcessParameterMap};
+use crate::year::{deserialize_year, Year};
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -97,41 +97,52 @@ impl ProcessParameterRaw {
 pub fn read_process_parameters(
     model_dir: &Path,
     process_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, AnnualField<ProcessParameter>>> {
+    processes: &HashMap<Rc<str>, Process>,
+    milestone_years: &[u32],
+) -> Result<HashMap<Rc<str>, ProcessParameterMap>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
-    read_process_parameters_from_iter(iter, process_ids).with_context(|| input_err_msg(&file_path))
+    read_process_parameters_from_iter(iter, process_ids, processes, milestone_years)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
     process_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, AnnualField<ProcessParameter>>>
+    processes: &HashMap<Rc<str>, Process>,
+    milestone_years: &[u32],
+) -> Result<HashMap<Rc<str>, ProcessParameterMap>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
-    let mut params: HashMap<Rc<str>, AnnualField<ProcessParameter>> = HashMap::new();
+    let mut params: HashMap<Rc<str>, ProcessParameterMap> = HashMap::new();
     for param_raw in iter {
         let id = process_ids.get_id(&param_raw.process_id)?;
         let year = param_raw.year.clone();
         let param = param_raw.into_parameter()?;
 
-        // Create AnnualField
-        let annual_field = match year {
-            Year::All => AnnualField::Constant(param),
+        let entry = params.entry(id.clone()).or_default();
+        let process = processes
+            .get(&id)
+            .ok_or_else(|| anyhow::anyhow!("Process {} not found", id))?;
+        let year_range = process.years.clone();
+
+        match year {
             Year::Single(year) => {
-                AnnualField::Variable([(year, param.clone())].into_iter().collect())
+                entry.insert(year, param.clone());
             }
             Year::Some(years) => {
-                AnnualField::Variable(years.iter().map(|y| (*y, param.clone())).collect())
+                for year in years {
+                    entry.insert(year, param.clone());
+                }
             }
-        };
-
-        // Insert into the map
-        if let Some(existing) = params.get_mut(&id) {
-            existing.merge(&annual_field)?;
-        } else {
-            params.insert(Rc::clone(&id), annual_field);
+            Year::All => {
+                for year in milestone_years.iter() {
+                    if year_range.contains(year) {
+                        entry.insert(*year, param.clone());
+                    }
+                }
+            }
         }
     }
     Ok(params)

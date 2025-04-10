@@ -56,7 +56,13 @@ impl Asset {
 
     /// The last year in which this asset should be decommissioned
     pub fn decommission_year(&self) -> u32 {
-        self.commission_year + self.process.parameter.get(self.commission_year).lifetime
+        self.commission_year
+            + self
+                .process
+                .parameter
+                .get(&self.commission_year)
+                .unwrap()
+                .lifetime
     }
 
     /// Get the activity limits for this asset in a particular time slice
@@ -74,7 +80,8 @@ impl Asset {
             * self
                 .process
                 .parameter
-                .get(self.commission_year)
+                .get(&self.commission_year)
+                .unwrap()
                 .capacity_to_activity
     }
 }
@@ -189,10 +196,11 @@ impl AssetPool {
 mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter};
+    use crate::process::{
+        ActivityLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter, ProcessParameterMap,
+    };
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
-    use crate::year::AnnualField;
     use itertools::{assert_equal, Itertools};
     use std::iter;
 
@@ -201,14 +209,6 @@ mod tests {
         let time_slice = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
-        };
-        let process_param = ProcessParameter {
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
-            lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 3.0,
         };
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
@@ -234,7 +234,7 @@ mod tests {
             years: 2010..=2020,
             activity_limits,
             flows: vec![flow.clone()],
-            parameter: AnnualField::Constant(process_param),
+            parameter: ProcessParameterMap::new(),
             regions: RegionSelection::All,
         });
         let asset = Asset {
@@ -264,7 +264,7 @@ mod tests {
             years: 2010..=2020,
             activity_limits: ActivityLimitsMap::new(),
             flows: vec![],
-            parameter: AnnualField::Constant(process_param),
+            parameter: ProcessParameterMap::new(),
             regions: RegionSelection::All,
         });
         let future = [2020, 2010]

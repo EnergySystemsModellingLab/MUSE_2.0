@@ -1,10 +1,9 @@
 //! Code for reading process-related information from CSV files.
 use super::*;
 use crate::commodity::{Commodity, CommodityMap, CommodityType};
-use crate::process::{ActivityLimitsMap, Process, ProcessFlow, ProcessMap, ProcessParameter};
+use crate::process::{ActivityLimitsMap, Process, ProcessFlow, ProcessMap, ProcessParameterMap};
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
-use crate::year::AnnualField;
 use anyhow::{bail, ensure, Context, Ok, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -68,7 +67,8 @@ pub fn read_processes(
 
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
-    let mut parameters = read_process_parameters(model_dir, &process_ids)?;
+    let mut parameters =
+        read_process_parameters(model_dir, &process_ids, &processes, milestone_years)?;
     let mut regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
     // Validate commodities after the flows have been read
@@ -90,7 +90,12 @@ pub fn read_processes(
             .copied()
             .filter(|year| year_range.contains(year))
             .collect();
-        parameter.check_reference(&reference_years)?
+        let parameter_years: HashSet<u32> = parameter.keys().copied().collect();
+        ensure!(
+            parameter_years == reference_years,
+            "Error in parameter for process {}: years do not match the process years",
+            id
+        );
     }
 
     // Add data to Process objects
@@ -145,7 +150,7 @@ where
             years: start_year..=end_year,
             activity_limits: ActivityLimitsMap::new(),
             flows: Vec::new(),
-            parameter: AnnualField::Empty,
+            parameter: ProcessParameterMap::new(),
             regions: RegionSelection::default(),
         };
 
@@ -163,7 +168,7 @@ struct ValidationParams<'a> {
     region_ids: &'a HashSet<Rc<str>>,
     milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
-    parameters: &'a HashMap<Rc<str>, AnnualField<ProcessParameter>>,
+    parameters: &'a HashMap<Rc<str>, ProcessParameterMap>,
     availabilities: &'a HashMap<Rc<str>, ActivityLimitsMap>,
 }
 
@@ -174,7 +179,7 @@ fn validate_commodities(
     region_ids: &HashSet<Rc<str>>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
-    parameters: &HashMap<Rc<str>, AnnualField<ProcessParameter>>,
+    parameters: &HashMap<Rc<str>, ProcessParameterMap>,
     availabilities: &HashMap<Rc<str>, ActivityLimitsMap>,
 ) -> anyhow::Result<()> {
     let params = ValidationParams {
@@ -249,6 +254,7 @@ fn validate_svd_commodity(
                                 .parameters
                                 .get(&*flow.process_id)
                                 .unwrap()
+                                .keys()
                                 .contains(&year)
                             && params
                                 .availabilities
@@ -291,7 +297,7 @@ mod tests {
 
     struct ProcessData {
         availabilities: HashMap<Rc<str>, ActivityLimitsMap>,
-        parameters: HashMap<Rc<str>, AnnualField<ProcessParameter>>,
+        parameters: HashMap<Rc<str>, ProcessParameterMap>,
         region_ids: HashSet<Rc<str>>,
     }
 
