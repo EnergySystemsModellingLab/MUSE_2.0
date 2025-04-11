@@ -196,9 +196,7 @@ impl AssetPool {
 mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{
-        ActivityLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter, ProcessParameterMap,
-    };
+    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessFlow, ProcessParameterMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
@@ -250,14 +248,6 @@ mod tests {
     }
 
     fn create_asset_pool() -> AssetPool {
-        let process_param = ProcessParameter {
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
-            lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 1.0,
-        };
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
