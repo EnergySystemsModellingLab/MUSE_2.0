@@ -48,8 +48,6 @@ pub enum SearchSpace {
 /// Search space for an agent
 #[derive(Debug, Clone, PartialEq)]
 pub struct AgentSearchSpace {
-    /// Unique agent id identifying the agent this search space belongs to
-    pub agent_id: String,
     /// The year the objective is relevant for
     pub year: u32,
     /// The commodity to apply the search space to

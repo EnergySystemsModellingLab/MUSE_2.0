@@ -57,7 +57,6 @@ impl AgentSearchSpaceRaw {
 
         // Create AgentSearchSpace
         Ok(AgentSearchSpace {
-            agent_id: self.agent_id.clone(),
             year: self.year,
             commodity: Rc::clone(commodity),
             search_space,
@@ -98,12 +97,12 @@ where
     I: Iterator<Item = AgentSearchSpaceRaw>,
 {
     let mut search_spaces = HashMap::new();
-    for search_space in iter {
+    for search_space_raw in iter {
         let search_space =
-            search_space.to_agent_search_space(process_ids, commodities, milestone_years)?;
+            search_space_raw.to_agent_search_space(process_ids, commodities, milestone_years)?;
 
         let (id, _agent) = agents
-            .get_key_value(search_space.agent_id.as_str())
+            .get_key_value(search_space_raw.agent_id.as_str())
             .context("Invalid agent ID")?;
 
         // Append to Vec with the corresponding key or create
