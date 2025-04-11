@@ -40,7 +40,6 @@ impl ProcessParameterRaw {
         self.validate()?;
 
         Ok(ProcessParameter {
-            process_id: self.process_id,
             years: start_year..=end_year,
             capital_cost: self.capital_cost,
             fixed_operating_cost: self.fixed_operating_cost,
@@ -125,9 +124,9 @@ where
     I: Iterator<Item = ProcessParameterRaw>,
 {
     let mut params = HashMap::new();
-    for param in iter {
-        let param = param.into_parameter(year_range)?;
-        let id = process_ids.get_id(&param.process_id)?;
+    for param_raw in iter {
+        let id = process_ids.get_id(&param_raw.process_id)?;
+        let param = param_raw.into_parameter(year_range)?;
         ensure!(
             params.insert(Rc::clone(&id), param).is_none(),
             "More than one parameter provided for process {id}"
@@ -166,7 +165,6 @@ mod tests {
         capacity_to_activity: f64,
     ) -> ProcessParameter {
         ProcessParameter {
-            process_id: "id".to_string(),
             years,
             capital_cost: 0.0,
             fixed_operating_cost: 0.0,
@@ -313,7 +311,6 @@ mod tests {
             (
                 "A".into(),
                 ProcessParameter {
-                    process_id: "A".into(),
                     years: 2010..=2020,
                     capital_cost: 1.0,
                     fixed_operating_cost: 1.0,
@@ -326,7 +323,6 @@ mod tests {
             (
                 "B".into(),
                 ProcessParameter {
-                    process_id: "B".into(),
                     years: 2015..=2020,
                     capital_cost: 1.0,
                     fixed_operating_cost: 1.0,
