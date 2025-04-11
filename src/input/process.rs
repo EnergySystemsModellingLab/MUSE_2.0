@@ -297,7 +297,6 @@ mod tests {
             .into_iter()
             .map(|id| {
                 let parameter = ProcessParameter {
-                    process_id: id.to_string(),
                     years: 2010..=2020,
                     capital_cost: 0.0,
                     fixed_operating_cost: 0.0,
