@@ -1,10 +1,9 @@
 //! Code for reading process flows file
 use super::super::*;
 use crate::commodity::CommodityMap;
-use crate::id::IntoIDMap;
+use crate::id::IDCollection;
 use crate::process::{FlowType, ProcessFlow};
 use anyhow::{ensure, Context, Result};
-use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -44,44 +43,51 @@ fn read_process_flows_from_iter<I>(
 where
     I: Iterator<Item = ProcessFlowRaw>,
 {
-    let flows = iter
-        .map(|flow| -> Result<ProcessFlow> {
-            let commodity = commodities
-                .get(flow.commodity_id.as_str())
-                .with_context(|| format!("{} is not a valid commodity ID", &flow.commodity_id))?;
+    let mut flows = HashMap::new();
+    for flow in iter {
+        let commodity = commodities
+            .get(flow.commodity_id.as_str())
+            .with_context(|| format!("{} is not a valid commodity ID", &flow.commodity_id))?;
 
-            ensure!(flow.flow != 0.0, "Flow cannot be zero");
+        ensure!(flow.flow != 0.0, "Flow cannot be zero");
 
-            // Check that flow is not infinity, nan, etc.
+        // Check that flow is not infinity, nan, etc.
+        ensure!(
+            flow.flow.is_normal(),
+            "Invalid value for flow ({})",
+            flow.flow
+        );
+
+        // **TODO**: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/300
+        ensure!(
+            flow.flow_type == FlowType::Fixed,
+            "Commodity flexible assets are not currently supported"
+        );
+
+        if let Some(flow_cost) = flow.flow_cost {
             ensure!(
-                flow.flow.is_normal(),
-                "Invalid value for flow ({})",
-                flow.flow
-            );
+                (0.0..f64::INFINITY).contains(&flow_cost),
+                "Invalid value for flow cost ({flow_cost}). Must be >=0."
+            )
+        }
 
-            // **TODO**: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/300
-            ensure!(
-                flow.flow_type == FlowType::Fixed,
-                "Commodity flexible assets are not currently supported"
-            );
+        // Create ProcessFlow object
+        let process_id = process_ids.get_id(&flow.process_id)?;
+        let process_flow = ProcessFlow {
+            process_id: flow.process_id,
+            commodity: Rc::clone(commodity),
+            flow: flow.flow,
+            flow_type: flow.flow_type,
+            flow_cost: flow.flow_cost.unwrap_or(0.0),
+            is_pac: flow.is_pac,
+        };
 
-            if let Some(flow_cost) = flow.flow_cost {
-                ensure!(
-                    (0.0..f64::INFINITY).contains(&flow_cost),
-                    "Invalid value for flow cost ({flow_cost}). Must be >=0."
-                )
-            }
-
-            Ok(ProcessFlow {
-                process_id: flow.process_id,
-                commodity: Rc::clone(commodity),
-                flow: flow.flow,
-                flow_type: flow.flow_type,
-                flow_cost: flow.flow_cost.unwrap_or(0.0),
-                is_pac: flow.is_pac,
-            })
-        })
-        .process_results(|iter| iter.into_id_map(process_ids))??;
+        // Insert into the map
+        flows
+            .entry(process_id)
+            .or_insert_with(Vec::new)
+            .push(process_flow);
+    }
 
     validate_flows(&flows)?;
     validate_pac_flows(&flows)?;

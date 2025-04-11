@@ -1,7 +1,6 @@
 //! Code for handing IDs
-use anyhow::{ensure, Context, Result};
-use itertools::Itertools;
-use std::collections::{HashMap, HashSet};
+use anyhow::{Context, Result};
+use std::collections::HashSet;
 use std::rc::Rc;
 
 /// Indicates that the struct has an ID field
@@ -60,35 +59,5 @@ impl IDCollection for HashSet<Rc<str>> {
             .get(id)
             .with_context(|| format!("Unknown ID {id} found"))?;
         Ok(Rc::clone(id))
-    }
-}
-
-/// Trait for converting an iterator into a [`HashMap`] grouped by IDs.
-pub trait IntoIDMap<T> {
-    /// Convert into a [`HashMap`] grouped by IDs.
-    fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>>;
-}
-
-impl<T, I> IntoIDMap<T> for I
-where
-    T: HasID,
-    I: Iterator<Item = T>,
-{
-    /// Convert the specified iterator into a `HashMap` of the items grouped by ID.
-    ///
-    /// # Arguments
-    ///
-    /// `ids` - The set of valid IDs to check against.
-    fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>> {
-        let map = self
-            .map(|item| -> Result<_> {
-                let id = ids.get_id(item.get_id())?;
-                Ok((id, item))
-            })
-            .process_results(|iter| iter.into_group_map())?;
-
-        ensure!(!map.is_empty(), "CSV file is empty");
-
-        Ok(map)
     }
 }
