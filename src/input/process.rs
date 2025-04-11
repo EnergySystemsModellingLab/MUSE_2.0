@@ -17,20 +17,10 @@ use flow::read_process_flows;
 mod parameter;
 use parameter::read_process_parameters;
 mod region;
+use crate::id::define_id_getter;
 use region::read_process_regions;
 
 const PROCESSES_FILE_NAME: &str = "processes.csv";
-
-macro_rules! define_process_id_getter {
-    ($t:ty) => {
-        impl HasID for $t {
-            fn get_id(&self) -> &str {
-                &self.process_id
-            }
-        }
-    };
-}
-use define_process_id_getter;
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessDescription {

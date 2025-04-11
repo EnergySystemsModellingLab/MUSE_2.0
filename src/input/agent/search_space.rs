@@ -2,6 +2,7 @@
 use super::super::*;
 use crate::agent::{AgentMap, AgentSearchSpace, SearchSpace};
 use crate::commodity::CommodityMap;
+use crate::id::IDCollection;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;

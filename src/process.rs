@@ -1,6 +1,7 @@
 //! Processes are used for converting between different commodities. The data structures in this
 //! module are used to represent these conversions along with the associated costs.
 use crate::commodity::Commodity;
+use crate::id::HasID;
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceID;
 use indexmap::IndexMap;
@@ -75,6 +76,12 @@ pub struct ProcessFlow {
     pub flow_cost: f64,
     /// Whether this flow represents a Primary Activity Commodity
     pub is_pac: bool,
+}
+
+impl HasID for ProcessFlow {
+    fn get_id(&self) -> &str {
+        &self.process_id
+    }
 }
 
 /// Type of commodity flow (see [`ProcessFlow`])

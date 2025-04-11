@@ -1,7 +1,6 @@
 //! Code for reading the process region CSV file
-use super::super::region::{define_region_id_getter, read_regions_for_entity};
-use super::super::*;
-use super::define_process_id_getter;
+use super::super::region::read_regions_for_entity;
+use crate::id::{define_region_id_getter, HasID};
 use crate::region::RegionSelection;
 use anyhow::Result;
 use serde::Deserialize;
@@ -16,8 +15,13 @@ struct ProcessRegion {
     process_id: String,
     region_id: String,
 }
-define_process_id_getter! {ProcessRegion}
 define_region_id_getter! {ProcessRegion}
+
+impl HasID for ProcessRegion {
+    fn get_id(&self) -> &str {
+        &self.process_id
+    }
+}
 
 /// Read the process regions file.
 ///

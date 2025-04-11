@@ -1,6 +1,7 @@
 //! Code for reading [Asset]s from a CSV file.
 use super::*;
 use crate::asset::Asset;
+use crate::id::IDCollection;
 use crate::process::ProcessMap;
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;

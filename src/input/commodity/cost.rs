@@ -1,6 +1,7 @@
 //! Code for reading in the commodity cost CSV file.
 use super::super::*;
 use crate::commodity::{BalanceType, CommodityCost, CommodityCostMap};
+use crate::id::IDCollection;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;

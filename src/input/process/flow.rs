@@ -1,7 +1,7 @@
 //! Code for reading process flows file
 use super::super::*;
-use super::define_process_id_getter;
 use crate::commodity::CommodityMap;
+use crate::id::IntoIDMap;
 use crate::process::{FlowType, ProcessFlow};
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
@@ -11,8 +11,6 @@ use std::path::Path;
 use std::rc::Rc;
 
 const PROCESS_FLOWS_FILE_NAME: &str = "process_flows.csv";
-
-define_process_id_getter! {ProcessFlow}
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessFlowRaw {
@@ -24,7 +22,6 @@ struct ProcessFlowRaw {
     flow_cost: Option<f64>,
     is_pac: bool,
 }
-define_process_id_getter! {ProcessFlowRaw}
 
 /// Read process flows from a CSV file
 pub fn read_process_flows(

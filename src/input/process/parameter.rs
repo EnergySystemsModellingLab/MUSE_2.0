@@ -1,6 +1,6 @@
 //! Code for reading process parameters CSV file
 use super::super::*;
-use super::define_process_id_getter;
+use crate::id::IDCollection;
 use crate::process::ProcessParameter;
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
@@ -24,7 +24,6 @@ struct ProcessParameterRaw {
     discount_rate: Option<f64>,
     capacity_to_activity: Option<f64>,
 }
-define_process_id_getter! {ProcessParameterRaw}
 
 impl ProcessParameterRaw {
     fn into_parameter(self, year_range: &RangeInclusive<u32>) -> Result<ProcessParameter> {
