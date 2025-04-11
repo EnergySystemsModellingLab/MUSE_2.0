@@ -249,25 +249,25 @@ mod tests {
         let expected: HashMap<Rc<str>, _> = [
             (
                 "A".into(),
-                AnnualField::Constant(ProcessParameter {
+                ProcessParameter {
                     capital_cost: 1.0,
                     fixed_operating_cost: 1.0,
                     variable_operating_cost: 1.0,
                     lifetime: 10,
                     discount_rate: 1.0,
                     capacity_to_activity: 1.0,
-                }),
+                },
             ),
             (
                 "B".into(),
-                AnnualField::Constant(ProcessParameter {
+                ProcessParameter {
                     capital_cost: 1.0,
                     fixed_operating_cost: 1.0,
                     variable_operating_cost: 1.0,
                     lifetime: 10,
                     discount_rate: 1.0,
                     capacity_to_activity: 1.0,
-                }),
+                },
             ),
         ]
         .into_iter()
@@ -314,6 +314,6 @@ mod tests {
             },
         ];
 
-        assert!(read_process_parameters_from_iter(params_raw.into_iter(), &process_ids,).is_err());
+        assert!(read_process_parameters_from_iter(params_raw.into_iter(), &process_ids).is_err());
     }
 }

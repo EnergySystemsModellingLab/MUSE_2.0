@@ -288,7 +288,7 @@ fn validate_svd_commodity(
 #[cfg(test)]
 mod tests {
     use crate::commodity::{CommodityCostMap, DemandMap};
-    use crate::process::FlowType;
+    use crate::process::{FlowType, ProcessParameter};
     use crate::time_slice::TimeSliceID;
     use crate::time_slice::TimeSliceLevel;
     use std::iter;
@@ -321,14 +321,14 @@ mod tests {
         let parameters = ["process1", "process2"]
             .into_iter()
             .map(|id| {
-                let parameter = AnnualField::Constant(ProcessParameter {
+                let parameter = ProcessParameter {
                     capital_cost: 0.0,
                     fixed_operating_cost: 0.0,
                     variable_operating_cost: 0.0,
                     lifetime: 1,
                     discount_rate: 1.0,
                     capacity_to_activity: 0.0,
-                });
+                };
                 (id.into(), parameter)
             })
             .collect();
