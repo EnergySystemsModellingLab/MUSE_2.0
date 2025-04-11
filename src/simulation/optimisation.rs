@@ -250,7 +250,12 @@ fn calculate_cost_coefficient(
 
     // Only applies if commodity is PAC
     if flow.is_pac {
-        coeff += asset.process.parameter.variable_operating_cost
+        coeff += asset
+            .process
+            .parameter
+            .get(&asset.commission_year)
+            .unwrap()
+            .variable_operating_cost
     }
 
     // If there is a user-provided commodity cost for this combination of parameters, include it
@@ -279,7 +284,7 @@ fn calculate_cost_coefficient(
 mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessParameter};
+    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessParameterMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
@@ -290,16 +295,6 @@ mod tests {
         is_pac: bool,
         costs: CommodityCostMap,
     ) -> (Asset, ProcessFlow) {
-        let process_param = ProcessParameter {
-            process_id: "process1".into(),
-            years: 2010..=2020,
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
-            lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 1.0,
-        };
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
             description: "Some description".into(),
@@ -319,9 +314,10 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
+            years: 2010..=2020,
             activity_limits: ActivityLimitsMap::new(),
             flows: vec![flow.clone()],
-            parameter: process_param.clone(),
+            parameter: ProcessParameterMap::new(),
             regions: RegionSelection::All,
         });
         let asset = Asset::new(

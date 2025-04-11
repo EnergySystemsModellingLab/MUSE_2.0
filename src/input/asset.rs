@@ -92,29 +92,20 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::{ActivityLimitsMap, Process, ProcessParameter};
+    use crate::process::{ActivityLimitsMap, Process, ProcessParameterMap};
     use crate::region::RegionSelection;
     use itertools::assert_equal;
     use std::iter;
 
     #[test]
     fn test_read_assets_from_iter() {
-        let process_param = ProcessParameter {
-            process_id: "process1".into(),
-            years: 2010..=2020,
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
-            lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 1.0,
-        };
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
+            years: 2010..=2020,
             activity_limits: ActivityLimitsMap::new(),
             flows: vec![],
-            parameter: process_param.clone(),
+            parameter: ProcessParameterMap::new(),
             regions: RegionSelection::All,
         });
         let processes = [(Rc::clone(&process.id), Rc::clone(&process))]
@@ -187,9 +178,10 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
+            years: 2010..=2020,
             activity_limits: ActivityLimitsMap::new(),
             flows: vec![],
-            parameter: process_param,
+            parameter: ProcessParameterMap::new(),
             regions: RegionSelection::Some(["GBR".into()].into_iter().collect()),
         });
         let asset_in = AssetRaw {

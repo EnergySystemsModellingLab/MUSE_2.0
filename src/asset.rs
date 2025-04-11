@@ -56,7 +56,13 @@ impl Asset {
 
     /// The last year in which this asset should be decommissioned
     pub fn decommission_year(&self) -> u32 {
-        self.commission_year + self.process.parameter.lifetime
+        self.commission_year
+            + self
+                .process
+                .parameter
+                .get(&self.commission_year)
+                .unwrap()
+                .lifetime
     }
 
     /// Get the activity limits for this asset in a particular time slice
@@ -70,7 +76,13 @@ impl Asset {
 
     /// Maximum activity for this asset in a year
     pub fn maximum_activity(&self) -> f64 {
-        self.capacity * self.process.parameter.capacity_to_activity
+        self.capacity
+            * self
+                .process
+                .parameter
+                .get(&self.commission_year)
+                .unwrap()
+                .capacity_to_activity
     }
 }
 
@@ -184,7 +196,7 @@ impl AssetPool {
 mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter};
+    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessFlow, ProcessParameterMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
@@ -195,16 +207,6 @@ mod tests {
         let time_slice = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
-        };
-        let process_param = ProcessParameter {
-            process_id: "process1".into(),
-            years: 2010..=2020,
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
-            lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 3.0,
         };
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
@@ -227,9 +229,10 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
+            years: 2010..=2020,
             activity_limits,
             flows: vec![flow.clone()],
-            parameter: process_param.clone(),
+            parameter: ProcessParameterMap::new(),
             regions: RegionSelection::All,
         });
         let asset = Asset {
@@ -245,22 +248,13 @@ mod tests {
     }
 
     fn create_asset_pool() -> AssetPool {
-        let process_param = ProcessParameter {
-            process_id: "process1".into(),
-            years: 2010..=2020,
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
-            lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 1.0,
-        };
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
+            years: 2010..=2020,
             activity_limits: ActivityLimitsMap::new(),
             flows: vec![],
-            parameter: process_param.clone(),
+            parameter: ProcessParameterMap::new(),
             regions: RegionSelection::All,
         });
         let future = [2020, 2010]
