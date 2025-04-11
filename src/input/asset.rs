@@ -1,6 +1,7 @@
 //! Code for reading [Asset]s from a CSV file.
 use super::*;
 use crate::asset::Asset;
+use crate::id::IDCollection;
 use crate::process::ProcessMap;
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
@@ -100,7 +101,6 @@ mod tests {
     #[test]
     fn test_read_assets_from_iter() {
         let process_param = ProcessParameter {
-            process_id: "process1".into(),
             years: 2010..=2020,
             capital_cost: 5.0,
             fixed_operating_cost: 2.0,

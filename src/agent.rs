@@ -1,6 +1,7 @@
 //! Agents drive the economy of the MUSE 2.0 simulation, through relative investment in different
 //! assets.
 use crate::commodity::Commodity;
+use crate::id::define_id_getter;
 use crate::region::RegionSelection;
 use indexmap::IndexMap;
 use serde::Deserialize;
@@ -33,6 +34,7 @@ pub struct Agent {
     /// The agent's objectives.
     pub objectives: Vec<AgentObjective>,
 }
+define_id_getter! {Agent}
 
 /// Which processes apply to this agent
 #[derive(Debug, Clone, PartialEq)]
@@ -46,8 +48,6 @@ pub enum SearchSpace {
 /// Search space for an agent
 #[derive(Debug, Clone, PartialEq)]
 pub struct AgentSearchSpace {
-    /// Unique agent id identifying the agent this search space belongs to
-    pub agent_id: String,
     /// The year the objective is relevant for
     pub year: u32,
     /// The commodity to apply the search space to

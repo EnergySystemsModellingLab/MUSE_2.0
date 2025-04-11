@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use crate::input::{define_id_getter, HasID};
+use crate::id::define_id_getter;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
 use indexmap::IndexMap;
 use serde::Deserialize;

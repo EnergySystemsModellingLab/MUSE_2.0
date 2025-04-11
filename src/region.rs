@@ -1,4 +1,5 @@
 //! Regions represent different geographical areas in which agents, processes, etc. are active.
+use crate::id::define_id_getter;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::Deserialize;
@@ -17,6 +18,7 @@ pub struct Region {
     /// A text description of the region (e.g. "United Kingdom").
     pub description: String,
 }
+define_id_getter! {Region}
 
 /// Represents multiple regions
 #[derive(PartialEq, Debug, Clone, Default)]

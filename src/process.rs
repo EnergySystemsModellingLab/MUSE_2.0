@@ -93,8 +93,6 @@ pub enum FlowType {
 /// Additional parameters for a process
 #[derive(PartialEq, Clone, Debug, Deserialize)]
 pub struct ProcessParameter {
-    /// A unique identifier for the process
-    pub process_id: String,
     /// The years in which this process is available for investment
     pub years: RangeInclusive<u32>,
     /// Overnight capital cost per unit capacity
