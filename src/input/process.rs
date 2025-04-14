@@ -82,22 +82,6 @@ pub fn read_processes(
         &availabilities,
     )?;
 
-    // Check parameters cover all years of the process
-    for (id, parameter) in parameters.iter() {
-        let year_range = processes.get(id).unwrap().years.clone();
-        let reference_years: HashSet<u32> = milestone_years
-            .iter()
-            .copied()
-            .filter(|year| year_range.contains(year))
-            .collect();
-        let parameter_years: HashSet<u32> = parameter.keys().copied().collect();
-        ensure!(
-            parameter_years == reference_years,
-            "Error in parameter for process {}: years do not match the process years",
-            id
-        );
-    }
-
     // Add data to Process objects
     for (id, process) in processes.iter_mut() {
         process.activity_limits = availabilities.remove(id).unwrap();
