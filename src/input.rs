@@ -1,12 +1,13 @@
 //! Common routines for handling input data.
 use crate::asset::AssetPool;
+use crate::id::HasID;
 use crate::model::{Model, ModelFile};
 use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::rc::Rc;
@@ -96,48 +97,6 @@ pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
     format!("Error reading {}", file_path.as_ref().display())
 }
 
-/// Indicates that the struct has an ID field
-pub trait HasID {
-    /// Get a string representation of the struct's ID
-    fn get_id(&self) -> &str;
-}
-
-/// Implement the `HasID` trait for the given type, assuming it has a field called `id`
-macro_rules! define_id_getter {
-    ($t:ty) => {
-        impl HasID for $t {
-            fn get_id(&self) -> &str {
-                &self.id
-            }
-        }
-    };
-}
-
-pub(crate) use define_id_getter;
-
-/// A data structure containing a set of IDs
-pub trait IDCollection {
-    /// Get the ID after checking that it exists this collection.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The ID to look up
-    ///
-    /// # Returns
-    ///
-    /// A copy of the `Rc<str>` in `self` or an error if not found.
-    fn get_id(&self, id: &str) -> Result<Rc<str>>;
-}
-
-impl IDCollection for HashSet<Rc<str>> {
-    fn get_id(&self, id: &str) -> Result<Rc<str>> {
-        let id = self
-            .get(id)
-            .with_context(|| format!("Unknown ID {id} found"))?;
-        Ok(Rc::clone(id))
-    }
-}
-
 /// Read a CSV file of items with IDs.
 ///
 /// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
@@ -162,36 +121,6 @@ where
     }
 
     fill_and_validate_map(file_path).with_context(|| input_err_msg(file_path))
-}
-
-/// Trait for converting an iterator into a [`HashMap`] grouped by IDs.
-pub trait IntoIDMap<T> {
-    /// Convert into a [`HashMap`] grouped by IDs.
-    fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>>;
-}
-
-impl<T, I> IntoIDMap<T> for I
-where
-    T: HasID,
-    I: Iterator<Item = T>,
-{
-    /// Convert the specified iterator into a `HashMap` of the items grouped by ID.
-    ///
-    /// # Arguments
-    ///
-    /// `ids` - The set of valid IDs to check against.
-    fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>> {
-        let map = self
-            .map(|item| -> Result<_> {
-                let id = ids.get_id(item.get_id())?;
-                Ok((id, item))
-            })
-            .process_results(|iter| iter.into_group_map())?;
-
-        ensure!(!map.is_empty(), "CSV file is empty");
-
-        Ok(map)
-    }
 }
 
 /// Check that fractions sum to (approximately) one

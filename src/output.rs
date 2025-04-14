@@ -189,7 +189,6 @@ mod tests {
         let agent_id = "agent1".into();
         let commission_year = 2015;
         let process_param = ProcessParameter {
-            process_id: "process1".to_string(),
             years: 2010..=2020,
             capital_cost: 5.0,
             fixed_operating_cost: 2.0,

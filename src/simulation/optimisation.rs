@@ -291,7 +291,6 @@ mod tests {
         costs: CommodityCostMap,
     ) -> (Asset, ProcessFlow) {
         let process_param = ProcessParameter {
-            process_id: "process1".into(),
             years: 2010..=2020,
             capital_cost: 5.0,
             fixed_operating_cost: 2.0,
