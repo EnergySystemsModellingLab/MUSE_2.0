@@ -4,6 +4,7 @@ pub mod agent;
 pub mod asset;
 pub mod commands;
 pub mod commodity;
+pub mod id;
 pub mod input;
 pub mod log;
 pub mod model;

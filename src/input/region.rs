@@ -1,6 +1,7 @@
 //! Code for reading region-related information from CSV files.
 use super::*;
-use crate::region::{Region, RegionMap, RegionSelection};
+use crate::id::{HasID, HasRegionID, IDCollection};
+use crate::region::{RegionMap, RegionSelection};
 use anyhow::{anyhow, ensure, Context, Result};
 use serde::de::DeserializeOwned;
 use std::collections::{HashMap, HashSet};
@@ -8,25 +9,6 @@ use std::path::Path;
 use std::rc::Rc;
 
 const REGIONS_FILE_NAME: &str = "regions.csv";
-
-define_id_getter! {Region}
-
-/// An object which is associated with a single region
-pub trait HasRegionID {
-    /// Get the associated region ID
-    fn get_region_id(&self) -> &str;
-}
-
-macro_rules! define_region_id_getter {
-    ($t:ty) => {
-        impl crate::input::region::HasRegionID for $t {
-            fn get_region_id(&self) -> &str {
-                &self.region_id
-            }
-        }
-    };
-}
-pub(crate) use define_region_id_getter;
 
 /// Reads regions from a CSV file.
 ///
@@ -137,6 +119,8 @@ fn try_insert_region(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::id::{define_id_getter, define_region_id_getter};
+    use crate::region::Region;
     use serde::Deserialize;
     use std::fs::File;
     use std::io::Write;

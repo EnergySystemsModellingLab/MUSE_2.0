@@ -3,6 +3,7 @@
 use super::super::*;
 use super::demand_slicing::{read_demand_slices, DemandSliceMap, DemandSliceMapKey};
 use crate::commodity::DemandMap;
+use crate::id::IDCollection;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Result};
 use serde::Deserialize;

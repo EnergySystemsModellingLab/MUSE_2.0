@@ -1,14 +1,12 @@
 //! Code for reading the agent objectives CSV file.
 use super::super::*;
-use crate::agent::{Agent, AgentMap, AgentObjective, DecisionRule};
+use crate::agent::{AgentMap, AgentObjective, DecisionRule};
 use anyhow::{ensure, Context, Result};
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 
 const AGENT_OBJECTIVES_FILE_NAME: &str = "agent_objectives.csv";
-
-define_id_getter! {Agent}
 
 /// Read agent objective info from the agent_objectives.csv file.
 ///
@@ -172,6 +170,7 @@ fn check_agent_objectives(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent::Agent;
     use crate::agent::ObjectiveType;
     use crate::region::RegionSelection;
 
