@@ -2,7 +2,7 @@
 use super::super::*;
 use super::define_process_id_getter;
 use crate::process::{Process, ProcessParameter, ProcessParameterMap};
-use crate::year::{deserialize_year, Year};
+use crate::year::{deserialize_year, YearSelection};
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -22,7 +22,7 @@ struct ProcessParameterRaw {
     discount_rate: Option<f64>,
     capacity_to_activity: Option<f64>,
     #[serde(deserialize_with = "deserialize_year")]
-    year: Year,
+    year: YearSelection,
 }
 define_process_id_getter! {ProcessParameterRaw}
 
@@ -128,15 +128,15 @@ where
         let year_range = process.years.clone();
 
         match year {
-            Year::Single(year) => {
+            YearSelection::Single(year) => {
                 entry.insert(year, param.clone());
             }
-            Year::Some(years) => {
+            YearSelection::Some(years) => {
                 for year in years {
                     entry.insert(year, param.clone());
                 }
             }
-            Year::All => {
+            YearSelection::All => {
                 for year in milestone_years.iter() {
                     if year_range.contains(year) {
                         entry.insert(*year, param.clone());
@@ -182,7 +182,7 @@ mod tests {
             lifetime,
             discount_rate,
             capacity_to_activity,
-            year: Year::All,
+            year: YearSelection::All,
         }
     }
 
@@ -249,7 +249,7 @@ mod tests {
                 lifetime: 10,
                 discount_rate: Some(1.0),
                 capacity_to_activity: Some(1.0),
-                year: Year::All,
+                year: YearSelection::All,
             },
             ProcessParameterRaw {
                 process_id: "B".into(),
@@ -259,7 +259,7 @@ mod tests {
                 lifetime: 10,
                 discount_rate: Some(1.0),
                 capacity_to_activity: Some(1.0),
-                year: Year::All,
+                year: YearSelection::All,
             },
         ];
 
@@ -307,7 +307,7 @@ mod tests {
                 lifetime: 10,
                 discount_rate: Some(1.0),
                 capacity_to_activity: Some(1.0),
-                year: Year::All,
+                year: YearSelection::All,
             },
             ProcessParameterRaw {
                 process_id: "B".into(),
@@ -317,7 +317,7 @@ mod tests {
                 lifetime: 10,
                 discount_rate: Some(1.0),
                 capacity_to_activity: Some(1.0),
-                year: Year::All,
+                year: YearSelection::All,
             },
             ProcessParameterRaw {
                 process_id: "A".into(),
@@ -327,7 +327,7 @@ mod tests {
                 lifetime: 10,
                 discount_rate: Some(1.0),
                 capacity_to_activity: Some(1.0),
-                year: Year::All,
+                year: YearSelection::All,
             },
         ];
 
