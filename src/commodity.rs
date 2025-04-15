@@ -4,6 +4,7 @@ use crate::time_slice::{TimeSliceID, TimeSliceLevel};
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -29,7 +30,7 @@ pub struct Commodity {
     #[serde(skip)]
     pub demand: DemandMap,
 }
-define_id_getter! {Commodity}
+define_id_getter! {Commodity, Rc<str>}
 
 /// Type of balance for application of cost
 #[derive(PartialEq, Clone, Debug, DeserializeLabeledStringEnum)]

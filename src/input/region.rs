@@ -30,26 +30,28 @@ pub fn read_regions(model_dir: &Path) -> Result<RegionMap> {
 /// `file_path` - Path to CSV file
 /// `entity_ids` - All possible valid IDs for the entity type
 /// `region_ids` - All possible valid region IDs
-pub fn read_regions_for_entity<T>(
+pub fn read_regions_for_entity<T, ID>(
     file_path: &Path,
     entity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
 ) -> Result<HashMap<Rc<str>, RegionSelection>>
 where
-    T: HasID + HasRegionID + DeserializeOwned,
+    T: HasID<ID> + HasRegionID + DeserializeOwned,
+    ID: Borrow<str> + Eq + Hash,
 {
     read_regions_for_entity_from_iter(read_csv::<T>(file_path)?, entity_ids, region_ids)
         .with_context(|| input_err_msg(file_path))
 }
 
-fn read_regions_for_entity_from_iter<I, T>(
+fn read_regions_for_entity_from_iter<I, T, ID>(
     entity_iter: I,
     entity_ids: &HashSet<Rc<str>>,
     region_ids: &HashSet<Rc<str>>,
 ) -> Result<HashMap<Rc<str>, RegionSelection>>
 where
     I: Iterator<Item = T>,
-    T: HasID + HasRegionID,
+    T: HasID<ID> + HasRegionID,
+    ID: Borrow<str> + Eq + Hash,
 {
     let mut entity_regions = HashMap::new();
     for entity in entity_iter {
@@ -228,7 +230,7 @@ AP,Asia Pacific"
         id: String,
         region_id: String,
     }
-    define_id_getter! {Record}
+    define_id_getter! {Record, String}
     define_region_id_getter! {Record}
 
     #[test]

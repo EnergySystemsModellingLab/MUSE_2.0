@@ -3,6 +3,7 @@ use crate::id::define_id_getter;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::Deserialize;
+use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::rc::Rc;
@@ -18,7 +19,7 @@ pub struct Region {
     /// A text description of the region (e.g. "United Kingdom").
     pub description: String,
 }
-define_id_getter! {Region}
+define_id_getter! {Region, Rc<str>}
 
 /// Represents multiple regions
 #[derive(PartialEq, Debug, Clone, Default)]

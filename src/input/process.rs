@@ -6,6 +6,7 @@ use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
+use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
@@ -27,7 +28,7 @@ struct ProcessDescription {
     id: Rc<str>,
     description: String,
 }
-define_id_getter! {ProcessDescription}
+define_id_getter! {ProcessDescription, Rc<str>}
 
 /// Read process information from the specified CSV files.
 ///
@@ -50,7 +51,7 @@ pub fn read_processes(
     milestone_years: &[u32],
 ) -> Result<ProcessMap> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let descriptions = read_csv_id_file::<ProcessDescription>(&file_path)?;
+    let descriptions = read_csv_id_file::<ProcessDescription, Rc<str>>(&file_path)?;
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
     let availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;

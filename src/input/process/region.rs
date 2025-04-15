@@ -17,7 +17,7 @@ struct ProcessRegion {
 }
 define_region_id_getter! {ProcessRegion}
 
-impl HasID for ProcessRegion {
+impl HasID<Rc<str>> for ProcessRegion {
     fn get_id(&self) -> &str {
         &self.process_id
     }
@@ -40,5 +40,5 @@ pub fn read_process_regions(
     region_ids: &HashSet<Rc<str>>,
 ) -> Result<HashMap<Rc<str>, RegionSelection>> {
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
-    read_regions_for_entity::<ProcessRegion>(&file_path, process_ids, region_ids)
+    read_regions_for_entity::<ProcessRegion, Rc<str>>(&file_path, process_ids, region_ids)
 }

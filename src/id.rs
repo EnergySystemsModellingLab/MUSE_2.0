@@ -5,7 +5,10 @@ use std::collections::HashSet;
 use std::hash::Hash;
 
 /// Indicates that the struct has an ID field
-pub trait HasID {
+pub trait HasID<ID>
+where
+    ID: Eq + Hash + Borrow<str>,
+{
     /// Get a string representation of the struct's ID
     fn get_id(&self) -> &str;
 }
@@ -18,10 +21,10 @@ pub trait HasRegionID {
 
 /// Implement the `HasID` trait for the given type, assuming it has a field called `id`
 macro_rules! define_id_getter {
-    ($t:ty) => {
-        impl crate::id::HasID for $t {
+    ($t:ty, $id_ty:ty) => {
+        impl crate::id::HasID<$id_ty> for $t {
             fn get_id(&self) -> &str {
-                &self.id
+                self.id.borrow()
             }
         }
     };

@@ -7,8 +7,10 @@ use float_cmp::approx_eq;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
+use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::fs;
+use std::hash::Hash;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -101,13 +103,15 @@ pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
 ///
 /// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
 /// the IDs for a given type), we use an ordered map to maintain the order in the input files.
-fn read_csv_id_file<T>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
+fn read_csv_id_file<T, ID>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
 where
-    T: HasID + DeserializeOwned,
+    T: HasID<ID> + DeserializeOwned,
+    ID: Eq + Hash + Borrow<str>,
 {
-    fn fill_and_validate_map<T>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
+    fn fill_and_validate_map<T, ID>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
     where
-        T: HasID + DeserializeOwned,
+        T: HasID<ID> + DeserializeOwned,
+        ID: Eq + Hash + Borrow<str>,
     {
         let mut map = IndexMap::new();
         for record in read_csv::<T>(file_path)? {

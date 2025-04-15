@@ -18,7 +18,7 @@ struct AgentRegion {
 }
 define_region_id_getter!(AgentRegion);
 
-impl HasID for AgentRegion {
+impl HasID<Rc<str>> for AgentRegion {
     fn get_id(&self) -> &str {
         &self.agent_id
     }
@@ -41,5 +41,5 @@ pub fn read_agent_regions(
     region_ids: &HashSet<Rc<str>>,
 ) -> Result<HashMap<Rc<str>, RegionSelection>> {
     let file_path = model_dir.join(AGENT_REGIONS_FILE_NAME);
-    read_regions_for_entity::<AgentRegion>(&file_path, agent_ids, region_ids)
+    read_regions_for_entity::<AgentRegion, Rc<str>>(&file_path, agent_ids, region_ids)
 }

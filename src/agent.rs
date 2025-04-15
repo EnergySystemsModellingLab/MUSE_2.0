@@ -6,6 +6,7 @@ use crate::region::RegionSelection;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
+use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -34,7 +35,7 @@ pub struct Agent {
     /// The agent's objectives.
     pub objectives: Vec<AgentObjective>,
 }
-define_id_getter! {Agent}
+define_id_getter! {Agent, Rc<str>}
 
 /// Which processes apply to this agent
 #[derive(Debug, Clone, PartialEq)]
