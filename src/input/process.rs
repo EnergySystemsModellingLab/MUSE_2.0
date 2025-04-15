@@ -4,7 +4,7 @@ use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::process::{
     ActivityLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameter,
 };
-use crate::region::RegionSelection;
+use crate::region::{RegionID, RegionSelection};
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
@@ -47,7 +47,7 @@ define_id_getter! {ProcessDescription, ProcessID}
 pub fn read_processes(
     model_dir: &Path,
     commodities: &CommodityMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<ProcessMap> {
@@ -83,7 +83,7 @@ pub fn read_processes(
 
 struct ValidationParams<'a> {
     flows: &'a HashMap<ProcessID, Vec<ProcessFlow>>,
-    region_ids: &'a HashSet<Rc<str>>,
+    region_ids: &'a HashSet<RegionID>,
     milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
     parameters: &'a HashMap<ProcessID, ProcessParameter>,
@@ -94,7 +94,7 @@ struct ValidationParams<'a> {
 fn validate_commodities(
     commodities: &CommodityMap,
     flows: &HashMap<ProcessID, Vec<ProcessFlow>>,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
     parameters: &HashMap<ProcessID, ProcessParameter>,
@@ -259,7 +259,7 @@ mod tests {
         flows: HashMap<ProcessID, Vec<ProcessFlow>>,
         parameters: HashMap<ProcessID, ProcessParameter>,
         regions: HashMap<ProcessID, RegionSelection>,
-        region_ids: HashSet<Rc<str>>,
+        region_ids: HashSet<RegionID>,
     }
 
     /// Returns example data (without errors) for processes

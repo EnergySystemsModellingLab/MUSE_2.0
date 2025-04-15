@@ -3,22 +3,39 @@ use crate::id::define_id_getter;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::Deserialize;
+use serde::Serialize;
+use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::rc::Rc;
 
+#[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
+pub struct RegionID(pub Rc<str>);
+
+impl Borrow<str> for RegionID {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Display for RegionID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// A map of [`Region`]s, keyed by region ID
-pub type RegionMap = IndexMap<Rc<str>, Region>;
+pub type RegionMap = IndexMap<RegionID, Region>;
 
 /// Represents a region with an ID and a longer description.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Region {
     /// A unique identifier for a region (e.g. "GBR").
-    pub id: Rc<str>,
+    pub id: RegionID,
     /// A text description of the region (e.g. "United Kingdom").
     pub description: String,
 }
-define_id_getter! {Region, Rc<str>}
+define_id_getter! {Region, RegionID}
 
 /// Represents multiple regions
 #[derive(PartialEq, Debug, Clone, Default)]
@@ -27,12 +44,12 @@ pub enum RegionSelection {
     #[default]
     All,
     /// Only some regions are covered
-    Some(HashSet<Rc<str>>),
+    Some(HashSet<RegionID>),
 }
 
 impl RegionSelection {
     /// Returns true if the [`RegionSelection`] covers a given region
-    pub fn contains(&self, region_id: &str) -> bool {
+    pub fn contains(&self, region_id: &RegionID) -> bool {
         match self {
             Self::All => true,
             Self::Some(regions) => regions.contains(region_id),

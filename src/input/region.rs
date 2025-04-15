@@ -1,12 +1,11 @@
 //! Code for reading region-related information from CSV files.
 use super::*;
 use crate::id::{HasID, HasRegionID, IDCollection};
-use crate::region::{RegionMap, RegionSelection};
+use crate::region::{RegionID, RegionMap, RegionSelection};
 use anyhow::{anyhow, ensure, Context, Result};
 use serde::de::DeserializeOwned;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const REGIONS_FILE_NAME: &str = "regions.csv";
 
@@ -33,7 +32,7 @@ pub fn read_regions(model_dir: &Path) -> Result<RegionMap> {
 pub fn read_regions_for_entity<T, ID>(
     file_path: &Path,
     entity_ids: &HashSet<ID>,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
 ) -> Result<HashMap<ID, RegionSelection>>
 where
     T: HasID<ID> + HasRegionID + DeserializeOwned,
@@ -46,7 +45,7 @@ where
 fn read_regions_for_entity_from_iter<I, T, ID>(
     entity_iter: I,
     entity_ids: &HashSet<ID>,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
 ) -> Result<HashMap<ID, RegionSelection>>
 where
     I: Iterator<Item = T>,
@@ -74,8 +73,8 @@ where
 /// Try to insert a region ID into the specified map
 fn try_insert_region<ID>(
     entity_id: ID,
-    region_id: &str,
-    region_ids: &HashSet<Rc<str>>,
+    region_id: &RegionID,
+    region_ids: &HashSet<RegionID>,
     entity_regions: &mut HashMap<ID, RegionSelection>,
 ) -> Result<()>
 where
@@ -83,7 +82,7 @@ where
 {
     let entity_name = entity_id.clone();
 
-    if region_id.eq_ignore_ascii_case("all") {
+    if region_id.0.eq_ignore_ascii_case("all") {
         // Valid for all regions
         return match entity_regions.insert(entity_id, RegionSelection::All) {
             None => Ok(()),

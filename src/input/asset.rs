@@ -4,6 +4,7 @@ use crate::agent::AgentID;
 use crate::asset::Asset;
 use crate::id::IDCollection;
 use crate::process::ProcessMap;
+use crate::region::RegionID;
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
@@ -38,7 +39,7 @@ pub fn read_assets(
     model_dir: &Path,
     agent_ids: &HashSet<AgentID>,
     processes: &ProcessMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
 ) -> Result<Vec<Asset>> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
     let assets_csv = read_csv(&file_path)?;
@@ -62,7 +63,7 @@ fn read_assets_from_iter<I>(
     iter: I,
     agent_ids: &HashSet<AgentID>,
     processes: &ProcessMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
 ) -> Result<Vec<Asset>>
 where
     I: Iterator<Item = AssetRaw>,

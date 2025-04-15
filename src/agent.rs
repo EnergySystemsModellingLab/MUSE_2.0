@@ -2,6 +2,7 @@
 //! assets.
 use crate::commodity::Commodity;
 use crate::id::define_id_getter;
+use crate::process::ProcessID;
 use crate::region::RegionSelection;
 use indexmap::IndexMap;
 use serde::Deserialize;

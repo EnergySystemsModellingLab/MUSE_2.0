@@ -2,12 +2,12 @@
 use super::super::*;
 use crate::commodity::{BalanceType, CommodityCost, CommodityCostMap, CommodityID};
 use crate::id::IDCollection;
+use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const COMMODITY_COSTS_FILE_NAME: &str = "commodity_costs.csv";
 
@@ -44,7 +44,7 @@ struct CommodityCostRaw {
 pub fn read_commodity_costs(
     model_dir: &Path,
     commodity_ids: &HashSet<CommodityID>,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<HashMap<CommodityID, CommodityCostMap>> {
@@ -63,7 +63,7 @@ pub fn read_commodity_costs(
 fn read_commodity_costs_iter<I>(
     iter: I,
     commodity_ids: &HashSet<CommodityID>,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<HashMap<CommodityID, CommodityCostMap>>
@@ -101,7 +101,7 @@ where
             };
 
             ensure!(
-                map.insert(Rc::clone(&region_id), cost.year, time_slice.clone(), value)
+                map.insert(region_id.clone(), cost.year, time_slice.clone(), value)
                     .is_none(),
                 "Commodity cost entry covered by more than one time slice \
                 (region: {}, year: {}, time slice: {})",

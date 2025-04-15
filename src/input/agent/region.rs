@@ -2,12 +2,11 @@
 use super::super::region::read_regions_for_entity;
 use crate::agent::AgentID;
 use crate::id::{define_region_id_getter, HasID};
-use crate::region::RegionSelection;
+use crate::region::{RegionID, RegionSelection};
 use anyhow::Result;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const AGENT_REGIONS_FILE_NAME: &str = "agent_regions.csv";
 
@@ -15,7 +14,7 @@ const AGENT_REGIONS_FILE_NAME: &str = "agent_regions.csv";
 struct AgentRegion {
     agent_id: AgentID,
     /// The region to which an agent belongs.
-    region_id: String,
+    region_id: RegionID,
 }
 define_region_id_getter!(AgentRegion);
 
@@ -39,7 +38,7 @@ impl HasID<AgentID> for AgentRegion {
 pub fn read_agent_regions(
     model_dir: &Path,
     agent_ids: &HashSet<AgentID>,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
 ) -> Result<HashMap<AgentID, RegionSelection>> {
     let file_path = model_dir.join(AGENT_REGIONS_FILE_NAME);
     read_regions_for_entity::<AgentRegion, AgentID>(&file_path, agent_ids, region_ids)

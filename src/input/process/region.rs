@@ -2,19 +2,18 @@
 use super::super::region::read_regions_for_entity;
 use crate::id::{define_region_id_getter, HasID};
 use crate::process::ProcessID;
-use crate::region::RegionSelection;
+use crate::region::{RegionID, RegionSelection};
 use anyhow::Result;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const PROCESS_REGIONS_FILE_NAME: &str = "process_regions.csv";
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessRegion {
     process_id: ProcessID,
-    region_id: String,
+    region_id: RegionID,
 }
 define_region_id_getter! {ProcessRegion}
 
@@ -38,7 +37,7 @@ impl HasID<ProcessID> for ProcessRegion {
 pub fn read_process_regions(
     model_dir: &Path,
     process_ids: &HashSet<ProcessID>,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
 ) -> Result<HashMap<ProcessID, RegionSelection>> {
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     read_regions_for_entity::<ProcessRegion, ProcessID>(&file_path, process_ids, region_ids)

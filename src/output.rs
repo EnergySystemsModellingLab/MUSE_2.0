@@ -3,6 +3,7 @@ use crate::agent::AgentID;
 use crate::asset::{Asset, AssetID, AssetPool};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
+use crate::region::RegionID;
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
 use anyhow::{Context, Result};
@@ -11,7 +12,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
 /// The root folder in which model-specific output folders will be created
 const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
@@ -56,7 +56,7 @@ pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
 struct AssetRow {
     milestone_year: u32,
     process_id: ProcessID,
-    region_id: Rc<str>,
+    region_id: RegionID,
     agent_id: AgentID,
     commission_year: u32,
 }
@@ -66,7 +66,7 @@ impl AssetRow {
         Self {
             milestone_year,
             process_id: asset.process.id.clone(),
-            region_id: Rc::clone(&asset.region_id),
+            region_id: asset.region_id.clone(),
             agent_id: asset.agent_id.clone(),
             commission_year: asset.commission_year,
         }

@@ -3,7 +3,7 @@ use super::*;
 use crate::agent::{Agent, AgentID, AgentMap, DecisionRule};
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
-use crate::region::RegionSelection;
+use crate::region::{RegionID, RegionSelection};
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -54,7 +54,7 @@ pub fn read_agents(
     model_dir: &Path,
     commodities: &CommodityMap,
     processes: &ProcessMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<AgentMap> {
     let process_ids = processes.keys().cloned().collect();

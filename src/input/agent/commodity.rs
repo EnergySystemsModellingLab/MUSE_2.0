@@ -2,6 +2,7 @@
 use super::super::*;
 use crate::agent::{AgentCommodity, AgentID, AgentMap};
 use crate::commodity::{CommodityMap, CommodityType};
+use crate::region::RegionID;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -63,7 +64,7 @@ pub fn read_agent_commodities(
     model_dir: &Path,
     agents: &AgentMap,
     commodities: &CommodityMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, Vec<AgentCommodity>>> {
     let file_path = model_dir.join(AGENT_COMMODITIES_FILE_NAME);
@@ -82,7 +83,7 @@ fn read_agent_commodities_from_iter<I>(
     iter: I,
     agents: &AgentMap,
     commodities: &CommodityMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, Vec<AgentCommodity>>>
 where
@@ -119,7 +120,7 @@ fn validate_agent_commodities(
     agent_commodities: &HashMap<AgentID, Vec<AgentCommodity>>,
     agents: &AgentMap,
     commodities: &CommodityMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<()> {
     // CHECK 1: For each agent there must be at least one commodity for all years

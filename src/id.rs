@@ -1,4 +1,5 @@
 //! Code for handing IDs
+use crate::region::RegionID;
 use anyhow::{Context, Result};
 use std::borrow::Borrow;
 use std::collections::HashSet;
@@ -9,14 +10,14 @@ pub trait HasID<ID>
 where
     ID: Eq + Hash + Borrow<str>,
 {
-    /// Get a string representation of the struct's ID
+    /// Get the struct's ID
     fn get_id(&self) -> &ID;
 }
 
 /// An object which is associated with a single region
 pub trait HasRegionID {
     /// Get the associated region ID
-    fn get_region_id(&self) -> &str;
+    fn get_region_id(&self) -> &RegionID;
 }
 
 /// Implement the `HasID` trait for the given type, assuming it has a field called `id`
@@ -35,7 +36,7 @@ pub(crate) use define_id_getter;
 macro_rules! define_region_id_getter {
     ($t:ty) => {
         impl crate::id::HasRegionID for $t {
-            fn get_region_id(&self) -> &str {
+            fn get_region_id(&self) -> &RegionID {
                 &self.region_id
             }
         }
