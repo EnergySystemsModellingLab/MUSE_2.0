@@ -9,10 +9,10 @@ use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use std::borrow::Borrow;
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::fs;
 use std::hash::Hash;
 use std::path::Path;
-use std::rc::Rc;
 
 mod agent;
 use agent::read_agents;
@@ -103,20 +103,20 @@ pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
 ///
 /// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
 /// the IDs for a given type), we use an ordered map to maintain the order in the input files.
-fn read_csv_id_file<T, ID>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
+fn read_csv_id_file<T, ID>(file_path: &Path) -> Result<IndexMap<ID, T>>
 where
     T: HasID<ID> + DeserializeOwned,
-    ID: Eq + Hash + Borrow<str>,
+    ID: Eq + Hash + Borrow<str> + Display + Clone,
 {
-    fn fill_and_validate_map<T, ID>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
+    fn fill_and_validate_map<T, ID>(file_path: &Path) -> Result<IndexMap<ID, T>>
     where
         T: HasID<ID> + DeserializeOwned,
-        ID: Eq + Hash + Borrow<str>,
+        ID: Eq + Hash + Borrow<str> + Display + Clone,
     {
         let mut map = IndexMap::new();
         for record in read_csv::<T>(file_path)? {
-            let id = record.get_id().into();
-            let existing = map.insert(Rc::clone(&id), record).is_some();
+            let id = record.get_id();
+            let existing = map.insert(id.clone(), record).is_some();
             ensure!(!existing, "Duplicate ID found: {id}");
         }
         ensure!(!map.is_empty(), "CSV file is empty");

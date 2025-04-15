@@ -1,4 +1,5 @@
 //! Assets are instances of a process which are owned and invested in by agents.
+use crate::agent::AgentID;
 use crate::commodity::Commodity;
 use crate::process::Process;
 use crate::time_slice::TimeSliceID;
@@ -21,7 +22,7 @@ pub struct Asset {
     /// A unique identifier for the asset
     pub id: AssetID,
     /// A unique identifier for the agent
-    pub agent_id: Rc<str>,
+    pub agent_id: AgentID,
     /// The [`Process`] that this asset corresponds to
     pub process: Rc<Process>,
     /// The region in which the asset is located
@@ -38,7 +39,7 @@ impl Asset {
     /// The `id` field is initially set to [`AssetID::INVALID`], but is changed to a unique value
     /// when the asset is stored in an [`AssetPool`].
     pub fn new(
-        agent_id: Rc<str>,
+        agent_id: AgentID,
         process: Rc<Process>,
         region_id: Rc<str>,
         capacity: f64,

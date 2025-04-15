@@ -10,7 +10,7 @@ where
     ID: Eq + Hash + Borrow<str>,
 {
     /// Get a string representation of the struct's ID
-    fn get_id(&self) -> &str;
+    fn get_id(&self) -> &ID;
 }
 
 /// An object which is associated with a single region
@@ -23,8 +23,8 @@ pub trait HasRegionID {
 macro_rules! define_id_getter {
     ($t:ty, $id_ty:ty) => {
         impl crate::id::HasID<$id_ty> for $t {
-            fn get_id(&self) -> &str {
-                self.id.borrow()
+            fn get_id(&self) -> &$id_ty {
+                &self.id
             }
         }
     };

@@ -1,4 +1,5 @@
 //! The module responsible for writing output data to disk.
+use crate::agent::AgentID;
 use crate::asset::{Asset, AssetID, AssetPool};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
@@ -56,7 +57,7 @@ struct AssetRow {
     milestone_year: u32,
     process_id: ProcessID,
     region_id: Rc<str>,
-    agent_id: Rc<str>,
+    agent_id: AgentID,
     commission_year: u32,
 }
 
@@ -66,7 +67,7 @@ impl AssetRow {
             milestone_year,
             process_id: asset.process.id.clone(),
             region_id: Rc::clone(&asset.region_id),
-            agent_id: Rc::clone(&asset.agent_id),
+            agent_id: asset.agent_id.clone(),
             commission_year: asset.commission_year,
         }
     }

@@ -29,7 +29,7 @@ impl Display for ProcessID {
 }
 
 /// A map of [`Process`]es, keyed by process ID
-pub type ProcessMap = IndexMap<Rc<str>, Rc<Process>>;
+pub type ProcessMap = IndexMap<ProcessID, Rc<Process>>;
 
 /// Represents a process within the simulation
 #[derive(PartialEq, Debug)]

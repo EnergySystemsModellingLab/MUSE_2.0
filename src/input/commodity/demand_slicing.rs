@@ -1,6 +1,7 @@
 //! Demand slicing determines how annual demand is distributed across the year.
 use super::super::*;
 use super::demand::*;
+use crate::commodity::CommodityID;
 use crate::id::IDCollection;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
@@ -28,7 +29,7 @@ pub type DemandSliceMap = HashMap<DemandSliceMapKey, f64>;
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct DemandSliceMapKey {
     /// The commodity to which this demand applies
-    pub commodity_id: Rc<str>,
+    pub commodity_id: CommodityID,
     /// The region to which this demand applies
     pub region_id: Rc<str>,
     /// The time slice to which this demand applies
@@ -46,7 +47,7 @@ pub struct DemandSliceMapKey {
 /// * `time_slice_info` - Information about seasons and times of day
 pub fn read_demand_slices(
     model_dir: &Path,
-    commodity_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
     region_ids: &HashSet<Rc<str>>,
     commodity_regions: &CommodityRegionPairs,
     time_slice_info: &TimeSliceInfo,
@@ -66,7 +67,7 @@ pub fn read_demand_slices(
 /// Read demand slices from an iterator
 fn read_demand_slices_from_iter<I>(
     iter: I,
-    commodity_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
     region_ids: &HashSet<Rc<str>>,
     commodity_regions: &CommodityRegionPairs,
     time_slice_info: &TimeSliceInfo,
@@ -80,7 +81,7 @@ where
         let commodity_id = commodity_ids.get_id(&slice.commodity_id)?;
         let region_id = region_ids.get_id(&slice.region_id)?;
         ensure!(
-            commodity_regions.contains(&(Rc::clone(&commodity_id), Rc::clone(&region_id))),
+            commodity_regions.contains(&(commodity_id.clone(), Rc::clone(&region_id))),
             "Demand slicing provided for commodity {commodity_id} in region {region_id} \
             without a corresponding entry in demand CSV file"
         );
@@ -92,7 +93,7 @@ where
         for (ts, demand_fraction) in time_slice_info.calculate_share(&ts_selection, slice.fraction)
         {
             let key = DemandSliceMapKey {
-                commodity_id: Rc::clone(&commodity_id),
+                commodity_id: commodity_id.clone(),
                 region_id: Rc::clone(&region_id),
                 time_slice: ts.clone(),
             };
@@ -128,7 +129,7 @@ fn validate_demand_slices(
             .iter_ids()
             .map(|time_slice| {
                 let key = DemandSliceMapKey {
-                    commodity_id: Rc::clone(commodity_id),
+                    commodity_id: commodity_id.clone(),
                     region_id: Rc::clone(region_id),
                     time_slice: time_slice.clone(),
                 };

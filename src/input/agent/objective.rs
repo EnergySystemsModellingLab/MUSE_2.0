@@ -1,10 +1,9 @@
 //! Code for reading the agent objectives CSV file.
 use super::super::*;
-use crate::agent::{AgentMap, AgentObjective, DecisionRule};
+use crate::agent::{AgentID, AgentMap, AgentObjective, DecisionRule};
 use anyhow::{ensure, Context, Result};
 use std::collections::HashMap;
 use std::path::Path;
-use std::rc::Rc;
 
 const AGENT_OBJECTIVES_FILE_NAME: &str = "agent_objectives.csv";
 
@@ -21,7 +20,7 @@ pub fn read_agent_objectives(
     model_dir: &Path,
     agents: &AgentMap,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>> {
+) -> Result<HashMap<AgentID, Vec<AgentObjective>>> {
     let file_path = model_dir.join(AGENT_OBJECTIVES_FILE_NAME);
     let agent_objectives_csv = read_csv(&file_path)?;
     read_agent_objectives_from_iter(agent_objectives_csv, agents, milestone_years)
@@ -32,7 +31,7 @@ fn read_agent_objectives_from_iter<I>(
     iter: I,
     agents: &AgentMap,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>>
+) -> Result<HashMap<AgentID, Vec<AgentObjective>>>
 where
     I: Iterator<Item = AgentObjective>,
 {
@@ -54,7 +53,7 @@ where
 
         // Append to Vec with the corresponding key or create
         objectives
-            .entry(Rc::clone(id))
+            .entry(id.clone())
             .or_insert_with(|| Vec::with_capacity(1))
             .push(objective);
     }
@@ -125,7 +124,7 @@ fn check_objective_parameter(
 fn check_agent_objectives(
     objectives: &[&AgentObjective],
     decision_rule: &DecisionRule,
-    agent_id: &str,
+    agent_id: &AgentID,
     year: u32,
 ) -> Result<()> {
     let count = objectives.len();

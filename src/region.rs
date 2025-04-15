@@ -3,7 +3,6 @@ use crate::id::define_id_getter;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::Deserialize;
-use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::rc::Rc;

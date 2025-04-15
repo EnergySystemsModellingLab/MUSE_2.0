@@ -1,6 +1,6 @@
 //! Code for reading the agent commodities CSV file.
 use super::super::*;
-use crate::agent::{AgentCommodity, AgentMap};
+use crate::agent::{AgentCommodity, AgentID, AgentMap};
 use crate::commodity::{CommodityMap, CommodityType};
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -65,7 +65,7 @@ pub fn read_agent_commodities(
     commodities: &CommodityMap,
     region_ids: &HashSet<Rc<str>>,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentCommodity>>> {
+) -> Result<HashMap<AgentID, Vec<AgentCommodity>>> {
     let file_path = model_dir.join(AGENT_COMMODITIES_FILE_NAME);
     let agent_commodities_csv = read_csv(&file_path)?;
     read_agent_commodities_from_iter(
@@ -84,7 +84,7 @@ fn read_agent_commodities_from_iter<I>(
     commodities: &CommodityMap,
     region_ids: &HashSet<Rc<str>>,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentCommodity>>>
+) -> Result<HashMap<AgentID, Vec<AgentCommodity>>>
 where
     I: Iterator<Item = AgentCommodityRaw>,
 {
@@ -99,7 +99,7 @@ where
 
         // Append to Vec with the corresponding key or create
         agent_commodities
-            .entry(Rc::clone(id))
+            .entry(id.clone())
             .or_insert_with(|| Vec::with_capacity(1))
             .push(agent_commodity);
     }
@@ -116,7 +116,7 @@ where
 }
 
 fn validate_agent_commodities(
-    agent_commodities: &HashMap<Rc<str>, Vec<AgentCommodity>>,
+    agent_commodities: &HashMap<AgentID, Vec<AgentCommodity>>,
     agents: &AgentMap,
     commodities: &CommodityMap,
     region_ids: &HashSet<Rc<str>>,
@@ -181,14 +181,14 @@ fn validate_agent_commodities(
                 CommodityType::SupplyEqualsDemand | CommodityType::ServiceDemand
             )
         })
-        .map(|(id, _)| Rc::clone(id));
+        .map(|(id, _)| id.clone());
 
     // Check that summed_portions contains all SVD/SED commodities for all regions and milestone
     // years
     for commodity_id in svd_and_sed_commodities {
         for year in milestone_years {
             for region in region_ids {
-                let key = (&*commodity_id, *year, region);
+                let key = (&commodity_id, *year, region);
                 ensure!(
                     summed_portions.contains_key(&key),
                     "Commodity {} in year {} and region {} is not covered",

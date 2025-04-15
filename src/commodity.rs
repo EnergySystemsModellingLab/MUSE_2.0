@@ -10,7 +10,7 @@ use std::fmt::Display;
 use std::rc::Rc;
 
 /// A map of [`Commodity`]s, keyed by commodity ID
-pub type CommodityMap = IndexMap<Rc<str>, Rc<Commodity>>;
+pub type CommodityMap = IndexMap<CommodityID, Rc<Commodity>>;
 
 #[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
 pub struct CommodityID(pub Rc<str>);

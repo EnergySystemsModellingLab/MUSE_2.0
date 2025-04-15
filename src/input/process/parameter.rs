@@ -1,14 +1,13 @@
 //! Code for reading process parameters CSV file
 use super::super::*;
 use crate::id::IDCollection;
-use crate::process::ProcessParameter;
+use crate::process::{ProcessID, ProcessParameter};
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
 use std::path::Path;
-use std::rc::Rc;
 
 const PROCESS_PARAMETERS_FILE_NAME: &str = "process_parameters.csv";
 
@@ -106,9 +105,9 @@ impl ProcessParameterRaw {
 /// Read process parameters from the specified model directory
 pub fn read_process_parameters(
     model_dir: &Path,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, ProcessParameter>> {
+) -> Result<HashMap<ProcessID, ProcessParameter>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
     read_process_parameters_from_iter(iter, process_ids, year_range)
@@ -117,9 +116,9 @@ pub fn read_process_parameters(
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, ProcessParameter>>
+) -> Result<HashMap<ProcessID, ProcessParameter>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
@@ -128,7 +127,7 @@ where
         let id = process_ids.get_id(&param_raw.process_id)?;
         let param = param_raw.into_parameter(year_range)?;
         ensure!(
-            params.insert(Rc::clone(&id), param).is_none(),
+            params.insert(id.clone(), param).is_none(),
             "More than one parameter provided for process {id}"
         );
     }
@@ -307,7 +306,7 @@ mod tests {
             },
         ];
 
-        let expected: HashMap<Rc<str>, _> = [
+        let expected: HashMap<ProcessID, _> = [
             (
                 "A".into(),
                 ProcessParameter {

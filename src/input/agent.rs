@@ -140,7 +140,7 @@ where
         };
 
         ensure!(
-            agents.insert(agent_raw.id, agent).is_none(),
+            agents.insert(agent.id.clone(), agent).is_none(),
             "Duplicate agent ID"
         );
     }

@@ -28,7 +28,7 @@ impl Display for AgentID {
 }
 
 /// A map of [`Agent`]s, keyed by agent ID
-pub type AgentMap = IndexMap<Rc<str>, Agent>;
+pub type AgentMap = IndexMap<AgentID, Agent>;
 
 /// An agent in the simulation
 #[derive(Debug, Clone, PartialEq)]
@@ -60,7 +60,7 @@ pub enum SearchSpace {
     /// All processes are considered
     AllProcesses,
     /// Only these specific processes are considered
-    Some(HashSet<Rc<str>>),
+    Some(HashSet<ProcessID>),
 }
 
 /// Search space for an agent

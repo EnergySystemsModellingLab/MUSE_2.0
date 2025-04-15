@@ -1,6 +1,7 @@
 //! Code for reading the process region CSV file
 use super::super::region::read_regions_for_entity;
 use crate::id::{define_region_id_getter, HasID};
+use crate::process::ProcessID;
 use crate::region::RegionSelection;
 use anyhow::Result;
 use serde::Deserialize;
@@ -12,13 +13,13 @@ const PROCESS_REGIONS_FILE_NAME: &str = "process_regions.csv";
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessRegion {
-    process_id: String,
+    process_id: ProcessID,
     region_id: String,
 }
 define_region_id_getter! {ProcessRegion}
 
-impl HasID<Rc<str>> for ProcessRegion {
-    fn get_id(&self) -> &str {
+impl HasID<ProcessID> for ProcessRegion {
+    fn get_id(&self) -> &ProcessID {
         &self.process_id
     }
 }
@@ -36,9 +37,9 @@ impl HasID<Rc<str>> for ProcessRegion {
 /// A map of [`RegionSelection`]s, with the process ID as the key.
 pub fn read_process_regions(
     model_dir: &Path,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, RegionSelection>> {
+) -> Result<HashMap<ProcessID, RegionSelection>> {
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
-    read_regions_for_entity::<ProcessRegion, Rc<str>>(&file_path, process_ids, region_ids)
+    read_regions_for_entity::<ProcessRegion, ProcessID>(&file_path, process_ids, region_ids)
 }

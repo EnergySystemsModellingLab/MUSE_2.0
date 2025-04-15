@@ -1,6 +1,6 @@
 //! Code for reading in the commodity cost CSV file.
 use super::super::*;
-use crate::commodity::{BalanceType, CommodityCost, CommodityCostMap};
+use crate::commodity::{BalanceType, CommodityCost, CommodityCostMap, CommodityID};
 use crate::id::IDCollection;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
@@ -43,11 +43,11 @@ struct CommodityCostRaw {
 /// A map containing commodity costs, grouped by commodity ID.
 pub fn read_commodity_costs(
     model_dir: &Path,
-    commodity_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, CommodityCostMap>> {
+) -> Result<HashMap<CommodityID, CommodityCostMap>> {
     let file_path = model_dir.join(COMMODITY_COSTS_FILE_NAME);
     let commodity_costs_csv = read_csv::<CommodityCostRaw>(&file_path)?;
     read_commodity_costs_iter(
@@ -62,11 +62,11 @@ pub fn read_commodity_costs(
 
 fn read_commodity_costs_iter<I>(
     iter: I,
-    commodity_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
     region_ids: &HashSet<Rc<str>>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, CommodityCostMap>>
+) -> Result<HashMap<CommodityID, CommodityCostMap>>
 where
     I: Iterator<Item = CommodityCostRaw>,
 {

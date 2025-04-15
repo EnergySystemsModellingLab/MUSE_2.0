@@ -1,14 +1,13 @@
 //! Code for reading process availabilities CSV file
 use super::super::*;
 use crate::id::IDCollection;
-use crate::process::ActivityLimitsMap;
+use crate::process::{ActivityLimitsMap, ProcessID};
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const PROCESS_AVAILABILITIES_FILE_NAME: &str = "process_availabilities.csv";
 
@@ -49,9 +48,9 @@ enum LimitType {
 /// error.
 pub fn read_process_availabilities(
     model_dir: &Path,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<Rc<str>, ActivityLimitsMap>> {
+) -> Result<HashMap<ProcessID, ActivityLimitsMap>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let process_availabilities_csv = read_csv(&file_path)?;
     read_process_availabilities_from_iter(process_availabilities_csv, process_ids, time_slice_info)
@@ -61,9 +60,9 @@ pub fn read_process_availabilities(
 /// Process raw process availabilities input data into [`ActivityLimitsMap`]s
 fn read_process_availabilities_from_iter<I>(
     iter: I,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<Rc<str>, ActivityLimitsMap>>
+) -> Result<HashMap<ProcessID, ActivityLimitsMap>>
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
@@ -108,7 +107,7 @@ where
 
 /// Check that every capacity map has an entry for every time slice
 fn validate_capacity_maps(
-    map: &HashMap<Rc<str>, ActivityLimitsMap>,
+    map: &HashMap<ProcessID, ActivityLimitsMap>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
     for (process_id, map) in map.iter() {
