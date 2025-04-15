@@ -1,7 +1,7 @@
 //! Agents drive the economy of the MUSE 2.0 simulation, through relative investment in different
 //! assets.
 use crate::commodity::Commodity;
-use crate::id::define_id_getter;
+use crate::id::{define_id_getter, define_id_type};
 use crate::process::ProcessID;
 use crate::region::RegionSelection;
 use indexmap::IndexMap;
@@ -13,20 +13,7 @@ use std::collections::HashSet;
 use std::fmt::Display;
 use std::rc::Rc;
 
-#[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
-pub struct AgentID(pub Rc<str>);
-
-impl Borrow<str> for AgentID {
-    fn borrow(&self) -> &str {
-        &self.0
-    }
-}
-
-impl Display for AgentID {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+define_id_type! {AgentID}
 
 /// A map of [`Agent`]s, keyed by agent ID
 pub type AgentMap = IndexMap<AgentID, Agent>;

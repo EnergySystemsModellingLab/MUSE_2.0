@@ -1,6 +1,6 @@
 //! Code for reading region-related information from CSV files.
 use super::*;
-use crate::id::{HasID, HasRegionID, IDCollection};
+use crate::id::{HasID, HasRegionID, IDCollection, IDLike};
 use crate::region::{RegionID, RegionMap, RegionSelection};
 use anyhow::{anyhow, ensure, Context, Result};
 use serde::de::DeserializeOwned;
@@ -29,20 +29,19 @@ pub fn read_regions(model_dir: &Path) -> Result<RegionMap> {
 /// `file_path` - Path to CSV file
 /// `entity_ids` - All possible valid IDs for the entity type
 /// `region_ids` - All possible valid region IDs
-pub fn read_regions_for_entity<T, ID>(
+pub fn read_regions_for_entity<T, ID: IDLike>(
     file_path: &Path,
     entity_ids: &HashSet<ID>,
     region_ids: &HashSet<RegionID>,
 ) -> Result<HashMap<ID, RegionSelection>>
 where
     T: HasID<ID> + HasRegionID + DeserializeOwned,
-    ID: Borrow<str> + Eq + Hash + Clone + Display,
 {
     read_regions_for_entity_from_iter(read_csv::<T>(file_path)?, entity_ids, region_ids)
         .with_context(|| input_err_msg(file_path))
 }
 
-fn read_regions_for_entity_from_iter<I, T, ID>(
+fn read_regions_for_entity_from_iter<I, T, ID: IDLike>(
     entity_iter: I,
     entity_ids: &HashSet<ID>,
     region_ids: &HashSet<RegionID>,
@@ -50,7 +49,6 @@ fn read_regions_for_entity_from_iter<I, T, ID>(
 where
     I: Iterator<Item = T>,
     T: HasID<ID> + HasRegionID,
-    ID: Borrow<str> + Eq + Hash + Clone + Display,
 {
     let mut entity_regions = HashMap::new();
     for entity in entity_iter {
@@ -71,15 +69,12 @@ where
 }
 
 /// Try to insert a region ID into the specified map
-fn try_insert_region<ID>(
+fn try_insert_region<ID: IDLike>(
     entity_id: ID,
     region_id: &RegionID,
     region_ids: &HashSet<RegionID>,
     entity_regions: &mut HashMap<ID, RegionSelection>,
-) -> Result<()>
-where
-    ID: Borrow<str> + Eq + Hash + Clone + Display,
-{
+) -> Result<()> {
     let entity_name = entity_id.clone();
 
     if region_id.0.eq_ignore_ascii_case("all") {

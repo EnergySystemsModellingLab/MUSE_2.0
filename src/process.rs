@@ -1,6 +1,7 @@
 //! Processes are used for converting between different commodities. The data structures in this
 //! module are used to represent these conversions along with the associated costs.
 use crate::commodity::Commodity;
+use crate::id::define_id_type;
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceID;
 use indexmap::IndexMap;
@@ -13,20 +14,7 @@ use std::fmt::Display;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
-#[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
-pub struct ProcessID(pub Rc<str>);
-
-impl Borrow<str> for ProcessID {
-    fn borrow(&self) -> &str {
-        &self.0
-    }
-}
-
-impl Display for ProcessID {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+define_id_type! {ProcessID}
 
 /// A map of [`Process`]es, keyed by process ID
 pub type ProcessMap = IndexMap<ProcessID, Rc<Process>>;

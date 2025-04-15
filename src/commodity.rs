@@ -1,5 +1,5 @@
 #![allow(missing_docs)]
-use crate::id::define_id_getter;
+use crate::id::{define_id_getter, define_id_type};
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
 use indexmap::IndexMap;
@@ -10,23 +10,10 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::rc::Rc;
 
+define_id_type! {CommodityID}
+
 /// A map of [`Commodity`]s, keyed by commodity ID
 pub type CommodityMap = IndexMap<CommodityID, Rc<Commodity>>;
-
-#[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
-pub struct CommodityID(pub Rc<str>);
-
-impl Borrow<str> for CommodityID {
-    fn borrow(&self) -> &str {
-        &self.0
-    }
-}
-
-impl Display for CommodityID {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 /// A commodity within the simulation. Represents a substance (e.g. CO2) or form of energy (e.g.
 /// electricity) that can be produced and/or consumed by technologies in the model.

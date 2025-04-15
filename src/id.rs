@@ -6,11 +6,32 @@ use std::collections::HashSet;
 use std::fmt::Display;
 use std::hash::Hash;
 
+/// A trait alias for types that behave like IDs
+pub trait IDLike: Eq + Hash + Borrow<str> + Clone + Display {}
+impl<T> IDLike for T where T: Eq + Hash + Borrow<str> + Clone + Display {}
+
+macro_rules! define_id_type {
+    ($name:ident) => {
+        #[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
+        pub struct $name(pub Rc<str>);
+
+        impl Borrow<str> for $name {
+            fn borrow(&self) -> &str {
+                &self.0
+            }
+        }
+
+        impl Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", self.0)
+            }
+        }
+    };
+}
+pub(crate) use define_id_type;
+
 /// Indicates that the struct has an ID field
-pub trait HasID<ID>
-where
-    ID: Eq + Hash + Borrow<str>,
-{
+pub trait HasID<ID: IDLike> {
     /// Get the struct's ID
     fn get_id(&self) -> &ID;
 }
@@ -46,10 +67,7 @@ macro_rules! define_region_id_getter {
 pub(crate) use define_region_id_getter;
 
 /// A data structure containing a set of IDs
-pub trait IDCollection<ID>
-where
-    ID: Eq + Hash + Borrow<str>,
-{
+pub trait IDCollection<ID: IDLike> {
     /// Get the ID after checking that it exists this collection.
     ///
     /// # Arguments
@@ -65,10 +83,7 @@ where
     fn check_id(&self, id: &ID) -> Result<ID>;
 }
 
-impl<ID> IDCollection<ID> for HashSet<ID>
-where
-    ID: Eq + Hash + Borrow<str> + Clone + Display,
-{
+impl<ID: IDLike> IDCollection<ID> for HashSet<ID> {
     fn get_id(&self, id: &str) -> Result<ID> {
         let found = self
             .get(id)

@@ -1,6 +1,6 @@
 //! Common routines for handling input data.
 use crate::asset::AssetPool;
-use crate::id::HasID;
+use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
 use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
@@ -103,15 +103,13 @@ pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
 ///
 /// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
 /// the IDs for a given type), we use an ordered map to maintain the order in the input files.
-fn read_csv_id_file<T, ID>(file_path: &Path) -> Result<IndexMap<ID, T>>
+fn read_csv_id_file<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, T>>
 where
     T: HasID<ID> + DeserializeOwned,
-    ID: Eq + Hash + Borrow<str> + Display + Clone,
 {
-    fn fill_and_validate_map<T, ID>(file_path: &Path) -> Result<IndexMap<ID, T>>
+    fn fill_and_validate_map<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, T>>
     where
         T: HasID<ID> + DeserializeOwned,
-        ID: Eq + Hash + Borrow<str> + Display + Clone,
     {
         let mut map = IndexMap::new();
         for record in read_csv::<T>(file_path)? {

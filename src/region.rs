@@ -1,5 +1,6 @@
 //! Regions represent different geographical areas in which agents, processes, etc. are active.
 use crate::id::define_id_getter;
+use crate::id::define_id_type;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::Deserialize;
@@ -9,20 +10,7 @@ use std::collections::HashSet;
 use std::fmt::Display;
 use std::rc::Rc;
 
-#[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
-pub struct RegionID(pub Rc<str>);
-
-impl Borrow<str> for RegionID {
-    fn borrow(&self) -> &str {
-        &self.0
-    }
-}
-
-impl Display for RegionID {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+define_id_type! {RegionID}
 
 /// A map of [`Region`]s, keyed by region ID
 pub type RegionMap = IndexMap<RegionID, Region>;
