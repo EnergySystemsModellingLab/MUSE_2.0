@@ -1,6 +1,7 @@
 //! The module responsible for writing output data to disk.
 use crate::asset::{Asset, AssetID, AssetPool};
 use crate::commodity::CommodityID;
+use crate::process::ProcessID;
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
 use anyhow::{Context, Result};
@@ -53,7 +54,7 @@ pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct AssetRow {
     milestone_year: u32,
-    process_id: Rc<str>,
+    process_id: ProcessID,
     region_id: Rc<str>,
     agent_id: Rc<str>,
     commission_year: u32,
@@ -63,7 +64,7 @@ impl AssetRow {
     fn new(milestone_year: u32, asset: &Asset) -> Self {
         Self {
             milestone_year,
-            process_id: Rc::clone(&asset.process.id),
+            process_id: asset.process.id.clone(),
             region_id: Rc::clone(&asset.region_id),
             agent_id: Rc::clone(&asset.agent_id),
             commission_year: asset.commission_year,

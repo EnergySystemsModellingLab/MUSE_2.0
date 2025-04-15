@@ -1,7 +1,9 @@
 //! Code for reading process-related information from CSV files.
 use super::*;
 use crate::commodity::{Commodity, CommodityMap, CommodityType};
-use crate::process::{ActivityLimitsMap, Process, ProcessFlow, ProcessMap, ProcessParameter};
+use crate::process::{
+    ActivityLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameter,
+};
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{bail, ensure, Context, Result};
@@ -229,7 +231,7 @@ where
             let regions = regions.remove(id).unwrap();
 
             let process = Process {
-                id: Rc::clone(id),
+                id: ProcessID(id.clone()),
                 description: description.description,
                 activity_limits: availabilities,
                 flows,

@@ -5,10 +5,28 @@ use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceID;
 use indexmap::IndexMap;
 use serde::Deserialize;
+use serde::Serialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
+use std::borrow::Borrow;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
+
+#[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
+pub struct ProcessID(pub Rc<str>);
+
+impl Borrow<str> for ProcessID {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Display for ProcessID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 /// A map of [`Process`]es, keyed by process ID
 pub type ProcessMap = IndexMap<Rc<str>, Rc<Process>>;
@@ -17,7 +35,7 @@ pub type ProcessMap = IndexMap<Rc<str>, Rc<Process>>;
 #[derive(PartialEq, Debug)]
 pub struct Process {
     /// A unique identifier for the process (e.g. GASDRV)
-    pub id: Rc<str>,
+    pub id: ProcessID,
     /// A human-readable description for the process (e.g. dry gas extraction)
     pub description: String,
     /// The activity limits for each time slice (as a fraction of maximum)
