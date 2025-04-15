@@ -1,7 +1,8 @@
 //! Code for handing IDs
 use anyhow::{Context, Result};
+use std::borrow::Borrow;
 use std::collections::HashSet;
-use std::rc::Rc;
+use std::hash::Hash;
 
 /// Indicates that the struct has an ID field
 pub trait HasID {
@@ -40,7 +41,10 @@ macro_rules! define_region_id_getter {
 pub(crate) use define_region_id_getter;
 
 /// A data structure containing a set of IDs
-pub trait IDCollection {
+pub trait IDCollection<ID>
+where
+    ID: Eq + Hash + Borrow<str>,
+{
     /// Get the ID after checking that it exists this collection.
     ///
     /// # Arguments
@@ -50,14 +54,17 @@ pub trait IDCollection {
     /// # Returns
     ///
     /// A copy of the `Rc<str>` in `self` or an error if not found.
-    fn get_id(&self, id: &str) -> Result<Rc<str>>;
+    fn get_id(&self, id: &str) -> Result<ID>;
 }
 
-impl IDCollection for HashSet<Rc<str>> {
-    fn get_id(&self, id: &str) -> Result<Rc<str>> {
-        let id = self
+impl<ID> IDCollection<ID> for HashSet<ID>
+where
+    ID: Eq + Hash + Borrow<str> + Clone,
+{
+    fn get_id(&self, id: &str) -> Result<ID> {
+        let found = self
             .get(id)
             .with_context(|| format!("Unknown ID {id} found"))?;
-        Ok(Rc::clone(id))
+        Ok(found.clone())
     }
 }
