@@ -2,21 +2,37 @@
 use crate::id::define_id_getter;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
 use indexmap::IndexMap;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::borrow::Borrow;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::rc::Rc;
 
 /// A map of [`Commodity`]s, keyed by commodity ID
 pub type CommodityMap = IndexMap<Rc<str>, Rc<Commodity>>;
+
+#[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
+pub struct CommodityID(pub Rc<str>);
+
+impl Borrow<str> for CommodityID {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Display for CommodityID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 /// A commodity within the simulation. Represents a substance (e.g. CO2) or form of energy (e.g.
 /// electricity) that can be produced and/or consumed by technologies in the model.
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct Commodity {
     /// Unique identifier for the commodity (e.g. "ELC")
-    pub id: Rc<str>,
+    pub id: CommodityID,
     /// Text description of commodity (e.g. "electricity")
     pub description: String,
     #[serde(rename = "type")] // NB: we can't name a field type as it's a reserved keyword
@@ -30,7 +46,7 @@ pub struct Commodity {
     #[serde(skip)]
     pub demand: DemandMap,
 }
-define_id_getter! {Commodity, Rc<str>}
+define_id_getter! {Commodity, CommodityID}
 
 /// Type of balance for application of cost
 #[derive(PartialEq, Clone, Debug, DeserializeLabeledStringEnum)]

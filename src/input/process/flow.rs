@@ -1,6 +1,6 @@
 //! Code for reading process flows file
 use super::super::*;
-use crate::commodity::CommodityMap;
+use crate::commodity::{CommodityID, CommodityMap};
 use crate::id::IDCollection;
 use crate::process::{FlowType, ProcessFlow};
 use anyhow::{ensure, Context, Result};
@@ -104,12 +104,12 @@ where
 /// An `Ok(())` if the check is successful, or an error.
 fn validate_flows(flows: &HashMap<Rc<str>, Vec<ProcessFlow>>) -> Result<()> {
     for (process_id, flows) in flows.iter() {
-        let mut commodities: HashSet<Rc<str>> = HashSet::new();
+        let mut commodities: HashSet<CommodityID> = HashSet::new();
 
         for flow in flows.iter() {
             let commodity_id = &flow.commodity.id;
             ensure!(
-                commodities.insert(Rc::clone(commodity_id)),
+                commodities.insert(commodity_id.clone()),
                 "Process {process_id} has multiple flows for commodity {commodity_id}",
             );
         }

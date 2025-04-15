@@ -1,5 +1,6 @@
 //! The module responsible for writing output data to disk.
 use crate::asset::{Asset, AssetID, AssetPool};
+use crate::commodity::CommodityID;
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
 use anyhow::{Context, Result};
@@ -75,7 +76,7 @@ impl AssetRow {
 /// This will be written along with an [`AssetRow`] containing asset-related info.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityFlowRow {
-    commodity_id: Rc<str>,
+    commodity_id: CommodityID,
     time_slice: String,
     flow: f64,
 }
@@ -84,7 +85,7 @@ struct CommodityFlowRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityPriceRow {
     milestone_year: u32,
-    commodity_id: Rc<str>,
+    commodity_id: CommodityID,
     time_slice: String,
     price: f64,
 }
@@ -132,13 +133,13 @@ impl DataWriter {
         flows: I,
     ) -> Result<()>
     where
-        I: Iterator<Item = (AssetID, &'a Rc<str>, &'a TimeSliceID, f64)>,
+        I: Iterator<Item = (AssetID, &'a CommodityID, &'a TimeSliceID, f64)>,
     {
         for (asset_id, commodity_id, time_slice, flow) in flows {
             let asset = assets.get(asset_id).unwrap();
             let asset_row = AssetRow::new(milestone_year, asset);
             let flow_row = CommodityFlowRow {
-                commodity_id: Rc::clone(commodity_id),
+                commodity_id: commodity_id.clone(),
                 time_slice: time_slice.to_string(),
                 flow,
             };
@@ -153,7 +154,7 @@ impl DataWriter {
         for (commodity_id, time_slice, price) in prices.iter() {
             let row = CommodityPriceRow {
                 milestone_year,
-                commodity_id: Rc::clone(commodity_id),
+                commodity_id: commodity_id.clone(),
                 time_slice: time_slice.to_string(),
                 price,
             };
