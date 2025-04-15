@@ -38,7 +38,7 @@ where
     let mut objectives = HashMap::new();
     for objective in iter {
         let (id, agent) = agents
-            .get_key_value(objective.agent_id.as_str())
+            .get_key_value(&objective.agent_id)
             .context("Invalid agent ID")?;
 
         // Check that required parameters are present and others are absent
@@ -283,15 +283,16 @@ mod tests {
 
     #[test]
     fn test_check_agent_objectives() {
+        let agent_id = AgentID::new("agent");
         let objective1 = AgentObjective {
-            agent_id: "agent".into(),
+            agent_id: agent_id.clone(),
             year: 2020,
             objective_type: ObjectiveType::EquivalentAnnualCost,
             decision_weight: None,
             decision_lexico_order: Some(1),
         };
         let objective2 = AgentObjective {
-            agent_id: "agent".into(),
+            agent_id: agent_id.clone(),
             year: 2020,
             objective_type: ObjectiveType::EquivalentAnnualCost,
             decision_weight: None,
@@ -301,22 +302,23 @@ mod tests {
         // DecisionRule::Single
         let decision_rule = DecisionRule::Single;
         let objectives = [&objective1];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_ok());
+
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_ok());
         let objectives = [&objective1, &objective2];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_err());
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_err());
 
         // DecisionRule::Weighted
         let decision_rule = DecisionRule::Weighted;
         let objectives = [&objective1, &objective2];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_ok());
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_ok());
         let objectives = [&objective1];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_err());
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_err());
 
         // DecisionRule::Lexicographical
         let decision_rule = DecisionRule::Lexicographical { tolerance: 1.0 };
         let objectives = [&objective1, &objective2];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_ok());
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_ok());
         let objectives = [&objective1, &objective1];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_err());
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_err());
     }
 }

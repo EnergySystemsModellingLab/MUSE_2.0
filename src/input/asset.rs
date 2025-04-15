@@ -119,7 +119,7 @@ mod tests {
             parameter: process_param.clone(),
             regions: RegionSelection::All,
         });
-        let processes = [(Rc::clone(&process.id), Rc::clone(&process))]
+        let processes = [(process.id.clone(), Rc::clone(&process))]
             .into_iter()
             .collect();
         let agent_ids = ["agent1".into()].into_iter().collect();
@@ -201,7 +201,7 @@ mod tests {
             capacity: 1.0,
             commission_year: 2010,
         };
-        let processes = [(Rc::clone(&process.id), Rc::clone(&process))]
+        let processes = [(process.id.clone(), Rc::clone(&process))]
             .into_iter()
             .collect();
         assert!(

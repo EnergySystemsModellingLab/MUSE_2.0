@@ -188,6 +188,8 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
 
 #[cfg(test)]
 mod tests {
+    use crate::id::GenericID;
+
     use super::*;
     use serde::de::value::{Error as ValueError, F64Deserializer};
     use serde::de::IntoDeserializer;
@@ -199,12 +201,12 @@ mod tests {
 
     #[derive(Debug, PartialEq, Deserialize)]
     struct Record {
-        id: String,
+        id: GenericID,
         value: u32,
     }
 
-    impl HasID for Record {
-        fn get_id(&self) -> &str {
+    impl HasID<GenericID> for Record {
+        fn get_id(&self) -> &GenericID {
             &self.id
         }
     }
@@ -227,11 +229,11 @@ mod tests {
             records,
             &[
                 Record {
-                    id: "hello".to_string(),
+                    id: "hello".into(),
                     value: 1,
                 },
                 Record {
-                    id: "world".to_string(),
+                    id: "world".into(),
                     value: 2,
                 }
             ]
@@ -258,7 +260,7 @@ mod tests {
         assert_eq!(
             read_toml::<Record>(&file_path).unwrap(),
             Record {
-                id: "hello".to_string(),
+                id: "hello".into(),
                 value: 1,
             }
         );

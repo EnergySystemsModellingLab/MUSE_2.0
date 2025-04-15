@@ -266,11 +266,11 @@ mod tests {
     fn get_process_data() -> ProcessData {
         let descriptions = vec![
             ProcessDescription {
-                id: Rc::from("process1"),
+                id: "process1".into(),
                 description: "Process 1".to_string(),
             },
             ProcessDescription {
-                id: Rc::from("process2"),
+                id: "process2".into(),
                 description: "Process 2".to_string(),
             },
         ];
@@ -426,11 +426,8 @@ mod tests {
         });
 
         let commodities: CommodityMap = [
-            (Rc::clone(&commodity_sed.id), Rc::clone(&commodity_sed)),
-            (
-                Rc::clone(&commodity_non_sed.id),
-                Rc::clone(&commodity_non_sed),
-            ),
+            (commodity_sed.id.clone(), Rc::clone(&commodity_sed)),
+            (commodity_non_sed.id.clone(), Rc::clone(&commodity_non_sed)),
         ]
         .into_iter()
         .collect();

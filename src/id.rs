@@ -1,10 +1,12 @@
 //! Code for handing IDs
 use crate::region::RegionID;
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::hash::Hash;
+use std::rc::Rc;
 
 /// A trait alias for types that behave like IDs
 pub trait IDLike: Eq + Hash + Borrow<str> + Clone + Display {}
@@ -26,9 +28,29 @@ macro_rules! define_id_type {
                 write!(f, "{}", self.0)
             }
         }
+
+        impl From<&str> for $name {
+            fn from(s: &str) -> Self {
+                $name(Rc::from(s))
+            }
+        }
+
+        impl From<String> for $name {
+            fn from(s: String) -> Self {
+                $name(Rc::from(s))
+            }
+        }
+
+        impl $name {
+            pub fn new(id: &str) -> Self {
+                $name(Rc::from(id))
+            }
+        }
     };
 }
 pub(crate) use define_id_type;
+
+define_id_type!(GenericID);
 
 /// Indicates that the struct has an ID field
 pub trait HasID<ID: IDLike> {

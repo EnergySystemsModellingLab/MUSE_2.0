@@ -173,7 +173,7 @@ mod tests {
                     demand: DemandMap::new(),
                 };
 
-                (Rc::clone(&commodity.id), commodity.into())
+                (commodity.id.clone(), commodity.into())
             })
             .collect();
 
@@ -260,7 +260,7 @@ mod tests {
                     demand: DemandMap::new(),
                 };
 
-                (Rc::clone(&commodity.id), commodity.into())
+                (commodity.id.clone(), commodity.into())
             })
             .collect();
 
@@ -341,7 +341,7 @@ mod tests {
                     demand: DemandMap::new(),
                 };
 
-                (Rc::clone(&commodity.id), commodity.into())
+                (commodity.id.clone(), commodity.into())
             })
             .collect();
 
@@ -385,7 +385,7 @@ mod tests {
                     demand: DemandMap::new(),
                 };
 
-                (Rc::clone(&commodity.id), commodity.into())
+                (commodity.id.clone(), commodity.into())
             })
             .collect();
 
@@ -466,7 +466,7 @@ mod tests {
                     demand: DemandMap::new(),
                 };
 
-                (Rc::clone(&commodity.id), commodity.into())
+                (commodity.id.clone(), commodity.into())
             })
             .collect();
 

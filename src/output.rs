@@ -183,11 +183,12 @@ mod tests {
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
+    use std::rc::Rc;
     use std::{collections::HashMap, iter};
     use tempfile::tempdir;
 
     fn get_asset() -> Asset {
-        let process_id = "process1".into();
+        let process_id = ProcessID::new("process1");
         let region_id = "GBR".into();
         let agent_id = "agent1".into();
         let commission_year = 2015;
@@ -201,7 +202,7 @@ mod tests {
             capacity_to_activity: 3.0,
         };
         let process = Rc::new(Process {
-            id: Rc::clone(&process_id),
+            id: process_id,
             description: "Description".into(),
             activity_limits: HashMap::new(),
             flows: vec![],

@@ -80,7 +80,7 @@ pub enum DecisionRule {
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct AgentObjective {
     /// Unique agent id identifying the agent this objective belongs to
-    pub agent_id: String,
+    pub agent_id: AgentID,
     /// The year the objective is relevant for
     pub year: u32,
     /// Acronym identifying the objective (e.g. LCOX)

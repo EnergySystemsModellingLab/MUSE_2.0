@@ -118,7 +118,7 @@ fn try_insert_region<ID: IDLike>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::id::{define_id_getter, define_region_id_getter};
+    use crate::id::{define_id_getter, define_region_id_getter, GenericID};
     use crate::region::Region;
     use serde::Deserialize;
     use std::fs::File;
@@ -178,8 +178,14 @@ AP,Asia Pacific"
         let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
 
         // Insert new
-        let mut entity_regions = HashMap::new();
-        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_ok());
+        let mut entity_regions: HashMap<GenericID, RegionSelection> = HashMap::new();
+        assert!(try_insert_region(
+            "key".into(),
+            &"GBR".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_ok());
         let selected: HashSet<_> = ["GBR".into()].into_iter().collect();
         assert_eq!(
             *entity_regions.get("key").unwrap(),
@@ -187,16 +193,31 @@ AP,Asia Pacific"
         );
 
         // Insert "all"
-        let mut entity_regions = HashMap::new();
-        assert!(try_insert_region("key".into(), "all", &region_ids, &mut entity_regions).is_ok());
+        let mut entity_regions: HashMap<GenericID, RegionSelection> = HashMap::new();
+        assert!(try_insert_region(
+            "key".into(),
+            &"all".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_ok());
         assert_eq!(*entity_regions.get("key").unwrap(), RegionSelection::All);
 
         // Append to existing
         let selected: HashSet<_> = ["FRA".into()].into_iter().collect();
-        let mut entity_regions = [("key".into(), RegionSelection::Some(selected.clone()))]
-            .into_iter()
-            .collect();
-        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_ok());
+        let mut entity_regions = [(
+            GenericID::new("key"),
+            RegionSelection::Some(selected.clone()),
+        )]
+        .into_iter()
+        .collect();
+        assert!(try_insert_region(
+            "key".into(),
+            &"GBR".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_ok());
         let selected: HashSet<_> = ["FRA".into(), "GBR".into()].into_iter().collect();
         assert_eq!(
             *entity_regions.get("key").unwrap(),
@@ -204,30 +225,53 @@ AP,Asia Pacific"
         );
 
         // "All" already specified
-        let mut entity_regions = [("key".into(), RegionSelection::All)].into_iter().collect();
-        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_err());
+        let mut entity_regions = [(GenericID::new("key"), RegionSelection::All)]
+            .into_iter()
+            .collect();
+        assert!(try_insert_region(
+            "key".into(),
+            &"GBR".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_err());
 
         // "GBR" specified twice
         let selected: HashSet<_> = ["GBR".into()].into_iter().collect();
-        let mut entity_regions = [("key".into(), RegionSelection::Some(selected))]
+        let mut entity_regions = [(GenericID::new("key"), RegionSelection::Some(selected))]
             .into_iter()
             .collect();
-        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_err());
+        assert!(try_insert_region(
+            "key".into(),
+            &"GBR".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_err());
 
         // Try appending "all" to existing
         let selected: HashSet<_> = ["FRA".into()].into_iter().collect();
-        let mut entity_regions = [("key".into(), RegionSelection::Some(selected.clone()))]
-            .into_iter()
-            .collect();
-        assert!(try_insert_region("key".into(), "all", &region_ids, &mut entity_regions).is_err());
+        let mut entity_regions = [(
+            GenericID::new("key"),
+            RegionSelection::Some(selected.clone()),
+        )]
+        .into_iter()
+        .collect();
+        assert!(try_insert_region(
+            "key".into(),
+            &"all".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_err());
     }
 
     #[derive(Deserialize, PartialEq)]
     struct Record {
-        id: String,
-        region_id: String,
+        id: GenericID,
+        region_id: RegionID,
     }
-    define_id_getter! {Record, String}
+    define_id_getter! {Record, GenericID}
     define_region_id_getter! {Record}
 
     #[test]
