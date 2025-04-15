@@ -48,35 +48,37 @@ macro_rules! impl_div {
 }
 
 unit_struct!(Dimensionless);
+
 unit_struct!(Money);
 unit_struct!(Year);
+unit_struct!(Energy);
+unit_struct!(Activity);
 unit_struct!(Capacity);
-unit_struct!(Commodity);
 
 #[derive(Debug, Clone, Copy, PartialEq, derive_more::Add, derive_more::Sub)]
 pub struct IYear(pub u32);
 
-unit_struct!(CommodityPerYear);
+unit_struct!(EnergyPerYear);
 unit_struct!(MoneyPerYear);
-unit_struct!(MoneyPerCommodity);
+unit_struct!(MoneyPerEnergy);
 unit_struct!(MoneyPerCapacity);
-unit_struct!(CommodityPerYearPerCapacity);
+unit_struct!(EnergyPerYearPerCapacity);
 unit_struct!(MoneyPerYearPerCapacity);
-unit_struct!(MoneyPerCommodityPerYear);
+unit_struct!(MoneyPerEnergyPerYear);
 unit_struct!(PerYear);
 
-impl_div!(Commodity, Year, CommodityPerYear);
+impl_div!(Energy, Year, EnergyPerYear);
 impl_div!(Money, Year, MoneyPerYear);
-impl_div!(Money, Commodity, MoneyPerCommodity);
-impl_div!(CommodityPerYear, Capacity, CommodityPerYearPerCapacity);
+impl_div!(Money, Energy, MoneyPerEnergy);
+impl_div!(EnergyPerYear, Capacity, EnergyPerYearPerCapacity);
 impl_div!(MoneyPerYear, Capacity, MoneyPerYearPerCapacity);
-impl_div!(MoneyPerCommodity, Year, MoneyPerCommodityPerYear);
+impl_div!(MoneyPerEnergy, Year, MoneyPerEnergyPerYear);
 impl_div!(Dimensionless, Year, PerYear);
 impl_div!(Money, Capacity, MoneyPerCapacity);
 
 impl_mul!(Dimensionless, Year, Year);
 impl_mul!(Dimensionless, Capacity, Capacity);
-impl_mul!(Dimensionless, Commodity, Commodity);
+impl_mul!(Dimensionless, Energy, Energy);
 impl_mul!(Dimensionless, Money, Money);
 impl_mul!(MoneyPerCapacity, Capacity, Money);
 impl_mul!(MoneyPerYearPerCapacity, Capacity, MoneyPerYear);
