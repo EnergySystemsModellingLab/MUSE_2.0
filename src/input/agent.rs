@@ -1,6 +1,6 @@
 //! Code for reading in agent-related data from CSV files.
 use super::*;
-use crate::agent::{Agent, AgentMap, DecisionRule};
+use crate::agent::{Agent, AgentID, AgentMap, DecisionRule};
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
 use crate::region::RegionSelection;
@@ -128,7 +128,7 @@ where
         };
 
         let agent = Agent {
-            id: Rc::clone(&agent_raw.id),
+            id: AgentID(agent_raw.id.clone()),
             description: agent_raw.description,
             commodities: Vec::new(),
             search_space: Vec::new(),

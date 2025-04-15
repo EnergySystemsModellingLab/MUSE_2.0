@@ -5,10 +5,27 @@ use crate::id::define_id_getter;
 use crate::region::RegionSelection;
 use indexmap::IndexMap;
 use serde::Deserialize;
+use serde::Serialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::borrow::Borrow;
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::rc::Rc;
+
+#[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
+pub struct AgentID(pub Rc<str>);
+
+impl Borrow<str> for AgentID {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Display for AgentID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 /// A map of [`Agent`]s, keyed by agent ID
 pub type AgentMap = IndexMap<Rc<str>, Agent>;
@@ -17,7 +34,7 @@ pub type AgentMap = IndexMap<Rc<str>, Agent>;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Agent {
     /// A unique identifier for the agent.
-    pub id: Rc<str>,
+    pub id: AgentID,
     /// A text description of the agent.
     pub description: String,
     /// The commodities that the agent is responsible for servicing.
@@ -35,7 +52,7 @@ pub struct Agent {
     /// The agent's objectives.
     pub objectives: Vec<AgentObjective>,
 }
-define_id_getter! {Agent, Rc<str>}
+define_id_getter! {Agent, AgentID}
 
 /// Which processes apply to this agent
 #[derive(Debug, Clone, PartialEq)]
