@@ -115,7 +115,7 @@ where
     {
         let mut map = IndexMap::new();
         for record in read_csv::<T>(file_path)? {
-            let id = record.get_id();
+            let id = record.get_id().clone();
             let existing = map.insert(id.clone(), record).is_some();
             ensure!(!existing, "Duplicate ID found: {id}");
         }
