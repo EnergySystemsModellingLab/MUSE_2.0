@@ -8,7 +8,6 @@ use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::path::Path;
-use std::rc::Rc;
 
 mod objective;
 use objective::read_agent_objectives;
@@ -25,7 +24,7 @@ const AGENT_FILE_NAME: &str = "agents.csv";
 #[derive(Debug, Deserialize, PartialEq, Clone)]
 struct AgentRaw {
     /// A unique identifier for the agent.
-    id: Rc<str>,
+    id: String,
     /// A text description of the agent.
     description: String,
     /// The decision rule that the agent uses to decide investment.
@@ -128,7 +127,7 @@ where
         };
 
         let agent = Agent {
-            id: AgentID(agent_raw.id.clone()),
+            id: AgentID(agent_raw.id.into()),
             description: agent_raw.description,
             commodities: Vec::new(),
             search_space: Vec::new(),

@@ -8,13 +8,14 @@ use std::fmt::Display;
 use std::hash::Hash;
 use std::rc::Rc;
 
-/// A trait alias for types that behave like IDs
+/// A trait alias for ID types
 pub trait IDLike: Eq + Hash + Borrow<str> + Clone + Display {}
 impl<T> IDLike for T where T: Eq + Hash + Borrow<str> + Clone + Display {}
 
 macro_rules! define_id_type {
     ($name:ident) => {
         #[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
+        /// An ID type (e.g. `AgentID`, `CommodityID`, etc.)
         pub struct $name(pub Rc<str>);
 
         impl Borrow<str> for $name {
@@ -42,6 +43,7 @@ macro_rules! define_id_type {
         }
 
         impl $name {
+            /// Create a new ID from a string slice
             pub fn new(id: &str) -> Self {
                 $name(Rc::from(id))
             }
@@ -90,18 +92,26 @@ pub(crate) use define_region_id_getter;
 
 /// A data structure containing a set of IDs
 pub trait IDCollection<ID: IDLike> {
-    /// Get the ID after checking that it exists this collection.
+    /// Get the ID from the collection by its string representation.
     ///
     /// # Arguments
     ///
-    /// * `id` - The ID to look up
+    /// * `id` - The string representation of the ID
     ///
     /// # Returns
     ///
-    /// A copy of the `ID` in `self` or an error if not found.
+    /// A copy of the ID in `self`, or an error if not found.
     fn get_id(&self, id: &str) -> Result<ID>;
 
-    /// Check that the ID exists in this collection.
+    /// Check if the ID is in the collection, returning a copy of it if found.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID to check
+    ///
+    /// # Returns
+    ///
+    /// A copy of the ID in `self`, or an error if not found.
     fn check_id(&self, id: &ID) -> Result<ID>;
 }
 
