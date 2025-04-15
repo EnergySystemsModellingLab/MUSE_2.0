@@ -28,6 +28,12 @@ impl Display for ProcessID {
     }
 }
 
+impl From<&str> for ProcessID {
+    fn from(value: &str) -> Self {
+        ProcessID(Rc::from(value))
+    }
+}
+
 /// A map of [`Process`]es, keyed by process ID
 pub type ProcessMap = IndexMap<ProcessID, Rc<Process>>;
 

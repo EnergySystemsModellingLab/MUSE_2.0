@@ -28,6 +28,12 @@ impl Display for AgentID {
     }
 }
 
+impl From<&str> for AgentID {
+    fn from(value: &str) -> Self {
+        AgentID(Rc::from(value))
+    }
+}
+
 /// A map of [`Agent`]s, keyed by agent ID
 pub type AgentMap = IndexMap<AgentID, Agent>;
 

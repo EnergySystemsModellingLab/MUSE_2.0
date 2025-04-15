@@ -28,6 +28,12 @@ impl Display for CommodityID {
     }
 }
 
+impl From<&str> for CommodityID {
+    fn from(value: &str) -> Self {
+        CommodityID(Rc::from(value))
+    }
+}
+
 /// A commodity within the simulation. Represents a substance (e.g. CO2) or form of energy (e.g.
 /// electricity) that can be produced and/or consumed by technologies in the model.
 #[derive(PartialEq, Debug, Deserialize)]

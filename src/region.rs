@@ -24,6 +24,12 @@ impl Display for RegionID {
     }
 }
 
+impl From<&str> for RegionID {
+    fn from(value: &str) -> Self {
+        RegionID(Rc::from(value))
+    }
+}
+
 /// A map of [`Region`]s, keyed by region ID
 pub type RegionMap = IndexMap<RegionID, Region>;
 
