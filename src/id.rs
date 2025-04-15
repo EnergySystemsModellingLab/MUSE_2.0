@@ -3,6 +3,7 @@ use crate::region::RegionID;
 use anyhow::{Context, Result};
 use std::borrow::Borrow;
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::hash::Hash;
 
 /// Indicates that the struct has an ID field
@@ -57,17 +58,27 @@ where
     ///
     /// # Returns
     ///
-    /// A copy of the `Rc<str>` in `self` or an error if not found.
+    /// A copy of the `ID` in `self` or an error if not found.
     fn get_id(&self, id: &str) -> Result<ID>;
+
+    /// Check that the ID exists in this collection.
+    fn check_id(&self, id: &ID) -> Result<ID>;
 }
 
 impl<ID> IDCollection<ID> for HashSet<ID>
 where
-    ID: Eq + Hash + Borrow<str> + Clone,
+    ID: Eq + Hash + Borrow<str> + Clone + Display,
 {
     fn get_id(&self, id: &str) -> Result<ID> {
         let found = self
             .get(id)
+            .with_context(|| format!("Unknown ID {id} found"))?;
+        Ok(found.clone())
+    }
+
+    fn check_id(&self, id: &ID) -> Result<ID> {
+        let found = self
+            .get(id.borrow())
             .with_context(|| format!("Unknown ID {id} found"))?;
         Ok(found.clone())
     }
