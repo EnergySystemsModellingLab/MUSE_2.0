@@ -124,7 +124,7 @@ where
 {
     let mut params = HashMap::new();
     for param_raw in iter {
-        let id = process_ids.get_id(&param_raw.process_id)?;
+        let id = process_ids.get_id_by_str(&param_raw.process_id)?;
         let param = param_raw.into_parameter(year_range)?;
         ensure!(
             params.insert(id.clone(), param).is_none(),

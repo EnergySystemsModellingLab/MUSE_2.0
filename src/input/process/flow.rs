@@ -72,7 +72,7 @@ where
         }
 
         // Create ProcessFlow object
-        let process_id = process_ids.get_id(&flow.process_id)?;
+        let process_id = process_ids.get_id_by_str(&flow.process_id)?;
         let process_flow = ProcessFlow {
             process_id: flow.process_id,
             commodity: Rc::clone(commodity),

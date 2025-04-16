@@ -78,8 +78,8 @@ where
     let mut used_milestone_years = HashMap::new();
 
     for cost in iter {
-        let commodity_id = commodity_ids.get_id(&cost.commodity_id)?;
-        let region_id = region_ids.get_id(&cost.region_id)?;
+        let commodity_id = commodity_ids.get_id_by_str(&cost.commodity_id)?;
+        let region_id = region_ids.get_id_by_str(&cost.region_id)?;
         let ts_selection = time_slice_info.get_selection(&cost.time_slice)?;
 
         ensure!(

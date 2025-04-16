@@ -3,11 +3,9 @@ use crate::id::{define_id_getter, define_id_type};
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
-use std::borrow::Borrow;
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::rc::Rc;
 
 define_id_type! {CommodityID}
