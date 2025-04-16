@@ -56,17 +56,9 @@ pub struct CommodityCost {
     pub value: f64,
 }
 
-/// Used for looking up [`CommodityCost`]s in a [`CommodityCostMap`]
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
-struct CommodityCostKey {
-    region_id: RegionID,
-    year: u32,
-    time_slice: TimeSliceID,
-}
-
 /// A data structure for easy lookup of [`CommodityCost`]s
 #[derive(PartialEq, Debug, Default, Clone)]
-pub struct CommodityCostMap(HashMap<CommodityCostKey, CommodityCost>);
+pub struct CommodityCostMap(HashMap<(RegionID, u32, TimeSliceID), CommodityCost>);
 
 impl CommodityCostMap {
     /// Create a new, empty [`CommodityCostMap`]
@@ -82,11 +74,7 @@ impl CommodityCostMap {
         time_slice: TimeSliceID,
         value: CommodityCost,
     ) -> Option<CommodityCost> {
-        let key = CommodityCostKey {
-            region_id,
-            year,
-            time_slice,
-        };
+        let key = (region_id, year, time_slice);
         self.0.insert(key, value)
     }
 
@@ -97,11 +85,7 @@ impl CommodityCostMap {
         year: u32,
         time_slice: &TimeSliceID,
     ) -> Option<&CommodityCost> {
-        let key = CommodityCostKey {
-            region_id: region_id.clone(),
-            year,
-            time_slice: time_slice.clone(),
-        };
+        let key = (region_id.clone(), year, time_slice.clone());
         self.0.get(&key)
     }
 }
@@ -124,15 +108,7 @@ pub enum CommodityType {
 /// This data type is exported as this is the way in we want to look up demand outside of this
 /// module.
 #[derive(PartialEq, Debug, Clone, Default)]
-pub struct DemandMap(HashMap<DemandMapKey, f64>);
-
-/// The key for a [`DemandMap`]
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
-struct DemandMapKey {
-    region_id: RegionID,
-    year: u32,
-    time_slice: TimeSliceID,
-}
+pub struct DemandMap(HashMap<(RegionID, u32, TimeSliceID), f64>);
 
 impl DemandMap {
     /// Create a new, empty [`DemandMap`]
@@ -143,25 +119,14 @@ impl DemandMap {
     /// Retrieve the demand for the specified region, year and time slice
     pub fn get(&self, region_id: &RegionID, year: u32, time_slice: &TimeSliceID) -> f64 {
         self.0
-            .get(&DemandMapKey {
-                region_id: region_id.clone(),
-                year,
-                time_slice: time_slice.clone(),
-            })
+            .get(&(region_id.clone(), year, time_slice.clone()))
             .copied()
             .unwrap_or_else(|| panic!("Missing demand entry: {region_id}, {year}, {time_slice}"))
     }
 
     /// Insert a new demand entry for the specified region, year and time slice
     pub fn insert(&mut self, region_id: RegionID, year: u32, time_slice: TimeSliceID, demand: f64) {
-        self.0.insert(
-            DemandMapKey {
-                region_id,
-                year,
-                time_slice,
-            },
-            demand,
-        );
+        self.0.insert((region_id, year, time_slice), demand);
     }
 }
 
