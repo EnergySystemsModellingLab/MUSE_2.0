@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 use crate::id::{define_id_getter, define_id_type};
+use crate::map::define_map_type;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
 use indexmap::IndexMap;
@@ -12,6 +13,13 @@ define_id_type! {CommodityID}
 
 /// A map of [`Commodity`]s, keyed by commodity ID
 pub type CommodityMap = IndexMap<CommodityID, Rc<Commodity>>;
+
+define_map_type!(
+    CommodityCostMap,
+    (RegionID, u32, TimeSliceID),
+    CommodityCost
+);
+define_map_type!(DemandMap, (RegionID, u32, TimeSliceID), f64);
 
 /// A commodity within the simulation. Represents a substance (e.g. CO2) or form of energy (e.g.
 /// electricity) that can be produced and/or consumed by technologies in the model.
@@ -54,56 +62,6 @@ pub struct CommodityCost {
     pub value: f64,
 }
 
-/// Used for looking up [`CommodityCost`]s in a [`CommodityCostMap`]
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
-struct CommodityCostKey {
-    region_id: RegionID,
-    year: u32,
-    time_slice: TimeSliceID,
-}
-
-/// A data structure for easy lookup of [`CommodityCost`]s
-#[derive(PartialEq, Debug, Default, Clone)]
-pub struct CommodityCostMap(HashMap<CommodityCostKey, CommodityCost>);
-
-impl CommodityCostMap {
-    /// Create a new, empty [`CommodityCostMap`]
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-
-    /// Insert a [`CommodityCost`] into the map
-    pub fn insert(
-        &mut self,
-        region_id: RegionID,
-        year: u32,
-        time_slice: TimeSliceID,
-        value: CommodityCost,
-    ) -> Option<CommodityCost> {
-        let key = CommodityCostKey {
-            region_id,
-            year,
-            time_slice,
-        };
-        self.0.insert(key, value)
-    }
-
-    /// Retrieve a [`CommodityCost`] from the map
-    pub fn get(
-        &self,
-        region_id: &RegionID,
-        year: u32,
-        time_slice: &TimeSliceID,
-    ) -> Option<&CommodityCost> {
-        let key = CommodityCostKey {
-            region_id: region_id.clone(),
-            year,
-            time_slice: time_slice.clone(),
-        };
-        self.0.get(&key)
-    }
-}
-
 /// Commodity balance type
 #[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
 pub enum CommodityType {
@@ -115,52 +73,6 @@ pub enum CommodityType {
     InputCommodity,
     #[string = "ouc"]
     OutputCommodity,
-}
-
-/// A map relating region, year and time slice to demand (in real units, not a fraction).
-///
-/// This data type is exported as this is the way in we want to look up demand outside of this
-/// module.
-#[derive(PartialEq, Debug, Clone, Default)]
-pub struct DemandMap(HashMap<DemandMapKey, f64>);
-
-/// The key for a [`DemandMap`]
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
-struct DemandMapKey {
-    region_id: RegionID,
-    year: u32,
-    time_slice: TimeSliceID,
-}
-
-impl DemandMap {
-    /// Create a new, empty [`DemandMap`]
-    pub fn new() -> DemandMap {
-        DemandMap::default()
-    }
-
-    /// Retrieve the demand for the specified region, year and time slice
-    pub fn get(&self, region_id: &RegionID, year: u32, time_slice: &TimeSliceID) -> f64 {
-        self.0
-            .get(&DemandMapKey {
-                region_id: region_id.clone(),
-                year,
-                time_slice: time_slice.clone(),
-            })
-            .copied()
-            .unwrap_or_else(|| panic!("Missing demand entry: {region_id}, {year}, {time_slice}"))
-    }
-
-    /// Insert a new demand entry for the specified region, year and time slice
-    pub fn insert(&mut self, region_id: RegionID, year: u32, time_slice: TimeSliceID, demand: f64) {
-        self.0.insert(
-            DemandMapKey {
-                region_id,
-                year,
-                time_slice,
-            },
-            demand,
-        );
-    }
 }
 
 #[cfg(test)]
@@ -175,9 +87,9 @@ mod tests {
         };
         let value = 0.25;
         let mut map = DemandMap::new();
-        map.insert("North".into(), 2020, time_slice.clone(), value);
+        map.insert(("North".into(), 2020, time_slice.clone()), value);
 
-        assert_eq!(map.get(&"North".into(), 2020, &time_slice), value)
+        assert_eq!(map.get(("North".into(), 2020, time_slice)), value)
     }
 
     #[test]
@@ -192,8 +104,8 @@ mod tests {
         };
         let mut map = CommodityCostMap::new();
         assert!(map
-            .insert("GBR".into(), 2010, ts.clone(), value.clone())
+            .insert(("GBR".into(), 2010, ts.clone()), value.clone())
             .is_none());
-        assert_eq!(map.get(&"GBR".into(), 2010, &ts).unwrap(), &value);
+        assert_eq!(map.get(("GBR".into(), 2010, ts)), value);
     }
 }
