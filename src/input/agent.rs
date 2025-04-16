@@ -1,14 +1,13 @@
 //! Code for reading in agent-related data from CSV files.
 use super::*;
-use crate::agent::{Agent, AgentMap, DecisionRule};
+use crate::agent::{Agent, AgentID, AgentMap, DecisionRule};
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
-use crate::region::RegionSelection;
+use crate::region::{RegionID, RegionSelection};
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::path::Path;
-use std::rc::Rc;
 
 mod objective;
 use objective::read_agent_objectives;
@@ -25,7 +24,7 @@ const AGENT_FILE_NAME: &str = "agents.csv";
 #[derive(Debug, Deserialize, PartialEq, Clone)]
 struct AgentRaw {
     /// A unique identifier for the agent.
-    id: Rc<str>,
+    id: String,
     /// A text description of the agent.
     description: String,
     /// The decision rule that the agent uses to decide investment.
@@ -54,7 +53,7 @@ pub fn read_agents(
     model_dir: &Path,
     commodities: &CommodityMap,
     processes: &ProcessMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<AgentMap> {
     let process_ids = processes.keys().cloned().collect();
@@ -128,7 +127,7 @@ where
         };
 
         let agent = Agent {
-            id: Rc::clone(&agent_raw.id),
+            id: AgentID(agent_raw.id.into()),
             description: agent_raw.description,
             commodities: Vec::new(),
             search_space: Vec::new(),
@@ -140,7 +139,7 @@ where
         };
 
         ensure!(
-            agents.insert(agent_raw.id, agent).is_none(),
+            agents.insert(agent.id.clone(), agent).is_none(),
             "Duplicate agent ID"
         );
     }

@@ -1,11 +1,11 @@
 //! Code for reading in commodity-related data from CSV files.
 use super::*;
-use crate::commodity::{Commodity, CommodityMap};
+use crate::commodity::{Commodity, CommodityID, CommodityMap};
+use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
 use std::collections::HashSet;
 use std::path::Path;
-use std::rc::Rc;
 
 mod cost;
 use cost::read_commodity_costs;
@@ -29,11 +29,12 @@ const COMMODITY_FILE_NAME: &str = "commodities.csv";
 /// A map containing commodities, grouped by commodity ID or an error.
 pub fn read_commodities(
     model_dir: &Path,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<CommodityMap> {
-    let commodities = read_csv_id_file::<Commodity>(&model_dir.join(COMMODITY_FILE_NAME))?;
+    let commodities =
+        read_csv_id_file::<Commodity, CommodityID>(&model_dir.join(COMMODITY_FILE_NAME))?;
     let commodity_ids = commodities.keys().cloned().collect();
     let mut costs = read_commodity_costs(
         model_dir,

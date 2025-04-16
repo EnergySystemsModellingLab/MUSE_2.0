@@ -1,32 +1,13 @@
 //! Code for reading region-related information from CSV files.
 use super::*;
-use crate::region::{Region, RegionMap, RegionSelection};
+use crate::id::{HasID, HasRegionID, IDCollection, IDLike};
+use crate::region::{RegionID, RegionMap, RegionSelection};
 use anyhow::{anyhow, ensure, Context, Result};
 use serde::de::DeserializeOwned;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const REGIONS_FILE_NAME: &str = "regions.csv";
-
-define_id_getter! {Region}
-
-/// An object which is associated with a single region
-pub trait HasRegionID {
-    /// Get the associated region ID
-    fn get_region_id(&self) -> &str;
-}
-
-macro_rules! define_region_id_getter {
-    ($t:ty) => {
-        impl crate::input::region::HasRegionID for $t {
-            fn get_region_id(&self) -> &str {
-                &self.region_id
-            }
-        }
-    };
-}
-pub(crate) use define_region_id_getter;
 
 /// Reads regions from a CSV file.
 ///
@@ -36,7 +17,7 @@ pub(crate) use define_region_id_getter;
 ///
 /// # Returns
 ///
-/// A `HashMap<Rc<str>, Region>` with the parsed regions data or an error. The keys are region IDs.
+/// A `HashMap<RegionID, Region>` with the parsed regions data or an error
 pub fn read_regions(model_dir: &Path) -> Result<RegionMap> {
     read_csv_id_file(&model_dir.join(REGIONS_FILE_NAME))
 }
@@ -48,26 +29,26 @@ pub fn read_regions(model_dir: &Path) -> Result<RegionMap> {
 /// `file_path` - Path to CSV file
 /// `entity_ids` - All possible valid IDs for the entity type
 /// `region_ids` - All possible valid region IDs
-pub fn read_regions_for_entity<T>(
+pub fn read_regions_for_entity<T, ID: IDLike>(
     file_path: &Path,
-    entity_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, RegionSelection>>
+    entity_ids: &HashSet<ID>,
+    region_ids: &HashSet<RegionID>,
+) -> Result<HashMap<ID, RegionSelection>>
 where
-    T: HasID + HasRegionID + DeserializeOwned,
+    T: HasID<ID> + HasRegionID + DeserializeOwned,
 {
     read_regions_for_entity_from_iter(read_csv::<T>(file_path)?, entity_ids, region_ids)
         .with_context(|| input_err_msg(file_path))
 }
 
-fn read_regions_for_entity_from_iter<I, T>(
+fn read_regions_for_entity_from_iter<I, T, ID: IDLike>(
     entity_iter: I,
-    entity_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
-) -> Result<HashMap<Rc<str>, RegionSelection>>
+    entity_ids: &HashSet<ID>,
+    region_ids: &HashSet<RegionID>,
+) -> Result<HashMap<ID, RegionSelection>>
 where
     I: Iterator<Item = T>,
-    T: HasID + HasRegionID,
+    T: HasID<ID> + HasRegionID,
 {
     let mut entity_regions = HashMap::new();
     for entity in entity_iter {
@@ -88,15 +69,15 @@ where
 }
 
 /// Try to insert a region ID into the specified map
-fn try_insert_region(
-    entity_id: Rc<str>,
-    region_id: &str,
-    region_ids: &HashSet<Rc<str>>,
-    entity_regions: &mut HashMap<Rc<str>, RegionSelection>,
+fn try_insert_region<ID: IDLike>(
+    entity_id: ID,
+    region_id: &RegionID,
+    region_ids: &HashSet<RegionID>,
+    entity_regions: &mut HashMap<ID, RegionSelection>,
 ) -> Result<()> {
     let entity_name = entity_id.clone();
 
-    if region_id.eq_ignore_ascii_case("all") {
+    if region_id.0.eq_ignore_ascii_case("all") {
         // Valid for all regions
         return match entity_regions.insert(entity_id, RegionSelection::All) {
             None => Ok(()),
@@ -137,6 +118,8 @@ fn try_insert_region(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::id::{define_id_getter, define_region_id_getter, GenericID};
+    use crate::region::Region;
     use serde::Deserialize;
     use std::fs::File;
     use std::io::Write;
@@ -195,8 +178,14 @@ AP,Asia Pacific"
         let region_ids = ["GBR".into(), "FRA".into()].into_iter().collect();
 
         // Insert new
-        let mut entity_regions = HashMap::new();
-        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_ok());
+        let mut entity_regions: HashMap<GenericID, RegionSelection> = HashMap::new();
+        assert!(try_insert_region(
+            "key".into(),
+            &"GBR".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_ok());
         let selected: HashSet<_> = ["GBR".into()].into_iter().collect();
         assert_eq!(
             *entity_regions.get("key").unwrap(),
@@ -204,16 +193,31 @@ AP,Asia Pacific"
         );
 
         // Insert "all"
-        let mut entity_regions = HashMap::new();
-        assert!(try_insert_region("key".into(), "all", &region_ids, &mut entity_regions).is_ok());
+        let mut entity_regions: HashMap<GenericID, RegionSelection> = HashMap::new();
+        assert!(try_insert_region(
+            "key".into(),
+            &"all".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_ok());
         assert_eq!(*entity_regions.get("key").unwrap(), RegionSelection::All);
 
         // Append to existing
         let selected: HashSet<_> = ["FRA".into()].into_iter().collect();
-        let mut entity_regions = [("key".into(), RegionSelection::Some(selected.clone()))]
-            .into_iter()
-            .collect();
-        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_ok());
+        let mut entity_regions = [(
+            GenericID::new("key"),
+            RegionSelection::Some(selected.clone()),
+        )]
+        .into_iter()
+        .collect();
+        assert!(try_insert_region(
+            "key".into(),
+            &"GBR".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_ok());
         let selected: HashSet<_> = ["FRA".into(), "GBR".into()].into_iter().collect();
         assert_eq!(
             *entity_regions.get("key").unwrap(),
@@ -221,30 +225,53 @@ AP,Asia Pacific"
         );
 
         // "All" already specified
-        let mut entity_regions = [("key".into(), RegionSelection::All)].into_iter().collect();
-        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_err());
+        let mut entity_regions = [(GenericID::new("key"), RegionSelection::All)]
+            .into_iter()
+            .collect();
+        assert!(try_insert_region(
+            "key".into(),
+            &"GBR".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_err());
 
         // "GBR" specified twice
         let selected: HashSet<_> = ["GBR".into()].into_iter().collect();
-        let mut entity_regions = [("key".into(), RegionSelection::Some(selected))]
+        let mut entity_regions = [(GenericID::new("key"), RegionSelection::Some(selected))]
             .into_iter()
             .collect();
-        assert!(try_insert_region("key".into(), "GBR", &region_ids, &mut entity_regions).is_err());
+        assert!(try_insert_region(
+            "key".into(),
+            &"GBR".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_err());
 
         // Try appending "all" to existing
         let selected: HashSet<_> = ["FRA".into()].into_iter().collect();
-        let mut entity_regions = [("key".into(), RegionSelection::Some(selected.clone()))]
-            .into_iter()
-            .collect();
-        assert!(try_insert_region("key".into(), "all", &region_ids, &mut entity_regions).is_err());
+        let mut entity_regions = [(
+            GenericID::new("key"),
+            RegionSelection::Some(selected.clone()),
+        )]
+        .into_iter()
+        .collect();
+        assert!(try_insert_region(
+            "key".into(),
+            &"all".into(),
+            &region_ids,
+            &mut entity_regions
+        )
+        .is_err());
     }
 
     #[derive(Deserialize, PartialEq)]
     struct Record {
-        id: String,
-        region_id: String,
+        id: GenericID,
+        region_id: RegionID,
     }
-    define_id_getter! {Record}
+    define_id_getter! {Record, GenericID}
     define_region_id_getter! {Record}
 
     #[test]

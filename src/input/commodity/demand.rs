@@ -2,13 +2,14 @@
 //! slice.
 use super::super::*;
 use super::demand_slicing::{read_demand_slices, DemandSliceMap, DemandSliceMapKey};
-use crate::commodity::DemandMap;
+use crate::commodity::{CommodityID, DemandMap};
+use crate::id::IDCollection;
+use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const DEMAND_FILE_NAME: &str = "demand.csv";
 
@@ -32,15 +33,15 @@ pub type AnnualDemandMap = HashMap<AnnualDemandMapKey, f64>;
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct AnnualDemandMapKey {
     /// The commodity to which this demand applies
-    commodity_id: Rc<str>,
+    commodity_id: CommodityID,
     /// The region to which this demand applies
-    region_id: Rc<str>,
+    region_id: RegionID,
     /// The simulation year to which this demand applies
     year: u32,
 }
 
 /// A set of commodity + region pairs
-pub type CommodityRegionPairs = HashSet<(Rc<str>, Rc<str>)>;
+pub type CommodityRegionPairs = HashSet<(CommodityID, RegionID)>;
 
 /// Reads demand data from CSV files.
 ///
@@ -57,11 +58,11 @@ pub type CommodityRegionPairs = HashSet<(Rc<str>, Rc<str>)>;
 /// This function returns [`DemandMap`]s grouped by commodity ID.
 pub fn read_demand(
     model_dir: &Path,
-    commodity_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
+    region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, DemandMap>> {
+) -> Result<HashMap<CommodityID, DemandMap>> {
     let (demand, commodity_regions) =
         read_demand_file(model_dir, commodity_ids, region_ids, milestone_years)?;
     let slices = read_demand_slices(
@@ -89,8 +90,8 @@ pub fn read_demand(
 /// Annual demand data, grouped by commodity, region and milestone year.
 fn read_demand_file(
     model_dir: &Path,
-    commodity_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<(AnnualDemandMap, CommodityRegionPairs)> {
     let file_path = model_dir.join(DEMAND_FILE_NAME);
@@ -113,8 +114,8 @@ fn read_demand_file(
 /// commodity + region pairs included in the file.
 fn read_demand_from_iter<I>(
     iter: I,
-    commodity_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<(AnnualDemandMap, CommodityRegionPairs)>
 where
@@ -127,8 +128,8 @@ where
     let mut commodity_regions = HashSet::new();
 
     for demand in iter {
-        let commodity_id = commodity_ids.get_id(&demand.commodity_id)?;
-        let region_id = region_ids.get_id(&demand.region_id)?;
+        let commodity_id = commodity_ids.get_id_by_str(&demand.commodity_id)?;
+        let region_id = region_ids.get_id_by_str(&demand.region_id)?;
 
         ensure!(
             milestone_years.binary_search(&demand.year).is_ok(),
@@ -143,8 +144,8 @@ where
         );
 
         let key = AnnualDemandMapKey {
-            commodity_id: Rc::clone(&commodity_id),
-            region_id: Rc::clone(&region_id),
+            commodity_id: commodity_id.clone(),
+            region_id: region_id.clone(),
             year: demand.year,
         };
         ensure!(
@@ -163,8 +164,8 @@ where
     for (commodity_id, region_id) in commodity_regions.iter() {
         for year in milestone_years.iter().copied() {
             let key = AnnualDemandMapKey {
-                commodity_id: Rc::clone(commodity_id),
-                region_id: Rc::clone(region_id),
+                commodity_id: commodity_id.clone(),
+                region_id: region_id.clone(),
                 year,
             };
             ensure!(
@@ -193,15 +194,15 @@ fn compute_demand_maps(
     demand: &AnnualDemandMap,
     slices: &DemandSliceMap,
     time_slice_info: &TimeSliceInfo,
-) -> HashMap<Rc<str>, DemandMap> {
+) -> HashMap<CommodityID, DemandMap> {
     let mut map = HashMap::new();
     for (demand_key, annual_demand) in demand.iter() {
         let commodity_id = &demand_key.commodity_id;
         let region_id = &demand_key.region_id;
         for time_slice in time_slice_info.iter_ids() {
             let slice_key = DemandSliceMapKey {
-                commodity_id: Rc::clone(commodity_id),
-                region_id: Rc::clone(region_id),
+                commodity_id: commodity_id.clone(),
+                region_id: region_id.clone(),
                 time_slice: time_slice.clone(),
             };
 
@@ -210,12 +211,12 @@ fn compute_demand_maps(
 
             // Get or create entry
             let map = map
-                .entry(Rc::clone(commodity_id))
+                .entry(commodity_id.clone())
                 .or_insert_with(DemandMap::new);
 
             // Add a new demand entry
             map.insert(
-                Rc::clone(region_id),
+                region_id.clone(),
                 demand_key.year,
                 time_slice.clone(),
                 annual_demand * demand_fraction,

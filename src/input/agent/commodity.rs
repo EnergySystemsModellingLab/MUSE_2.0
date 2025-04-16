@@ -1,7 +1,8 @@
 //! Code for reading the agent commodities CSV file.
 use super::super::*;
-use crate::agent::{AgentCommodity, AgentMap};
+use crate::agent::{AgentCommodity, AgentID, AgentMap};
 use crate::commodity::{CommodityMap, CommodityType};
+use crate::region::RegionID;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -63,9 +64,9 @@ pub fn read_agent_commodities(
     model_dir: &Path,
     agents: &AgentMap,
     commodities: &CommodityMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentCommodity>>> {
+) -> Result<HashMap<AgentID, Vec<AgentCommodity>>> {
     let file_path = model_dir.join(AGENT_COMMODITIES_FILE_NAME);
     let agent_commodities_csv = read_csv(&file_path)?;
     read_agent_commodities_from_iter(
@@ -82,9 +83,9 @@ fn read_agent_commodities_from_iter<I>(
     iter: I,
     agents: &AgentMap,
     commodities: &CommodityMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentCommodity>>>
+) -> Result<HashMap<AgentID, Vec<AgentCommodity>>>
 where
     I: Iterator<Item = AgentCommodityRaw>,
 {
@@ -99,7 +100,7 @@ where
 
         // Append to Vec with the corresponding key or create
         agent_commodities
-            .entry(Rc::clone(id))
+            .entry(id.clone())
             .or_insert_with(|| Vec::with_capacity(1))
             .push(agent_commodity);
     }
@@ -116,10 +117,10 @@ where
 }
 
 fn validate_agent_commodities(
-    agent_commodities: &HashMap<Rc<str>, Vec<AgentCommodity>>,
+    agent_commodities: &HashMap<AgentID, Vec<AgentCommodity>>,
     agents: &AgentMap,
     commodities: &CommodityMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<()> {
     // CHECK 1: For each agent there must be at least one commodity for all years
@@ -181,14 +182,14 @@ fn validate_agent_commodities(
                 CommodityType::SupplyEqualsDemand | CommodityType::ServiceDemand
             )
         })
-        .map(|(id, _)| Rc::clone(id));
+        .map(|(id, _)| id.clone());
 
     // Check that summed_portions contains all SVD/SED commodities for all regions and milestone
     // years
     for commodity_id in svd_and_sed_commodities {
         for year in milestone_years {
             for region in region_ids {
-                let key = (&*commodity_id, *year, region);
+                let key = (&commodity_id, *year, region);
                 ensure!(
                     summed_portions.contains_key(&key),
                     "Commodity {} in year {} and region {} is not covered",
@@ -207,7 +208,7 @@ fn validate_agent_commodities(
 mod tests {
     use super::*;
     use crate::agent::{Agent, DecisionRule};
-    use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
+    use crate::commodity::{Commodity, CommodityCostMap, CommodityID, CommodityType, DemandMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
 
@@ -263,9 +264,9 @@ mod tests {
     #[test]
     fn test_validate_agent_commodities() {
         let agents = IndexMap::from([(
-            Rc::from("agent1"),
+            AgentID::new("agent1"),
             Agent {
-                id: Rc::from("agent1"),
+                id: "agent1".into(),
                 description: "An agent".into(),
                 commodities: Vec::new(),
                 search_space: Vec::new(),
@@ -277,7 +278,7 @@ mod tests {
             },
         )]);
         let mut commodities = IndexMap::from([(
-            Rc::from("commodity1"),
+            CommodityID::new("commodity1"),
             Rc::new(Commodity {
                 id: "commodity1".into(),
                 description: "A commodity".into(),
@@ -287,7 +288,7 @@ mod tests {
                 demand: DemandMap::new(),
             }),
         )]);
-        let region_ids = HashSet::from([Rc::from("region1")]);
+        let region_ids = HashSet::from([RegionID::new("region1")]);
         let milestone_years = vec![2020];
 
         // Valid case
@@ -296,7 +297,7 @@ mod tests {
             commodity: Rc::clone(commodities.get("commodity1").unwrap()),
             commodity_portion: 1.0,
         };
-        let agent_commodities = HashMap::from([(Rc::from("agent1"), vec![agent_commodity])]);
+        let agent_commodities = HashMap::from([(AgentID::new("agent1"), vec![agent_commodity])]);
         assert!(validate_agent_commodities(
             &agent_commodities,
             &agents,
@@ -312,7 +313,8 @@ mod tests {
             commodity: Rc::clone(commodities.get("commodity1").unwrap()),
             commodity_portion: 0.5,
         };
-        let agent_commodities_v2 = HashMap::from([(Rc::from("agent1"), vec![agent_commodity_v2])]);
+        let agent_commodities_v2 =
+            HashMap::from([(AgentID::new("agent1"), vec![agent_commodity_v2])]);
         assert!(validate_agent_commodities(
             &agent_commodities_v2,
             &agents,
@@ -324,7 +326,7 @@ mod tests {
 
         // Invalid case: SED commodity without associated commodity portions
         commodities.insert(
-            Rc::from("commodity2"),
+            CommodityID::new("commodity2"),
             Rc::new(Commodity {
                 id: "commodity2".into(),
                 description: "Another commodity".into(),

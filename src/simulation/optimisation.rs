@@ -2,14 +2,13 @@
 //!
 //! This is used to calculate commodity flows and prices.
 use crate::asset::{Asset, AssetID, AssetPool};
-use crate::commodity::BalanceType;
+use crate::commodity::{BalanceType, CommodityID};
 use crate::model::Model;
 use crate::process::ProcessFlow;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
-use std::rc::Rc;
 
 mod constraints;
 use constraints::{add_asset_constraints, CapacityConstraintKeys, CommodityBalanceConstraintKeys};
@@ -34,10 +33,15 @@ pub struct VariableMap(IndexMap<VariableMapKey, Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
-    fn get(&self, asset_id: AssetID, commodity_id: &Rc<str>, time_slice: &TimeSliceID) -> Variable {
+    fn get(
+        &self,
+        asset_id: AssetID,
+        commodity_id: &CommodityID,
+        time_slice: &TimeSliceID,
+    ) -> Variable {
         let key = VariableMapKey {
             asset_id,
-            commodity_id: Rc::clone(commodity_id),
+            commodity_id: commodity_id.clone(),
             time_slice: time_slice.clone(),
         };
 
@@ -52,13 +56,13 @@ impl VariableMap {
 #[derive(Eq, PartialEq, Hash)]
 struct VariableMapKey {
     asset_id: AssetID,
-    commodity_id: Rc<str>,
+    commodity_id: CommodityID,
     time_slice: TimeSliceID,
 }
 
 impl VariableMapKey {
     /// Create a new [`VariableMapKey`]
-    fn new(asset_id: AssetID, commodity_id: Rc<str>, time_slice: TimeSliceID) -> Self {
+    fn new(asset_id: AssetID, commodity_id: CommodityID, time_slice: TimeSliceID) -> Self {
         Self {
             asset_id,
             commodity_id,
@@ -87,7 +91,7 @@ impl Solution<'_> {
     /// An iterator of tuples containing an asset ID, commodity, time slice and flow.
     pub fn iter_commodity_flows_for_assets(
         &self,
-    ) -> impl Iterator<Item = (AssetID, &Rc<str>, &TimeSliceID, f64)> {
+    ) -> impl Iterator<Item = (AssetID, &CommodityID, &TimeSliceID, f64)> {
         self.variables
             .0
             .keys()
@@ -98,7 +102,7 @@ impl Solution<'_> {
     /// Keys and dual values for commodity balance constraints.
     pub fn iter_commodity_balance_duals(
         &self,
-    ) -> impl Iterator<Item = (&Rc<str>, &TimeSliceID, f64)> {
+    ) -> impl Iterator<Item = (&CommodityID, &TimeSliceID, f64)> {
         // Each commodity balance constraint applies to a particular time slice
         // selection (depending on time slice level). Where this covers multiple timeslices,
         // we return the same dual for each individual timeslice.
@@ -223,11 +227,8 @@ fn add_variables(
                     problem.add_column(coeff, 0.0..)
                 };
 
-                let key = VariableMapKey::new(
-                    asset.id,
-                    Rc::clone(&flow.commodity.id),
-                    time_slice.clone(),
-                );
+                let key =
+                    VariableMapKey::new(asset.id, flow.commodity.id.clone(), time_slice.clone());
 
                 let existing = variables.0.insert(key, var).is_some();
                 assert!(!existing, "Duplicate entry for var");
@@ -291,7 +292,6 @@ mod tests {
         costs: CommodityCostMap,
     ) -> (Asset, ProcessFlow) {
         let process_param = ProcessParameter {
-            process_id: "process1".into(),
             years: 2010..=2020,
             capital_cost: 5.0,
             fixed_operating_cost: 2.0,

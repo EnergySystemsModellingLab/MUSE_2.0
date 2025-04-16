@@ -4,12 +4,11 @@ use crate::agent::AgentMap;
 use crate::commodity::CommodityMap;
 use crate::input::{input_err_msg, read_toml};
 use crate::process::ProcessMap;
-use crate::region::RegionMap;
+use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::path::Path;
-use std::rc::Rc;
 
 const MODEL_FILE_NAME: &str = "model.toml";
 
@@ -85,7 +84,7 @@ impl Model {
     }
 
     /// Iterate over the model's regions (region IDs).
-    pub fn iter_regions(&self) -> impl Iterator<Item = &Rc<str>> + '_ {
+    pub fn iter_regions(&self) -> impl Iterator<Item = &RegionID> + '_ {
         self.regions.keys()
     }
 }

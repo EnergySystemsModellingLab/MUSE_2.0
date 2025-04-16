@@ -1,6 +1,6 @@
 //! Code for adding constraints to the dispatch optimisation problem.
 use crate::asset::{AssetID, AssetPool};
-use crate::commodity::CommodityType;
+use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
 use highs::RowProblem as Problem;
@@ -9,7 +9,7 @@ use std::rc::Rc;
 use super::VariableMap;
 
 /// Indicates the commodity ID and time slice selection covered by each commodity balance constraint
-pub type CommodityBalanceConstraintKeys = Vec<(Rc<str>, TimeSliceSelection)>;
+pub type CommodityBalanceConstraintKeys = Vec<(CommodityID, TimeSliceSelection)>;
 
 /// Indicates the asset ID and time slice covered by each capacity constraint
 pub type CapacityConstraintKeys = Vec<(AssetID, TimeSliceID)>;
@@ -135,7 +135,7 @@ fn add_commodity_balance_constraints(
                 problem.add_row(rhs..=rhs, terms.drain(0..));
 
                 // Keep track of the order in which constraints were added
-                keys.push((Rc::clone(&commodity.id), ts_selection));
+                keys.push((commodity.id.clone(), ts_selection));
             }
         }
     }

@@ -1,12 +1,13 @@
 //! Code for reading in the commodity cost CSV file.
 use super::super::*;
-use crate::commodity::{BalanceType, CommodityCost, CommodityCostMap};
+use crate::commodity::{BalanceType, CommodityCost, CommodityCostMap, CommodityID};
+use crate::id::IDCollection;
+use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const COMMODITY_COSTS_FILE_NAME: &str = "commodity_costs.csv";
 
@@ -42,11 +43,11 @@ struct CommodityCostRaw {
 /// A map containing commodity costs, grouped by commodity ID.
 pub fn read_commodity_costs(
     model_dir: &Path,
-    commodity_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
+    region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, CommodityCostMap>> {
+) -> Result<HashMap<CommodityID, CommodityCostMap>> {
     let file_path = model_dir.join(COMMODITY_COSTS_FILE_NAME);
     let commodity_costs_csv = read_csv::<CommodityCostRaw>(&file_path)?;
     read_commodity_costs_iter(
@@ -61,11 +62,11 @@ pub fn read_commodity_costs(
 
 fn read_commodity_costs_iter<I>(
     iter: I,
-    commodity_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
+    region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, CommodityCostMap>>
+) -> Result<HashMap<CommodityID, CommodityCostMap>>
 where
     I: Iterator<Item = CommodityCostRaw>,
 {
@@ -77,8 +78,8 @@ where
     let mut used_milestone_years = HashMap::new();
 
     for cost in iter {
-        let commodity_id = commodity_ids.get_id(&cost.commodity_id)?;
-        let region_id = region_ids.get_id(&cost.region_id)?;
+        let commodity_id = commodity_ids.get_id_by_str(&cost.commodity_id)?;
+        let region_id = region_ids.get_id_by_str(&cost.region_id)?;
         let ts_selection = time_slice_info.get_selection(&cost.time_slice)?;
 
         ensure!(
@@ -100,7 +101,7 @@ where
             };
 
             ensure!(
-                map.insert(Rc::clone(&region_id), cost.year, time_slice.clone(), value)
+                map.insert(region_id.clone(), cost.year, time_slice.clone(), value)
                     .is_none(),
                 "Commodity cost entry covered by more than one time slice \
                 (region: {}, year: {}, time slice: {})",

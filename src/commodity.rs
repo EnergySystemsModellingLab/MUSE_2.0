@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
-use crate::input::{define_id_getter, HasID};
+use crate::id::{define_id_getter, define_id_type};
+use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
 use indexmap::IndexMap;
 use serde::Deserialize;
@@ -7,15 +8,17 @@ use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+define_id_type! {CommodityID}
+
 /// A map of [`Commodity`]s, keyed by commodity ID
-pub type CommodityMap = IndexMap<Rc<str>, Rc<Commodity>>;
+pub type CommodityMap = IndexMap<CommodityID, Rc<Commodity>>;
 
 /// A commodity within the simulation. Represents a substance (e.g. CO2) or form of energy (e.g.
 /// electricity) that can be produced and/or consumed by technologies in the model.
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct Commodity {
     /// Unique identifier for the commodity (e.g. "ELC")
-    pub id: Rc<str>,
+    pub id: CommodityID,
     /// Text description of commodity (e.g. "electricity")
     pub description: String,
     #[serde(rename = "type")] // NB: we can't name a field type as it's a reserved keyword
@@ -29,7 +32,7 @@ pub struct Commodity {
     #[serde(skip)]
     pub demand: DemandMap,
 }
-define_id_getter! {Commodity}
+define_id_getter! {Commodity, CommodityID}
 
 /// Type of balance for application of cost
 #[derive(PartialEq, Clone, Debug, DeserializeLabeledStringEnum)]
@@ -54,7 +57,7 @@ pub struct CommodityCost {
 /// Used for looking up [`CommodityCost`]s in a [`CommodityCostMap`]
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
 struct CommodityCostKey {
-    region_id: Rc<str>,
+    region_id: RegionID,
     year: u32,
     time_slice: TimeSliceID,
 }
@@ -72,7 +75,7 @@ impl CommodityCostMap {
     /// Insert a [`CommodityCost`] into the map
     pub fn insert(
         &mut self,
-        region_id: Rc<str>,
+        region_id: RegionID,
         year: u32,
         time_slice: TimeSliceID,
         value: CommodityCost,
@@ -88,12 +91,12 @@ impl CommodityCostMap {
     /// Retrieve a [`CommodityCost`] from the map
     pub fn get(
         &self,
-        region_id: &Rc<str>,
+        region_id: &RegionID,
         year: u32,
         time_slice: &TimeSliceID,
     ) -> Option<&CommodityCost> {
         let key = CommodityCostKey {
-            region_id: Rc::clone(region_id),
+            region_id: region_id.clone(),
             year,
             time_slice: time_slice.clone(),
         };
@@ -124,7 +127,7 @@ pub struct DemandMap(HashMap<DemandMapKey, f64>);
 /// The key for a [`DemandMap`]
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
 struct DemandMapKey {
-    region_id: Rc<str>,
+    region_id: RegionID,
     year: u32,
     time_slice: TimeSliceID,
 }
@@ -136,7 +139,7 @@ impl DemandMap {
     }
 
     /// Retrieve the demand for the specified region, year and time slice
-    pub fn get(&self, region_id: &Rc<str>, year: u32, time_slice: &TimeSliceID) -> f64 {
+    pub fn get(&self, region_id: &RegionID, year: u32, time_slice: &TimeSliceID) -> f64 {
         self.0
             .get(&DemandMapKey {
                 region_id: region_id.clone(),
@@ -148,7 +151,7 @@ impl DemandMap {
     }
 
     /// Insert a new demand entry for the specified region, year and time slice
-    pub fn insert(&mut self, region_id: Rc<str>, year: u32, time_slice: TimeSliceID, demand: f64) {
+    pub fn insert(&mut self, region_id: RegionID, year: u32, time_slice: TimeSliceID, demand: f64) {
         self.0.insert(
             DemandMapKey {
                 region_id,
