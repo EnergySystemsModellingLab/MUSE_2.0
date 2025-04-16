@@ -298,6 +298,7 @@ mod tests {
         let parameters = ["process1", "process2"]
             .into_iter()
             .map(|id| {
+                let mut parameter_map: ProcessParameterMap = HashMap::new();
                 let parameter = ProcessParameter {
                     capital_cost: 0.0,
                     fixed_operating_cost: 0.0,
@@ -306,7 +307,8 @@ mod tests {
                     discount_rate: 1.0,
                     capacity_to_activity: 0.0,
                 };
-                (id.into(), parameter)
+                parameter_map.insert(2020, parameter);
+                (id.into(), parameter_map)
             })
             .collect();
 
