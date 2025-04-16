@@ -38,7 +38,7 @@ impl AgentSearchSpaceRaw {
             Some(processes) => {
                 let mut set = HashSet::new();
                 for id in processes.split(';') {
-                    set.insert(process_ids.get_id(id)?);
+                    set.insert(process_ids.get_id_by_str(id)?);
                 }
                 SearchSpace::Some(set)
             }

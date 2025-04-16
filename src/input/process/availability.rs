@@ -69,7 +69,7 @@ where
     let mut map = HashMap::new();
 
     for record in iter {
-        let process_id = process_ids.get_id(&record.process_id)?;
+        let process_id = process_ids.get_id_by_str(&record.process_id)?;
 
         ensure!(
             record.value >= 0.0 && record.value <= 1.0,

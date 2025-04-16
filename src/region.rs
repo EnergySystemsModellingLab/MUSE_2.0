@@ -4,11 +4,8 @@ use crate::id::define_id_type;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::Deserialize;
-use serde::Serialize;
-use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::fmt::Display;
-use std::rc::Rc;
 
 define_id_type! {RegionID}
 

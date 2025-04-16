@@ -52,7 +52,7 @@ where
 {
     let mut entity_regions = HashMap::new();
     for entity in entity_iter {
-        let entity_id = entity_ids.check_id(entity.get_id())?;
+        let entity_id = entity_ids.get_id(entity.get_id())?;
         let region_id = entity.get_region_id();
 
         try_insert_region(entity_id, region_id, region_ids, &mut entity_regions).context(
@@ -90,7 +90,7 @@ fn try_insert_region<ID: IDLike>(
     }
 
     // Validate region_id
-    let region_id = region_ids.check_id(region_id)?;
+    let region_id = region_ids.get_id(region_id)?;
     let region_name = region_id.clone();
 
     // Add or create entry in entity_regions
