@@ -231,12 +231,13 @@ fn calculate_cost_coefficient(
         coeff += asset.process.parameter.variable_operating_cost
     }
 
-    // If there is a user-provided commodity cost for this combination of parameters, include it
-    if let Some(cost) =
-        flow.commodity
+    // If there is a user-provided cost for this commodity, include it
+    if !flow.commodity.costs.is_empty() {
+        let cost = flow
+            .commodity
             .costs
-            .get((asset.region_id.clone(), year, time_slice.clone()))
-    {
+            .get((asset.region_id.clone(), year, time_slice.clone()));
+
         let apply_cost = match cost.balance_type {
             BalanceType::Net => true,
             BalanceType::Consumption => flow.flow < 0.0,

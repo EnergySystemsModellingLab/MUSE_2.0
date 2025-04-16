@@ -66,6 +66,11 @@ impl CommodityCostMap {
         Self(HashMap::new())
     }
 
+    /// Check if the map is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Insert a [`CommodityCost`] into the map
     pub fn insert(
         &mut self,
@@ -76,8 +81,8 @@ impl CommodityCostMap {
     }
 
     /// Retrieve a [`CommodityCost`] from the map
-    pub fn get(&self, key: (RegionID, u32, TimeSliceID)) -> Option<&CommodityCost> {
-        self.0.get(&key)
+    pub fn get(&self, key: (RegionID, u32, TimeSliceID)) -> &CommodityCost {
+        self.0.get(&key).unwrap()
     }
 }
 
@@ -152,6 +157,6 @@ mod tests {
         assert!(map
             .insert(("GBR".into(), 2010, ts.clone()), value.clone())
             .is_none());
-        assert_eq!(map.get(("GBR".into(), 2010, ts)).unwrap(), &value);
+        assert_eq!(map.get(("GBR".into(), 2010, ts)), &value);
     }
 }
