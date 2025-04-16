@@ -192,7 +192,7 @@ fn compute_demand_maps(
                 .or_insert_with(DemandMap::new);
 
             // Add a new demand entry
-            map.insert(
+            let _ = map.insert(
                 (region_id.clone(), *year, time_slice.clone()),
                 annual_demand * demand_fraction,
             );

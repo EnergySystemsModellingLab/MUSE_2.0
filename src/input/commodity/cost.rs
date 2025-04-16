@@ -5,6 +5,7 @@ use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
+use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -71,17 +72,11 @@ where
     I: Iterator<Item = CommodityCostRaw>,
 {
     let mut map = HashMap::new();
-
-    // Keep track of milestone years used for each commodity + region combo. If a user provides an
-    // entry with a given commodity + region combo for one milestone year, they must also provide
-    // entries for all the other milestone years.
-    let mut used_milestone_years = HashMap::new();
-
     for cost in iter {
+        // Get/check IDs
         let commodity_id = commodity_ids.get_id_by_str(&cost.commodity_id)?;
         let region_id = region_ids.get_id_by_str(&cost.region_id)?;
         let ts_selection = time_slice_info.get_selection(&cost.time_slice)?;
-
         ensure!(
             milestone_years.binary_search(&cost.year).is_ok(),
             "Year {} is not a milestone year. \
@@ -94,38 +89,29 @@ where
             .entry(commodity_id.clone())
             .or_insert_with(CommodityCostMap::new);
 
+        // Insert cost for each timeslice in the selection
         for (time_slice, _) in time_slice_info.iter_selection(&ts_selection) {
             let value = CommodityCost {
                 balance_type: cost.balance_type.clone(),
                 value: cost.value,
             };
-
-            ensure!(
-                map.insert((region_id.clone(), cost.year, time_slice.clone()), value)
-                    .is_none(),
-                "Commodity cost entry covered by more than one time slice \
-                (region: {}, year: {}, time slice: {})",
-                region_id,
-                cost.year,
-                time_slice
-            );
+            if let Err(e) = map.insert((region_id.clone(), cost.year, time_slice.clone()), value) {
+                return Err(e.context("Error for commodity {commodity_id}"));
+            }
         }
-
-        // Keep track of milestone years used for each commodity + region combo
-        used_milestone_years
-            .entry((commodity_id, region_id))
-            .or_insert_with(|| HashSet::with_capacity(1))
-            .insert(cost.year);
     }
 
-    let milestone_years = HashSet::from_iter(milestone_years.iter().cloned());
-    for ((commodity_id, region_id), years) in used_milestone_years.iter() {
-        ensure!(
-            years == &milestone_years,
-            "Commodity costs missing for some milestone years (commodity: {}, region: {})",
-            commodity_id,
-            region_id
-        );
+    // Check map completeness
+    for (commodity_id, map) in &map {
+        // Map should contain every combination of region + year + time slice for this commodity
+        let time_slices: Vec<_> = time_slice_info.iter_ids().cloned().collect();
+        for (region_id, year, time_slice) in iproduct!(region_ids, milestone_years, time_slices) {
+            if !map.contains_key(&(region_id.clone(), *year, time_slice.clone())) {
+                return Err(anyhow::anyhow!(
+                    "Missing cost for commodity {commodity_id}, region {region_id}, year {year}, time slice {time_slice}"
+                ));
+            }
+        }
     }
 
     Ok(map)

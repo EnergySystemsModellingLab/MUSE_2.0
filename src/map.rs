@@ -17,8 +17,12 @@ macro_rules! define_map_type {
             }
 
             /// Insert a value into the map
-            pub fn insert(&mut self, key: $key_type, value: $value_type) -> Option<$value_type> {
-                self.0.insert(key, value)
+            pub fn insert(&mut self, key: $key_type, value: $value_type) -> anyhow::Result<()> {
+                if self.0.contains_key(&key) {
+                    return Err(anyhow::anyhow!("Key {:?} already exists in the map", key));
+                }
+                self.0.insert(key, value);
+                Ok(())
             }
 
             /// Retrieve a value from the map
@@ -28,6 +32,11 @@ macro_rules! define_map_type {
                     .get(&key)
                     .unwrap_or_else(|| panic!("Key {:?} not found in the map", key))
                     .clone()
+            }
+
+            /// Check if the map contains a specific key
+            pub fn contains_key(&self, key: &$key_type) -> bool {
+                self.0.contains_key(key)
             }
         }
     };
