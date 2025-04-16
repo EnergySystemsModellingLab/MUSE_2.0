@@ -2,6 +2,37 @@
 
 use derive_more::{Add, Sub};
 
+#[derive(Debug, Clone, Copy, PartialEq, Add, Sub)]
+pub struct Dimensionless(pub f64);
+
+impl std::ops::Mul for Dimensionless {
+    type Output = Dimensionless;
+
+    fn mul(self, rhs: Dimensionless) -> Self::Output {
+        Dimensionless::from(self.0 * rhs.0)
+    }
+}
+
+impl std::ops::Div for Dimensionless {
+    type Output = Dimensionless;
+
+    fn div(self, rhs: Dimensionless) -> Self::Output {
+        Dimensionless::from(self.0 / rhs.0)
+    }
+}
+
+impl From<f64> for Dimensionless {
+    fn from(val: f64) -> Self {
+        Self(val)
+    }
+}
+
+impl From<Dimensionless> for f64 {
+    fn from(val: Dimensionless) -> Self {
+        val.0
+    }
+}
+
 macro_rules! unit_struct {
     ($name:ident) => {
         #[derive(Debug, Clone, Copy, PartialEq, Add, Sub)]
@@ -14,6 +45,27 @@ macro_rules! unit_struct {
 
             pub fn value(self) -> f64 {
                 self.0
+            }
+        }
+
+        impl std::ops::Mul<Dimensionless> for $name {
+            type Output = $name;
+            fn mul(self, rhs: Dimensionless) -> $name {
+                $name::from(self.0 * rhs.0)
+            }
+        }
+
+        impl std::ops::Mul<$name> for Dimensionless {
+            type Output = $name;
+            fn mul(self, rhs: $name) -> $name {
+                $name::from(self.0 * rhs.0)
+            }
+        }
+
+        impl std::ops::Div<Dimensionless> for $name {
+            type Output = $name;
+            fn div(self, rhs: Dimensionless) -> $name {
+                $name::from(self.0 / rhs.0)
             }
         }
     };
@@ -47,8 +99,6 @@ macro_rules! impl_div {
     };
 }
 
-unit_struct!(Dimensionless);
-
 unit_struct!(Money);
 unit_struct!(Year);
 unit_struct!(Energy);
@@ -76,10 +126,6 @@ impl_div!(MoneyPerEnergy, Year, MoneyPerEnergyPerYear);
 impl_div!(Dimensionless, Year, PerYear);
 impl_div!(Money, Capacity, MoneyPerCapacity);
 
-impl_mul!(Dimensionless, Year, Year);
-impl_mul!(Dimensionless, Capacity, Capacity);
-impl_mul!(Dimensionless, Energy, Energy);
-impl_mul!(Dimensionless, Money, Money);
 impl_mul!(MoneyPerCapacity, Capacity, Money);
 impl_mul!(MoneyPerYearPerCapacity, Capacity, MoneyPerYear);
 impl_mul!(Money, PerYear, MoneyPerYear);
@@ -102,21 +148,5 @@ impl IYear {
 impl Dimensionless {
     pub fn pow(self, rhs: IYear) -> Self {
         Dimensionless::from(self.0.powi(rhs.0 as i32))
-    }
-}
-
-impl std::ops::Mul for Dimensionless {
-    type Output = Dimensionless;
-
-    fn mul(self, rhs: Dimensionless) -> Self::Output {
-        Dimensionless::from(self.0 * rhs.0)
-    }
-}
-
-impl std::ops::Div for Dimensionless {
-    type Output = Dimensionless;
-
-    fn div(self, rhs: Dimensionless) -> Self::Output {
-        Dimensionless::from(self.0 / rhs.0)
     }
 }
