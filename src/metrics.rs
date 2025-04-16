@@ -9,7 +9,7 @@ pub fn capital_recovery_factor(lifetime: IYear, discount_rate: Dimensionless) ->
     if discount_rate == Dimensionless(0.0) {
         return Dimensionless(1.0 / lifetime.0 as f64);
     }
-    let factor = (Dimensionless(1.0) + discount_rate).pow(lifetime);
+    let factor = (Dimensionless(1.0) + discount_rate).powi(lifetime.0 as i32);
     (discount_rate * factor) / (factor - Dimensionless(1.0))
 }
 

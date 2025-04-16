@@ -1,8 +1,9 @@
 #![allow(missing_docs)]
 
-use derive_more::{Add, Sub};
+//! This module defines various unit types and their conversions.
 
-#[derive(Debug, Clone, Copy, PartialEq, Add, Sub)]
+/// Represents a dimensionless quantity.
+#[derive(Debug, Clone, Copy, PartialEq, derive_more::Add, derive_more::Sub)]
 pub struct Dimensionless(pub f64);
 
 impl std::ops::Mul for Dimensionless {
@@ -21,6 +22,12 @@ impl std::ops::Div for Dimensionless {
     }
 }
 
+impl Dimensionless {
+    pub fn powi(self, rhs: i32) -> Self {
+        Dimensionless::from(self.0.powi(rhs))
+    }
+}
+
 impl From<f64> for Dimensionless {
     fn from(val: f64) -> Self {
         Self(val)
@@ -35,14 +42,17 @@ impl From<Dimensionless> for f64 {
 
 macro_rules! unit_struct {
     ($name:ident) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Add, Sub)]
+        /// Represents a type of quantity.
+        #[derive(Debug, Clone, Copy, PartialEq, derive_more::Add, derive_more::Sub)]
         pub struct $name(pub f64);
 
         impl $name {
+            /// Creates a new instance of the unit type from a f64 value.
             pub fn from(val: f64) -> Self {
                 Self(val)
             }
 
+            /// Returns the value of the unit type as a f64.
             pub fn value(self) -> f64 {
                 self.0
             }
@@ -99,15 +109,14 @@ macro_rules! impl_div {
     };
 }
 
+// Base quantities
 unit_struct!(Money);
 unit_struct!(Year);
 unit_struct!(Energy);
 unit_struct!(Activity);
 unit_struct!(Capacity);
 
-#[derive(Debug, Clone, Copy, PartialEq, derive_more::Add, derive_more::Sub)]
-pub struct IYear(pub u32);
-
+// Derived quantities
 unit_struct!(EnergyPerYear);
 unit_struct!(MoneyPerYear);
 unit_struct!(MoneyPerEnergy);
@@ -117,6 +126,7 @@ unit_struct!(MoneyPerYearPerCapacity);
 unit_struct!(MoneyPerEnergyPerYear);
 unit_struct!(PerYear);
 
+// Division rules
 impl_div!(Energy, Year, EnergyPerYear);
 impl_div!(Money, Year, MoneyPerYear);
 impl_div!(Money, Energy, MoneyPerEnergy);
@@ -126,27 +136,12 @@ impl_div!(MoneyPerEnergy, Year, MoneyPerEnergyPerYear);
 impl_div!(Dimensionless, Year, PerYear);
 impl_div!(Money, Capacity, MoneyPerCapacity);
 
+// Multiplication rules
 impl_mul!(MoneyPerCapacity, Capacity, Money);
 impl_mul!(MoneyPerYearPerCapacity, Capacity, MoneyPerYear);
 impl_mul!(Money, PerYear, MoneyPerYear);
 impl_mul!(Year, PerYear, Dimensionless);
 
-impl IYear {
-    pub fn from(val: u32) -> Self {
-        Self(val)
-    }
-
-    pub fn value(self) -> u32 {
-        self.0
-    }
-
-    pub fn to_year(self) -> Year {
-        Year::from(self.0 as f64)
-    }
-}
-
-impl Dimensionless {
-    pub fn pow(self, rhs: IYear) -> Self {
-        Dimensionless::from(self.0.powi(rhs.0 as i32))
-    }
-}
+/// Represents a number of years as an integer.
+#[derive(Debug, Clone, Copy, PartialEq, derive_more::Add, derive_more::Sub)]
+pub struct IYear(pub u32);
