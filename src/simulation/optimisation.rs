@@ -236,8 +236,8 @@ fn calculate_cost_coefficient(
         let cost = flow
             .commodity
             .costs
-            .get((asset.region_id.clone(), year, time_slice.clone()));
-
+            .get(&(asset.region_id.clone(), year, time_slice.clone()))
+            .unwrap();
         let apply_cost = match cost.balance_type {
             BalanceType::Net => true,
             BalanceType::Consumption => flow.flow < 0.0,

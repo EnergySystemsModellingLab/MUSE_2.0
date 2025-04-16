@@ -1,6 +1,5 @@
 #![allow(missing_docs)]
 use crate::id::{define_id_getter, define_id_type};
-use crate::map::define_map_type;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
 use indexmap::IndexMap;
@@ -14,12 +13,11 @@ define_id_type! {CommodityID}
 /// A map of [`Commodity`]s, keyed by commodity ID
 pub type CommodityMap = IndexMap<CommodityID, Rc<Commodity>>;
 
-define_map_type!(
-    CommodityCostMap,
-    (RegionID, u32, TimeSliceID),
-    CommodityCost
-);
-define_map_type!(DemandMap, (RegionID, u32, TimeSliceID), f64);
+/// A map of [`CommodityCost`]s, keyed by region ID, year and time slice ID
+pub type CommodityCostMap = HashMap<(RegionID, u32, TimeSliceID), CommodityCost>;
+
+/// A map of demand values, keyed by region ID, year and time slice ID
+pub type DemandMap = HashMap<(RegionID, u32, TimeSliceID), f64>;
 
 /// A commodity within the simulation. Represents a substance (e.g. CO2) or form of energy (e.g.
 /// electricity) that can be produced and/or consumed by technologies in the model.
@@ -89,7 +87,10 @@ mod tests {
         let mut map = DemandMap::new();
         map.insert(("North".into(), 2020, time_slice.clone()), value);
 
-        assert_eq!(map.get(("North".into(), 2020, time_slice)), value)
+        assert_eq!(
+            map.get(&("North".into(), 2020, time_slice)).unwrap(),
+            &value
+        )
     }
 
     #[test]
@@ -106,6 +107,6 @@ mod tests {
         assert!(map
             .insert(("GBR".into(), 2010, ts.clone()), value.clone())
             .is_none());
-        assert_eq!(map.get(("GBR".into(), 2010, ts)), value);
+        assert_eq!(map.get(&("GBR".into(), 2010, ts)).unwrap(), &value);
     }
 }
