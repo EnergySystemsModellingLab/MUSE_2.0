@@ -101,7 +101,7 @@ where
             };
 
             ensure!(
-                map.insert(region_id.clone(), cost.year, time_slice.clone(), value)
+                map.insert((region_id.clone(), cost.year, time_slice.clone()), value)
                     .is_none(),
                 "Commodity cost entry covered by more than one time slice \
                 (region: {}, year: {}, time slice: {})",
@@ -189,8 +189,8 @@ mod tests {
             value: cost2.value,
         };
         let mut map = CommodityCostMap::new();
-        map.insert("GBR".into(), cost1.year, time_slice.clone(), value1);
-        map.insert("FRA".into(), cost2.year, time_slice.clone(), value2);
+        map.insert(("GBR".into(), cost1.year, time_slice.clone()), value1);
+        map.insert(("FRA".into(), cost2.year, time_slice.clone()), value2);
         let expected = HashMap::from_iter([("commodity".into(), map)]);
         assert_eq!(
             read_commodity_costs_iter(

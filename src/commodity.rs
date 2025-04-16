@@ -69,22 +69,15 @@ impl CommodityCostMap {
     /// Insert a [`CommodityCost`] into the map
     pub fn insert(
         &mut self,
-        region_id: RegionID,
-        year: u32,
-        time_slice: TimeSliceID,
+        key: (RegionID, u32, TimeSliceID),
         value: CommodityCost,
     ) -> Option<CommodityCost> {
-        self.0.insert((region_id, year, time_slice), value)
+        self.0.insert(key, value)
     }
 
     /// Retrieve a [`CommodityCost`] from the map
-    pub fn get(
-        &self,
-        region_id: &RegionID,
-        year: u32,
-        time_slice: &TimeSliceID,
-    ) -> Option<&CommodityCost> {
-        self.0.get(&(region_id.clone(), year, time_slice.clone()))
+    pub fn get(&self, key: (RegionID, u32, TimeSliceID)) -> Option<&CommodityCost> {
+        self.0.get(&key)
     }
 }
 
@@ -157,8 +150,8 @@ mod tests {
         };
         let mut map = CommodityCostMap::new();
         assert!(map
-            .insert("GBR".into(), 2010, ts.clone(), value.clone())
+            .insert(("GBR".into(), 2010, ts.clone()), value.clone())
             .is_none());
-        assert_eq!(map.get(&"GBR".into(), 2010, &ts).unwrap(), &value);
+        assert_eq!(map.get(("GBR".into(), 2010, ts)).unwrap(), &value);
     }
 }
