@@ -105,7 +105,7 @@ pub trait IDCollection<ID: IDLike> {
     /// # Returns
     ///
     /// A copy of the ID in `self`, or an error if not found.
-    fn get_id(&self, id: &str) -> Result<ID>;
+    fn get_id_by_str(&self, id: &str) -> Result<ID>;
 
     /// Check if the ID is in the collection, returning a copy of it if found.
     ///
@@ -116,18 +116,18 @@ pub trait IDCollection<ID: IDLike> {
     /// # Returns
     ///
     /// A copy of the ID in `self`, or an error if not found.
-    fn check_id(&self, id: &ID) -> Result<ID>;
+    fn get_id(&self, id: &ID) -> Result<ID>;
 }
 
 impl<ID: IDLike> IDCollection<ID> for HashSet<ID> {
-    fn get_id(&self, id: &str) -> Result<ID> {
+    fn get_id_by_str(&self, id: &str) -> Result<ID> {
         let found = self
             .get(id)
             .with_context(|| format!("Unknown ID {id} found"))?;
         Ok(found.clone())
     }
 
-    fn check_id(&self, id: &ID) -> Result<ID> {
+    fn get_id(&self, id: &ID) -> Result<ID> {
         let found = self
             .get(id.borrow())
             .with_context(|| format!("Unknown ID {id} found"))?;

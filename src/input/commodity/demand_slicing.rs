@@ -78,8 +78,8 @@ where
     let mut demand_slices = DemandSliceMap::new();
 
     for slice in iter {
-        let commodity_id = commodity_ids.get_id(&slice.commodity_id)?;
-        let region_id = region_ids.get_id(&slice.region_id)?;
+        let commodity_id = commodity_ids.get_id_by_str(&slice.commodity_id)?;
+        let region_id = region_ids.get_id_by_str(&slice.region_id)?;
         ensure!(
             commodity_regions.contains(&(commodity_id.clone(), region_id.clone())),
             "Demand slicing provided for commodity {commodity_id} in region {region_id} \

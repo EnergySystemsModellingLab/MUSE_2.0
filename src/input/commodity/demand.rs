@@ -128,8 +128,8 @@ where
     let mut commodity_regions = HashSet::new();
 
     for demand in iter {
-        let commodity_id = commodity_ids.get_id(&demand.commodity_id)?;
-        let region_id = region_ids.get_id(&demand.region_id)?;
+        let commodity_id = commodity_ids.get_id_by_str(&demand.commodity_id)?;
+        let region_id = region_ids.get_id_by_str(&demand.region_id)?;
 
         ensure!(
             milestone_years.binary_search(&demand.year).is_ok(),
