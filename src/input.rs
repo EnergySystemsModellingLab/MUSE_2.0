@@ -1,6 +1,6 @@
 //! Common routines for handling input data.
 use crate::asset::AssetPool;
-use crate::id::HasID;
+use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
 use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
@@ -9,8 +9,8 @@ use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use std::collections::HashSet;
 use std::fs;
+use std::hash::Hash;
 use std::path::Path;
-use std::rc::Rc;
 
 mod agent;
 use agent::read_agents;
@@ -101,18 +101,18 @@ pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
 ///
 /// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
 /// the IDs for a given type), we use an ordered map to maintain the order in the input files.
-fn read_csv_id_file<T>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
+fn read_csv_id_file<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, T>>
 where
-    T: HasID + DeserializeOwned,
+    T: HasID<ID> + DeserializeOwned,
 {
-    fn fill_and_validate_map<T>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
+    fn fill_and_validate_map<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, T>>
     where
-        T: HasID + DeserializeOwned,
+        T: HasID<ID> + DeserializeOwned,
     {
         let mut map = IndexMap::new();
         for record in read_csv::<T>(file_path)? {
-            let id = record.get_id().into();
-            let existing = map.insert(Rc::clone(&id), record).is_some();
+            let id = record.get_id().clone();
+            let existing = map.insert(id.clone(), record).is_some();
             ensure!(!existing, "Duplicate ID found: {id}");
         }
         ensure!(!map.is_empty(), "CSV file is empty");
@@ -186,6 +186,8 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
 
 #[cfg(test)]
 mod tests {
+    use crate::id::GenericID;
+
     use super::*;
     use serde::de::value::{Error as ValueError, F64Deserializer};
     use serde::de::IntoDeserializer;
@@ -197,12 +199,12 @@ mod tests {
 
     #[derive(Debug, PartialEq, Deserialize)]
     struct Record {
-        id: String,
+        id: GenericID,
         value: u32,
     }
 
-    impl HasID for Record {
-        fn get_id(&self) -> &str {
+    impl HasID<GenericID> for Record {
+        fn get_id(&self) -> &GenericID {
             &self.id
         }
     }
@@ -225,11 +227,11 @@ mod tests {
             records,
             &[
                 Record {
-                    id: "hello".to_string(),
+                    id: "hello".into(),
                     value: 1,
                 },
                 Record {
-                    id: "world".to_string(),
+                    id: "world".into(),
                     value: 2,
                 }
             ]
@@ -256,7 +258,7 @@ mod tests {
         assert_eq!(
             read_toml::<Record>(&file_path).unwrap(),
             Record {
-                id: "hello".to_string(),
+                id: "hello".into(),
                 value: 1,
             }
         );

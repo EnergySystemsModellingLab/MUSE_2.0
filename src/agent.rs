@@ -1,7 +1,8 @@
 //! Agents drive the economy of the MUSE 2.0 simulation, through relative investment in different
 //! assets.
 use crate::commodity::Commodity;
-use crate::id::define_id_getter;
+use crate::id::{define_id_getter, define_id_type};
+use crate::process::ProcessID;
 use crate::region::RegionSelection;
 use indexmap::IndexMap;
 use serde::Deserialize;
@@ -9,14 +10,16 @@ use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashSet;
 use std::rc::Rc;
 
+define_id_type! {AgentID}
+
 /// A map of [`Agent`]s, keyed by agent ID
-pub type AgentMap = IndexMap<Rc<str>, Agent>;
+pub type AgentMap = IndexMap<AgentID, Agent>;
 
 /// An agent in the simulation
 #[derive(Debug, Clone, PartialEq)]
 pub struct Agent {
     /// A unique identifier for the agent.
-    pub id: Rc<str>,
+    pub id: AgentID,
     /// A text description of the agent.
     pub description: String,
     /// The commodities that the agent is responsible for servicing.
@@ -34,7 +37,7 @@ pub struct Agent {
     /// The agent's objectives.
     pub objectives: Vec<AgentObjective>,
 }
-define_id_getter! {Agent}
+define_id_getter! {Agent, AgentID}
 
 /// Which processes apply to this agent
 #[derive(Debug, Clone, PartialEq)]
@@ -42,7 +45,7 @@ pub enum SearchSpace {
     /// All processes are considered
     AllProcesses,
     /// Only these specific processes are considered
-    Some(HashSet<Rc<str>>),
+    Some(HashSet<ProcessID>),
 }
 
 /// Search space for an agent
@@ -74,7 +77,7 @@ pub enum DecisionRule {
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub struct AgentObjective {
     /// Unique agent id identifying the agent this objective belongs to
-    pub agent_id: String,
+    pub agent_id: AgentID,
     /// The year the objective is relevant for
     pub year: u32,
     /// Acronym identifying the objective (e.g. LCOX)

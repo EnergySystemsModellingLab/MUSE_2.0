@@ -1,8 +1,9 @@
 //! Code for reading the agent search space CSV file.
 use super::super::*;
-use crate::agent::{AgentMap, AgentSearchSpace, SearchSpace};
+use crate::agent::{AgentID, AgentMap, AgentSearchSpace, SearchSpace};
 use crate::commodity::CommodityMap;
 use crate::id::IDCollection;
+use crate::process::ProcessID;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -27,7 +28,7 @@ struct AgentSearchSpaceRaw {
 impl AgentSearchSpaceRaw {
     fn to_agent_search_space(
         &self,
-        process_ids: &HashSet<Rc<str>>,
+        process_ids: &HashSet<ProcessID>,
         commodities: &CommodityMap,
         milestone_years: &[u32],
     ) -> Result<AgentSearchSpace> {
@@ -37,7 +38,7 @@ impl AgentSearchSpaceRaw {
             Some(processes) => {
                 let mut set = HashSet::new();
                 for id in processes.split(';') {
-                    set.insert(process_ids.get_id(id)?);
+                    set.insert(process_ids.get_id_by_str(id)?);
                 }
                 SearchSpace::Some(set)
             }
@@ -76,10 +77,10 @@ impl AgentSearchSpaceRaw {
 pub fn read_agent_search_space(
     model_dir: &Path,
     agents: &AgentMap,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     commodities: &CommodityMap,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentSearchSpace>>> {
+) -> Result<HashMap<AgentID, Vec<AgentSearchSpace>>> {
     let file_path = model_dir.join(AGENT_SEARCH_SPACE_FILE_NAME);
     let iter = read_csv_optional::<AgentSearchSpaceRaw>(&file_path)?;
     read_agent_search_space_from_iter(iter, agents, process_ids, commodities, milestone_years)
@@ -89,10 +90,10 @@ pub fn read_agent_search_space(
 fn read_agent_search_space_from_iter<I>(
     iter: I,
     agents: &AgentMap,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     commodities: &CommodityMap,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentSearchSpace>>>
+) -> Result<HashMap<AgentID, Vec<AgentSearchSpace>>>
 where
     I: Iterator<Item = AgentSearchSpaceRaw>,
 {
@@ -107,7 +108,7 @@ where
 
         // Append to Vec with the corresponding key or create
         search_spaces
-            .entry(Rc::clone(id))
+            .entry(id.clone())
             .or_insert_with(|| Vec::with_capacity(1))
             .push(search_space);
     }

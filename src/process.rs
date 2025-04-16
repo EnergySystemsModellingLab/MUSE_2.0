@@ -1,6 +1,7 @@
 //! Processes are used for converting between different commodities. The data structures in this
 //! module are used to represent these conversions along with the associated costs.
 use crate::commodity::Commodity;
+use crate::id::define_id_type;
 use crate::region::RegionSelection;
 use crate::time_slice::TimeSliceID;
 use indexmap::IndexMap;
@@ -10,14 +11,16 @@ use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
+define_id_type! {ProcessID}
+
 /// A map of [`Process`]es, keyed by process ID
-pub type ProcessMap = IndexMap<Rc<str>, Rc<Process>>;
+pub type ProcessMap = IndexMap<ProcessID, Rc<Process>>;
 
 /// Represents a process within the simulation
 #[derive(PartialEq, Debug)]
 pub struct Process {
     /// A unique identifier for the process (e.g. GASDRV)
-    pub id: Rc<str>,
+    pub id: ProcessID,
     /// A human-readable description for the process (e.g. dry gas extraction)
     pub description: String,
     /// The activity limits for each time slice (as a fraction of maximum)

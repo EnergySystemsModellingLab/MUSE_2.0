@@ -1,6 +1,8 @@
 //! Assets are instances of a process which are owned and invested in by agents.
+use crate::agent::AgentID;
 use crate::commodity::Commodity;
 use crate::process::Process;
+use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use std::collections::HashSet;
 use std::ops::RangeInclusive;
@@ -21,11 +23,11 @@ pub struct Asset {
     /// A unique identifier for the asset
     pub id: AssetID,
     /// A unique identifier for the agent
-    pub agent_id: Rc<str>,
+    pub agent_id: AgentID,
     /// The [`Process`] that this asset corresponds to
     pub process: Rc<Process>,
     /// The region in which the asset is located
-    pub region_id: Rc<str>,
+    pub region_id: RegionID,
     /// Capacity of asset
     pub capacity: f64,
     /// The year the asset comes online
@@ -38,9 +40,9 @@ impl Asset {
     /// The `id` field is initially set to [`AssetID::INVALID`], but is changed to a unique value
     /// when the asset is stored in an [`AssetPool`].
     pub fn new(
-        agent_id: Rc<str>,
+        agent_id: AgentID,
         process: Rc<Process>,
-        region_id: Rc<str>,
+        region_id: RegionID,
         capacity: f64,
         commission_year: u32,
     ) -> Self {
@@ -146,7 +148,7 @@ impl AssetPool {
     /// Iterate over active assets for a particular region
     pub fn iter_for_region<'a>(
         &'a self,
-        region_id: &'a Rc<str>,
+        region_id: &'a RegionID,
     ) -> impl Iterator<Item = &'a Asset> {
         self.iter().filter(|asset| asset.region_id == *region_id)
     }
@@ -155,7 +157,7 @@ impl AssetPool {
     /// commodity
     pub fn iter_for_region_and_commodity<'a>(
         &'a self,
-        region_id: &'a Rc<str>,
+        region_id: &'a RegionID,
         commodity: &'a Rc<Commodity>,
     ) -> impl Iterator<Item = &'a Asset> {
         self.iter_for_region(region_id)

@@ -1,8 +1,8 @@
 //! Code for reading process flows file
 use super::super::*;
-use crate::commodity::CommodityMap;
+use crate::commodity::{CommodityID, CommodityMap};
 use crate::id::IDCollection;
-use crate::process::{FlowType, ProcessFlow};
+use crate::process::{FlowType, ProcessFlow, ProcessID};
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -25,9 +25,9 @@ struct ProcessFlowRaw {
 /// Read process flows from a CSV file
 pub fn read_process_flows(
     model_dir: &Path,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     commodities: &CommodityMap,
-) -> Result<HashMap<Rc<str>, Vec<ProcessFlow>>> {
+) -> Result<HashMap<ProcessID, Vec<ProcessFlow>>> {
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let process_flow_csv = read_csv(&file_path)?;
     read_process_flows_from_iter(process_flow_csv, process_ids, commodities)
@@ -37,9 +37,9 @@ pub fn read_process_flows(
 /// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.
 fn read_process_flows_from_iter<I>(
     iter: I,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     commodities: &CommodityMap,
-) -> Result<HashMap<Rc<str>, Vec<ProcessFlow>>>
+) -> Result<HashMap<ProcessID, Vec<ProcessFlow>>>
 where
     I: Iterator<Item = ProcessFlowRaw>,
 {
@@ -72,7 +72,7 @@ where
         }
 
         // Create ProcessFlow object
-        let process_id = process_ids.get_id(&flow.process_id)?;
+        let process_id = process_ids.get_id_by_str(&flow.process_id)?;
         let process_flow = ProcessFlow {
             process_id: flow.process_id,
             commodity: Rc::clone(commodity),
@@ -102,14 +102,14 @@ where
 ///
 /// # Returns
 /// An `Ok(())` if the check is successful, or an error.
-fn validate_flows(flows: &HashMap<Rc<str>, Vec<ProcessFlow>>) -> Result<()> {
+fn validate_flows(flows: &HashMap<ProcessID, Vec<ProcessFlow>>) -> Result<()> {
     for (process_id, flows) in flows.iter() {
-        let mut commodities: HashSet<Rc<str>> = HashSet::new();
+        let mut commodities: HashSet<CommodityID> = HashSet::new();
 
         for flow in flows.iter() {
             let commodity_id = &flow.commodity.id;
             ensure!(
-                commodities.insert(Rc::clone(commodity_id)),
+                commodities.insert(commodity_id.clone()),
                 "Process {process_id} has multiple flows for commodity {commodity_id}",
             );
         }
@@ -126,7 +126,7 @@ fn validate_flows(flows: &HashMap<Rc<str>, Vec<ProcessFlow>>) -> Result<()> {
 ///
 /// # Returns
 /// An `Ok(())` if the check is successful, or an error.
-fn validate_pac_flows(flows: &HashMap<Rc<str>, Vec<ProcessFlow>>) -> Result<()> {
+fn validate_pac_flows(flows: &HashMap<ProcessID, Vec<ProcessFlow>>) -> Result<()> {
     for (process_id, flows) in flows.iter() {
         let mut flow_sign: Option<bool> = None; // False for inputs, true for outputs
 
@@ -173,7 +173,7 @@ mod tests {
                     demand: DemandMap::new(),
                 };
 
-                (Rc::clone(&commodity.id), commodity.into())
+                (commodity.id.clone(), commodity.into())
             })
             .collect();
 
@@ -260,7 +260,7 @@ mod tests {
                     demand: DemandMap::new(),
                 };
 
-                (Rc::clone(&commodity.id), commodity.into())
+                (commodity.id.clone(), commodity.into())
             })
             .collect();
 
@@ -341,7 +341,7 @@ mod tests {
                     demand: DemandMap::new(),
                 };
 
-                (Rc::clone(&commodity.id), commodity.into())
+                (commodity.id.clone(), commodity.into())
             })
             .collect();
 
@@ -385,7 +385,7 @@ mod tests {
                     demand: DemandMap::new(),
                 };
 
-                (Rc::clone(&commodity.id), commodity.into())
+                (commodity.id.clone(), commodity.into())
             })
             .collect();
 
@@ -466,7 +466,7 @@ mod tests {
                     demand: DemandMap::new(),
                 };
 
-                (Rc::clone(&commodity.id), commodity.into())
+                (commodity.id.clone(), commodity.into())
             })
             .collect();
 

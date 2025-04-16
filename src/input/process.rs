@@ -1,8 +1,10 @@
 //! Code for reading process-related information from CSV files.
 use super::*;
-use crate::commodity::{Commodity, CommodityMap, CommodityType};
-use crate::process::{ActivityLimitsMap, Process, ProcessFlow, ProcessMap, ProcessParameter};
-use crate::region::RegionSelection;
+use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
+use crate::process::{
+    ActivityLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameter,
+};
+use crate::region::{RegionID, RegionSelection};
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
@@ -24,10 +26,10 @@ const PROCESSES_FILE_NAME: &str = "processes.csv";
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessDescription {
-    id: Rc<str>,
+    id: ProcessID,
     description: String,
 }
-define_id_getter! {ProcessDescription}
+define_id_getter! {ProcessDescription, ProcessID}
 
 /// Read process information from the specified CSV files.
 ///
@@ -45,12 +47,12 @@ define_id_getter! {ProcessDescription}
 pub fn read_processes(
     model_dir: &Path,
     commodities: &CommodityMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<ProcessMap> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let descriptions = read_csv_id_file::<ProcessDescription>(&file_path)?;
+    let descriptions = read_csv_id_file::<ProcessDescription, ProcessID>(&file_path)?;
     let process_ids = HashSet::from_iter(descriptions.keys().cloned());
 
     let availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
@@ -80,23 +82,23 @@ pub fn read_processes(
 }
 
 struct ValidationParams<'a> {
-    flows: &'a HashMap<Rc<str>, Vec<ProcessFlow>>,
-    region_ids: &'a HashSet<Rc<str>>,
+    flows: &'a HashMap<ProcessID, Vec<ProcessFlow>>,
+    region_ids: &'a HashSet<RegionID>,
     milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
-    parameters: &'a HashMap<Rc<str>, ProcessParameter>,
-    availabilities: &'a HashMap<Rc<str>, ActivityLimitsMap>,
+    parameters: &'a HashMap<ProcessID, ProcessParameter>,
+    availabilities: &'a HashMap<ProcessID, ActivityLimitsMap>,
 }
 
 /// Perform consistency checks for commodity flows.
 fn validate_commodities(
     commodities: &CommodityMap,
-    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
-    region_ids: &HashSet<Rc<str>>,
+    flows: &HashMap<ProcessID, Vec<ProcessFlow>>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
-    parameters: &HashMap<Rc<str>, ProcessParameter>,
-    availabilities: &HashMap<Rc<str>, ActivityLimitsMap>,
+    parameters: &HashMap<ProcessID, ProcessParameter>,
+    availabilities: &HashMap<ProcessID, ActivityLimitsMap>,
 ) -> anyhow::Result<()> {
     let params = ValidationParams {
         flows,
@@ -121,9 +123,9 @@ fn validate_commodities(
 }
 
 fn validate_sed_commodity(
-    commodity_id: &Rc<str>,
+    commodity_id: &CommodityID,
     commodity: &Rc<Commodity>,
-    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
+    flows: &HashMap<ProcessID, Vec<ProcessFlow>>,
 ) -> Result<()> {
     let mut has_producer = false;
     let mut has_consumer = false;
@@ -149,7 +151,7 @@ fn validate_sed_commodity(
 }
 
 fn validate_svd_commodity(
-    commodity_id: &Rc<str>,
+    commodity_id: &CommodityID,
     commodity: &Rc<Commodity>,
     params: &ValidationParams,
 ) -> Result<()> {
@@ -203,10 +205,10 @@ fn validate_svd_commodity(
 
 fn create_process_map<I>(
     descriptions: I,
-    mut availabilities: HashMap<Rc<str>, ActivityLimitsMap>,
-    mut flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
-    mut parameters: HashMap<Rc<str>, ProcessParameter>,
-    mut regions: HashMap<Rc<str>, RegionSelection>,
+    mut availabilities: HashMap<ProcessID, ActivityLimitsMap>,
+    mut flows: HashMap<ProcessID, Vec<ProcessFlow>>,
+    mut parameters: HashMap<ProcessID, ProcessParameter>,
+    mut regions: HashMap<ProcessID, RegionSelection>,
 ) -> Result<ProcessMap>
 where
     I: Iterator<Item = ProcessDescription>,
@@ -228,7 +230,7 @@ where
             let regions = regions.remove(id).unwrap();
 
             let process = Process {
-                id: Rc::clone(id),
+                id: id.clone(),
                 description: description.description,
                 activity_limits: availabilities,
                 flows,
@@ -253,22 +255,22 @@ mod tests {
 
     struct ProcessData {
         descriptions: Vec<ProcessDescription>,
-        availabilities: HashMap<Rc<str>, ActivityLimitsMap>,
-        flows: HashMap<Rc<str>, Vec<ProcessFlow>>,
-        parameters: HashMap<Rc<str>, ProcessParameter>,
-        regions: HashMap<Rc<str>, RegionSelection>,
-        region_ids: HashSet<Rc<str>>,
+        availabilities: HashMap<ProcessID, ActivityLimitsMap>,
+        flows: HashMap<ProcessID, Vec<ProcessFlow>>,
+        parameters: HashMap<ProcessID, ProcessParameter>,
+        regions: HashMap<ProcessID, RegionSelection>,
+        region_ids: HashSet<RegionID>,
     }
 
     /// Returns example data (without errors) for processes
     fn get_process_data() -> ProcessData {
         let descriptions = vec![
             ProcessDescription {
-                id: Rc::from("process1"),
+                id: "process1".into(),
                 description: "Process 1".to_string(),
             },
             ProcessDescription {
-                id: Rc::from("process2"),
+                id: "process2".into(),
                 description: "Process 2".to_string(),
             },
         ];
@@ -424,17 +426,14 @@ mod tests {
         });
 
         let commodities: CommodityMap = [
-            (Rc::clone(&commodity_sed.id), Rc::clone(&commodity_sed)),
-            (
-                Rc::clone(&commodity_non_sed.id),
-                Rc::clone(&commodity_non_sed),
-            ),
+            (commodity_sed.id.clone(), Rc::clone(&commodity_sed)),
+            (commodity_non_sed.id.clone(), Rc::clone(&commodity_non_sed)),
         ]
         .into_iter()
         .collect();
 
         // Create mock flows
-        let process_flows: HashMap<Rc<str>, Vec<ProcessFlow>> = [
+        let process_flows: HashMap<ProcessID, Vec<ProcessFlow>> = [
             (
                 "process1".into(),
                 vec![
@@ -484,7 +483,7 @@ mod tests {
         .is_ok());
 
         // Modify flows to make the validation fail
-        let process_flows_invalid: HashMap<Rc<str>, Vec<ProcessFlow>> = [(
+        let process_flows_invalid: HashMap<ProcessID, Vec<ProcessFlow>> = [(
             "process1".into(),
             vec![ProcessFlow {
                 process_id: "process1".into(),
