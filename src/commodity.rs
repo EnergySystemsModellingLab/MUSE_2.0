@@ -74,8 +74,7 @@ impl CommodityCostMap {
         time_slice: TimeSliceID,
         value: CommodityCost,
     ) -> Option<CommodityCost> {
-        let key = (region_id, year, time_slice);
-        self.0.insert(key, value)
+        self.0.insert((region_id, year, time_slice), value)
     }
 
     /// Retrieve a [`CommodityCost`] from the map
@@ -85,8 +84,7 @@ impl CommodityCostMap {
         year: u32,
         time_slice: &TimeSliceID,
     ) -> Option<&CommodityCost> {
-        let key = (region_id.clone(), year, time_slice.clone());
-        self.0.get(&key)
+        self.0.get(&(region_id.clone(), year, time_slice.clone()))
     }
 }
 
