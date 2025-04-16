@@ -55,6 +55,7 @@ macro_rules! define_id_type {
 }
 pub(crate) use define_id_type;
 
+#[cfg(test)]
 define_id_type!(GenericID);
 
 /// Indicates that the struct has an ID field
