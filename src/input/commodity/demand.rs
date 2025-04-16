@@ -193,9 +193,7 @@ fn compute_demand_maps(
 
             // Add a new demand entry
             map.insert(
-                region_id.clone(),
-                *year,
-                time_slice.clone(),
+                (region_id.clone(), *year, time_slice.clone()),
                 annual_demand * demand_fraction,
             );
         }

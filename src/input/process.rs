@@ -158,7 +158,9 @@ fn validate_svd_commodity(
     for region_id in params.region_ids.iter() {
         for year in params.milestone_years.iter().copied() {
             for time_slice in params.time_slice_info.iter_ids() {
-                let demand = commodity.demand.get(region_id, year, time_slice);
+                let demand = commodity
+                    .demand
+                    .get((region_id.clone(), year, time_slice.clone()));
                 if demand > 0.0 {
                     let mut has_producer = false;
 
@@ -412,7 +414,7 @@ mod tests {
         for region in data.region_ids.iter() {
             for year in milestone_years {
                 for time_slice in time_slice_info.iter_ids() {
-                    demand_map.insert(region.clone(), year, time_slice.clone(), 0.5);
+                    demand_map.insert((region.clone(), year, time_slice.clone()), 0.5);
                 }
             }
         }
