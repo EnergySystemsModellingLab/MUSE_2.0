@@ -63,7 +63,7 @@ pub struct CommodityCostMap(HashMap<(RegionID, u32, TimeSliceID), CommodityCost>
 impl CommodityCostMap {
     /// Create a new, empty [`CommodityCostMap`]
     pub fn new() -> Self {
-        Self(HashMap::new())
+        CommodityCostMap::default()
     }
 
     /// Check if the map is empty
@@ -112,17 +112,19 @@ impl DemandMap {
         DemandMap::default()
     }
 
+    /// Check if the map is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Retrieve the demand for the specified region, year and time slice
-    pub fn get(&self, key: (RegionID, u32, TimeSliceID)) -> f64 {
-        self.0
-            .get(&key)
-            .copied()
-            .unwrap_or_else(|| panic!("Missing demand entry"))
+    pub fn get(&self, key: (RegionID, u32, TimeSliceID)) -> &f64 {
+        self.0.get(&key).unwrap()
     }
 
     /// Insert a new demand entry for the specified region, year and time slice
-    pub fn insert(&mut self, key: (RegionID, u32, TimeSliceID), demand: f64) {
-        self.0.insert(key, demand);
+    pub fn insert(&mut self, key: (RegionID, u32, TimeSliceID), demand: f64) -> Option<f64> {
+        self.0.insert(key, demand)
     }
 }
 
@@ -140,7 +142,7 @@ mod tests {
         let mut map = DemandMap::new();
         map.insert(("North".into(), 2020, time_slice.clone()), value);
 
-        assert_eq!(map.get(("North".into(), 2020, time_slice)), value)
+        assert_eq!(map.get(("North".into(), 2020, time_slice)), &value)
     }
 
     #[test]

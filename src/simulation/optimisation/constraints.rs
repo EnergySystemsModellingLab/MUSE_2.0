@@ -119,7 +119,7 @@ fn add_commodity_balance_constraints(
                     CommodityType::ServiceDemand => {
                         match ts_selection {
                             TimeSliceSelection::Single(ref ts) => {
-                                commodity.demand.get((region_id.clone(), year, ts.clone()))
+                                *commodity.demand.get((region_id.clone(), year, ts.clone()))
                             }
                             // We currently only support specifying demand at the time slice level:
                             //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/391
