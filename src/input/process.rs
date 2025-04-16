@@ -1,8 +1,10 @@
 //! Code for reading process-related information from CSV files.
 use super::*;
-use crate::commodity::{Commodity, CommodityMap, CommodityType};
-use crate::process::{ActivityLimitsMap, Process, ProcessFlow, ProcessMap, ProcessParameterMap};
-use crate::region::RegionSelection;
+use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
+use crate::process::{
+    ActivityLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameterMap,
+};
+use crate::region::{RegionID, RegionSelection};
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{bail, ensure, Context, Ok, Result};
 use serde::Deserialize;
@@ -18,28 +20,19 @@ use flow::read_process_flows;
 mod parameter;
 use parameter::read_process_parameters;
 mod region;
+use crate::id::define_id_getter;
 use region::read_process_regions;
 
 const PROCESSES_FILE_NAME: &str = "processes.csv";
 
-macro_rules! define_process_id_getter {
-    ($t:ty) => {
-        impl HasID for $t {
-            fn get_id(&self) -> &str {
-                &self.process_id
-            }
-        }
-    };
-}
-use define_process_id_getter;
-
-#[derive(Debug, Deserialize, PartialEq, Clone)]
+#[derive(PartialEq, Debug, Deserialize)]
 struct ProcessRaw {
-    id: Rc<str>,
+    id: ProcessID,
     description: String,
     start_year: Option<u32>,
     end_year: Option<u32>,
 }
+define_id_getter! {ProcessRaw, ProcessID}
 
 /// Read process information from the specified CSV files.
 ///
@@ -57,7 +50,7 @@ struct ProcessRaw {
 pub fn read_processes(
     model_dir: &Path,
     commodities: &CommodityMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<ProcessMap> {
@@ -102,7 +95,7 @@ pub fn read_processes(
 fn read_processes_file(
     model_dir: &Path,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, Process>> {
+) -> Result<HashMap<ProcessID, Process>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let processes_csv = read_csv(&file_path)?;
     read_processes_file_from_iter(processes_csv, year_range)
@@ -112,7 +105,7 @@ fn read_processes_file(
 fn read_processes_file_from_iter<I>(
     iter: I,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, Process>>
+) -> Result<HashMap<ProcessID, Process>>
 where
     I: Iterator<Item = ProcessRaw>,
 {
@@ -148,23 +141,23 @@ where
 }
 
 struct ValidationParams<'a> {
-    flows: &'a HashMap<Rc<str>, Vec<ProcessFlow>>,
-    region_ids: &'a HashSet<Rc<str>>,
+    flows: &'a HashMap<ProcessID, Vec<ProcessFlow>>,
+    region_ids: &'a HashSet<RegionID>,
     milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
-    parameters: &'a HashMap<Rc<str>, ProcessParameterMap>,
-    availabilities: &'a HashMap<Rc<str>, ActivityLimitsMap>,
+    parameters: &'a HashMap<ProcessID, ProcessParameterMap>,
+    availabilities: &'a HashMap<ProcessID, ActivityLimitsMap>,
 }
 
 /// Perform consistency checks for commodity flows.
 fn validate_commodities(
     commodities: &CommodityMap,
-    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
-    region_ids: &HashSet<Rc<str>>,
+    flows: &HashMap<ProcessID, Vec<ProcessFlow>>,
+    region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
-    parameters: &HashMap<Rc<str>, ProcessParameterMap>,
-    availabilities: &HashMap<Rc<str>, ActivityLimitsMap>,
+    parameters: &HashMap<ProcessID, ProcessParameterMap>,
+    availabilities: &HashMap<ProcessID, ActivityLimitsMap>,
 ) -> anyhow::Result<()> {
     let params = ValidationParams {
         flows,
@@ -189,9 +182,9 @@ fn validate_commodities(
 }
 
 fn validate_sed_commodity(
-    commodity_id: &Rc<str>,
+    commodity_id: &CommodityID,
     commodity: &Rc<Commodity>,
-    flows: &HashMap<Rc<str>, Vec<ProcessFlow>>,
+    flows: &HashMap<ProcessID, Vec<ProcessFlow>>,
 ) -> Result<()> {
     let mut has_producer = false;
     let mut has_consumer = false;
@@ -217,7 +210,7 @@ fn validate_sed_commodity(
 }
 
 fn validate_svd_commodity(
-    commodity_id: &Rc<str>,
+    commodity_id: &CommodityID,
     commodity: &Rc<Commodity>,
     params: &ValidationParams,
 ) -> Result<()> {
@@ -280,9 +273,9 @@ mod tests {
     use super::*;
 
     struct ProcessData {
-        availabilities: HashMap<Rc<str>, ActivityLimitsMap>,
-        parameters: HashMap<Rc<str>, ProcessParameterMap>,
-        region_ids: HashSet<Rc<str>>,
+        availabilities: HashMap<ProcessID, ActivityLimitsMap>,
+        parameters: HashMap<ProcessID, ProcessParameterMap>,
+        region_ids: HashSet<RegionID>,
     }
 
     /// Returns example data (without errors) for processes
@@ -374,17 +367,14 @@ mod tests {
         });
 
         let commodities: CommodityMap = [
-            (Rc::clone(&commodity_sed.id), Rc::clone(&commodity_sed)),
-            (
-                Rc::clone(&commodity_non_sed.id),
-                Rc::clone(&commodity_non_sed),
-            ),
+            (commodity_sed.id.clone(), Rc::clone(&commodity_sed)),
+            (commodity_non_sed.id.clone(), Rc::clone(&commodity_non_sed)),
         ]
         .into_iter()
         .collect();
 
         // Create mock flows
-        let process_flows: HashMap<Rc<str>, Vec<ProcessFlow>> = [
+        let process_flows: HashMap<ProcessID, Vec<ProcessFlow>> = [
             (
                 "process1".into(),
                 vec![
@@ -434,7 +424,7 @@ mod tests {
         .is_ok());
 
         // Modify flows to make the validation fail
-        let process_flows_invalid: HashMap<Rc<str>, Vec<ProcessFlow>> = [(
+        let process_flows_invalid: HashMap<ProcessID, Vec<ProcessFlow>> = [(
             "process1".into(),
             vec![ProcessFlow {
                 process_id: "process1".into(),

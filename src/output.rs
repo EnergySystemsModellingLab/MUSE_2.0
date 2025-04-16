@@ -1,5 +1,9 @@
 //! The module responsible for writing output data to disk.
+use crate::agent::AgentID;
 use crate::asset::{Asset, AssetID, AssetPool};
+use crate::commodity::CommodityID;
+use crate::process::ProcessID;
+use crate::region::RegionID;
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
 use anyhow::{Context, Result};
@@ -8,7 +12,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
 /// The root folder in which model-specific output folders will be created
 const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
@@ -52,9 +55,9 @@ pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct AssetRow {
     milestone_year: u32,
-    process_id: Rc<str>,
-    region_id: Rc<str>,
-    agent_id: Rc<str>,
+    process_id: ProcessID,
+    region_id: RegionID,
+    agent_id: AgentID,
     commission_year: u32,
 }
 
@@ -62,9 +65,9 @@ impl AssetRow {
     fn new(milestone_year: u32, asset: &Asset) -> Self {
         Self {
             milestone_year,
-            process_id: Rc::clone(&asset.process.id),
-            region_id: Rc::clone(&asset.region_id),
-            agent_id: Rc::clone(&asset.agent_id),
+            process_id: asset.process.id.clone(),
+            region_id: asset.region_id.clone(),
+            agent_id: asset.agent_id.clone(),
             commission_year: asset.commission_year,
         }
     }
@@ -75,7 +78,7 @@ impl AssetRow {
 /// This will be written along with an [`AssetRow`] containing asset-related info.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityFlowRow {
-    commodity_id: Rc<str>,
+    commodity_id: CommodityID,
     time_slice: String,
     flow: f64,
 }
@@ -84,7 +87,7 @@ struct CommodityFlowRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityPriceRow {
     milestone_year: u32,
-    commodity_id: Rc<str>,
+    commodity_id: CommodityID,
     time_slice: String,
     price: f64,
 }
@@ -132,13 +135,13 @@ impl DataWriter {
         flows: I,
     ) -> Result<()>
     where
-        I: Iterator<Item = (AssetID, &'a Rc<str>, &'a TimeSliceID, f64)>,
+        I: Iterator<Item = (AssetID, &'a CommodityID, &'a TimeSliceID, f64)>,
     {
         for (asset_id, commodity_id, time_slice, flow) in flows {
             let asset = assets.get(asset_id).unwrap();
             let asset_row = AssetRow::new(milestone_year, asset);
             let flow_row = CommodityFlowRow {
-                commodity_id: Rc::clone(commodity_id),
+                commodity_id: commodity_id.clone(),
                 time_slice: time_slice.to_string(),
                 flow,
             };
@@ -153,7 +156,7 @@ impl DataWriter {
         for (commodity_id, time_slice, price) in prices.iter() {
             let row = CommodityPriceRow {
                 milestone_year,
-                commodity_id: Rc::clone(commodity_id),
+                commodity_id: commodity_id.clone(),
                 time_slice: time_slice.to_string(),
                 price,
             };
@@ -180,16 +183,17 @@ mod tests {
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
+    use std::rc::Rc;
     use std::{collections::HashMap, iter};
     use tempfile::tempdir;
 
     fn get_asset() -> Asset {
-        let process_id = "process1".into();
+        let process_id = ProcessID::new("process1");
         let region_id = "GBR".into();
         let agent_id = "agent1".into();
         let commission_year = 2015;
         let process = Rc::new(Process {
-            id: Rc::clone(&process_id),
+            id: process_id,
             description: "Description".into(),
             years: 2010..=2020,
             activity_limits: HashMap::new(),

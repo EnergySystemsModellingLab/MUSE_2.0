@@ -1,14 +1,11 @@
 //! Code for reading the agent objectives CSV file.
 use super::super::*;
-use crate::agent::{Agent, AgentMap, AgentObjective, DecisionRule};
+use crate::agent::{AgentID, AgentMap, AgentObjective, DecisionRule};
 use anyhow::{ensure, Context, Result};
 use std::collections::HashMap;
 use std::path::Path;
-use std::rc::Rc;
 
 const AGENT_OBJECTIVES_FILE_NAME: &str = "agent_objectives.csv";
-
-define_id_getter! {Agent}
 
 /// Read agent objective info from the agent_objectives.csv file.
 ///
@@ -23,7 +20,7 @@ pub fn read_agent_objectives(
     model_dir: &Path,
     agents: &AgentMap,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>> {
+) -> Result<HashMap<AgentID, Vec<AgentObjective>>> {
     let file_path = model_dir.join(AGENT_OBJECTIVES_FILE_NAME);
     let agent_objectives_csv = read_csv(&file_path)?;
     read_agent_objectives_from_iter(agent_objectives_csv, agents, milestone_years)
@@ -34,14 +31,14 @@ fn read_agent_objectives_from_iter<I>(
     iter: I,
     agents: &AgentMap,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentObjective>>>
+) -> Result<HashMap<AgentID, Vec<AgentObjective>>>
 where
     I: Iterator<Item = AgentObjective>,
 {
     let mut objectives = HashMap::new();
     for objective in iter {
         let (id, agent) = agents
-            .get_key_value(objective.agent_id.as_str())
+            .get_key_value(&objective.agent_id)
             .context("Invalid agent ID")?;
 
         // Check that required parameters are present and others are absent
@@ -56,7 +53,7 @@ where
 
         // Append to Vec with the corresponding key or create
         objectives
-            .entry(Rc::clone(id))
+            .entry(id.clone())
             .or_insert_with(|| Vec::with_capacity(1))
             .push(objective);
     }
@@ -127,7 +124,7 @@ fn check_objective_parameter(
 fn check_agent_objectives(
     objectives: &[&AgentObjective],
     decision_rule: &DecisionRule,
-    agent_id: &str,
+    agent_id: &AgentID,
     year: u32,
 ) -> Result<()> {
     let count = objectives.len();
@@ -172,6 +169,7 @@ fn check_agent_objectives(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent::Agent;
     use crate::agent::ObjectiveType;
     use crate::region::RegionSelection;
 
@@ -285,15 +283,16 @@ mod tests {
 
     #[test]
     fn test_check_agent_objectives() {
+        let agent_id = AgentID::new("agent");
         let objective1 = AgentObjective {
-            agent_id: "agent".into(),
+            agent_id: agent_id.clone(),
             year: 2020,
             objective_type: ObjectiveType::EquivalentAnnualCost,
             decision_weight: None,
             decision_lexico_order: Some(1),
         };
         let objective2 = AgentObjective {
-            agent_id: "agent".into(),
+            agent_id: agent_id.clone(),
             year: 2020,
             objective_type: ObjectiveType::EquivalentAnnualCost,
             decision_weight: None,
@@ -303,22 +302,23 @@ mod tests {
         // DecisionRule::Single
         let decision_rule = DecisionRule::Single;
         let objectives = [&objective1];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_ok());
+
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_ok());
         let objectives = [&objective1, &objective2];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_err());
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_err());
 
         // DecisionRule::Weighted
         let decision_rule = DecisionRule::Weighted;
         let objectives = [&objective1, &objective2];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_ok());
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_ok());
         let objectives = [&objective1];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_err());
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_err());
 
         // DecisionRule::Lexicographical
         let decision_rule = DecisionRule::Lexicographical { tolerance: 1.0 };
         let objectives = [&objective1, &objective2];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_ok());
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_ok());
         let objectives = [&objective1, &objective1];
-        assert!(check_agent_objectives(&objectives, &decision_rule, "agent", 2020).is_err());
+        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_err());
     }
 }

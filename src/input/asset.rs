@@ -1,7 +1,10 @@
 //! Code for reading [Asset]s from a CSV file.
 use super::*;
+use crate::agent::AgentID;
 use crate::asset::Asset;
+use crate::id::IDCollection;
 use crate::process::ProcessMap;
+use crate::region::RegionID;
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
@@ -34,9 +37,9 @@ struct AssetRaw {
 /// A `HashMap` containing assets grouped by agent ID.
 pub fn read_assets(
     model_dir: &Path,
-    agent_ids: &HashSet<Rc<str>>,
+    agent_ids: &HashSet<AgentID>,
     processes: &ProcessMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
 ) -> Result<Vec<Asset>> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
     let assets_csv = read_csv(&file_path)?;
@@ -58,19 +61,19 @@ pub fn read_assets(
 /// A [`Vec`] of [`Asset`]s or an error.
 fn read_assets_from_iter<I>(
     iter: I,
-    agent_ids: &HashSet<Rc<str>>,
+    agent_ids: &HashSet<AgentID>,
     processes: &ProcessMap,
-    region_ids: &HashSet<Rc<str>>,
+    region_ids: &HashSet<RegionID>,
 ) -> Result<Vec<Asset>>
 where
     I: Iterator<Item = AssetRaw>,
 {
     iter.map(|asset| -> Result<_> {
-        let agent_id = agent_ids.get_id(&asset.agent_id)?;
+        let agent_id = agent_ids.get_id_by_str(&asset.agent_id)?;
         let process = processes
             .get(asset.process_id.as_str())
             .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
-        let region_id = region_ids.get_id(&asset.region_id)?;
+        let region_id = region_ids.get_id_by_str(&asset.region_id)?;
         ensure!(
             process.regions.contains(&region_id),
             "Region {} is not one of the regions in which process {} operates",
@@ -108,7 +111,7 @@ mod tests {
             parameter: ProcessParameterMap::new(),
             regions: RegionSelection::All,
         });
-        let processes = [(Rc::clone(&process.id), Rc::clone(&process))]
+        let processes = [(process.id.clone(), Rc::clone(&process))]
             .into_iter()
             .collect();
         let agent_ids = ["agent1".into()].into_iter().collect();
@@ -191,7 +194,7 @@ mod tests {
             capacity: 1.0,
             commission_year: 2010,
         };
-        let processes = [(Rc::clone(&process.id), Rc::clone(&process))]
+        let processes = [(process.id.clone(), Rc::clone(&process))]
             .into_iter()
             .collect();
         assert!(

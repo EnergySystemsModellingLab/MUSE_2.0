@@ -1,14 +1,13 @@
 //! Code for reading process parameters CSV file
 use super::super::*;
-use super::define_process_id_getter;
-use crate::process::{Process, ProcessParameter, ProcessParameterMap};
+use crate::id::IDCollection;
+use crate::process::{Process, ProcessID, ProcessParameter, ProcessParameterMap};
 use crate::year::{deserialize_year, YearSelection};
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const PROCESS_PARAMETERS_FILE_NAME: &str = "process_parameters.csv";
 
@@ -24,7 +23,6 @@ struct ProcessParameterRaw {
     #[serde(deserialize_with = "deserialize_year")]
     year: YearSelection,
 }
-define_process_id_getter! {ProcessParameterRaw}
 
 impl ProcessParameterRaw {
     fn into_parameter(self) -> Result<ProcessParameter> {
@@ -96,10 +94,10 @@ impl ProcessParameterRaw {
 /// Read process parameters from the specified model directory
 pub fn read_process_parameters(
     model_dir: &Path,
-    process_ids: &HashSet<Rc<str>>,
-    processes: &HashMap<Rc<str>, Process>,
+    process_ids: &HashSet<ProcessID>,
+    processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, ProcessParameterMap>> {
+) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
     read_process_parameters_from_iter(iter, process_ids, processes, milestone_years)
@@ -108,16 +106,16 @@ pub fn read_process_parameters(
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
-    process_ids: &HashSet<Rc<str>>,
-    processes: &HashMap<Rc<str>, Process>,
+    process_ids: &HashSet<ProcessID>,
+    processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, ProcessParameterMap>>
+) -> Result<HashMap<ProcessID, ProcessParameterMap>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
-    let mut params: HashMap<Rc<str>, ProcessParameterMap> = HashMap::new();
+    let mut params: HashMap<ProcessID, ProcessParameterMap> = HashMap::new();
     for param_raw in iter {
-        let id = process_ids.get_id(&param_raw.process_id)?;
+        let id = process_ids.get_id_by_str(&param_raw.process_id)?;
         let year = param_raw.year.clone();
         let param = param_raw.into_parameter()?;
 
@@ -263,7 +261,7 @@ mod tests {
             },
         ];
 
-        let expected: HashMap<Rc<str>, _> = [
+        let expected: HashMap<ProcessID, _> = [
             (
                 "A".into(),
                 ProcessParameter {
