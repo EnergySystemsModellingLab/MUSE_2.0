@@ -1,30 +1,33 @@
 //! Code for handing IDs
 use crate::region::RegionID;
 use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
-use std::borrow::Borrow;
 use std::collections::HashSet;
-use std::fmt::Display;
-use std::hash::Hash;
-use std::rc::Rc;
 
 /// A trait alias for ID types
-pub trait IDLike: Eq + Hash + Borrow<str> + Clone + Display {}
-impl<T> IDLike for T where T: Eq + Hash + Borrow<str> + Clone + Display {}
+pub trait IDLike:
+    Eq + std::hash::Hash + std::borrow::Borrow<str> + Clone + std::fmt::Display
+{
+}
+impl<T> IDLike for T where
+    T: Eq + std::hash::Hash + std::borrow::Borrow<str> + Clone + std::fmt::Display
+{
+}
 
 macro_rules! define_id_type {
     ($name:ident) => {
-        #[derive(Clone, Hash, PartialEq, Eq, Deserialize, Debug, Serialize)]
+        #[derive(
+            Clone, std::hash::Hash, PartialEq, Eq, serde::Deserialize, Debug, serde::Serialize,
+        )]
         /// An ID type (e.g. `AgentID`, `CommodityID`, etc.)
-        pub struct $name(pub Rc<str>);
+        pub struct $name(pub std::rc::Rc<str>);
 
-        impl Borrow<str> for $name {
+        impl std::borrow::Borrow<str> for $name {
             fn borrow(&self) -> &str {
                 &self.0
             }
         }
 
-        impl Display for $name {
+        impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", self.0)
             }
@@ -32,20 +35,20 @@ macro_rules! define_id_type {
 
         impl From<&str> for $name {
             fn from(s: &str) -> Self {
-                $name(Rc::from(s))
+                $name(std::rc::Rc::from(s))
             }
         }
 
         impl From<String> for $name {
             fn from(s: String) -> Self {
-                $name(Rc::from(s))
+                $name(std::rc::Rc::from(s))
             }
         }
 
         impl $name {
             /// Create a new ID from a string slice
             pub fn new(id: &str) -> Self {
-                $name(Rc::from(id))
+                $name(std::rc::Rc::from(id))
             }
         }
     };
