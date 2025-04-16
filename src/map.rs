@@ -22,8 +22,12 @@ macro_rules! define_map_type {
             }
 
             /// Retrieve a value from the map
+            /// Assumes the key exists in the map, otherwise will panic
             pub fn get(&self, key: $key_type) -> $value_type {
-                self.0.get(&key).unwrap().clone()
+                self.0
+                    .get(&key)
+                    .unwrap_or_else(|| panic!("Key {:?} not found in the map", key))
+                    .clone()
             }
         }
     };
