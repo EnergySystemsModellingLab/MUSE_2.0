@@ -1,7 +1,7 @@
 //! Code for working with demand for a given commodity. Demand can vary by region, year and time
 //! slice.
 use super::super::*;
-use super::demand_slicing::{read_demand_slices, DemandSliceMap, DemandSliceMapKey};
+use super::demand_slicing::{read_demand_slices, DemandSliceMap};
 use crate::commodity::{CommodityID, DemandMap};
 use crate::id::IDCollection;
 use crate::region::RegionID;
@@ -27,18 +27,7 @@ struct Demand {
 }
 
 /// A map relating commodity, region and year to annual demand
-pub type AnnualDemandMap = HashMap<AnnualDemandMapKey, f64>;
-
-/// A key for an [`AnnualDemandMap`]
-#[derive(PartialEq, Eq, Hash, Debug)]
-pub struct AnnualDemandMapKey {
-    /// The commodity to which this demand applies
-    commodity_id: CommodityID,
-    /// The region to which this demand applies
-    region_id: RegionID,
-    /// The simulation year to which this demand applies
-    year: u32,
-}
+pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), f64>;
 
 /// A set of commodity + region pairs
 pub type CommodityRegionPairs = HashSet<(CommodityID, RegionID)>;
@@ -143,13 +132,12 @@ where
             "Demand must be a valid number greater than zero"
         );
 
-        let key = AnnualDemandMapKey {
-            commodity_id: commodity_id.clone(),
-            region_id: region_id.clone(),
-            year: demand.year,
-        };
         ensure!(
-            map.insert(key, demand.demand).is_none(),
+            map.insert(
+                (commodity_id.clone(), region_id.clone(), demand.year),
+                demand.demand
+            )
+            .is_none(),
             "Duplicate demand entries (commodity: {}, region: {}, year: {})",
             commodity_id,
             region_id,
@@ -163,13 +151,8 @@ where
     // milestone year
     for (commodity_id, region_id) in commodity_regions.iter() {
         for year in milestone_years.iter().copied() {
-            let key = AnnualDemandMapKey {
-                commodity_id: commodity_id.clone(),
-                region_id: region_id.clone(),
-                year,
-            };
             ensure!(
-                map.contains_key(&key),
+                map.contains_key(&(commodity_id.clone(), region_id.clone(), year)),
                 "Missing milestone year {year} for commodity {commodity_id} in region {region_id}"
             );
         }
@@ -196,15 +179,9 @@ fn compute_demand_maps(
     time_slice_info: &TimeSliceInfo,
 ) -> HashMap<CommodityID, DemandMap> {
     let mut map = HashMap::new();
-    for (demand_key, annual_demand) in demand.iter() {
-        let commodity_id = &demand_key.commodity_id;
-        let region_id = &demand_key.region_id;
+    for ((commodity_id, region_id, year), annual_demand) in demand.iter() {
         for time_slice in time_slice_info.iter_ids() {
-            let slice_key = DemandSliceMapKey {
-                commodity_id: commodity_id.clone(),
-                region_id: region_id.clone(),
-                time_slice: time_slice.clone(),
-            };
+            let slice_key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
 
             // NB: This has already been checked, so shouldn't fail
             let demand_fraction = slices.get(&slice_key).unwrap();
@@ -217,7 +194,7 @@ fn compute_demand_maps(
             // Add a new demand entry
             map.insert(
                 region_id.clone(),
-                demand_key.year,
+                *year,
                 time_slice.clone(),
                 annual_demand * demand_fraction,
             );
@@ -428,38 +405,10 @@ COM1,West,2020,13"
             HashSet::from_iter(["North".into(), "South".into(), "East".into(), "West".into()]);
         let milestone_years = [2020];
         let expected = AnnualDemandMap::from_iter([
-            (
-                AnnualDemandMapKey {
-                    commodity_id: "COM1".into(),
-                    region_id: "North".into(),
-                    year: 2020,
-                },
-                10.0,
-            ),
-            (
-                AnnualDemandMapKey {
-                    commodity_id: "COM1".into(),
-                    region_id: "South".into(),
-                    year: 2020,
-                },
-                11.0,
-            ),
-            (
-                AnnualDemandMapKey {
-                    commodity_id: "COM1".into(),
-                    region_id: "East".into(),
-                    year: 2020,
-                },
-                12.0,
-            ),
-            (
-                AnnualDemandMapKey {
-                    commodity_id: "COM1".into(),
-                    region_id: "West".into(),
-                    year: 2020,
-                },
-                13.0,
-            ),
+            (("COM1".into(), "North".into(), 2020), 10.0),
+            (("COM1".into(), "South".into(), 2020), 11.0),
+            (("COM1".into(), "East".into(), 2020), 12.0),
+            (("COM1".into(), "West".into(), 2020), 13.0),
         ]);
         let (demand, commodity_regions) =
             read_demand_file(dir.path(), &commodity_ids, &region_ids, &milestone_years).unwrap();

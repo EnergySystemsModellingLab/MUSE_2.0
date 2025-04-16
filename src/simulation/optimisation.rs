@@ -29,7 +29,7 @@ type Variable = highs::Col;
 /// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
 ///    are reading the results of the optimisation.
 #[derive(Default)]
-pub struct VariableMap(IndexMap<VariableMapKey, Variable>);
+pub struct VariableMap(IndexMap<(AssetID, CommodityID, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
@@ -39,35 +39,12 @@ impl VariableMap {
         commodity_id: &CommodityID,
         time_slice: &TimeSliceID,
     ) -> Variable {
-        let key = VariableMapKey {
-            asset_id,
-            commodity_id: commodity_id.clone(),
-            time_slice: time_slice.clone(),
-        };
+        let key = (asset_id, commodity_id.clone(), time_slice.clone());
 
         *self
             .0
             .get(&key)
             .expect("No variable found for given params")
-    }
-}
-
-/// A key for a [`VariableMap`]
-#[derive(Eq, PartialEq, Hash)]
-struct VariableMapKey {
-    asset_id: AssetID,
-    commodity_id: CommodityID,
-    time_slice: TimeSliceID,
-}
-
-impl VariableMapKey {
-    /// Create a new [`VariableMapKey`]
-    fn new(asset_id: AssetID, commodity_id: CommodityID, time_slice: TimeSliceID) -> Self {
-        Self {
-            asset_id,
-            commodity_id,
-            time_slice,
-        }
     }
 }
 
@@ -96,7 +73,9 @@ impl Solution<'_> {
             .0
             .keys()
             .zip(self.solution.columns().iter().copied())
-            .map(|(key, flow)| (key.asset_id, &key.commodity_id, &key.time_slice, flow))
+            .map(|((asset_id, commodity_id, time_slice), flow)| {
+                (*asset_id, commodity_id, time_slice, flow)
+            })
     }
 
     /// Keys and dual values for commodity balance constraints.
@@ -227,9 +206,7 @@ fn add_variables(
                     problem.add_column(coeff, 0.0..)
                 };
 
-                let key =
-                    VariableMapKey::new(asset.id, flow.commodity.id.clone(), time_slice.clone());
-
+                let key = (asset.id, flow.commodity.id.clone(), time_slice.clone());
                 let existing = variables.0.insert(key, var).is_some();
                 assert!(!existing, "Duplicate entry for var");
             }
