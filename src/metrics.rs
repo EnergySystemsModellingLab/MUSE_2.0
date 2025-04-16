@@ -22,11 +22,11 @@ pub fn annual_capital_cost(
     let crf = capital_recovery_factor(lifetime, discount_rate);
     let total_capital_cost = capital_cost * capacity * crf;
     let annual_capital_cost = total_capital_cost * crf;
-    annual_capital_cost * PerYear(1.0) // this is an annualized quantity, so we return it as such
+    MoneyPerYear(annual_capital_cost.0) // this is an annualized quantity, so we return it as such
 }
 
 pub fn annual_fixed_operating_cost(
-    fixed_operating_cost: MoneyPerYearPerCapacity,
+    fixed_operating_cost: MoneyPerCapacityPerYear,
     capacity: Capacity,
 ) -> MoneyPerYear {
     fixed_operating_cost * capacity
@@ -37,7 +37,7 @@ pub fn annual_fixed_costs(
     capacity: Capacity,
     lifetime: IYear,
     discount_rate: Dimensionless,
-    fixed_operating_cost: MoneyPerYearPerCapacity,
+    fixed_operating_cost: MoneyPerCapacityPerYear,
 ) -> MoneyPerYear {
     let annual_capital_cost = annual_capital_cost(capital_cost, capacity, lifetime, discount_rate);
     let annual_fixed_operating_cost = annual_fixed_operating_cost(fixed_operating_cost, capacity);
