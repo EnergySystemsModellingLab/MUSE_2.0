@@ -196,7 +196,7 @@ mod tests {
             id: process_id,
             description: "Description".into(),
             years: 2010..=2020,
-            activity_limits: HashMap::new(),
+            energy_limits: HashMap::new(),
             flows: vec![],
             parameter: ProcessParameterMap::new(),
             regions: RegionSelection::All,

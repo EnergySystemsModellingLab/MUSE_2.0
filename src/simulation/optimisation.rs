@@ -29,7 +29,7 @@ type Variable = highs::Col;
 /// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
 ///    are reading the results of the optimisation.
 #[derive(Default)]
-pub struct VariableMap(IndexMap<VariableMapKey, Variable>);
+pub struct VariableMap(IndexMap<(AssetID, CommodityID, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
@@ -39,35 +39,12 @@ impl VariableMap {
         commodity_id: &CommodityID,
         time_slice: &TimeSliceID,
     ) -> Variable {
-        let key = VariableMapKey {
-            asset_id,
-            commodity_id: commodity_id.clone(),
-            time_slice: time_slice.clone(),
-        };
+        let key = (asset_id, commodity_id.clone(), time_slice.clone());
 
         *self
             .0
             .get(&key)
             .expect("No variable found for given params")
-    }
-}
-
-/// A key for a [`VariableMap`]
-#[derive(Eq, PartialEq, Hash)]
-struct VariableMapKey {
-    asset_id: AssetID,
-    commodity_id: CommodityID,
-    time_slice: TimeSliceID,
-}
-
-impl VariableMapKey {
-    /// Create a new [`VariableMapKey`]
-    fn new(asset_id: AssetID, commodity_id: CommodityID, time_slice: TimeSliceID) -> Self {
-        Self {
-            asset_id,
-            commodity_id,
-            time_slice,
-        }
     }
 }
 
@@ -96,7 +73,9 @@ impl Solution<'_> {
             .0
             .keys()
             .zip(self.solution.columns().iter().copied())
-            .map(|(key, flow)| (key.asset_id, &key.commodity_id, &key.time_slice, flow))
+            .map(|((asset_id, commodity_id, time_slice), flow)| {
+                (*asset_id, commodity_id, time_slice, flow)
+            })
     }
 
     /// Keys and dual values for commodity balance constraints.
@@ -227,9 +206,7 @@ fn add_variables(
                     problem.add_column(coeff, 0.0..)
                 };
 
-                let key =
-                    VariableMapKey::new(asset.id, flow.commodity.id.clone(), time_slice.clone());
-
+                let key = (asset.id, flow.commodity.id.clone(), time_slice.clone());
                 let existing = variables.0.insert(key, var).is_some();
                 assert!(!existing, "Duplicate entry for var");
             }
@@ -259,8 +236,13 @@ fn calculate_cost_coefficient(
             .variable_operating_cost
     }
 
-    // If there is a user-provided commodity cost for this combination of parameters, include it
-    if let Some(cost) = flow.commodity.costs.get(&asset.region_id, year, time_slice) {
+    // If there is a user-provided cost for this commodity, include it
+    if !flow.commodity.costs.is_empty() {
+        let cost = flow
+            .commodity
+            .costs
+            .get(&(asset.region_id.clone(), year, time_slice.clone()))
+            .unwrap();
         let apply_cost = match cost.balance_type {
             BalanceType::Net => true,
             BalanceType::Consumption => flow.flow < 0.0,
@@ -285,7 +267,7 @@ fn calculate_cost_coefficient(
 mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessParameterMap};
+    use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessParameter};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
@@ -316,7 +298,7 @@ mod tests {
             id: "process1".into(),
             description: "Description".into(),
             years: 2010..=2020,
-            activity_limits: ActivityLimitsMap::new(),
+            energy_limits: EnergyLimitsMap::new(),
             flows: vec![flow.clone()],
             parameter: ProcessParameterMap::new(),
             regions: RegionSelection::All,
@@ -364,7 +346,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, false, costs.clone(), 3.0);
         check_coeff!(-1.0, false, costs, -1.0);
 
@@ -374,7 +356,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, false, costs.clone(), 3.0);
         check_coeff!(-1.0, false, costs, -3.0);
 
@@ -384,7 +366,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, false, costs.clone(), 1.0);
         check_coeff!(-1.0, false, costs, -3.0);
 
@@ -394,7 +376,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, true, costs.clone(), 4.0);
         check_coeff!(-1.0, true, costs, -2.0);
     }

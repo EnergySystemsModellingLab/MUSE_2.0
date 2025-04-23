@@ -118,9 +118,10 @@ fn add_commodity_balance_constraints(
                     CommodityType::SupplyEqualsDemand => 0.0,
                     CommodityType::ServiceDemand => {
                         match ts_selection {
-                            TimeSliceSelection::Single(ref ts) => {
-                                commodity.demand.get(region_id, year, ts)
-                            }
+                            TimeSliceSelection::Single(ref ts) => *commodity
+                                .demand
+                                .get(&(region_id.clone(), year, ts.clone()))
+                                .unwrap(),
                             // We currently only support specifying demand at the time slice level:
                             //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/391
                             _ => panic!(
@@ -213,7 +214,7 @@ fn add_asset_capacity_constraints(
                 terms.push((var, 1.0));
             }
 
-            let mut limits = asset.get_activity_limits(time_slice);
+            let mut limits = asset.get_energy_limits(time_slice);
 
             // If it's an input flow, the q's will be negative, so we need to invert the limits
             if is_input {

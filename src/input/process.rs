@@ -2,7 +2,7 @@
 use super::*;
 use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::process::{
-    ActivityLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameterMap,
+    EnergyLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameterMap,
 };
 use crate::region::{RegionID, RegionSelection};
 use crate::time_slice::TimeSliceInfo;
@@ -77,7 +77,7 @@ pub fn read_processes(
 
     // Add data to Process objects
     for (id, process) in processes.iter_mut() {
-        process.activity_limits = availabilities.remove(id).unwrap();
+        process.energy_limits = availabilities.remove(id).unwrap();
         process.flows = flows.remove(id).unwrap();
         process.parameter = parameters.remove(id).unwrap();
         process.regions = regions.remove(id).unwrap();
@@ -125,7 +125,7 @@ where
             id: process_raw.id.clone(),
             description: process_raw.description,
             years: start_year..=end_year,
-            activity_limits: ActivityLimitsMap::new(),
+            energy_limits: EnergyLimitsMap::new(),
             flows: Vec::new(),
             parameter: ProcessParameterMap::new(),
             regions: RegionSelection::default(),
@@ -146,7 +146,7 @@ struct ValidationParams<'a> {
     milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
     parameters: &'a HashMap<ProcessID, ProcessParameterMap>,
-    availabilities: &'a HashMap<ProcessID, ActivityLimitsMap>,
+    availabilities: &'a HashMap<ProcessID, EnergyLimitsMap>,
 }
 
 /// Perform consistency checks for commodity flows.
@@ -157,7 +157,7 @@ fn validate_commodities(
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
     parameters: &HashMap<ProcessID, ProcessParameterMap>,
-    availabilities: &HashMap<ProcessID, ActivityLimitsMap>,
+    availabilities: &HashMap<ProcessID, EnergyLimitsMap>,
 ) -> anyhow::Result<()> {
     let params = ValidationParams {
         flows,
@@ -217,8 +217,11 @@ fn validate_svd_commodity(
     for region_id in params.region_ids.iter() {
         for year in params.milestone_years.iter().copied() {
             for time_slice in params.time_slice_info.iter_ids() {
-                let demand = commodity.demand.get(region_id, year, time_slice);
-                if demand > 0.0 {
+                let demand = commodity
+                    .demand
+                    .get(&(region_id.clone(), year, time_slice.clone()))
+                    .unwrap();
+                if demand > &0.0 {
                     let mut has_producer = false;
 
                     // We must check for producers in every time slice, region, and year.
@@ -265,7 +268,7 @@ fn validate_svd_commodity(
 #[cfg(test)]
 mod tests {
     use crate::commodity::{CommodityCostMap, DemandMap};
-    use crate::process::{FlowType, ProcessParameter};
+    use crate::process::{FlowType, ProcessParameter, ProcessParameterMap};
     use crate::time_slice::TimeSliceID;
     use crate::time_slice::TimeSliceLevel;
     use std::iter;
@@ -273,7 +276,7 @@ mod tests {
     use super::*;
 
     struct ProcessData {
-        availabilities: HashMap<ProcessID, ActivityLimitsMap>,
+        availabilities: HashMap<ProcessID, EnergyLimitsMap>,
         parameters: HashMap<ProcessID, ProcessParameterMap>,
         region_ids: HashSet<RegionID>,
     }
@@ -283,7 +286,7 @@ mod tests {
         let availabilities = ["process1", "process2"]
             .into_iter()
             .map(|id| {
-                let mut map = ActivityLimitsMap::new();
+                let mut map = EnergyLimitsMap::new();
                 map.insert(
                     TimeSliceID {
                         season: "winter".into(),
@@ -355,7 +358,7 @@ mod tests {
         for region in data.region_ids.iter() {
             for year in milestone_years {
                 for time_slice in time_slice_info.iter_ids() {
-                    demand_map.insert(region.clone(), year, time_slice.clone(), 0.5);
+                    demand_map.insert((region.clone(), year, time_slice.clone()), 0.5);
                 }
             }
         }
