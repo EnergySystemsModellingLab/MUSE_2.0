@@ -89,10 +89,7 @@ mod tests {
         let mut map = DemandMap::new();
         map.insert(("North".into(), 2020, time_slice.clone()), value);
 
-        assert_eq!(
-            map.get(&("North".into(), 2020, time_slice)).unwrap(),
-            &value
-        )
+        assert_eq!(map.get(("North".into(), 2020, time_slice)), value)
     }
 
     #[test]
@@ -109,6 +106,6 @@ mod tests {
         assert!(map
             .insert(("GBR".into(), 2010, ts.clone()), value.clone())
             .is_none());
-        assert_eq!(map.get(&("GBR".into(), 2010, ts)).unwrap(), &value);
+        assert_eq!(map.get(("GBR".into(), 2010, ts)), value);
     }
 }
