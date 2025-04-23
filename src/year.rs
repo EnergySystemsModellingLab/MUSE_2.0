@@ -21,7 +21,7 @@ where
     D: Deserializer<'de>,
 {
     let value = String::deserialize(deserialiser)?;
-    if value == "all" {
+    if value.trim().eq_ignore_ascii_case("all") {
         // "all" years specified
         Ok(YearSelection::All)
     } else {
@@ -30,7 +30,10 @@ where
             value.split(';').map(|s| s.trim().parse::<u32>()).collect();
         match years {
             Ok(years_set) if !years_set.is_empty() => Ok(YearSelection::Some(years_set)),
-            _ => Err(serde::de::Error::custom("Invalid year format")),
+            _ => Err(serde::de::Error::custom(format!(
+                "Invalid year format: {}",
+                value
+            ))),
         }
     }
 }
