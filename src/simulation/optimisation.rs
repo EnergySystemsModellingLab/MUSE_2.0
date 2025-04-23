@@ -257,7 +257,7 @@ fn calculate_cost_coefficient(
 mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessParameter};
+    use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessParameter};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
@@ -296,7 +296,7 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            activity_limits: ActivityLimitsMap::new(),
+            energy_limits: EnergyLimitsMap::new(),
             flows: vec![flow.clone()],
             parameter: process_param.clone(),
             regions: RegionSelection::All,
