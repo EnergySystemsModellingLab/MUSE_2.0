@@ -8,12 +8,9 @@ use indexmap::IndexMap;
 use log::warn;
 use std::collections::{HashMap, HashSet};
 
-/// A combination of commodity ID and time slice
-type CommodityPriceKey = (CommodityID, TimeSliceID);
-
 /// A map relating commodity ID + time slice to current price (endogenous)
 #[derive(Default)]
-pub struct CommodityPrices(IndexMap<CommodityPriceKey, f64>);
+pub struct CommodityPrices(IndexMap<(CommodityID, TimeSliceID), f64>);
 
 impl CommodityPrices {
     /// Calculate commodity prices based on the result of the dispatch optimisation.
@@ -65,10 +62,9 @@ impl CommodityPrices {
 
                 // If the commodity flow is positive (produced PAC)
                 if pac.flow > 0.0 {
-                    let key: CommodityPriceKey = (commodity.id.clone(), time_slice.clone());
                     // Update the highest dual for this commodity/timeslice
                     highest_duals
-                        .entry(key)
+                        .entry((commodity.id.clone(), time_slice.clone()))
                         .and_modify(|current_dual| {
                             if dual > *current_dual {
                                 *current_dual = dual;
