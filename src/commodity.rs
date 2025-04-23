@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 use crate::id::{define_id_getter, define_id_type};
+use crate::maps::define_map_type;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
 use indexmap::IndexMap;
@@ -10,14 +11,15 @@ use std::rc::Rc;
 
 define_id_type! {CommodityID}
 
+define_map_type!(
+    CommodityCostMap,
+    (RegionID, u32, TimeSliceID),
+    CommodityCost
+);
+define_map_type!(DemandMap, (RegionID, u32, TimeSliceID), f64);
+
 /// A map of [`Commodity`]s, keyed by commodity ID
 pub type CommodityMap = IndexMap<CommodityID, Rc<Commodity>>;
-
-/// A map of [`CommodityCost`]s, keyed by region ID, year and time slice ID
-pub type CommodityCostMap = HashMap<(RegionID, u32, TimeSliceID), CommodityCost>;
-
-/// A map of demand values, keyed by region ID, year and time slice ID
-pub type DemandMap = HashMap<(RegionID, u32, TimeSliceID), f64>;
 
 /// A commodity within the simulation. Represents a substance (e.g. CO2) or form of energy (e.g.
 /// electricity) that can be produced and/or consumed by technologies in the model.

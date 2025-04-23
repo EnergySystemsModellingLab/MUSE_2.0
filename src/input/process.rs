@@ -160,9 +160,8 @@ fn validate_svd_commodity(
             for time_slice in params.time_slice_info.iter_ids() {
                 let demand = commodity
                     .demand
-                    .get(&(region_id.clone(), year, time_slice.clone()))
-                    .unwrap();
-                if demand > &0.0 {
+                    .get((region_id.clone(), year, time_slice.clone()));
+                if demand > 0.0 {
                     let mut has_producer = false;
 
                     // We must check for producers in every time slice, region, and year.
