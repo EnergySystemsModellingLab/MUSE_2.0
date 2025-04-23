@@ -204,7 +204,7 @@ mod tests {
         let process = Rc::new(Process {
             id: process_id,
             description: "Description".into(),
-            activity_limits: HashMap::new(),
+            energy_limits: HashMap::new(),
             flows: vec![],
             parameter: process_param.clone(),
             regions: RegionSelection::All,

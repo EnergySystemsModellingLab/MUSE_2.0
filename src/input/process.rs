@@ -2,7 +2,7 @@
 use super::*;
 use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::process::{
-    ActivityLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameter,
+    EnergyLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameter,
 };
 use crate::region::{RegionID, RegionSelection};
 use crate::time_slice::TimeSliceInfo;
@@ -87,7 +87,7 @@ struct ValidationParams<'a> {
     milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
     parameters: &'a HashMap<ProcessID, ProcessParameter>,
-    availabilities: &'a HashMap<ProcessID, ActivityLimitsMap>,
+    availabilities: &'a HashMap<ProcessID, EnergyLimitsMap>,
 }
 
 /// Perform consistency checks for commodity flows.
@@ -98,7 +98,7 @@ fn validate_commodities(
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
     parameters: &HashMap<ProcessID, ProcessParameter>,
-    availabilities: &HashMap<ProcessID, ActivityLimitsMap>,
+    availabilities: &HashMap<ProcessID, EnergyLimitsMap>,
 ) -> anyhow::Result<()> {
     let params = ValidationParams {
         flows,
@@ -208,7 +208,7 @@ fn validate_svd_commodity(
 
 fn create_process_map<I>(
     descriptions: I,
-    mut availabilities: HashMap<ProcessID, ActivityLimitsMap>,
+    mut availabilities: HashMap<ProcessID, EnergyLimitsMap>,
     mut flows: HashMap<ProcessID, Vec<ProcessFlow>>,
     mut parameters: HashMap<ProcessID, ProcessParameter>,
     mut regions: HashMap<ProcessID, RegionSelection>,
@@ -235,7 +235,7 @@ where
             let process = Process {
                 id: id.clone(),
                 description: description.description,
-                activity_limits: availabilities,
+                energy_limits: availabilities,
                 flows,
                 parameter,
                 regions,
@@ -258,7 +258,7 @@ mod tests {
 
     struct ProcessData {
         descriptions: Vec<ProcessDescription>,
-        availabilities: HashMap<ProcessID, ActivityLimitsMap>,
+        availabilities: HashMap<ProcessID, EnergyLimitsMap>,
         flows: HashMap<ProcessID, Vec<ProcessFlow>>,
         parameters: HashMap<ProcessID, ProcessParameter>,
         regions: HashMap<ProcessID, RegionSelection>,
@@ -281,7 +281,7 @@ mod tests {
         let availabilities = ["process1", "process2"]
             .into_iter()
             .map(|id| {
-                let mut map = ActivityLimitsMap::new();
+                let mut map = EnergyLimitsMap::new();
                 map.insert(
                     TimeSliceID {
                         season: "winter".into(),
