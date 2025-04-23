@@ -134,18 +134,24 @@ unit_struct!(MoneyPerCapacity);
 unit_struct!(EnergyPerCapacityPerYear);
 unit_struct!(MoneyPerCapacityPerYear);
 unit_struct!(MoneyPerEnergyPerYear);
+unit_struct!(MoneyPerActivity);
+unit_struct!(MoneyPerActivityPerYear);
+unit_struct!(ActivityPerCapacity);
 
 // Simple relationships
 impl_div!(Energy, Year, EnergyPerYear);
 impl_div!(Money, Year, MoneyPerYear);
 impl_div!(Money, Energy, MoneyPerEnergy);
 impl_div!(Money, Capacity, MoneyPerCapacity);
+impl_div!(Money, Activity, MoneyPerActivity);
+impl_div!(Activity, Capacity, ActivityPerCapacity);
 
 // Complex relationships
 impl_div!(EnergyPerYear, Capacity, EnergyPerCapacityPerYear);
 impl_div!(MoneyPerYear, Capacity, MoneyPerCapacityPerYear);
 impl_div!(Money, EnergyPerYear, MoneyPerEnergyPerYear);
 impl_div!(MoneyPerEnergy, Year, MoneyPerEnergyPerYear);
+impl_div!(MoneyPerYear, Activity, MoneyPerActivityPerYear);
 
 /// Represents a number of years as an integer.
 #[derive(Debug, Clone, Copy, PartialEq, derive_more::Add, derive_more::Sub)]
