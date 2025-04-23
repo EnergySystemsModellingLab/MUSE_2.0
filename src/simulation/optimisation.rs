@@ -231,8 +231,13 @@ fn calculate_cost_coefficient(
         coeff += asset.process.parameter.variable_operating_cost
     }
 
-    // If there is a user-provided commodity cost for this combination of parameters, include it
-    if let Some(cost) = flow.commodity.costs.get(&asset.region_id, year, time_slice) {
+    // If there is a user-provided cost for this commodity, include it
+    if !flow.commodity.costs.is_empty() {
+        let cost = flow
+            .commodity
+            .costs
+            .get(&(asset.region_id.clone(), year, time_slice.clone()))
+            .unwrap();
         let apply_cost = match cost.balance_type {
             BalanceType::Net => true,
             BalanceType::Consumption => flow.flow < 0.0,
@@ -344,7 +349,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, false, costs.clone(), 3.0);
         check_coeff!(-1.0, false, costs, -1.0);
 
@@ -354,7 +359,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, false, costs.clone(), 3.0);
         check_coeff!(-1.0, false, costs, -3.0);
 
@@ -364,7 +369,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, false, costs.clone(), 1.0);
         check_coeff!(-1.0, false, costs, -3.0);
 
@@ -374,7 +379,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, true, costs.clone(), 4.0);
         check_coeff!(-1.0, true, costs, -2.0);
     }
