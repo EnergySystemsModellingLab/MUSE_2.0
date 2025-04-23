@@ -23,9 +23,9 @@ pub struct Process {
     pub id: ProcessID,
     /// A human-readable description for the process (e.g. dry gas extraction)
     pub description: String,
-    /// The activity limits for each time slice (as a fraction of maximum)
-    pub activity_limits: ActivityLimitsMap,
-    /// Commodity flows for this process
+    /// Limits on PAC energy consumption/production for each time slice (as a fraction of maximum)
+    pub energy_limits: EnergyLimitsMap,
+    /// Maximum annual commodity flows for this process
     pub flows: Vec<ProcessFlow>,
     /// Additional parameters for this process
     pub parameter: ProcessParameter,
@@ -47,24 +47,25 @@ impl Process {
     }
 }
 
-/// A map indicating activity limits for a [`Process`] throughout the year.
+/// A map indicating relative PAC energy limits for a [`Process`] throughout the year.
 ///
 /// The value is calculated as availability multiplied by time slice length. Note that it is a
-/// **fraction** of activity for the year; to calculate **actual** activity for a given time slice
-/// you need to know the maximum activity for the specific instance of a [`Process`] in use.
+/// **fraction** of energy for the year; to calculate **actual** energy limits for a given time
+/// slice you need to know the maximum activity (energy per year) for the specific instance of a
+/// [`Process`] in use.
 ///
 /// The limits are given as ranges, depending on the user-specified limit type and value for
 /// availability.
-pub type ActivityLimitsMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
+pub type EnergyLimitsMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
 
-/// Represents a commodity flow for a given process
+/// Represents a maximum annual commodity flow for a given process
 #[derive(PartialEq, Debug, Deserialize, Clone)]
 pub struct ProcessFlow {
     /// A unique identifier for the process
     pub process_id: String,
     /// The commodity produced or consumed by this flow
     pub commodity: Rc<Commodity>,
-    /// Commodity flow quantity relative to other commodity flows.
+    /// Maximum annual commodity flow quantity relative to other commodity flows.
     ///
     /// Positive value indicates flow out and negative value indicates flow in.
     pub flow: f64,
@@ -102,16 +103,16 @@ pub struct ProcessParameter {
     pub capital_cost: f64,
     /// Annual operating cost per unit capacity
     pub fixed_operating_cost: f64,
-    /// Variable operating cost per unit activity, for PACs **only**
+    /// Annual variable operating cost per unit activity, for PACs **only**
     pub variable_operating_cost: f64,
     /// Lifetime in years of an asset created from this process
     pub lifetime: u32,
     /// Process-specific discount rate
     pub discount_rate: f64,
-    /// Factor for calculating the maximum PAC output over a year.
+    /// Factor for calculating the maximum PAC consumption/production over a year.
     ///
-    /// Used for converting one unit of capacity to maximum activity of the PAC per year. For
-    /// example, if capacity is measured in GW and activity is measured in PJ, the
+    /// Used for converting one unit of capacity to maximum energy of the PAC(s) per year. For
+    /// example, if capacity is measured in GW and energy is measured in PJ, the
     /// capacity_to_activity for the process is 31.536 because 1 GW of capacity can produce 31.536
     /// PJ energy output in a year.
     pub capacity_to_activity: f64,

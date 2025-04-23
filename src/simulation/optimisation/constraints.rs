@@ -213,7 +213,7 @@ fn add_asset_capacity_constraints(
                 terms.push((var, 1.0));
             }
 
-            let mut limits = asset.get_activity_limits(time_slice);
+            let mut limits = asset.get_energy_limits(time_slice);
 
             // If it's an input flow, the q's will be negative, so we need to invert the limits
             if is_input {

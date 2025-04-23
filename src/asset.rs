@@ -61,16 +61,17 @@ impl Asset {
         self.commission_year + self.process.parameter.lifetime
     }
 
-    /// Get the activity limits for this asset in a particular time slice
-    pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
-        let limits = self.process.activity_limits.get(time_slice).unwrap();
+    /// Get the energy limits for this asset in a particular time slice
+    /// This is an absolute max and min on the PAC energy produced/consumed in that time slice.
+    pub fn get_energy_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
+        let limits = self.process.energy_limits.get(time_slice).unwrap();
         let max_act = self.maximum_activity();
 
         // Multiply the fractional capacity in self.process by this asset's actual capacity
         (max_act * limits.start())..=(max_act * limits.end())
     }
 
-    /// Maximum activity for this asset in a year
+    /// Maximum activity for this asset (PAC energy produced/consumed per year)
     pub fn maximum_activity(&self) -> f64 {
         self.capacity * self.process.parameter.capacity_to_activity
     }
@@ -186,7 +187,7 @@ impl AssetPool {
 mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter};
+    use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
@@ -228,7 +229,7 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            activity_limits,
+            energy_limits: activity_limits,
             flows: vec![flow.clone()],
             parameter: process_param.clone(),
             regions: RegionSelection::All,
@@ -242,7 +243,7 @@ mod tests {
             commission_year: 2010,
         };
 
-        assert_eq!(asset.get_activity_limits(&time_slice), 6.0..=f64::INFINITY);
+        assert_eq!(asset.get_energy_limits(&time_slice), 6.0..=f64::INFINITY);
     }
 
     fn create_asset_pool() -> AssetPool {
@@ -258,7 +259,7 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            activity_limits: ActivityLimitsMap::new(),
+            energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
             parameter: process_param.clone(),
             regions: RegionSelection::All,
