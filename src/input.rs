@@ -9,7 +9,6 @@ use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use std::collections::HashSet;
 use std::fs;
-use std::hash::Hash;
 use std::path::Path;
 
 mod agent;
