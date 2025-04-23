@@ -2,6 +2,7 @@
 use super::super::*;
 use crate::id::IDCollection;
 use crate::process::{Process, ProcessID, ProcessParameter, ProcessParameterMap};
+use crate::utils::try_insert;
 use crate::year::{deserialize_year, YearSelection};
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
@@ -127,17 +128,17 @@ where
 
         match year {
             YearSelection::Single(year) => {
-                entry.insert(year, param.clone());
+                try_insert(entry, year, param.clone())?;
             }
             YearSelection::Some(years) => {
                 for year in years {
-                    entry.insert(year, param.clone());
+                    try_insert(entry, year, param.clone())?;
                 }
             }
             YearSelection::All => {
                 for year in milestone_years.iter() {
                     if year_range.contains(year) {
-                        entry.insert(*year, param.clone());
+                        try_insert(entry, *year, param.clone())?;
                     }
                 }
             }
@@ -155,7 +156,7 @@ where
         let parameter_years: HashSet<u32> = parameter.keys().copied().collect();
         ensure!(
             parameter_years == reference_years,
-            "Error in parameter for process {}: years do not match the process years",
+            "Error in parameters for process {}: years do not match the process years",
             id
         );
     }
