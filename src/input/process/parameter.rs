@@ -127,9 +127,6 @@ where
         let year_range = process.years.clone();
 
         match year {
-            YearSelection::Single(year) => {
-                try_insert(entry, year, param.clone())?;
-            }
             YearSelection::Some(years) => {
                 for year in years {
                     try_insert(entry, year, param.clone())?;

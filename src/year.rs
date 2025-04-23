@@ -1,16 +1,21 @@
-#![allow(missing_docs)]
+//! Code for working with years.
 use anyhow::Result;
 use serde::de::Deserializer;
 use serde::Deserialize;
 use std::collections::HashSet;
 
+/// Represents a set of years.
 #[derive(PartialEq, Debug, Clone)]
 pub enum YearSelection {
+    /// Covers all years. It's up to the user to interpret this (e.g. could be all milestone years,
+    /// or all active years for a process etc.)
     All,
-    Single(u32),
+    /// Covers some years.
     Some(HashSet<u32>),
 }
 
+/// Deserialises a year selection from a string. The string can be either "all", a single year, or a
+/// semicolon-separated list of years (e.g. "2020;2021;2022" or "2020; 2021; 2022").
 pub fn deserialize_year<'de, D>(deserialiser: D) -> Result<YearSelection, D::Error>
 where
     D: Deserializer<'de>,
@@ -19,9 +24,6 @@ where
     if value == "all" {
         // "all" years specified
         Ok(YearSelection::All)
-    } else if let Ok(n) = value.parse::<u32>() {
-        // Single year specified
-        Ok(YearSelection::Single(n))
     } else {
         // Semicolon-separated list of years
         let years: Result<HashSet<u32>, _> =

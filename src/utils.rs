@@ -1,5 +1,6 @@
 //! Utility functions.
 use anyhow::{anyhow, Result};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -11,12 +12,10 @@ where
     K: Eq + Hash + std::fmt::Display,
 {
     match map.entry(key) {
-        std::collections::hash_map::Entry::Vacant(entry) => {
+        Vacant(entry) => {
             entry.insert(value);
             Ok(())
         }
-        std::collections::hash_map::Entry::Occupied(entry) => {
-            Err(anyhow!("Key {} already exists in the map", entry.key()))
-        }
+        Occupied(entry) => Err(anyhow!("Key {} already exists in the map", entry.key())),
     }
 }
