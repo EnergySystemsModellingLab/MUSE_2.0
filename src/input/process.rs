@@ -310,7 +310,9 @@ mod tests {
                     discount_rate: 1.0,
                     capacity_to_activity: 0.0,
                 };
-                parameter_map.insert(2020, parameter);
+                for year in [2010, 2020] {
+                    parameter_map.insert(year, parameter.clone());
+                }
                 (id.into(), parameter_map)
             })
             .collect();

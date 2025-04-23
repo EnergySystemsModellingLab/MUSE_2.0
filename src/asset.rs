@@ -200,11 +200,14 @@ impl AssetPool {
 mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessFlow, ProcessParameterMap};
+    use crate::process::{
+        EnergyLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter, ProcessParameterMap,
+    };
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
     use std::iter;
+    use std::ops::RangeInclusive;
 
     #[test]
     fn test_asset_get_energy_limits() {
@@ -212,6 +215,19 @@ mod tests {
             season: "winter".into(),
             time_of_day: "day".into(),
         };
+        let process_param = ProcessParameter {
+            capital_cost: 5.0,
+            fixed_operating_cost: 2.0,
+            variable_operating_cost: 1.0,
+            lifetime: 5,
+            discount_rate: 0.9,
+            capacity_to_activity: 3.0,
+        };
+        let years = RangeInclusive::new(2010, 2020).collect_vec();
+        let process_parameter_map: ProcessParameterMap = years
+            .iter()
+            .map(|&year| (year, process_param.clone()))
+            .collect();
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
             description: "Some description".into(),
@@ -236,7 +252,7 @@ mod tests {
             years: 2010..=2020,
             energy_limits,
             flows: vec![flow.clone()],
-            parameter: ProcessParameterMap::new(),
+            parameter: process_parameter_map,
             regions: RegionSelection::All,
         });
         let asset = Asset {
@@ -252,13 +268,26 @@ mod tests {
     }
 
     fn create_asset_pool() -> AssetPool {
+        let process_param = ProcessParameter {
+            capital_cost: 5.0,
+            fixed_operating_cost: 2.0,
+            variable_operating_cost: 1.0,
+            lifetime: 5,
+            discount_rate: 0.9,
+            capacity_to_activity: 1.0,
+        };
+        let years = RangeInclusive::new(2010, 2020).collect_vec();
+        let process_parameter_map: ProcessParameterMap = years
+            .iter()
+            .map(|&year| (year, process_param.clone()))
+            .collect();
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
             years: 2010..=2020,
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
-            parameter: ProcessParameterMap::new(),
+            parameter: process_parameter_map,
             regions: RegionSelection::All,
         });
         let future = [2020, 2010]

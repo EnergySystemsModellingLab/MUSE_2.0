@@ -267,7 +267,9 @@ fn calculate_cost_coefficient(
 mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessParameterMap};
+    use crate::process::{
+        EnergyLimitsMap, FlowType, Process, ProcessParameter, ProcessParameterMap,
+    };
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
@@ -278,6 +280,17 @@ mod tests {
         is_pac: bool,
         costs: CommodityCostMap,
     ) -> (Asset, ProcessFlow) {
+        let process_param = ProcessParameter {
+            capital_cost: 5.0,
+            fixed_operating_cost: 2.0,
+            variable_operating_cost: 1.0,
+            lifetime: 5,
+            discount_rate: 0.9,
+            capacity_to_activity: 1.0,
+        };
+        let mut process_parameter_map = ProcessParameterMap::new();
+        process_parameter_map.insert(2010, process_param.clone());
+        process_parameter_map.insert(2020, process_param.clone());
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
             description: "Some description".into(),
@@ -300,7 +313,7 @@ mod tests {
             years: 2010..=2020,
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![flow.clone()],
-            parameter: ProcessParameterMap::new(),
+            parameter: process_parameter_map,
             regions: RegionSelection::All,
         });
         let asset = Asset::new(
