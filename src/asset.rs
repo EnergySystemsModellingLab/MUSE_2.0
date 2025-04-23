@@ -62,6 +62,7 @@ impl Asset {
     }
 
     /// Get the energy limits for this asset in a particular time slice
+    ///
     /// This is an absolute max and min on the PAC energy produced/consumed in that time slice.
     pub fn get_energy_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
         let limits = self.process.energy_limits.get(time_slice).unwrap();
@@ -194,7 +195,7 @@ mod tests {
     use std::iter;
 
     #[test]
-    fn test_asset_get_activity_limits() {
+    fn test_asset_get_energy_limits() {
         let time_slice = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
@@ -225,11 +226,11 @@ mod tests {
             is_pac: true,
         };
         let fraction_limits = 1.0..=f64::INFINITY;
-        let activity_limits = iter::once((time_slice.clone(), fraction_limits)).collect();
+        let energy_limits = iter::once((time_slice.clone(), fraction_limits)).collect();
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            energy_limits: activity_limits,
+            energy_limits,
             flows: vec![flow.clone()],
             parameter: process_param.clone(),
             regions: RegionSelection::All,

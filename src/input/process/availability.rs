@@ -82,7 +82,8 @@ where
 
         for (time_slice, ts_length) in time_slice_info.iter_selection(&ts_selection) {
             // Calculate fraction of annual energy as availability multiplied by time slice length
-            // The resulting limits are max/min energy per unit of capacity in each timeslice
+            // The resulting limits are max/min PAC energy produced/consumed in each timeslice per
+            // cap2act units of capacity
             let value = record.value * ts_length;
             let bounds = match record.limit_type {
                 LimitType::LowerBound => value..=f64::INFINITY,
