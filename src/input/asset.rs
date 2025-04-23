@@ -95,7 +95,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::{EnergyLimitsMap, Process, ProcessParameter};
+    use crate::process::{EnergyLimitsMap, Process, ProcessParameterMap};
     use crate::region::RegionSelection;
     use itertools::assert_equal;
     use std::iter;

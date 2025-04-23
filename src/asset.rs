@@ -200,7 +200,7 @@ impl AssetPool {
 mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter};
+    use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessFlow, ProcessParameterMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};

@@ -267,7 +267,7 @@ fn calculate_cost_coefficient(
 mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessParameter};
+    use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessParameterMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
