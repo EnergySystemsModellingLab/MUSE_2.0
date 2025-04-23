@@ -1,6 +1,6 @@
 #![allow(missing_docs)]
 use crate::id::{define_id_getter, define_id_type};
-use crate::maps::define_map_type;
+use crate::map::define_map_type;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel};
 use indexmap::IndexMap;

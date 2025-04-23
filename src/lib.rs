@@ -7,7 +7,7 @@ pub mod commodity;
 pub mod id;
 pub mod input;
 pub mod log;
-pub mod maps;
+pub mod map;
 pub mod model;
 pub mod output;
 pub mod process;
