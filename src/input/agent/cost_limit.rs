@@ -97,3 +97,114 @@ where
 
     Ok(map)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::agent::AgentCostLimits;
+    use crate::year::YearSelection;
+    use std::collections::HashSet;
+
+    fn create_agent_cost_limits_raw(
+        agent_id: &str,
+        capex_limit: Option<f64>,
+        annual_cost_limit: Option<f64>,
+        year: YearSelection,
+    ) -> AgentCostLimitsRaw {
+        AgentCostLimitsRaw {
+            agent_id: agent_id.to_string(),
+            capex_limit,
+            annual_cost_limit,
+            year,
+        }
+    }
+
+    #[test]
+    fn test_read_agent_cost_limits_from_iter_all_years() {
+        let agent_ids: HashSet<AgentID> = ["Agent1", "Agent2"]
+            .iter()
+            .map(|&id| AgentID::from(id))
+            .collect();
+        let milestone_years = vec![2020, 2025];
+
+        let iter = vec![
+            create_agent_cost_limits_raw("Agent1", Some(100.0), Some(200.0), YearSelection::All),
+            create_agent_cost_limits_raw("Agent2", Some(150.0), Some(250.0), YearSelection::All),
+        ]
+        .into_iter();
+
+        let result = read_agent_cost_limits_from_iter(iter, &agent_ids, &milestone_years).unwrap();
+
+        assert_eq!(result.len(), 2);
+        for year in milestone_years {
+            assert_eq!(
+                result[&AgentID::from("Agent1")][&year],
+                AgentCostLimits {
+                    capex_limit: Some(100.0),
+                    annual_cost_limit: Some(200.0),
+                }
+            );
+            assert_eq!(
+                result[&AgentID::from("Agent2")][&year],
+                AgentCostLimits {
+                    capex_limit: Some(150.0),
+                    annual_cost_limit: Some(250.0),
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn test_read_agent_cost_limits_from_iter_some_years() {
+        let agent_ids: HashSet<AgentID> = ["Agent1"].iter().map(|&id| AgentID::from(id)).collect();
+        let milestone_years = vec![2020, 2025];
+
+        let iter = vec![create_agent_cost_limits_raw(
+            "Agent1",
+            Some(100.0),
+            Some(200.0),
+            YearSelection::Some([2020, 2025].into_iter().collect()),
+        )]
+        .into_iter();
+
+        let result = read_agent_cost_limits_from_iter(iter, &agent_ids, &milestone_years).unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(
+            result[&AgentID::from("Agent1")][&2020],
+            AgentCostLimits {
+                capex_limit: Some(100.0),
+                annual_cost_limit: Some(200.0),
+            }
+        );
+        assert_eq!(
+            result[&AgentID::from("Agent1")][&2025],
+            AgentCostLimits {
+                capex_limit: Some(100.0),
+                annual_cost_limit: Some(200.0),
+            }
+        );
+    }
+
+    #[test]
+    fn test_read_agent_cost_limits_from_iter_missing_years() {
+        let agent_ids: HashSet<AgentID> = ["Agent1"].iter().map(|&id| AgentID::from(id)).collect();
+        let milestone_years = vec![2020, 2025];
+
+        let iter = vec![create_agent_cost_limits_raw(
+            "Agent1",
+            Some(100.0),
+            Some(200.0),
+            YearSelection::Some([2020].into_iter().collect()),
+        )]
+        .into_iter();
+
+        let result = read_agent_cost_limits_from_iter(iter, &agent_ids, &milestone_years);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Agent Agent1 is missing cost limits for year 2025"
+        );
+    }
+}
