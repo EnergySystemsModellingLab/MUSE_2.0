@@ -144,62 +144,45 @@ where
             .get(&id)
             .ok_or_else(|| anyhow::anyhow!("Regions not found for process {}", id))?;
 
-        match (region, year) {
-            (RegionSelection::Some(regions), YearSelection::Some(years)) => {
-                for region in regions {
-                    for year in years.clone() {
-                        try_insert(entry, (region.clone(), year), param.clone())?;
-                    }
-                }
-            }
-            (RegionSelection::Some(regions), YearSelection::All) => {
-                for region in regions {
-                    for year in milestone_years.iter() {
-                        if year_range.contains(year) {
-                            try_insert(entry, (region.clone(), *year), param.clone())?;
-                        }
-                    }
-                }
-            }
-            (RegionSelection::All, YearSelection::Some(years)) => {
-                for region in region_ids.iter() {
-                    if process_regions.contains(region) {
-                        for year in years.clone() {
-                            try_insert(entry, (region.clone(), year), param.clone())?;
-                        }
-                    }
-                }
-            }
-            (RegionSelection::All, YearSelection::All) => {
-                for region in region_ids.iter() {
-                    if process_regions.contains(region) {
-                        for year in milestone_years.iter() {
-                            if year_range.contains(year) {
-                                try_insert(entry, (region.clone(), *year), param.clone())?;
-                            }
-                        }
-                    }
-                }
+        let selected_regions: Vec<_> = match region {
+            RegionSelection::Some(regions) => regions.iter().cloned().collect(),
+            RegionSelection::All => region_ids
+                .iter()
+                .filter(|r| process_regions.contains(r))
+                .cloned()
+                .collect(),
+        };
+        let selected_years: Vec<_> = match year {
+            YearSelection::Some(years) => years.iter().cloned().collect(),
+            YearSelection::All => milestone_years
+                .iter()
+                .cloned()
+                .filter(|y| year_range.contains(y))
+                .collect(),
+        };
+        for region in selected_regions {
+            for year in &selected_years {
+                try_insert(entry, (region.clone(), *year), param.clone())?;
             }
         }
     }
 
     // Check parameters cover all years and regions of the process
     for (id, parameter) in params.iter() {
-        let year_range = processes.get(id).unwrap().years.clone();
+        let year_range = &processes.get(id).unwrap().years;
         let reference_years: HashSet<u32> = milestone_years
             .iter()
             .copied()
             .filter(|year| year_range.contains(year))
             .collect();
-        let region_selection = process_regions.get(id).unwrap().clone();
-        let reference_regions: HashSet<RegionID> = match region_selection {
-            RegionSelection::All => region_ids.clone(),
-            RegionSelection::Some(ref regions) => regions.clone(),
+        let reference_regions = match process_regions.get(id).unwrap() {
+            RegionSelection::All => region_ids,
+            RegionSelection::Some(ref regions) => regions,
         };
+
         let mut missing_keys = Vec::new();
-        for year in reference_years.iter() {
-            for region in reference_regions.iter() {
+        for year in &reference_years {
+            for region in reference_regions {
                 if !parameter.contains_key(&(region.clone(), *year)) {
                     missing_keys.push((region, *year));
                 }
