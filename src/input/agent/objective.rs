@@ -169,8 +169,8 @@ fn check_agent_objectives(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::Agent;
     use crate::agent::ObjectiveType;
+    use crate::agent::{Agent, CostLimitsMap};
     use crate::region::RegionSelection;
 
     #[test]
@@ -225,8 +225,7 @@ mod tests {
                 commodities: Vec::new(),
                 search_space: Vec::new(),
                 decision_rule: DecisionRule::Single,
-                capex_limit: None,
-                annual_cost_limit: None,
+                cost_limits: CostLimitsMap::new(),
                 regions: RegionSelection::All,
                 objectives: Vec::new(),
             },

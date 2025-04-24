@@ -51,7 +51,7 @@ impl AgentCommodityRaw {
     }
 }
 
-/// Read agent objective info from the agent_commodities.csv file.
+/// Read agent commodities info from the agent_commodities.csv file.
 ///
 /// # Arguments
 ///
@@ -207,7 +207,7 @@ fn validate_agent_commodities(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::{Agent, DecisionRule};
+    use crate::agent::{Agent, CostLimitsMap, DecisionRule};
     use crate::commodity::{Commodity, CommodityCostMap, CommodityID, CommodityType, DemandMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
@@ -271,8 +271,7 @@ mod tests {
                 commodities: Vec::new(),
                 search_space: Vec::new(),
                 decision_rule: DecisionRule::Single,
-                capex_limit: None,
-                annual_cost_limit: None,
+                cost_limits: CostLimitsMap::new(),
                 regions: RegionSelection::default(),
                 objectives: Vec::new(),
             },

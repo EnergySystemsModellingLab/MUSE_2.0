@@ -7,6 +7,7 @@ use crate::region::RegionSelection;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -14,6 +15,9 @@ define_id_type! {AgentID}
 
 /// A map of [`Agent`]s, keyed by agent ID
 pub type AgentMap = IndexMap<AgentID, Agent>;
+
+/// A map of cost limits for each agent, keyed by year
+pub type CostLimitsMap = HashMap<u32, CostLimits>;
 
 /// An agent in the simulation
 #[derive(Debug, Clone, PartialEq)]
@@ -28,16 +32,23 @@ pub struct Agent {
     pub search_space: Vec<AgentSearchSpace>,
     /// The decision rule that the agent uses to decide investment.
     pub decision_rule: DecisionRule,
-    /// The maximum capital cost the agent will pay.
-    pub capex_limit: Option<f64>,
-    /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
-    pub annual_cost_limit: Option<f64>,
+    /// Cost limits (e.g. capital cost, annual operating cost)
+    pub cost_limits: CostLimitsMap,
     /// The regions in which this agent operates.
     pub regions: RegionSelection,
     /// The agent's objectives.
     pub objectives: Vec<AgentObjective>,
 }
 define_id_getter! {Agent, AgentID}
+
+/// The cost limits for an agent in a particular year
+#[derive(Debug, Clone, PartialEq)]
+pub struct CostLimits {
+    /// The maximum capital cost the agent will pay.
+    pub capex_limit: Option<f64>,
+    /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
+    pub annual_cost_limit: Option<f64>,
+}
 
 /// Which processes apply to this agent
 #[derive(Debug, Clone, PartialEq)]
