@@ -224,7 +224,7 @@ mod tests {
             discount_rate,
             capacity_to_activity,
             year: YearSelection::All,
-            region: RegionSelection::All,
+            region_id: RegionSelection::All,
         }
     }
 
