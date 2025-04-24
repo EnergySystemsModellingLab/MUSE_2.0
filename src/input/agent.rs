@@ -1,6 +1,6 @@
 //! Code for reading in agent-related data from CSV files.
 use super::*;
-use crate::agent::{Agent, AgentID, AgentMap, CostLimitsMap, DecisionRule};
+use crate::agent::{Agent, AgentCostLimitsMap, AgentID, AgentMap, DecisionRule};
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
 use crate::region::{RegionID, RegionSelection};
@@ -69,7 +69,7 @@ pub fn read_agents(
     )?;
     let mut agent_commodities =
         read_agent_commodities(model_dir, &agents, commodities, region_ids, milestone_years)?;
-    let mut cost_limts = read_agent_cost_limits(model_dir, &agents, milestone_years)?;
+    let mut cost_limts = read_agent_cost_limits(model_dir, &agent_ids, milestone_years)?;
 
     for (id, agent) in agents.iter_mut() {
         agent.regions = agent_regions.remove(id).unwrap();
@@ -132,7 +132,7 @@ where
             commodities: Vec::new(),
             search_space: Vec::new(),
             decision_rule,
-            cost_limits: CostLimitsMap::new(),
+            cost_limits: AgentCostLimitsMap::new(),
             regions: RegionSelection::default(),
             objectives: Vec::new(),
         };
@@ -168,7 +168,7 @@ mod tests {
             commodities: Vec::new(),
             search_space: Vec::new(),
             decision_rule: DecisionRule::Single,
-            cost_limits: CostLimitsMap::new(),
+            cost_limits: AgentCostLimitsMap::new(),
             regions: RegionSelection::default(),
             objectives: Vec::new(),
         };

@@ -1,6 +1,7 @@
 //! Code for reading the agent cost limits CSV file.
 use super::super::*;
-use crate::agent::{AgentID, AgentMap, CostLimits, CostLimitsMap};
+use crate::agent::{AgentCostLimits, AgentCostLimitsMap, AgentID};
+use crate::id::IDCollection;
 use crate::year::{deserialize_year, YearSelection};
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -10,7 +11,7 @@ use std::path::Path;
 const AGENT_COST_LIMITS_FILE_NAME: &str = "agent_cost_limits.csv";
 
 #[derive(PartialEq, Debug, Deserialize)]
-struct AgentCostLimitRaw {
+struct AgentCostLimitsRaw {
     agent_id: String,
     capex_limit: Option<f64>,
     annual_cost_limit: Option<f64>,
@@ -18,9 +19,9 @@ struct AgentCostLimitRaw {
     year: YearSelection,
 }
 
-impl AgentCostLimitRaw {
-    fn to_cost_limit(&self) -> CostLimits {
-        CostLimits {
+impl AgentCostLimitsRaw {
+    fn to_agent_cost_limits(&self) -> AgentCostLimits {
+        AgentCostLimits {
             capex_limit: self.capex_limit,
             annual_cost_limit: self.annual_cost_limit,
         }
@@ -38,35 +39,33 @@ impl AgentCostLimitRaw {
 /// A map of Agents, with the agent ID as the key
 pub fn read_agent_cost_limits(
     model_dir: &Path,
-    agents: &AgentMap,
+    agent_ids: &HashSet<AgentID>,
     milestone_years: &[u32],
-) -> Result<HashMap<AgentID, CostLimitsMap>> {
+) -> Result<HashMap<AgentID, AgentCostLimitsMap>> {
     let file_path = model_dir.join(AGENT_COST_LIMITS_FILE_NAME);
     let agent_cost_limits_csv = read_csv(&file_path)?;
-    read_agent_cost_limits_from_iter(agent_cost_limits_csv, agents, milestone_years)
+    read_agent_cost_limits_from_iter(agent_cost_limits_csv, agent_ids, milestone_years)
         .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_agent_cost_limits_from_iter<I>(
     iter: I,
-    agents: &AgentMap,
+    agent_ids: &HashSet<AgentID>,
     milestone_years: &[u32],
-) -> Result<HashMap<AgentID, CostLimitsMap>>
+) -> Result<HashMap<AgentID, AgentCostLimitsMap>>
 where
-    I: Iterator<Item = AgentCostLimitRaw>,
+    I: Iterator<Item = AgentCostLimitsRaw>,
 {
-    let mut map: HashMap<AgentID, CostLimitsMap> = HashMap::new();
+    let mut map: HashMap<AgentID, AgentCostLimitsMap> = HashMap::new();
     for agent_cost_limits_raw in iter {
-        let cost_limits = agent_cost_limits_raw.to_cost_limit();
+        let cost_limits = agent_cost_limits_raw.to_agent_cost_limits();
         let year = agent_cost_limits_raw.year;
 
         // Get agent ID
-        let (id, _agent) = agents
-            .get_key_value(agent_cost_limits_raw.agent_id.as_str())
-            .context("Invalid agent ID")?;
+        let agent_id = agent_ids.get_id_by_str(&agent_cost_limits_raw.agent_id)?;
 
         // Get or create entry in the map
-        let entry = map.entry(id.clone()).or_default();
+        let entry = map.entry(agent_id.clone()).or_default();
 
         // Insert cost limits for the specified year(s)
         match year {

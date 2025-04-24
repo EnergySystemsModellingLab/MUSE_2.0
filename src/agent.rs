@@ -16,8 +16,8 @@ define_id_type! {AgentID}
 /// A map of [`Agent`]s, keyed by agent ID
 pub type AgentMap = IndexMap<AgentID, Agent>;
 
-/// A map of cost limits for each agent, keyed by year
-pub type CostLimitsMap = HashMap<u32, CostLimits>;
+/// A map of cost limits for an agent, keyed by year
+pub type AgentCostLimitsMap = HashMap<u32, AgentCostLimits>;
 
 /// An agent in the simulation
 #[derive(Debug, Clone, PartialEq)]
@@ -33,7 +33,7 @@ pub struct Agent {
     /// The decision rule that the agent uses to decide investment.
     pub decision_rule: DecisionRule,
     /// Cost limits (e.g. capital cost, annual operating cost)
-    pub cost_limits: CostLimitsMap,
+    pub cost_limits: AgentCostLimitsMap,
     /// The regions in which this agent operates.
     pub regions: RegionSelection,
     /// The agent's objectives.
@@ -43,7 +43,7 @@ define_id_getter! {Agent, AgentID}
 
 /// The cost limits for an agent in a particular year
 #[derive(Debug, Clone, PartialEq)]
-pub struct CostLimits {
+pub struct AgentCostLimits {
     /// The maximum capital cost the agent will pay.
     pub capex_limit: Option<f64>,
     /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
