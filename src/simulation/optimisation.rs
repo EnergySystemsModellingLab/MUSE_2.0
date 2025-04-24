@@ -1,15 +1,17 @@
 //! Code for performing dispatch optimisation.
 //!
 //! This is used to calculate commodity flows and prices.
-use crate::agent::{Asset, AssetID, AssetPool};
-use crate::commodity::{BalanceType, CommodityType};
+use crate::asset::{Asset, AssetID, AssetPool};
+use crate::commodity::{BalanceType, CommodityID};
 use crate::model::Model;
 use crate::process::ProcessFlow;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
-use std::rc::Rc;
+
+mod constraints;
+use constraints::{add_asset_constraints, CapacityConstraintKeys, CommodityBalanceConstraintKeys};
 
 /// A decision variable in the optimisation
 ///
@@ -27,16 +29,17 @@ type Variable = highs::Col;
 /// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
 ///    are reading the results of the optimisation.
 #[derive(Default)]
-pub struct VariableMap(IndexMap<VariableMapKey, Variable>);
+pub struct VariableMap(IndexMap<(AssetID, CommodityID, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
-    fn get(&self, asset_id: AssetID, commodity_id: &Rc<str>, time_slice: &TimeSliceID) -> Variable {
-        let key = VariableMapKey {
-            asset_id,
-            commodity_id: Rc::clone(commodity_id),
-            time_slice: time_slice.clone(),
-        };
+    fn get(
+        &self,
+        asset_id: AssetID,
+        commodity_id: &CommodityID,
+        time_slice: &TimeSliceID,
+    ) -> Variable {
+        let key = (asset_id, commodity_id.clone(), time_slice.clone());
 
         *self
             .0
@@ -44,31 +47,6 @@ impl VariableMap {
             .expect("No variable found for given params")
     }
 }
-
-/// A key for a [`VariableMap`]
-#[derive(Eq, PartialEq, Hash)]
-struct VariableMapKey {
-    asset_id: AssetID,
-    commodity_id: Rc<str>,
-    time_slice: TimeSliceID,
-}
-
-impl VariableMapKey {
-    /// Create a new [`VariableMapKey`]
-    fn new(asset_id: AssetID, commodity_id: Rc<str>, time_slice: TimeSliceID) -> Self {
-        Self {
-            asset_id,
-            commodity_id,
-            time_slice,
-        }
-    }
-}
-
-/// Indicates the commodity ID and time slice selection covered by each commodity balance constraint
-type CommodityBalanceConstraintKeys = Vec<(Rc<str>, TimeSliceSelection)>;
-
-/// Indicates the asset ID and time slice covered by each capacity constraint
-type CapacityConstraintKeys = Vec<(AssetID, TimeSliceID)>;
 
 /// The solution to the dispatch optimisation problem
 pub struct Solution<'a> {
@@ -90,18 +68,20 @@ impl Solution<'_> {
     /// An iterator of tuples containing an asset ID, commodity, time slice and flow.
     pub fn iter_commodity_flows_for_assets(
         &self,
-    ) -> impl Iterator<Item = (AssetID, &Rc<str>, &TimeSliceID, f64)> {
+    ) -> impl Iterator<Item = (AssetID, &CommodityID, &TimeSliceID, f64)> {
         self.variables
             .0
             .keys()
             .zip(self.solution.columns().iter().copied())
-            .map(|(key, flow)| (key.asset_id, &key.commodity_id, &key.time_slice, flow))
+            .map(|((asset_id, commodity_id, time_slice), flow)| {
+                (*asset_id, commodity_id, time_slice, flow)
+            })
     }
 
     /// Keys and dual values for commodity balance constraints.
     pub fn iter_commodity_balance_duals(
         &self,
-    ) -> impl Iterator<Item = (&Rc<str>, &TimeSliceID, f64)> {
+    ) -> impl Iterator<Item = (&CommodityID, &TimeSliceID, f64)> {
         // Each commodity balance constraint applies to a particular time slice
         // selection (depending on time slice level). Where this covers multiple timeslices,
         // we return the same dual for each individual timeslice.
@@ -226,12 +206,7 @@ fn add_variables(
                     problem.add_column(coeff, 0.0..)
                 };
 
-                let key = VariableMapKey::new(
-                    asset.id,
-                    Rc::clone(&flow.commodity.id),
-                    time_slice.clone(),
-                );
-
+                let key = (asset.id, flow.commodity.id.clone(), time_slice.clone());
                 let existing = variables.0.insert(key, var).is_some();
                 assert!(!existing, "Duplicate entry for var");
             }
@@ -256,8 +231,13 @@ fn calculate_cost_coefficient(
         coeff += asset.process.parameter.variable_operating_cost
     }
 
-    // If there is a user-provided commodity cost for this combination of parameters, include it
-    if let Some(cost) = flow.commodity.costs.get(&asset.region_id, year, time_slice) {
+    // If there is a user-provided cost for this commodity, include it
+    if !flow.commodity.costs.is_empty() {
+        let cost = flow
+            .commodity
+            .costs
+            .get(&(asset.region_id.clone(), year, time_slice.clone()))
+            .unwrap();
         let apply_cost = match cost.balance_type {
             BalanceType::Net => true,
             BalanceType::Consumption => flow.flow < 0.0,
@@ -278,226 +258,11 @@ fn calculate_cost_coefficient(
     }
 }
 
-/// Add asset-level constraints
-///
-/// Note: the ordering of constraints is important, as the dual values of the constraints must later
-/// be retrieved to calculate commodity prices.
-///
-/// # Arguments:
-///
-/// * `problem` - The optimisation problem
-/// * `variables` - The variables in the problem
-/// * `model` - The model
-/// * `assets` - The asset pool
-/// * `year` - Current milestone year
-///
-/// # Returns:
-///
-/// * A vector of keys for commodity balance constraints
-/// * A vector of keys for capacity constraints
-fn add_asset_constraints(
-    problem: &mut Problem,
-    variables: &VariableMap,
-    model: &Model,
-    assets: &AssetPool,
-    year: u32,
-) -> (CommodityBalanceConstraintKeys, CapacityConstraintKeys) {
-    let commodity_balance_constraint_keys =
-        add_commodity_balance_constraints(problem, variables, model, assets, year);
-
-    let capacity_constraint_keys = add_asset_capacity_constraints(
-        problem,
-        variables,
-        assets,
-        &model.time_slice_info,
-        &commodity_balance_constraint_keys,
-    );
-
-    // **TODO**: Currently it's safe to assume all process flows are non-flexible, as we enforce
-    // this when reading data in. Once we've added support for flexible process flows, we will
-    // need to add different constraints for assets with flexible and non-flexible flows.
-    //
-    // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
-    add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
-
-    // Return constraint keys which are required to calculate commodity prices
-    (commodity_balance_constraint_keys, capacity_constraint_keys)
-}
-
-/// Add asset-level input-output commodity balances.
-///
-/// These constraints fix the supply-demand balance for the whole system.
-///
-/// See description in [the dispatch optimisation documentation][1].
-///
-/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#commodity-balance-constraints
-fn add_commodity_balance_constraints(
-    problem: &mut Problem,
-    variables: &VariableMap,
-    model: &Model,
-    assets: &AssetPool,
-    year: u32,
-) -> CommodityBalanceConstraintKeys {
-    // Sanity check: we rely on the first n values of the dual row values corresponding to the
-    // commodity constraints, so these must be the first rows
-    assert!(
-        problem.num_rows() == 0,
-        "Commodity balance constraints must be added before other constraints"
-    );
-
-    let mut terms = Vec::new();
-    let mut keys = CommodityBalanceConstraintKeys::new();
-    for commodity in model.commodities.values() {
-        if commodity.kind != CommodityType::SupplyEqualsDemand
-            && commodity.kind != CommodityType::ServiceDemand
-        {
-            continue;
-        }
-
-        for region_id in model.iter_regions() {
-            for ts_selection in model
-                .time_slice_info
-                .iter_selections_for_level(commodity.time_slice_level)
-            {
-                // Note about performance: this loop **may** prove to be a bottleneck as
-                // `time_slice_info.iter_selection` returns a `Box` and so requires a heap
-                // allocation each time. For commodities with a `TimeSliceLevel` of `TimeSlice` (the
-                // worst case), this means the number of additional heap allocations will equal the
-                // number of time slices, which for this function could be in the
-                // hundreds/thousands.
-                for (time_slice, _) in model.time_slice_info.iter_selection(&ts_selection) {
-                    // Add terms for this asset + commodity at this time slice. The coefficient for
-                    // each variable is one.
-                    terms.extend(
-                        assets
-                            .iter_for_region_and_commodity(region_id, commodity)
-                            .map(|asset| (variables.get(asset.id, &commodity.id, time_slice), 1.0)),
-                    );
-                }
-
-                // Get the RHS of the equation for a commodity balance constraint. For SED
-                // commodities, the RHS will be zero and for SVD commodities it will be equal to the
-                // demand for the given time slice selection.
-                let rhs = match commodity.kind {
-                    CommodityType::SupplyEqualsDemand => 0.0,
-                    CommodityType::ServiceDemand => {
-                        match ts_selection {
-                            TimeSliceSelection::Single(ref ts) => {
-                                commodity.demand.get(region_id, year, ts)
-                            }
-                            // We currently only support specifying demand at the time slice level:
-                            //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/391
-                            _ => panic!(
-                            "Currently SVD commodities must have a time slice level of time slice"
-                        ),
-                        }
-                    }
-                    _ => unreachable!(),
-                };
-
-                // Add constraint (sum of terms must equal rhs)
-                problem.add_row(rhs..=rhs, terms.drain(0..));
-
-                // Keep track of the order in which constraints were added
-                keys.push((Rc::clone(&commodity.id), ts_selection));
-            }
-        }
-    }
-
-    keys
-}
-
-/// Add constraints for non-flexible assets.
-///
-/// Non-flexible assets are those which have a fixed ratio between inputs and outputs.
-///
-/// See description in [the dispatch optimisation documentation][1].
-///
-/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#non-flexible-assets
-fn add_fixed_asset_constraints(
-    problem: &mut Problem,
-    variables: &VariableMap,
-    assets: &AssetPool,
-    time_slice_info: &TimeSliceInfo,
-) {
-    for asset in assets.iter() {
-        // Get first PAC. unwrap is safe because all processes have at least one PAC.
-        let pac1 = asset.process.iter_pacs().next().unwrap();
-
-        for time_slice in time_slice_info.iter_ids() {
-            let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
-            let pac_term = (pac_var, -1.0 / pac1.flow);
-
-            for flow in asset.process.flows.iter() {
-                // Don't add a constraint for the PAC itself
-                if Rc::ptr_eq(&flow.commodity, &pac1.commodity) {
-                    continue;
-                }
-
-                // We are enforcing that (var / flow) - (pac_var / pac_flow) = 0
-                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
-                problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
-            }
-        }
-    }
-}
-
-/// Add asset-level capacity and availability constraints.
-///
-/// For every asset at every time slice, the sum of the commodity flows for PACs must not exceed the
-/// capacity limits, which are a product of the annual capacity, time slice length and process
-/// availability.
-///
-/// See description in [the dispatch optimisation documentation][1].
-///
-/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#asset-level-capacity-and-availability-constraints
-fn add_asset_capacity_constraints(
-    problem: &mut Problem,
-    variables: &VariableMap,
-    assets: &AssetPool,
-    time_slice_info: &TimeSliceInfo,
-    commodity_balance_constraint_keys: &CommodityBalanceConstraintKeys,
-) -> CapacityConstraintKeys {
-    // Sanity check: we rely on the dual rows corresponding to the capacity constraints being
-    // immediately after the commodity balance constraints in `problem`.
-    assert!(
-        problem.num_rows() == commodity_balance_constraint_keys.len(),
-        "Capacity constraints must be added immediately after commodity constraints."
-    );
-
-    let mut terms = Vec::new();
-    let mut keys = CapacityConstraintKeys::new();
-    for asset in assets.iter() {
-        for time_slice in time_slice_info.iter_ids() {
-            let mut is_input = false; // NB: there will be at least one PAC
-            for flow in asset.process.iter_pacs() {
-                is_input = flow.flow < 0.0; // NB: PACs will be all inputs or all outputs
-
-                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
-                terms.push((var, 1.0));
-            }
-
-            let mut limits = asset.get_activity_limits(time_slice);
-
-            // If it's an input flow, the q's will be negative, so we need to invert the limits
-            if is_input {
-                limits = -limits.end()..=-limits.start();
-            }
-
-            problem.add_row(limits, terms.drain(0..));
-
-            // Keep track of the order in which constraints were added
-            keys.push((asset.id, time_slice.clone()));
-        }
-    }
-    keys
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{ActivityLimitsMap, FlowType, Process, ProcessParameter};
+    use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessParameter};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
@@ -509,7 +274,6 @@ mod tests {
         costs: CommodityCostMap,
     ) -> (Asset, ProcessFlow) {
         let process_param = ProcessParameter {
-            process_id: "process1".into(),
             years: 2010..=2020,
             capital_cost: 5.0,
             fixed_operating_cost: 2.0,
@@ -537,7 +301,7 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            activity_limits: ActivityLimitsMap::new(),
+            energy_limits: EnergyLimitsMap::new(),
             flows: vec![flow.clone()],
             parameter: process_param.clone(),
             regions: RegionSelection::All,
@@ -585,7 +349,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, false, costs.clone(), 3.0);
         check_coeff!(-1.0, false, costs, -1.0);
 
@@ -595,7 +359,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, false, costs.clone(), 3.0);
         check_coeff!(-1.0, false, costs, -3.0);
 
@@ -605,7 +369,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, false, costs.clone(), 1.0);
         check_coeff!(-1.0, false, costs, -3.0);
 
@@ -615,7 +379,7 @@ mod tests {
             value: 2.0,
         };
         let mut costs = CommodityCostMap::new();
-        costs.insert("GBR".into(), 2010, time_slice.clone(), cost);
+        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
         check_coeff!(1.0, true, costs.clone(), 4.0);
         check_coeff!(-1.0, true, costs, -2.0);
     }

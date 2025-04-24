@@ -1,7 +1,9 @@
 //! Code for reading the agent search space CSV file.
 use super::super::*;
-use crate::agent::{AgentMap, AgentSearchSpace, SearchSpace};
+use crate::agent::{AgentID, AgentMap, AgentSearchSpace, SearchSpace};
 use crate::commodity::CommodityMap;
+use crate::id::IDCollection;
+use crate::process::ProcessID;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -13,20 +15,20 @@ const AGENT_SEARCH_SPACE_FILE_NAME: &str = "agent_search_space.csv";
 #[derive(PartialEq, Debug, Deserialize)]
 struct AgentSearchSpaceRaw {
     /// The agent to apply the search space to.
-    pub agent_id: String,
+    agent_id: String,
     /// The commodity to apply the search space to.
-    pub commodity_id: String,
+    commodity_id: String,
     /// The year to apply the search space to.
-    pub year: u32,
+    year: u32,
     /// The processes that the agent will consider investing in. Expressed as process IDs separated
     /// by semicolons or `None`, meaning all processes.
-    pub search_space: Option<String>,
+    search_space: Option<String>,
 }
 
 impl AgentSearchSpaceRaw {
-    pub fn to_agent_search_space(
+    fn to_agent_search_space(
         &self,
-        process_ids: &HashSet<Rc<str>>,
+        process_ids: &HashSet<ProcessID>,
         commodities: &CommodityMap,
         milestone_years: &[u32],
     ) -> Result<AgentSearchSpace> {
@@ -36,7 +38,7 @@ impl AgentSearchSpaceRaw {
             Some(processes) => {
                 let mut set = HashSet::new();
                 for id in processes.split(';') {
-                    set.insert(process_ids.get_id(id)?);
+                    set.insert(process_ids.get_id_by_str(id)?);
                 }
                 SearchSpace::Some(set)
             }
@@ -56,7 +58,6 @@ impl AgentSearchSpaceRaw {
 
         // Create AgentSearchSpace
         Ok(AgentSearchSpace {
-            agent_id: self.agent_id.clone(),
             year: self.year,
             commodity: Rc::clone(commodity),
             search_space,
@@ -76,10 +77,10 @@ impl AgentSearchSpaceRaw {
 pub fn read_agent_search_space(
     model_dir: &Path,
     agents: &AgentMap,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     commodities: &CommodityMap,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentSearchSpace>>> {
+) -> Result<HashMap<AgentID, Vec<AgentSearchSpace>>> {
     let file_path = model_dir.join(AGENT_SEARCH_SPACE_FILE_NAME);
     let iter = read_csv_optional::<AgentSearchSpaceRaw>(&file_path)?;
     read_agent_search_space_from_iter(iter, agents, process_ids, commodities, milestone_years)
@@ -89,25 +90,25 @@ pub fn read_agent_search_space(
 fn read_agent_search_space_from_iter<I>(
     iter: I,
     agents: &AgentMap,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     commodities: &CommodityMap,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, Vec<AgentSearchSpace>>>
+) -> Result<HashMap<AgentID, Vec<AgentSearchSpace>>>
 where
     I: Iterator<Item = AgentSearchSpaceRaw>,
 {
     let mut search_spaces = HashMap::new();
-    for search_space in iter {
+    for search_space_raw in iter {
         let search_space =
-            search_space.to_agent_search_space(process_ids, commodities, milestone_years)?;
+            search_space_raw.to_agent_search_space(process_ids, commodities, milestone_years)?;
 
         let (id, _agent) = agents
-            .get_key_value(search_space.agent_id.as_str())
+            .get_key_value(search_space_raw.agent_id.as_str())
             .context("Invalid agent ID")?;
 
         // Append to Vec with the corresponding key or create
         search_spaces
-            .entry(Rc::clone(id))
+            .entry(id.clone())
             .or_insert_with(|| Vec::with_capacity(1))
             .push(search_space);
     }
