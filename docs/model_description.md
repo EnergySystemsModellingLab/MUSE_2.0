@@ -104,7 +104,7 @@ A range of input data consistency checks are performed.
 
 ### 2. Commodity Price Discovery
 
-Dispatch Optimimisation (hereon "dispatch") is executed to determine commodity production
+Dispatch Optimisation (hereon "dispatch") is executed to determine commodity production
 and consumption, with fixed asset capacities. In the first milestone year - the calibrated
 base year - this step is performed before any agent investment step. In later
 milestone years, it is performed after agent investment is complete to determine prices for the
@@ -114,12 +114,12 @@ following milestone year alongside production/consumption of all commodities.
 
 Asset dispatch is determined via linear programming, where the objective function is the cost of
 operating the system over a year, which must be minimised. The dual solution of this optimisation
-are used to discover commodity price. The methodology for dispatch is described in detail in the
-**Dispatch Optimisation** section of this documentation.
+is used to discover commodity price. The methodology for dispatch is described in detail in the
+[Dispatch Optimisation](./dispatch_optimisation.md) section of the documentation.
 
 **Price** is discovered for each commodity, for each time slice, and for each region, using the
 dual solution from the dispatch optimisation. Price is determined for each time slice by
-(a) taking the dual value for the commodity balance constraint, (b) subtracting the dual value
+(a) taking the dual value for the commodity balance constraint, (b) adding the dual value
 of the capacity/availability constraint (this step is performed separately for each asset/process),
 and then (c) taking the maximum value from the set of results from steps a-b.
 
@@ -135,7 +135,7 @@ using the utilisation of the next most expensive (marginal cost) asset in the di
 adjusted for availability differences, and commodity prices from the price discovery at step 2(A).
 
   > **Issue 1:** There may be a better way to do this step 2(B).
-  One could add all processes that could potetentially exist in the
+  One could add all processes that could potentially exist in the
   milestone year to the dispatch optimisation formulation, even
   those that do not have a related asset (i.e. they have no
   capacity in the milestone year). A commodity balance constraint
@@ -175,15 +175,15 @@ The capacity investment of new assets required in the next milestone year are ca
   dispatch only limited by capacity/availability constraints and demand level. If the
   process has the same marginal cost as an asset, we assume that asset is NOT displaced.
   If the process has marginal cost higher than any asset, we assume it can only serve demand
-  currently unserved (i.e. due to asset decommissing at 3(A) or demadn increase), if any exists.
+  currently unserved (i.e. due to asset decommissioning at 3(A) or demand increase), if any exists.
   If there is no asset (e.g. where demand was zero in previous milestone year, or all existing
   assets were decommissioned) then we assume dispatch only limited by process capacity/availability
   constraints and demand level.
 
-##### ii. Calculate objective and decicion values for each asset/process
+##### ii. Calculate objective and decision values for each asset/process
 
   Using the resulting set of time sliced potential utilisations, we then calculate the objective
-  value/s and decision for the asset/process. For assets, the objective value is
+  value/s and decision values for the asset/process. For assets, the objective value is
   calculated without including capital costs (which are sunk unrecoverable costs).
 
   > **Issue 2:** There are some complications here, e.g. where an
@@ -206,7 +206,7 @@ The capacity investment of new assets required in the next milestone year are ca
  including recalculation of all assets' objectives/decisions at each iteration - until
  nothing changes between iterations (i.e. no new/confirmed assets) but such as approach may
  result in unintended consequences (e.g. process with nominally 2nd-best objective but low
- marginal cost being adpoted). There would likely also be convergence instabilities and complex
+ marginal cost being adopted). There would likely also be convergence instabilities and complex
  interactions between assets' objectives and utilisation.
 
 ##### iv.  Repeat step 3(B)i - iii until all demand is served, then decommission any unused assets
