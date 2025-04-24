@@ -3,14 +3,15 @@ use super::optimisation::Solution;
 use crate::asset::AssetPool;
 use crate::commodity::CommodityID;
 use crate::model::Model;
+use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use indexmap::IndexMap;
 use log::warn;
 use std::collections::{HashMap, HashSet};
 
-/// A map relating commodity ID + time slice to current price (endogenous)
+/// A map relating commodity ID + time slice + region to current price (endogenous)
 #[derive(Default)]
-pub struct CommodityPrices(IndexMap<(CommodityID, TimeSliceID), f64>);
+pub struct CommodityPrices(IndexMap<(CommodityID, TimeSliceID, RegionID), f64>);
 
 impl CommodityPrices {
     /// Calculate commodity prices based on the result of the dispatch optimisation.
@@ -18,14 +19,20 @@ impl CommodityPrices {
     /// Missing prices will be calculated directly from the input data
     pub fn from_model_and_solution(model: &Model, solution: &Solution, assets: &AssetPool) -> Self {
         let mut prices = CommodityPrices::default();
-        let commodities_updated = prices.add_from_solution(solution, assets);
+        let commodity_regions_updated = prices.add_from_solution(solution, assets);
 
-        // Find commodities not updated in last step
-        let remaining_commodities = model
-            .commodities
-            .keys()
-            .filter(|id| !commodities_updated.contains(*id));
-        prices.add_remaining(remaining_commodities, &model.time_slice_info);
+        // Find commodity/region combinations not updated in last step
+        let mut remaining_commodity_regions = HashSet::new();
+        for commodity_id in model.commodities.keys() {
+            for region_id in model.regions.keys() {
+                let key = (commodity_id.clone(), region_id.clone());
+                if !commodity_regions_updated.contains(&key) {
+                    remaining_commodity_regions.insert(key);
+                }
+            }
+        }
+
+        prices.add_remaining(remaining_commodity_regions.iter(), &model.time_slice_info);
 
         prices
     }
@@ -47,13 +54,14 @@ impl CommodityPrices {
         &mut self,
         solution: &Solution,
         assets: &AssetPool,
-    ) -> HashSet<CommodityID> {
-        let mut commodities_updated = HashSet::new();
+    ) -> HashSet<(CommodityID, RegionID)> {
+        let mut commodity_regions_updated = HashSet::new();
 
-        // Calculate highest capacity dual for each commodity/timeslice
+        // Calculate highest capacity dual for each commodity/timeslice/region
         let mut highest_duals = HashMap::new();
         for (asset_id, time_slice, dual) in solution.iter_capacity_duals() {
             let asset = assets.get(asset_id).unwrap();
+            let region_id = asset.region_id.clone();
 
             // Iterate over process pacs
             let process_pacs = asset.process.iter_pacs();
@@ -64,7 +72,7 @@ impl CommodityPrices {
                 if pac.flow > 0.0 {
                     // Update the highest dual for this commodity/timeslice
                     highest_duals
-                        .entry((commodity.id.clone(), time_slice.clone()))
+                        .entry((commodity.id.clone(), time_slice.clone(), region_id.clone()))
                         .and_modify(|current_dual| {
                             if dual > *current_dual {
                                 *current_dual = dual;
@@ -76,14 +84,14 @@ impl CommodityPrices {
         }
 
         // Add the highest capacity dual for each commodity/timeslice to each commodity balance dual
-        for (commodity_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
-            let key = (commodity_id.clone(), time_slice.clone());
+        for (commodity_id, time_slice, region_id, dual) in solution.iter_commodity_balance_duals() {
+            let key = (commodity_id.clone(), time_slice.clone(), region_id.clone());
             let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
-            self.insert(commodity_id, time_slice, price);
-            commodities_updated.insert(commodity_id.clone());
+            self.insert(commodity_id, time_slice, region_id, price);
+            commodity_regions_updated.insert((commodity_id.clone(), region_id.clone()));
         }
 
-        commodities_updated
+        commodity_regions_updated
     }
 
     /// Add prices for any commodity not updated by the dispatch step.
@@ -92,21 +100,27 @@ impl CommodityPrices {
     ///
     /// * `commodity_ids` - IDs of commodities to update
     /// * `time_slice_info` - Information about time slices
-    fn add_remaining<'a, I>(&mut self, commodity_ids: I, time_slice_info: &TimeSliceInfo)
+    fn add_remaining<'a, I>(&mut self, commodity_regions: I, time_slice_info: &TimeSliceInfo)
     where
-        I: Iterator<Item = &'a CommodityID>,
+        I: Iterator<Item = &'a (CommodityID, RegionID)>,
     {
-        for commodity_id in commodity_ids {
-            warn!("No prices calculated for commodity {commodity_id}; setting to NaN");
+        for (commodity_id, region_id) in commodity_regions {
+            warn!("No prices calculated for commodity {commodity_id} in region {region_id}; setting to NaN");
             for time_slice in time_slice_info.iter_ids() {
-                self.insert(commodity_id, time_slice, f64::NAN);
+                self.insert(commodity_id, time_slice, region_id, f64::NAN);
             }
         }
     }
 
     /// Insert a price for the given commodity and time slice
-    pub fn insert(&mut self, commodity_id: &CommodityID, time_slice: &TimeSliceID, price: f64) {
-        let key = (commodity_id.clone(), time_slice.clone());
+    pub fn insert(
+        &mut self,
+        commodity_id: &CommodityID,
+        time_slice: &TimeSliceID,
+        region_id: &RegionID,
+        price: f64,
+    ) {
+        let key = (commodity_id.clone(), time_slice.clone(), region_id.clone());
         self.0.insert(key, price);
     }
 
@@ -115,9 +129,9 @@ impl CommodityPrices {
     /// # Returns
     ///
     /// An iterator of tuples containing commodity ID, time slice and price.
-    pub fn iter(&self) -> impl Iterator<Item = (&CommodityID, &TimeSliceID, f64)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&CommodityID, &TimeSliceID, &RegionID, f64)> {
         self.0
             .iter()
-            .map(|((commodity_id, ts), price)| (commodity_id, ts, *price))
+            .map(|((commodity_id, ts, region_id), price)| (commodity_id, ts, region_id, *price))
     }
 }
