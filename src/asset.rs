@@ -62,7 +62,7 @@ impl Asset {
             + self
                 .process
                 .parameter
-                .get(&self.commission_year)
+                .get(&(self.region_id.clone(), self.commission_year))
                 .unwrap()
                 .lifetime
     }
@@ -84,7 +84,7 @@ impl Asset {
             * self
                 .process
                 .parameter
-                .get(&self.commission_year)
+                .get(&(self.region_id.clone(), self.commission_year))
                 .unwrap()
                 .capacity_to_activity
     }

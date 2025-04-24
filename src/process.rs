@@ -2,7 +2,7 @@
 //! module are used to represent these conversions along with the associated costs.
 use crate::commodity::Commodity;
 use crate::id::define_id_type;
-use crate::region::RegionSelection;
+use crate::region::{RegionID, RegionSelection};
 use crate::time_slice::TimeSliceID;
 use indexmap::IndexMap;
 use serde::Deserialize;
@@ -61,7 +61,7 @@ impl Process {
 pub type EnergyLimitsMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
 
 /// A map of [`ProcessParameter`]s, keyed by year
-pub type ProcessParameterMap = HashMap<u32, ProcessParameter>;
+pub type ProcessParameterMap = HashMap<(RegionID, u32), ProcessParameter>;
 
 /// Represents a maximum annual commodity flow for a given process
 #[derive(PartialEq, Debug, Deserialize, Clone)]

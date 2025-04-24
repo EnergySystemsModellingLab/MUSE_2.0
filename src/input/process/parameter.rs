@@ -2,6 +2,7 @@
 use super::super::*;
 use crate::id::IDCollection;
 use crate::process::{Process, ProcessID, ProcessParameter, ProcessParameterMap};
+use crate::region::{deserialize_region, RegionID, RegionSelection};
 use crate::utils::try_insert;
 use crate::year::{deserialize_year, YearSelection};
 use ::log::warn;
@@ -23,6 +24,8 @@ struct ProcessParameterRaw {
     capacity_to_activity: Option<f64>,
     #[serde(deserialize_with = "deserialize_year")]
     year: YearSelection,
+    #[serde(deserialize_with = "deserialize_region")]
+    region: RegionSelection,
 }
 
 impl ProcessParameterRaw {
@@ -98,10 +101,11 @@ pub fn read_process_parameters(
     process_ids: &HashSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
+    region_ids: &HashSet<RegionID>,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
-    read_process_parameters_from_iter(iter, process_ids, processes, milestone_years)
+    read_process_parameters_from_iter(iter, process_ids, processes, milestone_years, region_ids)
         .with_context(|| input_err_msg(&file_path))
 }
 
@@ -110,6 +114,7 @@ fn read_process_parameters_from_iter<I>(
     process_ids: &HashSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
+    region_ids: &HashSet<RegionID>,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
@@ -118,6 +123,7 @@ where
     for param_raw in iter {
         let id = process_ids.get_id_by_str(&param_raw.process_id)?;
         let year = param_raw.year.clone();
+        let region = param_raw.region.clone();
         let param = param_raw.into_parameter()?;
 
         let entry = params.entry(id.clone()).or_default();
@@ -126,23 +132,45 @@ where
             .ok_or_else(|| anyhow::anyhow!("Process {} not found", id))?;
         let year_range = process.years.clone();
 
-        match year {
-            YearSelection::Some(years) => {
-                for year in years {
-                    try_insert(entry, year, param.clone())?;
+        match (region, year) {
+            (RegionSelection::Some(regions), YearSelection::Some(years)) => {
+                for region in regions {
+                    for year in years.clone() {
+                        try_insert(entry, (region.clone(), year), param.clone())?;
+                    }
                 }
             }
-            YearSelection::All => {
-                for year in milestone_years.iter() {
-                    if year_range.contains(year) {
-                        try_insert(entry, *year, param.clone())?;
+            (RegionSelection::Some(regions), YearSelection::All) => {
+                for region in regions {
+                    for year in milestone_years.iter() {
+                        if year_range.contains(year) {
+                            try_insert(entry, (region.clone(), *year), param.clone())?;
+                        }
+                    }
+                }
+            }
+            (RegionSelection::All, YearSelection::Some(years)) => {
+                // NOTE: This iterates over ALL regions, not just the ones applicable to the
+                // process - we should change this.
+                for region in region_ids.iter() {
+                    for year in years.clone() {
+                        try_insert(entry, (region.clone(), year), param.clone())?;
+                    }
+                }
+            }
+            (RegionSelection::All, YearSelection::All) => {
+                for region in region_ids.iter() {
+                    for year in milestone_years.iter() {
+                        if year_range.contains(year) {
+                            try_insert(entry, (region.clone(), *year), param.clone())?;
+                        }
                     }
                 }
             }
         }
     }
 
-    // Check parameters cover all years of the process
+    // Check parameters cover all years and of the process and all regions
     for (id, parameter) in params.iter() {
         let year_range = processes.get(id).unwrap().years.clone();
         let reference_years: HashSet<u32> = milestone_years
@@ -179,6 +207,7 @@ mod tests {
             discount_rate,
             capacity_to_activity,
             year: YearSelection::All,
+            region: RegionSelection::All,
         }
     }
 

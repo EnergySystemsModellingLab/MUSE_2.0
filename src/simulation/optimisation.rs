@@ -231,7 +231,7 @@ fn calculate_cost_coefficient(
         coeff += asset
             .process
             .parameter
-            .get(&asset.commission_year)
+            .get(&(asset.region_id.clone(), asset.commission_year))
             .unwrap()
             .variable_operating_cost
     }

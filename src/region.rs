@@ -3,11 +3,21 @@ use crate::id::define_id_getter;
 use crate::id::define_id_type;
 use indexmap::IndexMap;
 use itertools::Itertools;
+use serde::de::Deserializer;
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::fmt::Display;
+use std::str::FromStr;
 
 define_id_type! {RegionID}
+
+impl FromStr for RegionID {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(RegionID::from(s))
+    }
+}
 
 /// A map of [`Region`]s, keyed by region ID
 pub type RegionMap = IndexMap<RegionID, Region>;
@@ -47,6 +57,32 @@ impl Display for RegionSelection {
         match self {
             Self::All => write!(f, "all"),
             Self::Some(regions) => write!(f, "{}", regions.iter().join(", ")),
+        }
+    }
+}
+
+/// Deserialises a region selection from a string. The string can be either "all", a single region, or a
+/// semicolon-separated list of regions (e.g. "GBR;FRA;ESP" or "GBR; FRA; ESP").
+pub fn deserialize_region<'de, D>(deserialiser: D) -> Result<RegionSelection, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = String::deserialize(deserialiser)?;
+    if value.trim().eq_ignore_ascii_case("all") {
+        // "all" regions specified
+        Ok(RegionSelection::All)
+    } else {
+        // Semicolon-separated list of regions
+        let regions: Result<HashSet<RegionID>, _> = value
+            .split(';')
+            .map(|s| s.trim().parse::<RegionID>())
+            .collect();
+        match regions {
+            Ok(regions_set) if !regions_set.is_empty() => Ok(RegionSelection::Some(regions_set)),
+            _ => Err(serde::de::Error::custom(format!(
+                "Invalid region format: {}",
+                value
+            ))),
         }
     }
 }

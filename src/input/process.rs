@@ -60,8 +60,13 @@ pub fn read_processes(
 
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
-    let mut parameters =
-        read_process_parameters(model_dir, &process_ids, &processes, milestone_years)?;
+    let mut parameters = read_process_parameters(
+        model_dir,
+        &process_ids,
+        &processes,
+        milestone_years,
+        region_ids,
+    )?;
     let mut regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
     // Validate commodities after the flows have been read
