@@ -69,7 +69,7 @@ pub fn read_agents(
     )?;
     let mut agent_commodities =
         read_agent_commodities(model_dir, &agents, commodities, region_ids, milestone_years)?;
-    let mut cost_limts = read_agent_cost_limits(model_dir, &agent_ids, milestone_years)?;
+    let mut cost_limits = read_agent_cost_limits(model_dir, &agent_ids, milestone_years)?;
 
     for (id, agent) in agents.iter_mut() {
         agent.regions = agent_regions.remove(id).unwrap();
@@ -78,7 +78,9 @@ pub fn read_agents(
             agent.search_space = search_space;
         }
         agent.commodities = agent_commodities.remove(id).unwrap();
-        agent.cost_limits = cost_limts.remove(id).unwrap_or_default();
+        if let Some(cost_limits) = cost_limits.remove(id) {
+            agent.cost_limits = cost_limits;
+        }
     }
 
     Ok(agents)
