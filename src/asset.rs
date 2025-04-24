@@ -226,7 +226,7 @@ mod tests {
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
             .iter()
-            .map(|&year| (year, process_param.clone()))
+            .map(|&year| (("GBR".into(), year), process_param.clone()))
             .collect();
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
@@ -279,7 +279,7 @@ mod tests {
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
             .iter()
-            .map(|&year| (year, process_param.clone()))
+            .map(|&year| (("GBR".into(), year), process_param.clone()))
             .collect();
         let process = Rc::new(Process {
             id: "process1".into(),
