@@ -102,11 +102,19 @@ pub fn read_process_parameters(
     processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
     region_ids: &HashSet<RegionID>,
+    process_regions: &HashMap<ProcessID, RegionSelection>,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
-    read_process_parameters_from_iter(iter, process_ids, processes, milestone_years, region_ids)
-        .with_context(|| input_err_msg(&file_path))
+    read_process_parameters_from_iter(
+        iter,
+        process_ids,
+        processes,
+        milestone_years,
+        region_ids,
+        process_regions,
+    )
+    .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_process_parameters_from_iter<I>(
@@ -115,6 +123,7 @@ fn read_process_parameters_from_iter<I>(
     processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
     region_ids: &HashSet<RegionID>,
+    process_regions: &HashMap<ProcessID, RegionSelection>,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
@@ -131,6 +140,9 @@ where
             .get(&id)
             .ok_or_else(|| anyhow::anyhow!("Process {} not found", id))?;
         let year_range = process.years.clone();
+        let process_regions = process_regions
+            .get(&id)
+            .ok_or_else(|| anyhow::anyhow!("Regions not found for process {}", id))?;
 
         match (region, year) {
             (RegionSelection::Some(regions), YearSelection::Some(years)) => {
@@ -150,19 +162,21 @@ where
                 }
             }
             (RegionSelection::All, YearSelection::Some(years)) => {
-                // NOTE: This iterates over ALL regions, not just the ones applicable to the
-                // process - we should change this.
                 for region in region_ids.iter() {
-                    for year in years.clone() {
-                        try_insert(entry, (region.clone(), year), param.clone())?;
+                    if process_regions.contains(region) {
+                        for year in years.clone() {
+                            try_insert(entry, (region.clone(), year), param.clone())?;
+                        }
                     }
                 }
             }
             (RegionSelection::All, YearSelection::All) => {
                 for region in region_ids.iter() {
-                    for year in milestone_years.iter() {
-                        if year_range.contains(year) {
-                            try_insert(entry, (region.clone(), *year), param.clone())?;
+                    if process_regions.contains(region) {
+                        for year in milestone_years.iter() {
+                            if year_range.contains(year) {
+                                try_insert(entry, (region.clone(), *year), param.clone())?;
+                            }
                         }
                     }
                 }
@@ -170,7 +184,7 @@ where
         }
     }
 
-    // Check parameters cover all years and of the process and all regions
+    // Check parameters cover all years and regions of the process
     for (id, parameter) in params.iter() {
         let year_range = processes.get(id).unwrap().years.clone();
         let reference_years: HashSet<u32> = milestone_years
@@ -178,14 +192,27 @@ where
             .copied()
             .filter(|year| year_range.contains(year))
             .collect();
-        let parameter_years: HashSet<u32> = parameter.keys().copied().collect();
-        ensure!(
-            parameter_years == reference_years,
-            "Error in parameters for process {}: years do not match the process years",
-            id
-        );
+        let region_selection = process_regions.get(id).unwrap().clone();
+        let reference_regions: HashSet<RegionID> = match region_selection {
+            RegionSelection::All => region_ids.clone(),
+            RegionSelection::Some(ref regions) => regions.clone(),
+        };
+        let mut missing_keys = Vec::new();
+        for year in reference_years.iter() {
+            for region in reference_regions.iter() {
+                if !parameter.contains_key(&(region.clone(), *year)) {
+                    missing_keys.push((region, *year));
+                }
+            }
+        }
+        if !missing_keys.is_empty() {
+            return Err(anyhow::anyhow!(
+                "Process {} is missing parameters for the following regions and years: {:?}",
+                id,
+                missing_keys
+            ));
+        }
     }
-
     Ok(params)
 }
 

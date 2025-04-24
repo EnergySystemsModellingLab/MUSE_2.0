@@ -60,14 +60,15 @@ pub fn read_processes(
 
     let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
+    let mut process_regions = read_process_regions(model_dir, &process_ids, region_ids)?;
     let mut parameters = read_process_parameters(
         model_dir,
         &process_ids,
         &processes,
         milestone_years,
         region_ids,
+        &process_regions,
     )?;
-    let mut regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
     // Validate commodities after the flows have been read
     validate_commodities(
@@ -85,7 +86,7 @@ pub fn read_processes(
         process.energy_limits = availabilities.remove(id).unwrap();
         process.flows = flows.remove(id).unwrap();
         process.parameter = parameters.remove(id).unwrap();
-        process.regions = regions.remove(id).unwrap();
+        process.regions = process_regions.remove(id).unwrap();
     }
 
     // Create ProcessMap
@@ -240,7 +241,7 @@ fn validate_svd_commodity(
                                 .get(&*flow.process_id)
                                 .unwrap()
                                 .keys()
-                                .contains(&year)
+                                .contains(&(region_id.clone(), year))
                             && params
                                 .availabilities
                                 .get(&*flow.process_id)
