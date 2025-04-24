@@ -286,6 +286,7 @@ mod tests {
     #[test]
     fn test_write_prices() {
         let commodity_id = "commodity1".into();
+        let region_id = "GBR".into();
         let time_slice = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
@@ -293,7 +294,7 @@ mod tests {
         let milestone_year = 2020;
         let price = 42.0;
         let mut prices = CommodityPrices::default();
-        prices.insert(&commodity_id, &time_slice, price);
+        prices.insert(&commodity_id, &time_slice, &region_id, price);
 
         let dir = tempdir().unwrap();
 
@@ -309,6 +310,7 @@ mod tests {
             commodity_id,
             milestone_year,
             time_slice: time_slice.to_string(),
+            region_id,
             price,
         };
         let records: Vec<CommodityPriceRow> =

@@ -112,7 +112,7 @@ impl CommodityPrices {
         }
     }
 
-    /// Insert a price for the given commodity and time slice
+    /// Insert a price for the given commodity, time slice and region
     pub fn insert(
         &mut self,
         commodity_id: &CommodityID,
