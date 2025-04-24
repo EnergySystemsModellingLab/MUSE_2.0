@@ -1,28 +1,28 @@
 //! Common routines for handling input data.
-use crate::agent::AssetPool;
+use crate::asset::AssetPool;
+use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
 use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
-use std::rc::Rc;
 
-pub mod agent;
-pub use agent::read_agents;
-pub mod asset;
+mod agent;
+use agent::read_agents;
+mod asset;
 use asset::read_assets;
-pub mod commodity;
-pub use commodity::read_commodities;
-pub mod process;
-pub use process::read_processes;
-pub mod region;
-pub use region::read_regions;
+mod commodity;
+use commodity::read_commodities;
+mod process;
+use process::read_processes;
+mod region;
+use region::read_regions;
 mod time_slice;
-pub use time_slice::read_time_slice_info;
+use time_slice::read_time_slice_info;
 
 /// Read a series of type `T`s from a CSV file.
 ///
@@ -79,7 +79,7 @@ pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
 }
 
 /// Read an f64, checking that it is between 0 and 1
-pub fn deserialise_proportion_nonzero<'de, D>(deserialiser: D) -> Result<f64, D::Error>
+fn deserialise_proportion_nonzero<'de, D>(deserialiser: D) -> Result<f64, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -96,67 +96,23 @@ pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
     format!("Error reading {}", file_path.as_ref().display())
 }
 
-/// Indicates that the struct has an ID field
-pub trait HasID {
-    /// Get a string representation of the struct's ID
-    fn get_id(&self) -> &str;
-}
-
-/// Implement the `HasID` trait for the given type, assuming it has a field called `id`
-macro_rules! define_id_getter {
-    ($t:ty) => {
-        impl HasID for $t {
-            fn get_id(&self) -> &str {
-                &self.id
-            }
-        }
-    };
-}
-
-pub(crate) use define_id_getter;
-
-/// A data structure containing a set of IDs
-pub trait IDCollection {
-    /// Get the ID after checking that it exists this collection.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The ID to look up
-    ///
-    /// # Returns
-    ///
-    /// A copy of the `Rc<str>` in `self` or an error if not found.
-    fn get_id(&self, id: &str) -> Result<Rc<str>>;
-}
-
-impl IDCollection for HashSet<Rc<str>> {
-    fn get_id(&self, id: &str) -> Result<Rc<str>> {
-        let id = self
-            .get(id)
-            .with_context(|| format!("Unknown ID {id} found"))?;
-        Ok(Rc::clone(id))
-    }
-}
-
 /// Read a CSV file of items with IDs.
 ///
 /// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
 /// the IDs for a given type), we use an ordered map to maintain the order in the input files.
-pub fn read_csv_id_file<T>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
+fn read_csv_id_file<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, T>>
 where
-    T: HasID + DeserializeOwned,
+    T: HasID<ID> + DeserializeOwned,
 {
-    fn fill_and_validate_map<T>(file_path: &Path) -> Result<IndexMap<Rc<str>, T>>
+    fn fill_and_validate_map<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, T>>
     where
-        T: HasID + DeserializeOwned,
+        T: HasID<ID> + DeserializeOwned,
     {
         let mut map = IndexMap::new();
         for record in read_csv::<T>(file_path)? {
-            let id = record.get_id();
-
-            ensure!(!map.contains_key(id), "Duplicate ID found: {id}");
-
-            map.insert(id.into(), record);
+            let id = record.get_id().clone();
+            let existing = map.insert(id.clone(), record).is_some();
+            ensure!(!existing, "Duplicate ID found: {id}");
         }
         ensure!(!map.is_empty(), "CSV file is empty");
 
@@ -166,38 +122,8 @@ where
     fill_and_validate_map(file_path).with_context(|| input_err_msg(file_path))
 }
 
-/// Trait for converting an iterator into a [`HashMap`] grouped by IDs.
-pub trait IntoIDMap<T> {
-    /// Convert into a [`HashMap`] grouped by IDs.
-    fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>>;
-}
-
-impl<T, I> IntoIDMap<T> for I
-where
-    T: HasID,
-    I: Iterator<Item = T>,
-{
-    /// Convert the specified iterator into a `HashMap` of the items grouped by ID.
-    ///
-    /// # Arguments
-    ///
-    /// `ids` - The set of valid IDs to check against.
-    fn into_id_map(self, ids: &HashSet<Rc<str>>) -> Result<HashMap<Rc<str>, Vec<T>>> {
-        let map = self
-            .map(|item| -> Result<_> {
-                let id = ids.get_id(item.get_id())?;
-                Ok((id, item))
-            })
-            .process_results(|iter| iter.into_group_map())?;
-
-        ensure!(!map.is_empty(), "CSV file is empty");
-
-        Ok(map)
-    }
-}
-
 /// Check that fractions sum to (approximately) one
-pub fn check_fractions_sum_to_one<I>(fractions: I) -> Result<()>
+fn check_fractions_sum_to_one<I>(fractions: I) -> Result<()>
 where
     I: Iterator<Item = f64>,
 {
@@ -259,6 +185,8 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
 
 #[cfg(test)]
 mod tests {
+    use crate::id::GenericID;
+
     use super::*;
     use serde::de::value::{Error as ValueError, F64Deserializer};
     use serde::de::IntoDeserializer;
@@ -270,12 +198,12 @@ mod tests {
 
     #[derive(Debug, PartialEq, Deserialize)]
     struct Record {
-        id: String,
+        id: GenericID,
         value: u32,
     }
 
-    impl HasID for Record {
-        fn get_id(&self) -> &str {
+    impl HasID<GenericID> for Record {
+        fn get_id(&self) -> &GenericID {
             &self.id
         }
     }
@@ -298,11 +226,11 @@ mod tests {
             records,
             &[
                 Record {
-                    id: "hello".to_string(),
+                    id: "hello".into(),
                     value: 1,
                 },
                 Record {
-                    id: "world".to_string(),
+                    id: "world".into(),
                     value: 2,
                 }
             ]
@@ -329,7 +257,7 @@ mod tests {
         assert_eq!(
             read_toml::<Record>(&file_path).unwrap(),
             Record {
-                id: "hello".to_string(),
+                id: "hello".into(),
                 value: 1,
             }
         );

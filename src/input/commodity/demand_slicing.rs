@@ -1,13 +1,15 @@
 //! Demand slicing determines how annual demand is distributed across the year.
+use super::super::*;
 use super::demand::*;
-use crate::input::*;
+use crate::commodity::CommodityID;
+use crate::id::IDCollection;
+use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const DEMAND_SLICING_FILE_NAME: &str = "demand_slicing.csv";
 
@@ -21,18 +23,7 @@ struct DemandSlice {
 }
 
 /// A map relating commodity, region and time slice to the fraction of annual demand
-pub type DemandSliceMap = HashMap<DemandSliceMapKey, f64>;
-
-/// A key for a [`DemandSliceMap`]
-#[derive(PartialEq, Eq, Hash, Debug)]
-pub struct DemandSliceMapKey {
-    /// The commodity to which this demand applies
-    pub commodity_id: Rc<str>,
-    /// The region to which this demand applies
-    pub region_id: Rc<str>,
-    /// The time slice to which this demand applies
-    pub time_slice: TimeSliceID,
-}
+pub type DemandSliceMap = HashMap<(CommodityID, RegionID, TimeSliceID), f64>;
 
 /// Read demand slices from specified model directory.
 ///
@@ -45,8 +36,8 @@ pub struct DemandSliceMapKey {
 /// * `time_slice_info` - Information about seasons and times of day
 pub fn read_demand_slices(
     model_dir: &Path,
-    commodity_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
+    region_ids: &HashSet<RegionID>,
     commodity_regions: &CommodityRegionPairs,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap> {
@@ -65,8 +56,8 @@ pub fn read_demand_slices(
 /// Read demand slices from an iterator
 fn read_demand_slices_from_iter<I>(
     iter: I,
-    commodity_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
+    region_ids: &HashSet<RegionID>,
     commodity_regions: &CommodityRegionPairs,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap>
@@ -76,10 +67,10 @@ where
     let mut demand_slices = DemandSliceMap::new();
 
     for slice in iter {
-        let commodity_id = commodity_ids.get_id(&slice.commodity_id)?;
-        let region_id = region_ids.get_id(&slice.region_id)?;
+        let commodity_id = commodity_ids.get_id_by_str(&slice.commodity_id)?;
+        let region_id = region_ids.get_id_by_str(&slice.region_id)?;
         ensure!(
-            commodity_regions.contains(&(Rc::clone(&commodity_id), Rc::clone(&region_id))),
+            commodity_regions.contains(&(commodity_id.clone(), region_id.clone())),
             "Demand slicing provided for commodity {commodity_id} in region {region_id} \
             without a corresponding entry in demand CSV file"
         );
@@ -90,14 +81,8 @@ where
         let ts_selection = time_slice_info.get_selection(&slice.time_slice)?;
         for (ts, demand_fraction) in time_slice_info.calculate_share(&ts_selection, slice.fraction)
         {
-            let key = DemandSliceMapKey {
-                commodity_id: Rc::clone(&commodity_id),
-                region_id: Rc::clone(&region_id),
-                time_slice: ts.clone(),
-            };
-
             // Share demand between the time slices in proportion to duration
-            ensure!(demand_slices.insert(key, demand_fraction).is_none(),
+            ensure!(demand_slices.insert((commodity_id.clone(), region_id.clone(), ts.clone()), demand_fraction).is_none(),
                 "Duplicate demand slicing entry (or same time slice covered by more than one entry) \
                 (commodity: {commodity_id}, region: {region_id}, time slice: {ts})"
             );
@@ -126,18 +111,14 @@ fn validate_demand_slices(
         time_slice_info
             .iter_ids()
             .map(|time_slice| {
-                let key = DemandSliceMapKey {
-                    commodity_id: Rc::clone(commodity_id),
-                    region_id: Rc::clone(region_id),
-                    time_slice: time_slice.clone(),
-                };
-
-                demand_slices.get(&key).with_context(|| {
-                    format!(
-                        "Demand slice missing for time slice {} (commodity: {}, region {})",
-                        time_slice, commodity_id, region_id
-                    )
-                })
+                demand_slices
+                    .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+                    .with_context(|| {
+                        format!(
+                            "Demand slice missing for time slice {} (commodity: {}, region {})",
+                            time_slice, commodity_id, region_id
+                        )
+                    })
             })
             .process_results(|iter| {
                 check_fractions_sum_to_one(iter.copied()).context("Invalid demand fractions")
@@ -184,11 +165,7 @@ mod tests {
         let time_slice = time_slice_info
             .get_time_slice_id_from_str("winter.day")
             .unwrap();
-        let key = DemandSliceMapKey {
-            commodity_id: "COM1".into(),
-            region_id: "GBR".into(),
-            time_slice,
-        };
+        let key = ("COM1".into(), "GBR".into(), time_slice);
         let expected = DemandSliceMap::from_iter(iter::once((key, 1.0)));
         assert_eq!(
             read_demand_slices_from_iter(
@@ -256,47 +233,47 @@ mod tests {
             ];
             let expected = DemandSliceMap::from_iter([
                 (
-                    DemandSliceMapKey {
-                        commodity_id: "COM1".into(),
-                        region_id: "GBR".into(),
-                        time_slice: TimeSliceID {
+                    (
+                        "COM1".into(),
+                        "GBR".into(),
+                        TimeSliceID {
                             season: "summer".into(),
                             time_of_day: "day".into(),
                         },
-                    },
+                    ),
                     3.0 / 16.0,
                 ),
                 (
-                    DemandSliceMapKey {
-                        commodity_id: "COM1".into(),
-                        region_id: "GBR".into(),
-                        time_slice: TimeSliceID {
+                    (
+                        "COM1".into(),
+                        "GBR".into(),
+                        TimeSliceID {
                             season: "summer".into(),
                             time_of_day: "night".into(),
                         },
-                    },
+                    ),
                     5.0 / 16.0,
                 ),
                 (
-                    DemandSliceMapKey {
-                        commodity_id: "COM1".into(),
-                        region_id: "GBR".into(),
-                        time_slice: TimeSliceID {
+                    (
+                        "COM1".into(),
+                        "GBR".into(),
+                        TimeSliceID {
                             season: "winter".into(),
                             time_of_day: "day".into(),
                         },
-                    },
+                    ),
                     3.0 / 16.0,
                 ),
                 (
-                    DemandSliceMapKey {
-                        commodity_id: "COM1".into(),
-                        region_id: "GBR".into(),
-                        time_slice: TimeSliceID {
+                    (
+                        "COM1".into(),
+                        "GBR".into(),
+                        TimeSliceID {
                             season: "winter".into(),
                             time_of_day: "night".into(),
                         },
-                    },
+                    ),
                     5.0 / 16.0,
                 ),
             ]);

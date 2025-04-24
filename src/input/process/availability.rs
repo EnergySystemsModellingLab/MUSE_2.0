@@ -1,13 +1,13 @@
 //! Code for reading process availabilities CSV file
-use crate::input::*;
-use crate::process::ActivityLimitsMap;
+use super::super::*;
+use crate::id::IDCollection;
+use crate::process::{EnergyLimitsMap, ProcessID};
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const PROCESS_AVAILABILITIES_FILE_NAME: &str = "process_availabilities.csv";
 
@@ -44,32 +44,32 @@ enum LimitType {
 ///
 /// # Returns
 ///
-/// A [`HashMap`] with process IDs as the keys and [`ActivityLimitsMap`]s as the values or an
+/// A [`HashMap`] with process IDs as the keys and [`EnergyLimitsMap`]s as the values or an
 /// error.
 pub fn read_process_availabilities(
     model_dir: &Path,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<Rc<str>, ActivityLimitsMap>> {
+) -> Result<HashMap<ProcessID, EnergyLimitsMap>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let process_availabilities_csv = read_csv(&file_path)?;
     read_process_availabilities_from_iter(process_availabilities_csv, process_ids, time_slice_info)
         .with_context(|| input_err_msg(&file_path))
 }
 
-/// Process raw process availabilities input data into [`ActivityLimitsMap`]s
+/// Process raw process availabilities input data into [`EnergyLimitsMap`]s
 fn read_process_availabilities_from_iter<I>(
     iter: I,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<Rc<str>, ActivityLimitsMap>>
+) -> Result<HashMap<ProcessID, EnergyLimitsMap>>
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
     let mut map = HashMap::new();
 
     for record in iter {
-        let process_id = process_ids.get_id(&record.process_id)?;
+        let process_id = process_ids.get_id_by_str(&record.process_id)?;
 
         ensure!(
             record.value >= 0.0 && record.value <= 1.0,
@@ -78,10 +78,12 @@ where
 
         let ts_selection = time_slice_info.get_selection(&record.time_slice)?;
 
-        let map = map.entry(process_id).or_insert_with(ActivityLimitsMap::new);
+        let map = map.entry(process_id).or_insert_with(EnergyLimitsMap::new);
 
         for (time_slice, ts_length) in time_slice_info.iter_selection(&ts_selection) {
-            // Calculate fraction of annual capacity as availability multiplied by time slice length
+            // Calculate fraction of annual energy as availability multiplied by time slice length
+            // The resulting limits are max/min PAC energy produced/consumed in each timeslice per
+            // cap2act units of capacity
             let value = record.value * ts_length;
             let bounds = match record.limit_type {
                 LimitType::LowerBound => value..=f64::INFINITY,
@@ -100,14 +102,14 @@ where
         }
     }
 
-    validate_capacity_maps(&map, time_slice_info)?;
+    validate_energy_limits_maps(&map, time_slice_info)?;
 
     Ok(map)
 }
 
-/// Check that every capacity map has an entry for every time slice
-fn validate_capacity_maps(
-    map: &HashMap<Rc<str>, ActivityLimitsMap>,
+/// Check that every energy limits map has an entry for every time slice
+fn validate_energy_limits_maps(
+    map: &HashMap<ProcessID, EnergyLimitsMap>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
     for (process_id, map) in map.iter() {

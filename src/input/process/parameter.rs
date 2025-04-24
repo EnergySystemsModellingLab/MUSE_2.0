@@ -1,30 +1,28 @@
 //! Code for reading process parameters CSV file
-use super::define_process_id_getter;
-use crate::input::*;
-use crate::process::ProcessParameter;
+use super::super::*;
+use crate::id::IDCollection;
+use crate::process::{ProcessID, ProcessParameter};
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
 use std::path::Path;
-use std::rc::Rc;
 
 const PROCESS_PARAMETERS_FILE_NAME: &str = "process_parameters.csv";
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessParameterRaw {
-    pub process_id: String,
-    pub start_year: Option<u32>,
-    pub end_year: Option<u32>,
-    pub capital_cost: f64,
-    pub fixed_operating_cost: f64,
-    pub variable_operating_cost: f64,
-    pub lifetime: u32,
-    pub discount_rate: Option<f64>,
-    pub capacity_to_activity: Option<f64>,
+    process_id: String,
+    start_year: Option<u32>,
+    end_year: Option<u32>,
+    capital_cost: f64,
+    fixed_operating_cost: f64,
+    variable_operating_cost: f64,
+    lifetime: u32,
+    discount_rate: Option<f64>,
+    capacity_to_activity: Option<f64>,
 }
-define_process_id_getter! {ProcessParameterRaw}
 
 impl ProcessParameterRaw {
     fn into_parameter(self, year_range: &RangeInclusive<u32>) -> Result<ProcessParameter> {
@@ -41,7 +39,6 @@ impl ProcessParameterRaw {
         self.validate()?;
 
         Ok(ProcessParameter {
-            process_id: self.process_id,
             years: start_year..=end_year,
             capital_cost: self.capital_cost,
             fixed_operating_cost: self.fixed_operating_cost,
@@ -108,9 +105,9 @@ impl ProcessParameterRaw {
 /// Read process parameters from the specified model directory
 pub fn read_process_parameters(
     model_dir: &Path,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, ProcessParameter>> {
+) -> Result<HashMap<ProcessID, ProcessParameter>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
     read_process_parameters_from_iter(iter, process_ids, year_range)
@@ -119,18 +116,18 @@ pub fn read_process_parameters(
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
-    process_ids: &HashSet<Rc<str>>,
+    process_ids: &HashSet<ProcessID>,
     year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<Rc<str>, ProcessParameter>>
+) -> Result<HashMap<ProcessID, ProcessParameter>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
     let mut params = HashMap::new();
-    for param in iter {
-        let param = param.into_parameter(year_range)?;
-        let id = process_ids.get_id(&param.process_id)?;
+    for param_raw in iter {
+        let id = process_ids.get_id_by_str(&param_raw.process_id)?;
+        let param = param_raw.into_parameter(year_range)?;
         ensure!(
-            params.insert(Rc::clone(&id), param).is_none(),
+            params.insert(id.clone(), param).is_none(),
             "More than one parameter provided for process {id}"
         );
     }
@@ -167,7 +164,6 @@ mod tests {
         capacity_to_activity: f64,
     ) -> ProcessParameter {
         ProcessParameter {
-            process_id: "id".to_string(),
             years,
             capital_cost: 0.0,
             fixed_operating_cost: 0.0,
@@ -310,11 +306,10 @@ mod tests {
             },
         ];
 
-        let expected: HashMap<Rc<str>, _> = [
+        let expected: HashMap<ProcessID, _> = [
             (
                 "A".into(),
                 ProcessParameter {
-                    process_id: "A".into(),
                     years: 2010..=2020,
                     capital_cost: 1.0,
                     fixed_operating_cost: 1.0,
@@ -327,7 +322,6 @@ mod tests {
             (
                 "B".into(),
                 ProcessParameter {
-                    process_id: "B".into(),
                     years: 2015..=2020,
                     capital_cost: 1.0,
                     fixed_operating_cost: 1.0,

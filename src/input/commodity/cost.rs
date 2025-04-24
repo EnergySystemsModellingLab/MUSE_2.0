@@ -1,12 +1,13 @@
 //! Code for reading in the commodity cost CSV file.
-use crate::commodity::{BalanceType, CommodityCost, CommodityCostMap};
-use crate::input::*;
+use super::super::*;
+use crate::commodity::{BalanceType, CommodityCost, CommodityCostMap, CommodityID};
+use crate::id::IDCollection;
+use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::rc::Rc;
 
 const COMMODITY_COSTS_FILE_NAME: &str = "commodity_costs.csv";
 
@@ -14,17 +15,17 @@ const COMMODITY_COSTS_FILE_NAME: &str = "commodity_costs.csv";
 #[derive(PartialEq, Debug, Deserialize, Clone)]
 struct CommodityCostRaw {
     /// Unique identifier for the commodity (e.g. "ELC")
-    pub commodity_id: String,
+    commodity_id: String,
     /// The region to which the commodity cost applies.
-    pub region_id: String,
+    region_id: String,
     /// Type of balance for application of cost.
-    pub balance_type: BalanceType,
+    balance_type: BalanceType,
     /// The year to which the cost applies.
-    pub year: u32,
+    year: u32,
     /// The time slice to which the cost applies.
-    pub time_slice: String,
+    time_slice: String,
     /// Cost per unit commodity. For example, if a CO2 price is specified in input data, it can be applied to net CO2 via this value.
-    pub value: f64,
+    value: f64,
 }
 
 /// Read costs associated with each commodity from commodity costs CSV file.
@@ -42,11 +43,11 @@ struct CommodityCostRaw {
 /// A map containing commodity costs, grouped by commodity ID.
 pub fn read_commodity_costs(
     model_dir: &Path,
-    commodity_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
+    region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, CommodityCostMap>> {
+) -> Result<HashMap<CommodityID, CommodityCostMap>> {
     let file_path = model_dir.join(COMMODITY_COSTS_FILE_NAME);
     let commodity_costs_csv = read_csv::<CommodityCostRaw>(&file_path)?;
     read_commodity_costs_iter(
@@ -61,11 +62,11 @@ pub fn read_commodity_costs(
 
 fn read_commodity_costs_iter<I>(
     iter: I,
-    commodity_ids: &HashSet<Rc<str>>,
-    region_ids: &HashSet<Rc<str>>,
+    commodity_ids: &HashSet<CommodityID>,
+    region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> Result<HashMap<Rc<str>, CommodityCostMap>>
+) -> Result<HashMap<CommodityID, CommodityCostMap>>
 where
     I: Iterator<Item = CommodityCostRaw>,
 {
@@ -77,8 +78,8 @@ where
     let mut used_milestone_years = HashMap::new();
 
     for cost in iter {
-        let commodity_id = commodity_ids.get_id(&cost.commodity_id)?;
-        let region_id = region_ids.get_id(&cost.region_id)?;
+        let commodity_id = commodity_ids.get_id_by_str(&cost.commodity_id)?;
+        let region_id = region_ids.get_id_by_str(&cost.region_id)?;
         let ts_selection = time_slice_info.get_selection(&cost.time_slice)?;
 
         ensure!(
@@ -100,7 +101,7 @@ where
             };
 
             ensure!(
-                map.insert(Rc::clone(&region_id), cost.year, time_slice.clone(), value)
+                map.insert((region_id.clone(), cost.year, time_slice.clone()), value)
                     .is_none(),
                 "Commodity cost entry covered by more than one time slice \
                 (region: {}, year: {}, time slice: {})",
@@ -188,8 +189,8 @@ mod tests {
             value: cost2.value,
         };
         let mut map = CommodityCostMap::new();
-        map.insert("GBR".into(), cost1.year, time_slice.clone(), value1);
-        map.insert("FRA".into(), cost2.year, time_slice.clone(), value2);
+        map.insert(("GBR".into(), cost1.year, time_slice.clone()), value1);
+        map.insert(("FRA".into(), cost2.year, time_slice.clone()), value2);
         let expected = HashMap::from_iter([("commodity".into(), map)]);
         assert_eq!(
             read_commodity_costs_iter(
