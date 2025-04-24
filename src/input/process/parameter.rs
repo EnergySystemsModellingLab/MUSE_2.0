@@ -25,7 +25,7 @@ struct ProcessParameterRaw {
     #[serde(deserialize_with = "deserialize_year")]
     year: YearSelection,
     #[serde(deserialize_with = "deserialize_region")]
-    region: RegionSelection,
+    region_id: RegionSelection,
 }
 
 impl ProcessParameterRaw {
@@ -132,7 +132,7 @@ where
     for param_raw in iter {
         let id = process_ids.get_id_by_str(&param_raw.process_id)?;
         let year = param_raw.year.clone();
-        let region = param_raw.region.clone();
+        let region = param_raw.region_id.clone();
         let param = param_raw.into_parameter()?;
 
         let entry = params.entry(id.clone()).or_default();
@@ -164,6 +164,13 @@ where
             for year in &selected_years {
                 try_insert(entry, (region.clone(), *year), param.clone())?;
             }
+        }
+    }
+
+    // Check if all processes are present in the parameters
+    for id in process_ids {
+        if !params.contains_key(id) {
+            return Err(anyhow::anyhow!("Process {} is missing parameters", id));
         }
     }
 
