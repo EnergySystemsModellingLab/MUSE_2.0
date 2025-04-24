@@ -19,11 +19,11 @@ struct AgentCostLimitRaw {
 }
 
 impl AgentCostLimitRaw {
-    fn to_cost_limit(&self) -> Result<CostLimits> {
-        Ok(CostLimits {
+    fn to_cost_limit(&self) -> CostLimits {
+        CostLimits {
             capex_limit: self.capex_limit,
             annual_cost_limit: self.annual_cost_limit,
-        })
+        }
     }
 }
 
@@ -57,7 +57,7 @@ where
 {
     let mut map: HashMap<AgentID, CostLimitsMap> = HashMap::new();
     for agent_cost_limits_raw in iter {
-        let cost_limits = agent_cost_limits_raw.to_cost_limit()?;
+        let cost_limits = agent_cost_limits_raw.to_cost_limit();
         let year = agent_cost_limits_raw.year;
 
         // Get agent ID
@@ -82,5 +82,19 @@ where
             }
         }
     }
+
+    // Validation: if cost limits are specified for an agent, they must be present for all years.
+    for (id, cost_limits) in map.iter() {
+        for year in milestone_years {
+            if !cost_limits.contains_key(year) {
+                return Err(anyhow::anyhow!(
+                    "Agent {} is missing cost limits for year {}",
+                    id,
+                    year
+                ));
+            }
+        }
+    }
+
     Ok(map)
 }
