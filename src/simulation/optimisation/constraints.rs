@@ -10,7 +10,7 @@ use std::rc::Rc;
 use super::VariableMap;
 
 /// Indicates the commodity ID and time slice selection covered by each commodity balance constraint
-pub type CommodityBalanceConstraintKeys = Vec<(CommodityID, TimeSliceSelection, RegionID)>;
+pub type CommodityBalanceConstraintKeys = Vec<(CommodityID, RegionID, TimeSliceSelection)>;
 
 /// Indicates the asset ID and time slice covered by each capacity constraint
 pub type CapacityConstraintKeys = Vec<(AssetID, TimeSliceID)>;
@@ -137,7 +137,7 @@ fn add_commodity_balance_constraints(
                 problem.add_row(rhs..=rhs, terms.drain(0..));
 
                 // Keep track of the order in which constraints were added
-                keys.push((commodity.id.clone(), ts_selection, region_id.clone()));
+                keys.push((commodity.id.clone(), region_id.clone(), ts_selection));
             }
         }
     }

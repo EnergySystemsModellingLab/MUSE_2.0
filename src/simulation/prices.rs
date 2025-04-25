@@ -9,9 +9,9 @@ use indexmap::IndexMap;
 use log::warn;
 use std::collections::{HashMap, HashSet};
 
-/// A map relating commodity ID + time slice + region to current price (endogenous)
+/// A map relating commodity ID + region + time slice to current price (endogenous)
 #[derive(Default)]
-pub struct CommodityPrices(IndexMap<(CommodityID, TimeSliceID, RegionID), f64>);
+pub struct CommodityPrices(IndexMap<(CommodityID, RegionID, TimeSliceID), f64>);
 
 impl CommodityPrices {
     /// Calculate commodity prices based on the result of the dispatch optimisation.
@@ -57,7 +57,7 @@ impl CommodityPrices {
     ) -> HashSet<(CommodityID, RegionID)> {
         let mut commodity_regions_updated = HashSet::new();
 
-        // Calculate highest capacity dual for each commodity/timeslice/region
+        // Calculate highest capacity dual for each commodity/region/timeslice
         let mut highest_duals = HashMap::new();
         for (asset_id, time_slice, dual) in solution.iter_capacity_duals() {
             let asset = assets.get(asset_id).unwrap();
@@ -72,7 +72,7 @@ impl CommodityPrices {
                 if pac.flow > 0.0 {
                     // Update the highest dual for this commodity/timeslice
                     highest_duals
-                        .entry((commodity.id.clone(), time_slice.clone(), region_id.clone()))
+                        .entry((commodity.id.clone(), region_id.clone(), time_slice.clone()))
                         .and_modify(|current_dual| {
                             if dual > *current_dual {
                                 *current_dual = dual;
@@ -84,10 +84,10 @@ impl CommodityPrices {
         }
 
         // Add the highest capacity dual for each commodity/timeslice to each commodity balance dual
-        for (commodity_id, time_slice, region_id, dual) in solution.iter_commodity_balance_duals() {
-            let key = (commodity_id.clone(), time_slice.clone(), region_id.clone());
+        for (commodity_id, region_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
+            let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
             let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
-            self.insert(commodity_id, time_slice, region_id, price);
+            self.insert(commodity_id, region_id, time_slice, price);
             commodity_regions_updated.insert((commodity_id.clone(), region_id.clone()));
         }
 
@@ -107,7 +107,7 @@ impl CommodityPrices {
         for (commodity_id, region_id) in commodity_regions {
             warn!("No prices calculated for commodity {commodity_id} in region {region_id}; setting to NaN");
             for time_slice in time_slice_info.iter_ids() {
-                self.insert(commodity_id, time_slice, region_id, f64::NAN);
+                self.insert(commodity_id, region_id, time_slice, f64::NAN);
             }
         }
     }
@@ -116,11 +116,11 @@ impl CommodityPrices {
     pub fn insert(
         &mut self,
         commodity_id: &CommodityID,
-        time_slice: &TimeSliceID,
         region_id: &RegionID,
+        time_slice: &TimeSliceID,
         price: f64,
     ) {
-        let key = (commodity_id.clone(), time_slice.clone(), region_id.clone());
+        let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
         self.0.insert(key, price);
     }
 
@@ -129,9 +129,9 @@ impl CommodityPrices {
     /// # Returns
     ///
     /// An iterator of tuples containing commodity ID, time slice and price.
-    pub fn iter(&self) -> impl Iterator<Item = (&CommodityID, &TimeSliceID, &RegionID, f64)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, f64)> {
         self.0
             .iter()
-            .map(|((commodity_id, ts, region_id), price)| (commodity_id, ts, region_id, *price))
+            .map(|((commodity_id, region_id, ts), price)| (commodity_id, region_id, ts, *price))
     }
 }

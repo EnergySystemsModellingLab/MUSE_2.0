@@ -82,17 +82,17 @@ impl Solution<'_> {
     /// Keys and dual values for commodity balance constraints.
     pub fn iter_commodity_balance_duals(
         &self,
-    ) -> impl Iterator<Item = (&CommodityID, &TimeSliceID, &RegionID, f64)> {
+    ) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, f64)> {
         // Each commodity balance constraint applies to a particular time slice
         // selection (depending on time slice level). Where this covers multiple timeslices,
         // we return the same dual for each individual timeslice.
         self.commodity_balance_constraint_keys
             .iter()
             .zip(self.solution.dual_rows())
-            .flat_map(|((commodity_id, ts_selection, region_id), price)| {
+            .flat_map(|((commodity_id, region_id, ts_selection), price)| {
                 self.time_slice_info
                     .iter_selection(ts_selection)
-                    .map(move |(ts, _)| (commodity_id, ts, region_id, *price))
+                    .map(move |(ts, _)| (commodity_id, region_id, ts, *price))
             })
     }
 

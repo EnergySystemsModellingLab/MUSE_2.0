@@ -88,8 +88,8 @@ struct CommodityFlowRow {
 struct CommodityPriceRow {
     milestone_year: u32,
     commodity_id: CommodityID,
-    time_slice: String,
     region_id: RegionID,
+    time_slice: String,
     price: f64,
 }
 
@@ -154,12 +154,12 @@ impl DataWriter {
 
     /// Write commodity prices to a CSV file
     pub fn write_prices(&mut self, milestone_year: u32, prices: &CommodityPrices) -> Result<()> {
-        for (commodity_id, time_slice, region_id, price) in prices.iter() {
+        for (commodity_id, region_id, time_slice, price) in prices.iter() {
             let row = CommodityPriceRow {
                 milestone_year,
                 commodity_id: commodity_id.clone(),
-                time_slice: time_slice.to_string(),
                 region_id: region_id.clone(),
+                time_slice: time_slice.to_string(),
                 price,
             };
             self.prices_writer.serialize(row)?;
@@ -294,7 +294,7 @@ mod tests {
         let milestone_year = 2020;
         let price = 42.0;
         let mut prices = CommodityPrices::default();
-        prices.insert(&commodity_id, &time_slice, &region_id, price);
+        prices.insert(&commodity_id, &region_id, &time_slice, price);
 
         let dir = tempdir().unwrap();
 
@@ -307,10 +307,10 @@ mod tests {
 
         // Read back and compare
         let expected = CommodityPriceRow {
-            commodity_id,
             milestone_year,
-            time_slice: time_slice.to_string(),
+            commodity_id,
             region_id,
+            time_slice: time_slice.to_string(),
             price,
         };
         let records: Vec<CommodityPriceRow> =
