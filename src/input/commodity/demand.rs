@@ -113,7 +113,7 @@ where
             .get_id_by_str(&demand.commodity_id)
             .with_context(|| {
                 format!(
-                    "Can only provide demand for SVD commodities. Found entry for '{}'",
+                    "Can only provide demand data for SVD commodities. Found entry for '{}'",
                     demand.commodity_id
                 )
             })?;
