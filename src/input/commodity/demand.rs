@@ -2,7 +2,7 @@
 //! slice.
 use super::super::*;
 use super::demand_slicing::{read_demand_slices, DemandSliceMap};
-use crate::commodity::{CommodityID, DemandMap};
+use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
 use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
@@ -29,9 +29,6 @@ struct Demand {
 /// A map relating commodity, region and year to annual demand
 pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), f64>;
 
-/// A set of commodity + region pairs
-pub type CommodityRegionPairs = HashSet<(CommodityID, RegionID)>;
-
 /// Reads demand data from CSV files.
 ///
 /// # Arguments
@@ -47,20 +44,20 @@ pub type CommodityRegionPairs = HashSet<(CommodityID, RegionID)>;
 /// This function returns [`DemandMap`]s grouped by commodity ID.
 pub fn read_demand(
     model_dir: &Path,
-    commodity_ids: &HashSet<CommodityID>,
+    commodities: &IndexMap<CommodityID, Commodity>,
     region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<HashMap<CommodityID, DemandMap>> {
-    let (demand, commodity_regions) =
-        read_demand_file(model_dir, commodity_ids, region_ids, milestone_years)?;
-    let slices = read_demand_slices(
-        model_dir,
-        commodity_ids,
-        region_ids,
-        &commodity_regions,
-        time_slice_info,
-    )?;
+    // Get set of SVD commodity IDs
+    let svd_commodity_ids: HashSet<CommodityID> = commodities
+        .iter()
+        .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
+        .map(|(id, _)| id.clone())
+        .collect();
+
+    let demand = read_demand_file(model_dir, &svd_commodity_ids, region_ids, milestone_years)?;
+    let slices = read_demand_slices(model_dir, &svd_commodity_ids, region_ids, time_slice_info)?;
 
     Ok(compute_demand_maps(&demand, &slices, time_slice_info))
 }
@@ -79,13 +76,13 @@ pub fn read_demand(
 /// Annual demand data, grouped by commodity, region and milestone year.
 fn read_demand_file(
     model_dir: &Path,
-    commodity_ids: &HashSet<CommodityID>,
+    svd_commodity_ids: &HashSet<CommodityID>,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
-) -> Result<(AnnualDemandMap, CommodityRegionPairs)> {
+) -> Result<AnnualDemandMap> {
     let file_path = model_dir.join(DEMAND_FILE_NAME);
     let iter = read_csv(&file_path)?;
-    read_demand_from_iter(iter, commodity_ids, region_ids, milestone_years)
+    read_demand_from_iter(iter, svd_commodity_ids, region_ids, milestone_years)
 }
 
 /// Read the demand data from an iterator.
@@ -103,21 +100,23 @@ fn read_demand_file(
 /// commodity + region pairs included in the file.
 fn read_demand_from_iter<I>(
     iter: I,
-    commodity_ids: &HashSet<CommodityID>,
+    svd_commodity_ids: &HashSet<CommodityID>,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
-) -> Result<(AnnualDemandMap, CommodityRegionPairs)>
+) -> Result<AnnualDemandMap>
 where
     I: Iterator<Item = Demand>,
 {
     let mut map = AnnualDemandMap::new();
-
-    // Keep track of all commodity + region pairs so we can check that every milestone year is
-    // covered
-    let mut commodity_regions = HashSet::new();
-
     for demand in iter {
-        let commodity_id = commodity_ids.get_id_by_str(&demand.commodity_id)?;
+        let commodity_id = svd_commodity_ids
+            .get_id_by_str(&demand.commodity_id)
+            .with_context(|| {
+                format!(
+                    "Can only provide demand for SVD commodities. Found entry for '{}'",
+                    demand.commodity_id
+                )
+            })?;
         let region_id = region_ids.get_id_by_str(&demand.region_id)?;
 
         ensure!(
@@ -143,22 +142,28 @@ where
             region_id,
             demand.year
         );
-
-        commodity_regions.insert((commodity_id, region_id));
     }
 
-    // If a commodity + region combination is represented, it must include entries for every
-    // milestone year
-    for (commodity_id, region_id) in commodity_regions.iter() {
-        for year in milestone_years.iter().copied() {
-            ensure!(
-                map.contains_key(&(commodity_id.clone(), region_id.clone(), year)),
-                "Missing milestone year {year} for commodity {commodity_id} in region {region_id}"
-            );
+    // Check that demand data is specified for all combinations of commodity, region and year
+    for commodity_id in svd_commodity_ids {
+        let mut missing_keys = Vec::new();
+        for region_id in region_ids {
+            for year in milestone_years {
+                if !map.contains_key(&(commodity_id.clone(), region_id.clone(), *year)) {
+                    missing_keys.push((region_id.clone(), *year));
+                }
+            }
+        }
+        if !missing_keys.is_empty() {
+            return Err(anyhow::anyhow!(
+                "Commodity {} is missing demand data for {:?}",
+                commodity_id,
+                missing_keys
+            ));
         }
     }
 
-    Ok((map, commodity_regions))
+    Ok(map)
 }
 
 /// Calculate the demand for each combination of commodity, region, year and time slice.
