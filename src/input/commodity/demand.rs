@@ -210,7 +210,6 @@ fn compute_demand_maps(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use itertools::iproduct;
     use std::fs::File;
     use std::io::Write;
     use std::iter;
@@ -413,11 +412,8 @@ COM1,West,2020,13"
             (("COM1".into(), "East".into(), 2020), 12.0),
             (("COM1".into(), "West".into(), 2020), 13.0),
         ]);
-        let (demand, commodity_regions) =
+        let demand =
             read_demand_file(dir.path(), &commodity_ids, &region_ids, &milestone_years).unwrap();
-        let commodity_regions_expected =
-            iproduct!(commodity_ids.iter().cloned(), region_ids.iter().cloned()).collect();
         assert_eq!(demand, expected);
-        assert_eq!(commodity_regions, commodity_regions_expected);
     }
 }

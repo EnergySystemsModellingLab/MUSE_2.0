@@ -139,7 +139,6 @@ fn validate_demand_slices(
 mod tests {
     use super::*;
     use crate::time_slice::TimeSliceID;
-    use itertools::iproduct;
     use std::iter;
 
     #[test]
@@ -159,8 +158,6 @@ mod tests {
         };
         let commodity_ids = HashSet::from_iter(iter::once("COM1".into()));
         let region_ids = HashSet::from_iter(iter::once("GBR".into()));
-        let commodity_regions =
-            iproduct!(commodity_ids.iter().cloned(), region_ids.iter().cloned()).collect();
 
         // Valid
         let demand_slice = DemandSlice {
@@ -179,7 +176,6 @@ mod tests {
                 iter::once(demand_slice.clone()),
                 &commodity_ids,
                 &region_ids,
-                &commodity_regions,
                 &time_slice_info,
             )
             .unwrap(),
@@ -289,7 +285,6 @@ mod tests {
                     demand_slices.into_iter(),
                     &commodity_ids,
                     &region_ids,
-                    &commodity_regions,
                     &time_slice_info,
                 )
                 .unwrap(),
@@ -302,7 +297,6 @@ mod tests {
             iter::empty(),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -318,7 +312,6 @@ mod tests {
             iter::once(demand_slice.clone()),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -334,7 +327,6 @@ mod tests {
             iter::once(demand_slice.clone()),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -350,7 +342,6 @@ mod tests {
             iter::once(demand_slice.clone()),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -389,7 +380,6 @@ mod tests {
                 iter::once(demand_slice.clone()),
                 &commodity_ids,
                 &region_ids,
-                &commodity_regions,
                 &time_slice_info,
             )
             .is_err());
@@ -406,7 +396,6 @@ mod tests {
             iter::repeat_n(demand_slice.clone(), 2),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -422,7 +411,6 @@ mod tests {
             [demand_slice, demand_slice_season].into_iter(),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -438,23 +426,6 @@ mod tests {
             iter::once(demand_slice),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
-            &time_slice_info,
-        )
-        .is_err());
-
-        // No corresponding entry for commodity + region in demand CSV file
-        let demand_slice = DemandSlice {
-            commodity_id: "COM1".into(),
-            region_id: "GBR".into(),
-            time_slice: "winter".into(),
-            fraction: 1.0,
-        };
-        assert!(read_demand_slices_from_iter(
-            iter::once(demand_slice),
-            &commodity_ids,
-            &region_ids,
-            &HashSet::new(),
             &time_slice_info,
         )
         .is_err());
