@@ -30,7 +30,7 @@ pub struct Process {
     /// Maximum annual commodity flows for this process
     pub flows: Vec<ProcessFlow>,
     /// Additional parameters for this process
-    pub parameter: ProcessParameterMap,
+    pub parameters: ProcessParameterMap,
     /// The regions in which this process can operate
     pub regions: RegionSelection,
 }
