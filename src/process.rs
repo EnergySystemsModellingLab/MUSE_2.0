@@ -23,12 +23,14 @@ pub struct Process {
     pub id: ProcessID,
     /// A human-readable description for the process (e.g. dry gas extraction)
     pub description: String,
+    /// The years in which this process is available for investment
+    pub years: RangeInclusive<u32>,
     /// Limits on PAC energy consumption/production for each time slice (as a fraction of maximum)
     pub energy_limits: EnergyLimitsMap,
     /// Maximum annual commodity flows for this process
     pub flows: Vec<ProcessFlow>,
     /// Additional parameters for this process
-    pub parameter: ProcessParameter,
+    pub parameters: ProcessParameterMap,
     /// The regions in which this process can operate
     pub regions: HashSet<RegionID>,
 }
@@ -57,6 +59,9 @@ impl Process {
 /// The limits are given as ranges, depending on the user-specified limit type and value for
 /// availability.
 pub type EnergyLimitsMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
+
+/// A map of [`ProcessParameter`]s, keyed by year
+pub type ProcessParameterMap = HashMap<u32, ProcessParameter>;
 
 /// Represents a maximum annual commodity flow for a given process
 #[derive(PartialEq, Debug, Deserialize, Clone)]
@@ -97,8 +102,6 @@ pub enum FlowType {
 /// Additional parameters for a process
 #[derive(PartialEq, Clone, Debug, Deserialize)]
 pub struct ProcessParameter {
-    /// The years in which this process is available for investment
-    pub years: RangeInclusive<u32>,
     /// Overnight capital cost per unit capacity
     pub capital_cost: f64,
     /// Annual operating cost per unit capacity

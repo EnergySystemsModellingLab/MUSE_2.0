@@ -95,28 +95,20 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::{EnergyLimitsMap, Process, ProcessParameter};
+    use crate::process::{EnergyLimitsMap, Process, ProcessParameterMap};
     use itertools::assert_equal;
     use std::iter;
 
     #[test]
     fn test_read_assets_from_iter() {
         let region_ids: HashSet<RegionID> = ["GBR".into(), "USA".into()].into_iter().collect();
-        let process_param = ProcessParameter {
-            years: 2010..=2020,
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
-            lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 1.0,
-        };
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
+            years: 2010..=2020,
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
-            parameter: process_param.clone(),
+            parameters: ProcessParameterMap::new(),
             regions: region_ids.clone(),
         });
         let processes = [(process.id.clone(), Rc::clone(&process))]
@@ -188,9 +180,10 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
+            years: 2010..=2020,
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
-            parameter: process_param,
+            parameters: ProcessParameterMap::new(),
             regions: HashSet::from(["GBR".into()]),
         });
         let asset_in = AssetRaw {

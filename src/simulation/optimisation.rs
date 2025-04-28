@@ -229,7 +229,12 @@ fn calculate_cost_coefficient(
 
     // Only applies if commodity is PAC
     if flow.is_pac {
-        coeff += asset.process.parameter.variable_operating_cost
+        coeff += asset
+            .process
+            .parameters
+            .get(&asset.commission_year)
+            .unwrap()
+            .variable_operating_cost
     }
 
     // If there is a user-provided cost for this commodity, include it
@@ -263,7 +268,9 @@ fn calculate_cost_coefficient(
 mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessParameter};
+    use crate::process::{
+        EnergyLimitsMap, FlowType, Process, ProcessParameter, ProcessParameterMap,
+    };
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
     use std::collections::HashSet;
@@ -275,7 +282,6 @@ mod tests {
         costs: CommodityCostMap,
     ) -> (Asset, ProcessFlow) {
         let process_param = ProcessParameter {
-            years: 2010..=2020,
             capital_cost: 5.0,
             fixed_operating_cost: 2.0,
             variable_operating_cost: 1.0,
@@ -283,6 +289,9 @@ mod tests {
             discount_rate: 0.9,
             capacity_to_activity: 1.0,
         };
+        let mut process_parameter_map = ProcessParameterMap::new();
+        process_parameter_map.insert(2010, process_param.clone());
+        process_parameter_map.insert(2020, process_param.clone());
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
             description: "Some description".into(),
@@ -302,9 +311,10 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
+            years: 2010..=2020,
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![flow.clone()],
-            parameter: process_param.clone(),
+            parameters: process_parameter_map,
             regions: HashSet::from([RegionID("GBR".into())]),
         });
         let asset = Asset::new(
