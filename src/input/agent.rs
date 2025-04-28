@@ -167,7 +167,7 @@ mod tests {
             decision_rule: DecisionRule::Single,
             capex_limit: None,
             annual_cost_limit: None,
-            regions: HashSet::from(["region".into()]),
+            regions: HashSet::new(),
             objectives: Vec::new(),
         };
         let expected = AgentMap::from_iter(iter::once(("agent".into(), agent_out)));

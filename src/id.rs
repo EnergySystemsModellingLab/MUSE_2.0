@@ -64,12 +64,6 @@ pub trait HasID<ID: IDLike> {
     fn get_id(&self) -> &ID;
 }
 
-/// An object which is associated with a single region
-pub trait HasRegionID {
-    /// Get the associated region ID
-    fn get_region_id(&self) -> &RegionID;
-}
-
 /// Implement the `HasID` trait for the given type, assuming it has a field called `id`
 macro_rules! define_id_getter {
     ($t:ty, $id_ty:ty) => {
