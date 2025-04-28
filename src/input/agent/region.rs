@@ -2,7 +2,7 @@
 use super::super::region::read_regions_for_entity;
 use crate::agent::AgentID;
 use crate::id::{define_region_id_getter, HasID};
-use crate::region::{RegionID, RegionSelection};
+use crate::region::RegionID;
 use anyhow::Result;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -34,12 +34,12 @@ impl HasID<AgentID> for AgentRegion {
 ///
 /// # Returns
 ///
-/// A map of [`RegionSelection`]s, with the agent ID as the key.
+/// A map of [`HashSet<RegionID>`]s, with the agent ID as the key.
 pub fn read_agent_regions(
     model_dir: &Path,
     agent_ids: &HashSet<AgentID>,
     region_ids: &HashSet<RegionID>,
-) -> Result<HashMap<AgentID, RegionSelection>> {
+) -> Result<HashMap<AgentID, HashSet<RegionID>>> {
     let file_path = model_dir.join(AGENT_REGIONS_FILE_NAME);
     read_regions_for_entity::<AgentRegion, AgentID>(&file_path, agent_ids, region_ids)
 }

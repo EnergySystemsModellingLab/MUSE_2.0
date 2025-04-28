@@ -4,7 +4,7 @@ use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::process::{
     EnergyLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameter,
 };
-use crate::region::{RegionID, RegionSelection};
+use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
@@ -211,7 +211,7 @@ fn create_process_map<I>(
     mut availabilities: HashMap<ProcessID, EnergyLimitsMap>,
     mut flows: HashMap<ProcessID, Vec<ProcessFlow>>,
     mut parameters: HashMap<ProcessID, ProcessParameter>,
-    mut regions: HashMap<ProcessID, RegionSelection>,
+    mut regions: HashMap<ProcessID, HashSet<RegionID>>,
 ) -> Result<ProcessMap>
 where
     I: Iterator<Item = ProcessDescription>,
@@ -261,7 +261,7 @@ mod tests {
         availabilities: HashMap<ProcessID, EnergyLimitsMap>,
         flows: HashMap<ProcessID, Vec<ProcessFlow>>,
         parameters: HashMap<ProcessID, ProcessParameter>,
-        regions: HashMap<ProcessID, RegionSelection>,
+        regions: HashMap<ProcessID, HashSet<RegionID>>,
         region_ids: HashSet<RegionID>,
     }
 
@@ -315,12 +315,11 @@ mod tests {
             })
             .collect();
 
+        let region_ids = HashSet::from(["GBR".into()]);
         let regions = ["process1", "process2"]
             .into_iter()
-            .map(|id| (id.into(), RegionSelection::All))
+            .map(|id| (id.into(), region_ids.clone()))
             .collect();
-
-        let region_ids = HashSet::from_iter(iter::once("GBR".into()));
 
         ProcessData {
             descriptions,

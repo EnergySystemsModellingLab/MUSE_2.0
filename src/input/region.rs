@@ -1,7 +1,7 @@
 //! Code for reading region-related information from CSV files.
 use super::*;
 use crate::id::{HasID, HasRegionID, IDCollection, IDLike};
-use crate::region::{RegionID, RegionMap, RegionSelection};
+use crate::region::{RegionID, RegionMap};
 use anyhow::{anyhow, ensure, Context, Result};
 use serde::de::DeserializeOwned;
 use std::collections::{HashMap, HashSet};
@@ -33,7 +33,7 @@ pub fn read_regions_for_entity<T, ID: IDLike>(
     file_path: &Path,
     entity_ids: &HashSet<ID>,
     region_ids: &HashSet<RegionID>,
-) -> Result<HashMap<ID, RegionSelection>>
+) -> Result<HashMap<ID, HashSet<RegionID>>>
 where
     T: HasID<ID> + HasRegionID + DeserializeOwned,
 {
@@ -45,7 +45,7 @@ fn read_regions_for_entity_from_iter<I, T, ID: IDLike>(
     entity_iter: I,
     entity_ids: &HashSet<ID>,
     region_ids: &HashSet<RegionID>,
-) -> Result<HashMap<ID, RegionSelection>>
+) -> Result<HashMap<ID, HashSet<RegionID>>>
 where
     I: Iterator<Item = T>,
     T: HasID<ID> + HasRegionID,
@@ -73,7 +73,7 @@ fn try_insert_region<ID: IDLike>(
     entity_id: ID,
     region_id: &RegionID,
     region_ids: &HashSet<RegionID>,
-    entity_regions: &mut HashMap<ID, RegionSelection>,
+    entity_regions: &mut HashMap<ID, HashSet<RegionID>>,
 ) -> Result<()> {
     let entity_name = entity_id.clone();
 

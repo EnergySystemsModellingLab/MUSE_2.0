@@ -182,16 +182,16 @@ impl DataWriter {
 mod tests {
     use super::*;
     use crate::process::{Process, ProcessParameter};
-    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
+    use std::collections::HashSet;
     use std::rc::Rc;
     use std::{collections::HashMap, iter};
     use tempfile::tempdir;
 
     fn get_asset() -> Asset {
         let process_id = ProcessID::new("process1");
-        let region_id = "GBR".into();
+        let region_id: RegionID = "GBR".into();
         let agent_id = "agent1".into();
         let commission_year = 2015;
         let process_param = ProcessParameter {
@@ -209,7 +209,7 @@ mod tests {
             energy_limits: HashMap::new(),
             flows: vec![],
             parameter: process_param.clone(),
-            regions: RegionSelection::All,
+            regions: HashSet::from([region_id.clone()]),
         });
 
         Asset::new(agent_id, process, region_id, 2.0, commission_year)

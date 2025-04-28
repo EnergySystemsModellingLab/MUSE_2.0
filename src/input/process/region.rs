@@ -2,7 +2,7 @@
 use super::super::region::read_regions_for_entity;
 use crate::id::{define_region_id_getter, HasID};
 use crate::process::ProcessID;
-use crate::region::{RegionID, RegionSelection};
+use crate::region::RegionID;
 use anyhow::Result;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -33,12 +33,12 @@ impl HasID<ProcessID> for ProcessRegion {
 ///
 /// # Returns
 ///
-/// A map of [`RegionSelection`]s, with the process ID as the key.
+/// A map of [`HashSet<RegionID>`]s, with the process ID as the key.
 pub fn read_process_regions(
     model_dir: &Path,
     process_ids: &HashSet<ProcessID>,
     region_ids: &HashSet<RegionID>,
-) -> Result<HashMap<ProcessID, RegionSelection>> {
+) -> Result<HashMap<ProcessID, HashSet<RegionID>>> {
     let file_path = model_dir.join(PROCESS_REGIONS_FILE_NAME);
     read_regions_for_entity::<ProcessRegion, ProcessID>(&file_path, process_ids, region_ids)
 }

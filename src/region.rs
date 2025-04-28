@@ -2,10 +2,7 @@
 use crate::id::define_id_getter;
 use crate::id::define_id_type;
 use indexmap::IndexMap;
-use itertools::Itertools;
 use serde::Deserialize;
-use std::collections::HashSet;
-use std::fmt::Display;
 
 define_id_type! {RegionID}
 
@@ -21,32 +18,3 @@ pub struct Region {
     pub description: String,
 }
 define_id_getter! {Region, RegionID}
-
-/// Represents multiple regions
-#[derive(PartialEq, Debug, Clone, Default)]
-pub enum RegionSelection {
-    /// All regions are covered
-    #[default]
-    All,
-    /// Only some regions are covered
-    Some(HashSet<RegionID>),
-}
-
-impl RegionSelection {
-    /// Returns true if the [`RegionSelection`] covers a given region
-    pub fn contains(&self, region_id: &RegionID) -> bool {
-        match self {
-            Self::All => true,
-            Self::Some(regions) => regions.contains(region_id),
-        }
-    }
-}
-
-impl Display for RegionSelection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::All => write!(f, "all"),
-            Self::Some(regions) => write!(f, "{}", regions.iter().join(", ")),
-        }
-    }
-}

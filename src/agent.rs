@@ -3,7 +3,7 @@
 use crate::commodity::Commodity;
 use crate::id::{define_id_getter, define_id_type};
 use crate::process::ProcessID;
-use crate::region::RegionSelection;
+use crate::region::RegionID;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -33,7 +33,7 @@ pub struct Agent {
     /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
     pub annual_cost_limit: Option<f64>,
     /// The regions in which this agent operates.
-    pub regions: RegionSelection,
+    pub regions: HashSet<RegionID>,
     /// The agent's objectives.
     pub objectives: Vec<AgentObjective>,
 }

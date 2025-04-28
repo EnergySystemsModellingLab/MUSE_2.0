@@ -3,7 +3,7 @@ use super::*;
 use crate::agent::{Agent, AgentID, AgentMap, DecisionRule};
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
-use crate::region::{RegionID, RegionSelection};
+use crate::region::RegionID;
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -134,7 +134,7 @@ where
             decision_rule,
             capex_limit: agent_raw.capex_limit,
             annual_cost_limit: agent_raw.annual_cost_limit,
-            regions: RegionSelection::default(),
+            regions: HashSet::new(),
             objectives: Vec::new(),
         };
 
@@ -151,7 +151,6 @@ where
 mod tests {
     use super::*;
     use crate::agent::DecisionRule;
-    use crate::region::RegionSelection;
     use std::iter;
 
     #[test]
@@ -173,7 +172,7 @@ mod tests {
             decision_rule: DecisionRule::Single,
             capex_limit: None,
             annual_cost_limit: None,
-            regions: RegionSelection::default(),
+            regions: HashSet::from(["region".into()]),
             objectives: Vec::new(),
         };
         let expected = AgentMap::from_iter(iter::once(("agent".into(), agent_out)));

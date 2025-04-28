@@ -171,7 +171,6 @@ mod tests {
     use super::*;
     use crate::agent::Agent;
     use crate::agent::ObjectiveType;
-    use crate::region::RegionSelection;
 
     #[test]
     fn test_check_objective_parameter() {
@@ -227,7 +226,7 @@ mod tests {
                 decision_rule: DecisionRule::Single,
                 capex_limit: None,
                 annual_cost_limit: None,
-                regions: RegionSelection::All,
+                regions: HashSet::from(["region".into()]),
                 objectives: Vec::new(),
             },
         )]

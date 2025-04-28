@@ -209,7 +209,6 @@ mod tests {
     use super::*;
     use crate::agent::{Agent, DecisionRule};
     use crate::commodity::{Commodity, CommodityCostMap, CommodityID, CommodityType, DemandMap};
-    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
 
     use std::iter;
@@ -263,6 +262,8 @@ mod tests {
 
     #[test]
     fn test_validate_agent_commodities() {
+        let region_ids = HashSet::from([RegionID::new("region1")]);
+        let milestone_years = vec![2020];
         let agents = IndexMap::from([(
             AgentID::new("agent1"),
             Agent {
@@ -273,7 +274,7 @@ mod tests {
                 decision_rule: DecisionRule::Single,
                 capex_limit: None,
                 annual_cost_limit: None,
-                regions: RegionSelection::default(),
+                regions: region_ids.clone(),
                 objectives: Vec::new(),
             },
         )]);
@@ -288,8 +289,6 @@ mod tests {
                 demand: DemandMap::new(),
             }),
         )]);
-        let region_ids = HashSet::from([RegionID::new("region1")]);
-        let milestone_years = vec![2020];
 
         // Valid case
         let agent_commodity = AgentCommodity {

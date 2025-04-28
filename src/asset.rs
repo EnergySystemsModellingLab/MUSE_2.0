@@ -189,7 +189,6 @@ mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
     use crate::process::{EnergyLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter};
-    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
     use std::iter;
@@ -233,7 +232,7 @@ mod tests {
             energy_limits,
             flows: vec![flow.clone()],
             parameter: process_param.clone(),
-            regions: RegionSelection::All,
+            regions: HashSet::from(["GBR".into()]),
         });
         let asset = Asset {
             id: AssetID(0),
@@ -263,7 +262,7 @@ mod tests {
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
             parameter: process_param.clone(),
-            regions: RegionSelection::All,
+            regions: HashSet::from(["GBR".into()]),
         });
         let future = [2020, 2010]
             .map(|year| {
