@@ -2,7 +2,7 @@
 use super::super::*;
 use crate::agent::{AgentCostLimits, AgentCostLimitsMap, AgentID};
 use crate::id::IDCollection;
-use crate::year::{deserialize_year, YearSelection};
+use crate::year::parse_year_str;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -13,10 +13,9 @@ const AGENT_COST_LIMITS_FILE_NAME: &str = "agent_cost_limits.csv";
 #[derive(PartialEq, Debug, Deserialize)]
 struct AgentCostLimitsRaw {
     agent_id: String,
+    year: String,
     capex_limit: Option<f64>,
     annual_cost_limit: Option<f64>,
-    #[serde(deserialize_with = "deserialize_year")]
-    year: YearSelection,
 }
 
 impl AgentCostLimitsRaw {
@@ -59,7 +58,7 @@ where
     let mut map: HashMap<AgentID, AgentCostLimitsMap> = HashMap::new();
     for agent_cost_limits_raw in iter {
         let cost_limits = agent_cost_limits_raw.to_agent_cost_limits();
-        let year = agent_cost_limits_raw.year;
+        let years = parse_year_str(&agent_cost_limits_raw.year, milestone_years)?;
 
         // Get agent ID
         let agent_id = agent_ids.get_id_by_str(&agent_cost_limits_raw.agent_id)?;
@@ -68,17 +67,8 @@ where
         let entry = map.entry(agent_id.clone()).or_default();
 
         // Insert cost limits for the specified year(s)
-        match year {
-            YearSelection::All => {
-                for year in milestone_years {
-                    entry.insert(*year, cost_limits.clone());
-                }
-            }
-            YearSelection::Some(years) => {
-                for year in years {
-                    entry.insert(year, cost_limits.clone());
-                }
-            }
+        for year in years {
+            entry.insert(year, cost_limits.clone());
         }
     }
 
@@ -102,20 +92,19 @@ where
 mod tests {
     use super::*;
     use crate::agent::AgentCostLimits;
-    use crate::year::YearSelection;
     use std::collections::HashSet;
 
     fn create_agent_cost_limits_raw(
         agent_id: &str,
+        year: &str,
         capex_limit: Option<f64>,
         annual_cost_limit: Option<f64>,
-        year: YearSelection,
     ) -> AgentCostLimitsRaw {
         AgentCostLimitsRaw {
             agent_id: agent_id.to_string(),
+            year: year.to_string(),
             capex_limit,
             annual_cost_limit,
-            year,
         }
     }
 
@@ -128,8 +117,8 @@ mod tests {
         let milestone_years = vec![2020, 2025];
 
         let iter = vec![
-            create_agent_cost_limits_raw("Agent1", Some(100.0), Some(200.0), YearSelection::All),
-            create_agent_cost_limits_raw("Agent2", Some(150.0), Some(250.0), YearSelection::All),
+            create_agent_cost_limits_raw("Agent1", "all", Some(100.0), Some(200.0)),
+            create_agent_cost_limits_raw("Agent2", "all", Some(150.0), Some(250.0)),
         ]
         .into_iter();
 
@@ -161,9 +150,9 @@ mod tests {
 
         let iter = vec![create_agent_cost_limits_raw(
             "Agent1",
+            "2020;2025",
             Some(100.0),
             Some(200.0),
-            YearSelection::Some([2020, 2025].into_iter().collect()),
         )]
         .into_iter();
 
@@ -193,9 +182,9 @@ mod tests {
 
         let iter = vec![create_agent_cost_limits_raw(
             "Agent1",
+            "2020",
             Some(100.0),
             Some(200.0),
-            YearSelection::Some([2020].into_iter().collect()),
         )]
         .into_iter();
 
