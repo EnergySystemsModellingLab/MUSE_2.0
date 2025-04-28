@@ -230,7 +230,7 @@ fn calculate_cost_coefficient(
     if flow.is_pac {
         coeff += asset
             .process
-            .parameter
+            .parameters
             .get(&asset.commission_year)
             .unwrap()
             .variable_operating_cost
@@ -313,7 +313,7 @@ mod tests {
             years: 2010..=2020,
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![flow.clone()],
-            parameter: process_parameter_map,
+            parameters: process_parameter_map,
             regions: RegionSelection::All,
         });
         let asset = Asset::new(

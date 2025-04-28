@@ -108,7 +108,7 @@ mod tests {
             years: 2010..=2020,
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
-            parameter: ProcessParameterMap::new(),
+            parameters: ProcessParameterMap::new(),
             regions: RegionSelection::All,
         });
         let processes = [(process.id.clone(), Rc::clone(&process))]
@@ -184,7 +184,7 @@ mod tests {
             years: 2010..=2020,
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
-            parameter: ProcessParameterMap::new(),
+            parameters: ProcessParameterMap::new(),
             regions: RegionSelection::Some(["GBR".into()].into_iter().collect()),
         });
         let asset_in = AssetRaw {

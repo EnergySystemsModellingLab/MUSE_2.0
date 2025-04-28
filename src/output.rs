@@ -198,7 +198,7 @@ mod tests {
             years: 2010..=2020,
             energy_limits: HashMap::new(),
             flows: vec![],
-            parameter: ProcessParameterMap::new(),
+            parameters: ProcessParameterMap::new(),
             regions: RegionSelection::All,
         });
 

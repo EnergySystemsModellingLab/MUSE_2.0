@@ -61,7 +61,7 @@ impl Asset {
         self.commission_year
             + self
                 .process
-                .parameter
+                .parameters
                 .get(&self.commission_year)
                 .unwrap()
                 .lifetime
@@ -83,7 +83,7 @@ impl Asset {
         self.capacity
             * self
                 .process
-                .parameter
+                .parameters
                 .get(&self.commission_year)
                 .unwrap()
                 .capacity_to_activity
@@ -252,7 +252,7 @@ mod tests {
             years: 2010..=2020,
             energy_limits,
             flows: vec![flow.clone()],
-            parameter: process_parameter_map,
+            parameters: process_parameter_map,
             regions: RegionSelection::All,
         });
         let asset = Asset {
@@ -287,7 +287,7 @@ mod tests {
             years: 2010..=2020,
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
-            parameter: process_parameter_map,
+            parameters: process_parameter_map,
             regions: RegionSelection::All,
         });
         let future = [2020, 2010]

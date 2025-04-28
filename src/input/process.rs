@@ -58,7 +58,7 @@ pub fn read_processes(
     let mut processes = read_processes_file(model_dir, &year_range)?;
     let process_ids = processes.keys().cloned().collect();
 
-    let mut availabilities = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
+    let mut energy_limits = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
     let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
     let mut parameters =
         read_process_parameters(model_dir, &process_ids, &processes, milestone_years)?;
@@ -72,21 +72,29 @@ pub fn read_processes(
         milestone_years,
         time_slice_info,
         &parameters,
-        &availabilities,
+        &energy_limits,
     )?;
 
     // Add data to Process objects
     for (id, process) in processes.iter_mut() {
-        process.energy_limits = availabilities.remove(id).unwrap();
-        process.flows = flows.remove(id).unwrap();
-        process.parameter = parameters.remove(id).unwrap();
-        process.regions = regions.remove(id).unwrap();
+        process.energy_limits = energy_limits
+            .remove(id)
+            .with_context(|| format!("Missing availabilities for process {id}"))?;
+        process.flows = flows
+            .remove(id)
+            .with_context(|| format!("Missing flows for process {id}"))?;
+        process.parameters = parameters
+            .remove(id)
+            .with_context(|| format!("Missing parameters for process {id}"))?;
+        process.regions = regions
+            .remove(id)
+            .with_context(|| format!("Missing regions for process {id}"))?;
     }
 
     // Create ProcessMap
     let mut process_map = ProcessMap::new();
     for (id, process) in processes {
-        process_map.insert(id.clone(), process.into());
+        process_map.insert(id, process.into());
     }
 
     Ok(process_map)
@@ -127,7 +135,7 @@ where
             years: start_year..=end_year,
             energy_limits: EnergyLimitsMap::new(),
             flows: Vec::new(),
-            parameter: ProcessParameterMap::new(),
+            parameters: ProcessParameterMap::new(),
             regions: RegionSelection::default(),
         };
 

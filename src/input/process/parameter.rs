@@ -123,8 +123,8 @@ where
         let entry = params.entry(id.clone()).or_default();
         let process = processes
             .get(&id)
-            .ok_or_else(|| anyhow::anyhow!("Process {} not found", id))?;
-        let year_range = process.years.clone();
+            .with_context(|| format!("Process {id} not found"))?;
+        let year_range = &process.years;
 
         match year {
             YearSelection::Some(years) => {
@@ -144,7 +144,7 @@ where
 
     // Check parameters cover all years of the process
     for (id, parameter) in params.iter() {
-        let year_range = processes.get(id).unwrap().years.clone();
+        let year_range = &processes.get(id).unwrap().years;
         let reference_years: HashSet<u32> = milestone_years
             .iter()
             .copied()
