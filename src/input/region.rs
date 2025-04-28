@@ -41,9 +41,7 @@ pub fn parse_region_str(s: &str, region_ids: HashSet<RegionID>) -> Result<HashSe
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::id::{define_id_getter, GenericID};
     use crate::region::Region;
-    use serde::Deserialize;
     use std::fs::File;
     use std::io::Write;
     use std::path::Path;

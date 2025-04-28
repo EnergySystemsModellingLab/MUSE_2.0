@@ -182,7 +182,6 @@ impl DataWriter {
 mod tests {
     use super::*;
     use crate::process::{Process, ProcessParameterMap};
-    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
     use std::collections::HashSet;

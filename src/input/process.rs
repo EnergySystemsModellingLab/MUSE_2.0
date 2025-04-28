@@ -279,10 +279,7 @@ mod tests {
 
     struct ProcessData {
         availabilities: HashMap<ProcessID, EnergyLimitsMap>,
-        flows: HashMap<ProcessID, Vec<ProcessFlow>>,
         parameters: HashMap<ProcessID, ProcessParameter>,
-        regions: HashMap<ProcessID, HashSet<RegionID>>,
-        parameters: HashMap<ProcessID, ProcessParameterMap>,
         region_ids: HashSet<RegionID>,
     }
 

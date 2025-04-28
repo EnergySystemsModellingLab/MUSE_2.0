@@ -203,7 +203,6 @@ mod tests {
     use crate::process::{
         EnergyLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter, ProcessParameterMap,
     };
-    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
     use std::iter;
