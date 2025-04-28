@@ -117,6 +117,6 @@ mod tests {
         }
 
         let model_file = ModelFile::from_path(dir.path()).unwrap();
-        assert_eq!(model_file.milestone_years.years, vec![2020, 2100]);
+        assert_eq!(model_file.milestone_years.years, [2020, 2100]);
     }
 }

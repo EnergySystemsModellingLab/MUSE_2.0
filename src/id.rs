@@ -1,5 +1,4 @@
 //! Code for handing IDs
-use crate::region::RegionID;
 use anyhow::{Context, Result};
 use std::collections::HashSet;
 
