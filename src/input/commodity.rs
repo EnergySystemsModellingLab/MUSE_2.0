@@ -46,7 +46,7 @@ pub fn read_commodities(
 
     let mut demand = read_demand(
         model_dir,
-        &commodity_ids,
+        &commodities,
         region_ids,
         time_slice_info,
         milestone_years,
