@@ -51,7 +51,7 @@ impl AgentCommodityRaw {
     }
 }
 
-/// Read agent objective info from the agent_commodities.csv file.
+/// Read agent commodities info from the agent_commodities.csv file.
 ///
 /// # Arguments
 ///
@@ -207,15 +207,16 @@ fn validate_agent_commodities(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::{Agent, DecisionRule};
+    use crate::agent::{Agent, AgentCostLimitsMap, DecisionRule};
     use crate::commodity::{Commodity, CommodityCostMap, CommodityID, CommodityType, DemandMap};
+    use crate::input::region::parse_region_str;
     use crate::time_slice::TimeSliceLevel;
 
     use std::iter;
 
     #[test]
     fn test_agent_commodity_raw_to_agent_commodity() {
-        let milestone_years = vec![2020, 2021, 2022];
+        let milestone_years = [2020, 2021, 2022];
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
             description: "A commodity".into(),
@@ -263,7 +264,7 @@ mod tests {
     #[test]
     fn test_validate_agent_commodities() {
         let region_ids = HashSet::from([RegionID::new("region1")]);
-        let milestone_years = vec![2020];
+        let milestone_years = [2020];
         let agents = IndexMap::from([(
             AgentID::new("agent1"),
             Agent {
@@ -272,8 +273,7 @@ mod tests {
                 commodities: Vec::new(),
                 search_space: Vec::new(),
                 decision_rule: DecisionRule::Single,
-                capex_limit: None,
-                annual_cost_limit: None,
+                cost_limits: AgentCostLimitsMap::new(),
                 regions: region_ids.clone(),
                 objectives: Vec::new(),
             },
