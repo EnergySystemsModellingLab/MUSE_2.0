@@ -1,9 +1,6 @@
 //! Code for reading region-related information from CSV files.
 use super::*;
-use crate::id::IDCollection;
-use crate::region::{RegionID, RegionMap};
-use anyhow::ensure;
-use std::collections::HashSet;
+use crate::region::RegionMap;
 use std::path::Path;
 
 const REGIONS_FILE_NAME: &str = "regions.csv";
@@ -19,23 +16,6 @@ const REGIONS_FILE_NAME: &str = "regions.csv";
 /// A `HashMap<RegionID, Region>` with the parsed regions data or an error
 pub fn read_regions(model_dir: &Path) -> Result<RegionMap> {
     read_csv_id_file(&model_dir.join(REGIONS_FILE_NAME))
-}
-
-/// Parse a string of regions separated by semicolons into a vector of RegionID.
-///
-/// The string can be either "all" (case-insensitive), a single region, or a semicolon-separated
-/// list of regions (e.g. "GBR;FRA;USA" or "GBR; FRA; USA")
-pub fn parse_region_str(s: &str, region_ids: HashSet<RegionID>) -> Result<HashSet<RegionID>> {
-    let s = s.trim();
-    ensure!(!s.is_empty(), "No regions provided");
-
-    if s.eq_ignore_ascii_case("all") {
-        return Ok(region_ids.clone());
-    }
-
-    s.split(";")
-        .map(|y| region_ids.get_id_by_str(y.trim()))
-        .collect()
 }
 
 #[cfg(test)]

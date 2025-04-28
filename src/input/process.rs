@@ -4,7 +4,7 @@ use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::process::{
     EnergyLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameterMap,
 };
-use crate::region::RegionID;
+use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{bail, ensure, Context, Ok, Result};
 use serde::Deserialize;
@@ -27,6 +27,7 @@ const PROCESSES_FILE_NAME: &str = "processes.csv";
 struct ProcessRaw {
     id: ProcessID,
     description: String,
+    region_id: String,
     start_year: Option<u32>,
     end_year: Option<u32>,
 }
@@ -53,7 +54,7 @@ pub fn read_processes(
     milestone_years: &[u32],
 ) -> Result<ProcessMap> {
     let year_range = milestone_years[0]..=milestone_years[milestone_years.len() - 1];
-    let mut processes = read_processes_file(model_dir, &year_range)?;
+    let mut processes = read_processes_file(model_dir, &year_range, region_ids)?;
     let process_ids = processes.keys().cloned().collect();
 
     let mut energy_limits = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
@@ -97,16 +98,18 @@ pub fn read_processes(
 fn read_processes_file(
     model_dir: &Path,
     year_range: &RangeInclusive<u32>,
+    region_ids: &HashSet<RegionID>,
 ) -> Result<HashMap<ProcessID, Process>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let processes_csv = read_csv(&file_path)?;
-    read_processes_file_from_iter(processes_csv, year_range)
+    read_processes_file_from_iter(processes_csv, year_range, region_ids)
         .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_processes_file_from_iter<I>(
     iter: I,
     year_range: &RangeInclusive<u32>,
+    region_ids: &HashSet<RegionID>,
 ) -> Result<HashMap<ProcessID, Process>>
 where
     I: Iterator<Item = ProcessRaw>,
@@ -123,6 +126,9 @@ where
             process_raw.id
         );
 
+        // Parse region ID
+        let regions = parse_region_str(&process_raw.region_id, region_ids)?;
+
         let process = Process {
             id: process_raw.id.clone(),
             description: process_raw.description,
@@ -130,7 +136,7 @@ where
             energy_limits: EnergyLimitsMap::new(),
             flows: Vec::new(),
             parameters: ProcessParameterMap::new(),
-            regions: HashSet::new(),
+            regions,
         };
 
         ensure!(

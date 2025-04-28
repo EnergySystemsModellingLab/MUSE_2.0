@@ -3,7 +3,7 @@ use super::*;
 use crate::agent::{Agent, AgentCostLimitsMap, AgentID, AgentMap, DecisionRule};
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
-use crate::region::RegionID;
+use crate::region::{parse_region_str, RegionID};
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -27,6 +27,8 @@ struct AgentRaw {
     id: String,
     /// A text description of the agent.
     description: String,
+    /// The region(s) in which the agent operates.
+    region_id: String,
     /// The decision rule that the agent uses to decide investment.
     decision_rule: String,
     /// The tolerance around the main objective to consider secondary objectives.
@@ -53,7 +55,7 @@ pub fn read_agents(
     milestone_years: &[u32],
 ) -> Result<AgentMap> {
     let process_ids = processes.keys().cloned().collect();
-    let mut agents = read_agents_file(model_dir)?;
+    let mut agents = read_agents_file(model_dir, region_ids)?;
     let agent_ids = agents.keys().cloned().collect();
 
     let mut objectives = read_agent_objectives(model_dir, &agents, milestone_years)?;
@@ -93,19 +95,22 @@ pub fn read_agents(
 /// # Returns
 ///
 /// A map of Agents, with the agent ID as the key
-fn read_agents_file(model_dir: &Path) -> Result<AgentMap> {
+fn read_agents_file(model_dir: &Path, region_ids: &HashSet<RegionID>) -> Result<AgentMap> {
     let file_path = model_dir.join(AGENT_FILE_NAME);
     let agents_csv = read_csv(&file_path)?;
-    read_agents_file_from_iter(agents_csv).with_context(|| input_err_msg(&file_path))
+    read_agents_file_from_iter(agents_csv, region_ids).with_context(|| input_err_msg(&file_path))
 }
 
 /// Read agents info from an iterator.
-fn read_agents_file_from_iter<I>(iter: I) -> Result<AgentMap>
+fn read_agents_file_from_iter<I>(iter: I, region_ids: &HashSet<RegionID>) -> Result<AgentMap>
 where
     I: Iterator<Item = AgentRaw>,
 {
     let mut agents = AgentMap::new();
     for agent_raw in iter {
+        // Parse region ID
+        let regions = parse_region_str(&agent_raw.region_id, region_ids)?;
+
         // Parse decision rule
         let decision_rule = match agent_raw.decision_rule.to_ascii_lowercase().as_str() {
             "single" => DecisionRule::Single,
@@ -131,7 +136,7 @@ where
             search_space: Vec::new(),
             decision_rule,
             cost_limits: AgentCostLimitsMap::new(),
-            regions: HashSet::new(),
+            regions,
             objectives: Vec::new(),
         };
 
@@ -153,11 +158,13 @@ mod tests {
     #[test]
     fn test_read_agents_file_from_iter() {
         // Valid case
+        let region_ids = HashSet::from(["GBR".into()]);
         let agent = AgentRaw {
             id: "agent".into(),
             description: "".into(),
             decision_rule: "single".into(),
             decision_lexico_tolerance: None,
+            region_id: "GBR".into(),
         };
         let agent_out = Agent {
             id: "agent".into(),
@@ -166,11 +173,11 @@ mod tests {
             search_space: Vec::new(),
             decision_rule: DecisionRule::Single,
             cost_limits: AgentCostLimitsMap::new(),
-            regions: HashSet::new(),
+            regions: HashSet::from(["GBR".into()]),
             objectives: Vec::new(),
         };
         let expected = AgentMap::from_iter(iter::once(("agent".into(), agent_out)));
-        let actual = read_agents_file_from_iter(iter::once(agent)).unwrap();
+        let actual = read_agents_file_from_iter(iter::once(agent), &region_ids).unwrap();
         assert_eq!(actual, expected);
 
         // Duplicate agent ID
@@ -180,15 +187,17 @@ mod tests {
                 description: "".into(),
                 decision_rule: "single".into(),
                 decision_lexico_tolerance: None,
+                region_id: "GBR".into(),
             },
             AgentRaw {
                 id: "agent".into(),
                 description: "".into(),
                 decision_rule: "single".into(),
                 decision_lexico_tolerance: None,
+                region_id: "GBR".into(),
             },
         ];
-        assert!(read_agents_file_from_iter(agents.into_iter()).is_err());
+        assert!(read_agents_file_from_iter(agents.into_iter(), &region_ids).is_err());
 
         // Lexico tolerance missing for lexico decision rule
         let agent = AgentRaw {
@@ -196,7 +205,8 @@ mod tests {
             description: "".into(),
             decision_rule: "lexico".into(),
             decision_lexico_tolerance: None,
+            region_id: "GBR".into(),
         };
-        assert!(read_agents_file_from_iter(iter::once(agent)).is_err());
+        assert!(read_agents_file_from_iter(iter::once(agent), &region_ids).is_err());
     }
 }

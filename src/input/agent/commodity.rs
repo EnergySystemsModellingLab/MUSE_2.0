@@ -209,7 +209,6 @@ mod tests {
     use super::*;
     use crate::agent::{Agent, AgentCostLimitsMap, DecisionRule};
     use crate::commodity::{Commodity, CommodityCostMap, CommodityID, CommodityType, DemandMap};
-    use crate::input::region::parse_region_str;
     use crate::time_slice::TimeSliceLevel;
 
     use std::iter;
