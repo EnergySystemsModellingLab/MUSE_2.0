@@ -42,7 +42,7 @@ pub fn read_agent_cost_limits(
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, AgentCostLimitsMap>> {
     let file_path = model_dir.join(AGENT_COST_LIMITS_FILE_NAME);
-    let agent_cost_limits_csv = read_csv(&file_path)?;
+    let agent_cost_limits_csv = read_csv_optional(&file_path)?;
     read_agent_cost_limits_from_iter(agent_cost_limits_csv, agent_ids, milestone_years)
         .with_context(|| input_err_msg(&file_path))
 }
@@ -75,13 +75,10 @@ where
     // Validation: if cost limits are specified for an agent, they must be present for all years.
     for (id, cost_limits) in map.iter() {
         for year in milestone_years {
-            if !cost_limits.contains_key(year) {
-                return Err(anyhow::anyhow!(
-                    "Agent {} is missing cost limits for year {}",
-                    id,
-                    year
-                ));
-            }
+            ensure!(
+                cost_limits.contains_key(year),
+                "Agent {id} is missing cost limits for year {year}"
+            );
         }
     }
 
@@ -114,9 +111,9 @@ mod tests {
             .iter()
             .map(|&id| AgentID::from(id))
             .collect();
-        let milestone_years = vec![2020, 2025];
+        let milestone_years = [2020, 2025];
 
-        let iter = vec![
+        let iter = [
             create_agent_cost_limits_raw("Agent1", "all", Some(100.0), Some(200.0)),
             create_agent_cost_limits_raw("Agent2", "all", Some(150.0), Some(250.0)),
         ]
@@ -146,9 +143,9 @@ mod tests {
     #[test]
     fn test_read_agent_cost_limits_from_iter_some_years() {
         let agent_ids: HashSet<AgentID> = ["Agent1"].iter().map(|&id| AgentID::from(id)).collect();
-        let milestone_years = vec![2020, 2025];
+        let milestone_years = [2020, 2025];
 
-        let iter = vec![create_agent_cost_limits_raw(
+        let iter = [create_agent_cost_limits_raw(
             "Agent1",
             "2020;2025",
             Some(100.0),
@@ -178,9 +175,9 @@ mod tests {
     #[test]
     fn test_read_agent_cost_limits_from_iter_missing_years() {
         let agent_ids: HashSet<AgentID> = ["Agent1"].iter().map(|&id| AgentID::from(id)).collect();
-        let milestone_years = vec![2020, 2025];
+        let milestone_years = [2020, 2025];
 
-        let iter = vec![create_agent_cost_limits_raw(
+        let iter = [create_agent_cost_limits_raw(
             "Agent1",
             "2020",
             Some(100.0),

@@ -216,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_agent_commodity_raw_to_agent_commodity() {
-        let milestone_years = vec![2020, 2021, 2022];
+        let milestone_years = [2020, 2021, 2022];
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
             description: "A commodity".into(),
@@ -288,7 +288,7 @@ mod tests {
             }),
         )]);
         let region_ids = HashSet::from([RegionID::new("region1")]);
-        let milestone_years = vec![2020];
+        let milestone_years = [2020];
 
         // Valid case
         let agent_commodity = AgentCommodity {
