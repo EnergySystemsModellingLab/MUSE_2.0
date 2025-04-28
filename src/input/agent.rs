@@ -1,6 +1,6 @@
 //! Code for reading in agent-related data from CSV files.
 use super::*;
-use crate::agent::{Agent, AgentID, AgentMap, DecisionRule};
+use crate::agent::{Agent, AgentCostLimitsMap, AgentID, AgentMap, DecisionRule};
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
 use crate::region::{RegionID, RegionSelection};
@@ -17,6 +17,8 @@ mod search_space;
 use search_space::read_agent_search_space;
 mod commodity;
 use commodity::read_agent_commodities;
+mod cost_limit;
+use cost_limit::read_agent_cost_limits;
 
 const AGENT_FILE_NAME: &str = "agents.csv";
 
@@ -29,10 +31,6 @@ struct AgentRaw {
     description: String,
     /// The decision rule that the agent uses to decide investment.
     decision_rule: String,
-    /// The maximum capital cost the agent will pay.
-    capex_limit: Option<f64>,
-    /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
-    annual_cost_limit: Option<f64>,
     /// The tolerance around the main objective to consider secondary objectives.
     decision_lexico_tolerance: Option<f64>,
 }
@@ -71,6 +69,7 @@ pub fn read_agents(
     )?;
     let mut agent_commodities =
         read_agent_commodities(model_dir, &agents, commodities, region_ids, milestone_years)?;
+    let mut cost_limits = read_agent_cost_limits(model_dir, &agent_ids, milestone_years)?;
 
     for (id, agent) in agents.iter_mut() {
         agent.regions = agent_regions.remove(id).unwrap();
@@ -79,6 +78,9 @@ pub fn read_agents(
             agent.search_space = search_space;
         }
         agent.commodities = agent_commodities.remove(id).unwrap();
+        if let Some(cost_limits) = cost_limits.remove(id) {
+            agent.cost_limits = cost_limits;
+        }
     }
 
     Ok(agents)
@@ -132,8 +134,7 @@ where
             commodities: Vec::new(),
             search_space: Vec::new(),
             decision_rule,
-            capex_limit: agent_raw.capex_limit,
-            annual_cost_limit: agent_raw.annual_cost_limit,
+            cost_limits: AgentCostLimitsMap::new(),
             regions: RegionSelection::default(),
             objectives: Vec::new(),
         };
@@ -161,8 +162,6 @@ mod tests {
             id: "agent".into(),
             description: "".into(),
             decision_rule: "single".into(),
-            capex_limit: None,
-            annual_cost_limit: None,
             decision_lexico_tolerance: None,
         };
         let agent_out = Agent {
@@ -171,8 +170,7 @@ mod tests {
             commodities: Vec::new(),
             search_space: Vec::new(),
             decision_rule: DecisionRule::Single,
-            capex_limit: None,
-            annual_cost_limit: None,
+            cost_limits: AgentCostLimitsMap::new(),
             regions: RegionSelection::default(),
             objectives: Vec::new(),
         };
@@ -186,16 +184,12 @@ mod tests {
                 id: "agent".into(),
                 description: "".into(),
                 decision_rule: "single".into(),
-                capex_limit: None,
-                annual_cost_limit: None,
                 decision_lexico_tolerance: None,
             },
             AgentRaw {
                 id: "agent".into(),
                 description: "".into(),
                 decision_rule: "single".into(),
-                capex_limit: None,
-                annual_cost_limit: None,
                 decision_lexico_tolerance: None,
             },
         ];
@@ -206,8 +200,6 @@ mod tests {
             id: "agent".into(),
             description: "".into(),
             decision_rule: "lexico".into(),
-            capex_limit: None,
-            annual_cost_limit: None,
             decision_lexico_tolerance: None,
         };
         assert!(read_agents_file_from_iter(iter::once(agent)).is_err());

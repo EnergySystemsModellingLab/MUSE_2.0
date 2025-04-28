@@ -181,7 +181,7 @@ impl DataWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::{Process, ProcessParameter};
+    use crate::process::{Process, ProcessParameterMap};
     use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
@@ -194,21 +194,13 @@ mod tests {
         let region_id = "GBR".into();
         let agent_id = "agent1".into();
         let commission_year = 2015;
-        let process_param = ProcessParameter {
-            years: 2010..=2020,
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
-            lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 3.0,
-        };
         let process = Rc::new(Process {
             id: process_id,
             description: "Description".into(),
+            years: 2010..=2020,
             energy_limits: HashMap::new(),
             flows: vec![],
-            parameter: process_param.clone(),
+            parameters: ProcessParameterMap::new(),
             regions: RegionSelection::All,
         });
 

@@ -1,12 +1,12 @@
 //! Code for reading process parameters CSV file
 use super::super::*;
 use crate::id::IDCollection;
-use crate::process::{ProcessID, ProcessParameter};
+use crate::process::{Process, ProcessID, ProcessParameter, ProcessParameterMap};
+use crate::year::parse_year_str;
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use std::ops::RangeInclusive;
 use std::path::Path;
 
 const PROCESS_PARAMETERS_FILE_NAME: &str = "process_parameters.csv";
@@ -14,8 +14,7 @@ const PROCESS_PARAMETERS_FILE_NAME: &str = "process_parameters.csv";
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessParameterRaw {
     process_id: String,
-    start_year: Option<u32>,
-    end_year: Option<u32>,
+    year: String,
     capital_cost: f64,
     fixed_operating_cost: f64,
     variable_operating_cost: f64,
@@ -25,21 +24,10 @@ struct ProcessParameterRaw {
 }
 
 impl ProcessParameterRaw {
-    fn into_parameter(self, year_range: &RangeInclusive<u32>) -> Result<ProcessParameter> {
-        let start_year = self.start_year.unwrap_or(*year_range.start());
-        let end_year = self.end_year.unwrap_or(*year_range.end());
-
-        // Check year range is valid
-        ensure!(
-            start_year <= end_year,
-            "Error in parameter for process {}: start_year > end_year",
-            self.process_id
-        );
-
+    fn into_parameter(self) -> Result<ProcessParameter> {
         self.validate()?;
 
         Ok(ProcessParameter {
-            years: start_year..=end_year,
             capital_cost: self.capital_cost,
             fixed_operating_cost: self.fixed_operating_cost,
             variable_operating_cost: self.variable_operating_cost,
@@ -106,31 +94,65 @@ impl ProcessParameterRaw {
 pub fn read_process_parameters(
     model_dir: &Path,
     process_ids: &HashSet<ProcessID>,
-    year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<ProcessID, ProcessParameter>> {
+    processes: &HashMap<ProcessID, Process>,
+    milestone_years: &[u32],
+) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
-    read_process_parameters_from_iter(iter, process_ids, year_range)
+    read_process_parameters_from_iter(iter, process_ids, processes, milestone_years)
         .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
     process_ids: &HashSet<ProcessID>,
-    year_range: &RangeInclusive<u32>,
-) -> Result<HashMap<ProcessID, ProcessParameter>>
+    processes: &HashMap<ProcessID, Process>,
+    milestone_years: &[u32],
+) -> Result<HashMap<ProcessID, ProcessParameterMap>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
-    let mut params = HashMap::new();
+    let mut params: HashMap<ProcessID, ProcessParameterMap> = HashMap::new();
     for param_raw in iter {
         let id = process_ids.get_id_by_str(&param_raw.process_id)?;
-        let param = param_raw.into_parameter(year_range)?;
+
+        let entry = params.entry(id.clone()).or_default();
+        let process = processes
+            .get(&id)
+            .with_context(|| format!("Process {id} not found"))?;
+        let process_year_range = &process.years;
+        let process_years: Vec<u32> = milestone_years
+            .iter()
+            .copied()
+            .filter(|year| process_year_range.contains(year))
+            .collect();
+
+        let parameter_years =
+            parse_year_str(&param_raw.year, &process_years).with_context(|| {
+                format!("Invalid year for process {id}. Valid years are {process_years:?}")
+            })?;
+        let param = param_raw.into_parameter()?;
+        for year in parameter_years {
+            try_insert(entry, year, param.clone())?;
+        }
+    }
+
+    // Check parameters cover all years of the process
+    for (id, parameter) in params.iter() {
+        let year_range = &processes.get(id).unwrap().years;
+        let reference_years: HashSet<u32> = milestone_years
+            .iter()
+            .copied()
+            .filter(|year| year_range.contains(year))
+            .collect();
+        let parameter_years: HashSet<u32> = parameter.keys().copied().collect();
         ensure!(
-            params.insert(id.clone(), param).is_none(),
-            "More than one parameter provided for process {id}"
+            parameter_years == reference_years,
+            "Error in parameters for process {}: years do not match the process years",
+            id
         );
     }
+
     Ok(params)
 }
 
@@ -139,32 +161,24 @@ mod tests {
     use super::*;
 
     fn create_param_raw(
-        start_year: Option<u32>,
-        end_year: Option<u32>,
         lifetime: u32,
         discount_rate: Option<f64>,
         capacity_to_activity: Option<f64>,
     ) -> ProcessParameterRaw {
         ProcessParameterRaw {
             process_id: "id".to_string(),
-            start_year,
-            end_year,
             capital_cost: 0.0,
             fixed_operating_cost: 0.0,
             variable_operating_cost: 0.0,
             lifetime,
             discount_rate,
             capacity_to_activity,
+            year: "all".to_string(),
         }
     }
 
-    fn create_param(
-        years: RangeInclusive<u32>,
-        discount_rate: f64,
-        capacity_to_activity: f64,
-    ) -> ProcessParameter {
+    fn create_param(discount_rate: f64, capacity_to_activity: f64) -> ProcessParameter {
         ProcessParameter {
-            years,
             capital_cost: 0.0,
             fixed_operating_cost: 0.0,
             variable_operating_cost: 0.0,
@@ -176,216 +190,40 @@ mod tests {
 
     #[test]
     fn test_param_raw_into_param_ok() {
-        let year_range = 2000..=2100;
-
         // No missing values
-        let raw = create_param_raw(Some(2010), Some(2020), 1, Some(1.0), Some(0.0));
-        assert_eq!(
-            raw.into_parameter(&year_range).unwrap(),
-            create_param(2010..=2020, 1.0, 0.0)
-        );
-
-        // Missing years
-        let raw = create_param_raw(None, None, 1, Some(1.0), Some(0.0));
-        assert_eq!(
-            raw.into_parameter(&year_range).unwrap(),
-            create_param(2000..=2100, 1.0, 0.0)
-        );
+        let raw = create_param_raw(1, Some(1.0), Some(0.0));
+        assert_eq!(raw.into_parameter().unwrap(), create_param(1.0, 0.0));
 
         // Missing discount_rate
-        let raw = create_param_raw(Some(2010), Some(2020), 1, None, Some(0.0));
-        assert_eq!(
-            raw.into_parameter(&year_range).unwrap(),
-            create_param(2010..=2020, 0.0, 0.0)
-        );
+        let raw = create_param_raw(1, None, Some(0.0));
+        assert_eq!(raw.into_parameter().unwrap(), create_param(0.0, 0.0));
 
         // Missing capacity_to_activity
-        let raw = create_param_raw(Some(2010), Some(2020), 1, Some(1.0), None);
-        assert_eq!(
-            raw.into_parameter(&year_range).unwrap(),
-            create_param(2010..=2020, 1.0, 1.0)
-        );
-    }
-
-    #[test]
-    fn test_param_raw_into_param_good_years() {
-        let year_range = 2000..=2100;
-
-        // Normal case
-        assert!(
-            create_param_raw(Some(2000), Some(2100), 1, Some(1.0), Some(0.0))
-                .into_parameter(&year_range)
-                .is_ok()
-        );
-
-        // start_year out of range - this is permitted
-        assert!(
-            create_param_raw(Some(1999), Some(2100), 1, Some(1.0), Some(0.0))
-                .into_parameter(&year_range)
-                .is_ok()
-        );
-
-        // end_year out of range - this is permitted
-        assert!(
-            create_param_raw(Some(2000), Some(2101), 1, Some(1.0), Some(0.0))
-                .into_parameter(&year_range)
-                .is_ok()
-        );
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_param_raw_into_param_bad_years() {
-        let year_range = 2000..=2100;
-
-        // start_year after end_year
-        assert!(
-            create_param_raw(Some(2001), Some(2000), 1, Some(1.0), Some(0.0))
-                .into_parameter(&year_range)
-                .is_ok()
-        );
+        let raw = create_param_raw(1, Some(1.0), None);
+        assert_eq!(raw.into_parameter().unwrap(), create_param(1.0, 1.0));
     }
 
     #[test]
     fn test_param_raw_validate_bad_lifetime() {
         // lifetime = 0
-        assert!(
-            create_param_raw(Some(2000), Some(2100), 0, Some(1.0), Some(0.0))
-                .validate()
-                .is_err()
-        );
+        assert!(create_param_raw(0, Some(1.0), Some(0.0))
+            .validate()
+            .is_err());
     }
 
     #[test]
     fn test_param_raw_validate_bad_discount_rate() {
         // discount rate = -1
-        assert!(
-            create_param_raw(Some(2000), Some(2100), 0, Some(-1.0), Some(0.0))
-                .validate()
-                .is_err()
-        );
+        assert!(create_param_raw(0, Some(-1.0), Some(0.0))
+            .validate()
+            .is_err());
     }
 
     #[test]
     fn test_param_raw_validate_bad_capt2act() {
         // capt2act = -1
-        assert!(
-            create_param_raw(Some(2000), Some(2100), 0, Some(1.0), Some(-1.0))
-                .validate()
-                .is_err()
-        );
-    }
-
-    #[test]
-    fn test_read_process_parameters_from_iter_good() {
-        let year_range = 2000..=2100;
-        let process_ids = ["A".into(), "B".into()].into_iter().collect();
-
-        let params_raw = [
-            ProcessParameterRaw {
-                process_id: "A".into(),
-                start_year: Some(2010),
-                end_year: Some(2020),
-                capital_cost: 1.0,
-                fixed_operating_cost: 1.0,
-                variable_operating_cost: 1.0,
-                lifetime: 10,
-                discount_rate: Some(1.0),
-                capacity_to_activity: Some(1.0),
-            },
-            ProcessParameterRaw {
-                process_id: "B".into(),
-                start_year: Some(2015),
-                end_year: Some(2020),
-                capital_cost: 1.0,
-                fixed_operating_cost: 1.0,
-                variable_operating_cost: 1.0,
-                lifetime: 10,
-                discount_rate: Some(1.0),
-                capacity_to_activity: Some(1.0),
-            },
-        ];
-
-        let expected: HashMap<ProcessID, _> = [
-            (
-                "A".into(),
-                ProcessParameter {
-                    years: 2010..=2020,
-                    capital_cost: 1.0,
-                    fixed_operating_cost: 1.0,
-                    variable_operating_cost: 1.0,
-                    lifetime: 10,
-                    discount_rate: 1.0,
-                    capacity_to_activity: 1.0,
-                },
-            ),
-            (
-                "B".into(),
-                ProcessParameter {
-                    years: 2015..=2020,
-                    capital_cost: 1.0,
-                    fixed_operating_cost: 1.0,
-                    variable_operating_cost: 1.0,
-                    lifetime: 10,
-                    discount_rate: 1.0,
-                    capacity_to_activity: 1.0,
-                },
-            ),
-        ]
-        .into_iter()
-        .collect();
-        let actual =
-            read_process_parameters_from_iter(params_raw.into_iter(), &process_ids, &year_range)
-                .unwrap();
-        assert_eq!(expected, actual);
-    }
-
-    #[test]
-    fn test_read_process_parameters_from_iter_bad_multiple_params() {
-        let year_range = 2000..=2100;
-        let process_ids = ["A".into(), "B".into()].into_iter().collect();
-
-        let params_raw = [
-            ProcessParameterRaw {
-                process_id: "A".into(),
-                start_year: Some(2010),
-                end_year: Some(2020),
-                capital_cost: 1.0,
-                fixed_operating_cost: 1.0,
-                variable_operating_cost: 1.0,
-                lifetime: 10,
-                discount_rate: Some(1.0),
-                capacity_to_activity: Some(1.0),
-            },
-            ProcessParameterRaw {
-                process_id: "B".into(),
-                start_year: Some(2015),
-                end_year: Some(2020),
-                capital_cost: 1.0,
-                fixed_operating_cost: 1.0,
-                variable_operating_cost: 1.0,
-                lifetime: 10,
-                discount_rate: Some(1.0),
-                capacity_to_activity: Some(1.0),
-            },
-            ProcessParameterRaw {
-                process_id: "A".into(),
-                start_year: Some(2015),
-                end_year: Some(2020),
-                capital_cost: 1.0,
-                fixed_operating_cost: 1.0,
-                variable_operating_cost: 1.0,
-                lifetime: 10,
-                discount_rate: Some(1.0),
-                capacity_to_activity: Some(1.0),
-            },
-        ];
-
-        assert!(read_process_parameters_from_iter(
-            params_raw.into_iter(),
-            &process_ids,
-            &year_range
-        )
-        .is_err());
+        assert!(create_param_raw(0, Some(1.0), Some(-1.0))
+            .validate()
+            .is_err());
     }
 }
