@@ -3,7 +3,7 @@ use super::super::*;
 use crate::id::IDCollection;
 use crate::process::{Process, ProcessID, ProcessParameter, ProcessParameterMap};
 use crate::utils::try_insert;
-use crate::year::{deserialize_year, YearSelection};
+use crate::year::parse_year_str;
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -15,14 +15,13 @@ const PROCESS_PARAMETERS_FILE_NAME: &str = "process_parameters.csv";
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessParameterRaw {
     process_id: String,
+    year: String,
     capital_cost: f64,
     fixed_operating_cost: f64,
     variable_operating_cost: f64,
     lifetime: u32,
     discount_rate: Option<f64>,
     capacity_to_activity: Option<f64>,
-    #[serde(deserialize_with = "deserialize_year")]
-    year: YearSelection,
 }
 
 impl ProcessParameterRaw {
@@ -117,28 +116,25 @@ where
     let mut params: HashMap<ProcessID, ProcessParameterMap> = HashMap::new();
     for param_raw in iter {
         let id = process_ids.get_id_by_str(&param_raw.process_id)?;
-        let year = param_raw.year.clone();
-        let param = param_raw.into_parameter()?;
 
         let entry = params.entry(id.clone()).or_default();
         let process = processes
             .get(&id)
             .with_context(|| format!("Process {id} not found"))?;
-        let year_range = &process.years;
+        let process_year_range = &process.years;
+        let process_years: Vec<u32> = milestone_years
+            .iter()
+            .copied()
+            .filter(|year| process_year_range.contains(year))
+            .collect();
 
-        match year {
-            YearSelection::Some(years) => {
-                for year in years {
-                    try_insert(entry, year, param.clone())?;
-                }
-            }
-            YearSelection::All => {
-                for year in milestone_years.iter() {
-                    if year_range.contains(year) {
-                        try_insert(entry, *year, param.clone())?;
-                    }
-                }
-            }
+        let parameter_years =
+            parse_year_str(&param_raw.year, &process_years).with_context(|| {
+                format!("Invalid year for process {id}. Valid years are {process_years:?}")
+            })?;
+        let param = param_raw.into_parameter()?;
+        for year in parameter_years {
+            try_insert(entry, year, param.clone())?;
         }
     }
 
@@ -178,7 +174,7 @@ mod tests {
             lifetime,
             discount_rate,
             capacity_to_activity,
-            year: YearSelection::All,
+            year: "all".to_string(),
         }
     }
 
