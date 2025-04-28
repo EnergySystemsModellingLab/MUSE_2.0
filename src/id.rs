@@ -82,18 +82,6 @@ macro_rules! define_id_getter {
 }
 pub(crate) use define_id_getter;
 
-/// Implement the `HasRegionID` trait for the given type, assuming it has a field called `region_id`
-macro_rules! define_region_id_getter {
-    ($t:ty) => {
-        impl crate::id::HasRegionID for $t {
-            fn get_region_id(&self) -> &RegionID {
-                &self.region_id
-            }
-        }
-    };
-}
-pub(crate) use define_region_id_getter;
-
 /// A data structure containing a set of IDs
 pub trait IDCollection<ID: IDLike> {
     /// Get the ID from the collection by its string representation.

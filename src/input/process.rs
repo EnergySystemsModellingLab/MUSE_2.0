@@ -17,10 +17,8 @@ use availability::read_process_availabilities;
 mod flow;
 use flow::read_process_flows;
 mod parameter;
-use parameter::read_process_parameters;
-mod region;
 use crate::id::define_id_getter;
-use region::read_process_regions;
+use parameter::read_process_parameters;
 
 const PROCESSES_FILE_NAME: &str = "processes.csv";
 
@@ -59,7 +57,6 @@ pub fn read_processes(
     let flows = read_process_flows(model_dir, &process_ids, commodities)?;
     let year_range = milestone_years[0]..=milestone_years[milestone_years.len() - 1];
     let parameters = read_process_parameters(model_dir, &process_ids, &year_range)?;
-    let regions = read_process_regions(model_dir, &process_ids, region_ids)?;
 
     // Validate commodities after the flows have been read
     validate_commodities(
