@@ -154,13 +154,12 @@ where
                 }
             }
         }
-        if !missing_keys.is_empty() {
-            return Err(anyhow::anyhow!(
-                "Commodity {} is missing demand data for {:?}",
-                commodity_id,
-                missing_keys
-            ));
-        }
+        ensure!(
+            missing_keys.is_empty(),
+            "Commodity {} is missing demand data for {:?}",
+            commodity_id,
+            missing_keys
+        );
     }
 
     Ok(map)
