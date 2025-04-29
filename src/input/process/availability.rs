@@ -188,16 +188,25 @@ mod tests {
         value: f64,
     ) -> bool {
         let process_ids = iter::once("process1".into()).collect();
+        let milestone_years = [2010, 2020];
         let time_slice_info = get_time_slice_info();
 
         let avail = ProcessAvailabilityRaw {
             process_id: process_id.into(),
-            limit_type,
+            regions: "all".into(),
+            year: "all".into(),
             time_slice: time_slice.into(),
+            limit_type,
             value,
         };
-        read_process_availabilities_from_iter(iter::once(avail), &process_ids, &time_slice_info)
-            .is_ok()
+        read_process_availabilities_from_iter(
+            iter::once(avail),
+            &process_ids,
+            &processes,
+            &time_slice_info,
+            &milestone_years,
+        )
+        .is_ok()
     }
 
     #[test]
@@ -210,20 +219,24 @@ mod tests {
             ($limit_type: expr, $range: expr) => {
                 let avail = ProcessAvailabilityRaw {
                     process_id: "process1".into(),
-                    limit_type: $limit_type,
+                    regions: "GBR".into(),
+                    year: "2020".into(),
                     time_slice: "winter".into(),
+                    limit_type: $limit_type,
                     value,
                 };
                 let time_slice = time_slice_info
                     .get_time_slice_id_from_str("winter.day")
                     .unwrap();
-                let expected_map = iter::once((time_slice, $range)).collect();
+                let expected_map = iter::once((("GBR".into(), 2020, time_slice), $range)).collect();
                 let expected = iter::once(("process1".into(), expected_map));
                 assert_equal(
                     read_process_availabilities_from_iter(
                         iter::once(avail),
                         &process_ids,
+                        &processes,
                         &time_slice_info,
+                        &[2020],
                     )
                     .unwrap(),
                     expected,
@@ -261,18 +274,22 @@ mod tests {
     #[test]
     fn test_read_process_availabilities_from_iter_bad_overlapping_time_slices() {
         let process_ids = iter::once("process1".into()).collect();
+        let milestone_years = [2010, 2020];
         let time_slice_info = get_time_slice_info();
 
         let value = 0.5;
         let avail = ["winter", "winter.day"].map(|time_slice| ProcessAvailabilityRaw {
             process_id: "process1".into(),
-            limit_type: LimitType::Equality,
+            regions: "all".into(),
+            year: "all".into(),
             time_slice: time_slice.into(),
+            limit_type: LimitType::Equality,
             value,
         });
         assert!(read_process_availabilities_from_iter(
             avail.into_iter(),
             &process_ids,
+            processes,
             &time_slice_info,
             &milestone_years,
         )
@@ -333,6 +350,7 @@ mod tests {
         assert!(read_process_availabilities_from_iter(
             avail,
             &process_ids,
+            processes,
             &time_slice_info,
             &milestone_years
         )
@@ -353,6 +371,7 @@ mod tests {
             read_process_availabilities_from_iter(
                 avail,
                 &process_ids,
+                processes,
                 &time_slice_info,
                 &milestone_years
             )

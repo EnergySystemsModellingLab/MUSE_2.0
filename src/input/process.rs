@@ -302,10 +302,14 @@ mod tests {
             .map(|id| {
                 let mut map = ProcessEnergyLimitsMap::new();
                 map.insert(
-                    TimeSliceID {
-                        season: "winter".into(),
-                        time_of_day: "day".into(),
-                    },
+                    (
+                        "GBR".into(),
+                        2020,
+                        TimeSliceID {
+                            season: "winter".into(),
+                            time_of_day: "day".into(),
+                        },
+                    ),
                     0.1..=0.9,
                 );
                 (id.into(), map)
