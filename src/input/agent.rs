@@ -1,6 +1,8 @@
 //! Code for reading in agent-related data from CSV files.
 use super::*;
-use crate::agent::{Agent, AgentCostLimitsMap, AgentID, AgentMap, DecisionRule};
+use crate::agent::{
+    Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, AgentID, AgentMap, DecisionRule,
+};
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
 use crate::region::{parse_region_str, RegionID};
@@ -13,8 +15,8 @@ mod objective;
 use objective::read_agent_objectives;
 mod search_space;
 use search_space::read_agent_search_space;
-mod commodity;
-use commodity::read_agent_commodities;
+mod commodity_portion;
+use commodity_portion::read_agent_commodity_portions;
 mod cost_limit;
 use cost_limit::read_agent_cost_limits;
 
@@ -66,8 +68,13 @@ pub fn read_agents(
         commodities,
         milestone_years,
     )?;
-    let mut agent_commodities =
-        read_agent_commodities(model_dir, &agents, commodities, region_ids, milestone_years)?;
+    let mut agent_commodities = read_agent_commodity_portions(
+        model_dir,
+        &agents,
+        commodities,
+        region_ids,
+        milestone_years,
+    )?;
     let mut cost_limits = read_agent_cost_limits(model_dir, &agent_ids, milestone_years)?;
 
     for (id, agent) in agents.iter_mut() {
@@ -75,7 +82,9 @@ pub fn read_agents(
         if let Some(search_space) = search_spaces.remove(id) {
             agent.search_space = search_space;
         }
-        agent.commodities = agent_commodities.remove(id).unwrap();
+        agent.commodity_portions = agent_commodities
+            .remove(id)
+            .with_context(|| format!("Missing commodity portions for agent {}", id))?;
         if let Some(cost_limits) = cost_limits.remove(id) {
             agent.cost_limits = cost_limits;
         }
@@ -132,7 +141,7 @@ where
         let agent = Agent {
             id: AgentID(agent_raw.id.into()),
             description: agent_raw.description,
-            commodities: Vec::new(),
+            commodity_portions: AgentCommodityPortionsMap::new(),
             search_space: Vec::new(),
             decision_rule,
             cost_limits: AgentCostLimitsMap::new(),
@@ -169,7 +178,7 @@ mod tests {
         let agent_out = Agent {
             id: "agent".into(),
             description: "".into(),
-            commodities: Vec::new(),
+            commodity_portions: AgentCommodityPortionsMap::new(),
             search_space: Vec::new(),
             decision_rule: DecisionRule::Single,
             cost_limits: AgentCostLimitsMap::new(),

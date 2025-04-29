@@ -1,57 +1,30 @@
 //! Code for reading the agent commodities CSV file.
 use super::super::*;
-use crate::agent::{AgentCommodity, AgentID, AgentMap};
-use crate::commodity::{CommodityMap, CommodityType};
+use crate::agent::{AgentCommodityPortionsMap, AgentID, AgentMap};
+use crate::commodity::{CommodityID, CommodityMap, CommodityType};
 use crate::region::RegionID;
+use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
-use std::rc::Rc;
 
-const AGENT_COMMODITIES_FILE_NAME: &str = "agent_commodities.csv";
+const AGENT_COMMODITIES_FILE_NAME: &str = "agent_commodity_portions.csv";
 
 #[derive(PartialEq, Debug, Deserialize)]
-struct AgentCommodityRaw {
+struct AgentCommodityPortionRaw {
     /// Unique agent id identifying the agent.
     agent_id: String,
     /// The commodity that the agent is responsible for.
     commodity_id: String,
     /// The year the commodity portion applies to.
-    year: u32,
+    year: String,
     /// The proportion of the commodity production that the agent is responsible for.
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     commodity_portion: f64,
 }
 
-impl AgentCommodityRaw {
-    fn to_agent_commodity(
-        &self,
-        commodities: &CommodityMap,
-        milestone_years: &[u32],
-    ) -> Result<AgentCommodity> {
-        // Get commodity
-        let commodity = commodities
-            .get(self.commodity_id.as_str())
-            .context("Invalid commodity ID")?;
-
-        // Check that the year is a valid milestone year
-        ensure!(
-            milestone_years.binary_search(&self.year).is_ok(),
-            "Invalid milestone year {}",
-            self.year
-        );
-
-        // Create AgentCommodity
-        Ok(AgentCommodity {
-            year: self.year,
-            commodity: Rc::clone(commodity),
-            commodity_portion: self.commodity_portion,
-        })
-    }
-}
-
-/// Read agent commodities info from the agent_commodities.csv file.
+/// Read agent commodity portions info from the agent_commodity_portions.csv file.
 ///
 /// # Arguments
 ///
@@ -60,17 +33,17 @@ impl AgentCommodityRaw {
 /// # Returns
 ///
 /// A map of Agents, with the agent ID as the key
-pub fn read_agent_commodities(
+pub fn read_agent_commodity_portions(
     model_dir: &Path,
     agents: &AgentMap,
     commodities: &CommodityMap,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
-) -> Result<HashMap<AgentID, Vec<AgentCommodity>>> {
+) -> Result<HashMap<AgentID, AgentCommodityPortionsMap>> {
     let file_path = model_dir.join(AGENT_COMMODITIES_FILE_NAME);
-    let agent_commodities_csv = read_csv(&file_path)?;
-    read_agent_commodities_from_iter(
-        agent_commodities_csv,
+    let agent_commodity_portions_csv = read_csv(&file_path)?;
+    read_agent_commodity_portions_from_iter(
+        agent_commodity_portions_csv,
         agents,
         commodities,
         region_ids,
@@ -79,63 +52,79 @@ pub fn read_agent_commodities(
     .with_context(|| input_err_msg(&file_path))
 }
 
-fn read_agent_commodities_from_iter<I>(
+fn read_agent_commodity_portions_from_iter<I>(
     iter: I,
     agents: &AgentMap,
     commodities: &CommodityMap,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
-) -> Result<HashMap<AgentID, Vec<AgentCommodity>>>
+) -> Result<HashMap<AgentID, AgentCommodityPortionsMap>>
 where
-    I: Iterator<Item = AgentCommodityRaw>,
+    I: Iterator<Item = AgentCommodityPortionRaw>,
 {
-    let mut agent_commodities = HashMap::new();
-    for agent_commodity_raw in iter {
-        let agent_commodity =
-            agent_commodity_raw.to_agent_commodity(commodities, milestone_years)?;
-
+    let mut agent_commodity_portions = HashMap::new();
+    for agent_commodity_portion_raw in iter {
+        // Get agent ID
+        let agent_id_raw = agent_commodity_portion_raw.agent_id.as_str();
         let (id, _agent) = agents
-            .get_key_value(agent_commodity_raw.agent_id.as_str())
-            .context("Invalid agent ID")?;
+            .get_key_value(agent_id_raw)
+            .with_context(|| format!("Invalid agent ID {agent_id_raw}"))?;
 
-        // Append to Vec with the corresponding key or create
-        agent_commodities
+        // Get/create entry for agent
+        let entry = agent_commodity_portions
             .entry(id.clone())
-            .or_insert_with(|| Vec::with_capacity(1))
-            .push(agent_commodity);
+            .or_insert_with(AgentCommodityPortionsMap::new);
+
+        // Insert portion for the commodity/year(s)
+        let commodity_id_raw = agent_commodity_portion_raw.commodity_id.as_str();
+        let (commodity_id, _commodity) = commodities
+            .get_key_value(commodity_id_raw)
+            .with_context(|| format!("Invalid commodity ID {commodity_id_raw}"))?;
+        let years = parse_year_str(&agent_commodity_portion_raw.year, milestone_years)?;
+        for year in years {
+            try_insert(
+                entry,
+                (commodity_id.clone(), year),
+                agent_commodity_portion_raw.commodity_portion,
+            )?;
+        }
     }
 
-    validate_agent_commodities(
-        &agent_commodities,
+    validate_agent_commodity_portions(
+        &agent_commodity_portions,
         agents,
         commodities,
         region_ids,
         milestone_years,
     )?;
 
-    Ok(agent_commodities)
+    Ok(agent_commodity_portions)
 }
 
-fn validate_agent_commodities(
-    agent_commodities: &HashMap<AgentID, Vec<AgentCommodity>>,
+fn validate_agent_commodity_portions(
+    agent_commodity_portions: &HashMap<AgentID, AgentCommodityPortionsMap>,
     agents: &AgentMap,
     commodities: &CommodityMap,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<()> {
-    // CHECK 1: For each agent there must be at least one commodity for all years
-    for (id, agent_commodities) in agent_commodities.iter() {
-        let mut years = HashSet::new();
-        for agent_commodity in agent_commodities {
-            years.insert(agent_commodity.year);
-        }
-        for year in milestone_years {
-            ensure!(
-                years.contains(year),
-                "Agent {} does not have a commodity for year {}",
-                id,
-                year
-            );
+    // CHECK 1: Each specified commodity must have data for all years
+    for (id, portions) in agent_commodity_portions {
+        // Colate set of commodities for this agent
+        let commodity_ids: HashSet<CommodityID> =
+            HashSet::from_iter(portions.keys().map(|(id, _)| id.clone()));
+
+        // Check that each commodity has data for all milestone years
+        for commodity_id in commodity_ids {
+            for year in milestone_years {
+                ensure!(
+                    portions.contains_key(&(commodity_id.clone(), *year)),
+                    "Agent {} does not have data for commodity {} in year {}",
+                    id,
+                    commodity_id,
+                    year
+                );
+            }
         }
     }
 
@@ -143,18 +132,16 @@ fn validate_agent_commodities(
     // First step is to create a map with the key as (commodity_id, year, region_id), and the value
     // as the sum of the portions for that key across all agents
     let mut summed_portions = HashMap::new();
-    for (id, agent_commodities) in agent_commodities.iter() {
+    for (id, agent_commodity_portions) in agent_commodity_portions.iter() {
         let agent = agents.get(id).context("Invalid agent ID")?;
-        for agent_commodity in agent_commodities {
-            let commodity_id = agent_commodity.commodity.get_id();
-            let portion = agent_commodity.commodity_portion;
+        for ((commodity_id, year), portion) in agent_commodity_portions {
             for region in region_ids {
                 if agent.regions.contains(region) {
-                    let key = (commodity_id, agent_commodity.year, region);
+                    let key = (commodity_id, year, region);
                     summed_portions
                         .entry(key)
-                        .and_modify(|v| *v += portion)
-                        .or_insert(portion);
+                        .and_modify(|v| *v += *portion)
+                        .or_insert(*portion);
                 }
             }
         }
@@ -189,7 +176,7 @@ fn validate_agent_commodities(
     for commodity_id in svd_and_sed_commodities {
         for year in milestone_years {
             for region in region_ids {
-                let key = (&commodity_id, *year, region);
+                let key = (&commodity_id, year, region);
                 ensure!(
                     summed_portions.contains_key(&key),
                     "Commodity {} in year {} and region {} is not covered",
@@ -210,66 +197,18 @@ mod tests {
     use crate::agent::{Agent, AgentCostLimitsMap, DecisionRule};
     use crate::commodity::{Commodity, CommodityCostMap, CommodityID, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
-
-    use std::iter;
-
-    #[test]
-    fn test_agent_commodity_raw_to_agent_commodity() {
-        let milestone_years = [2020, 2021, 2022];
-        let commodity = Rc::new(Commodity {
-            id: "commodity1".into(),
-            description: "A commodity".into(),
-            kind: CommodityType::SupplyEqualsDemand,
-            time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::new(),
-            demand: DemandMap::new(),
-        });
-        let commodities = iter::once(("commodity1".into(), Rc::clone(&commodity))).collect();
-
-        // Valid case
-        let raw = AgentCommodityRaw {
-            agent_id: "agent1".into(),
-            commodity_id: "commodity1".into(),
-            year: 2020,
-            commodity_portion: 1.0,
-        };
-        assert!(raw
-            .to_agent_commodity(&commodities, &milestone_years)
-            .is_ok());
-
-        // Invalid case: year not in milestone years
-        let raw = AgentCommodityRaw {
-            agent_id: "agent1".into(),
-            commodity_id: "commodity1".into(),
-            year: 2019,
-            commodity_portion: 1.0,
-        };
-        assert!(raw
-            .to_agent_commodity(&commodities, &milestone_years)
-            .is_err());
-
-        // Invalid case: invalid commodity ID
-        let raw = AgentCommodityRaw {
-            agent_id: "agent1".into(),
-            commodity_id: "invalid_commodity".into(),
-            year: 2020,
-            commodity_portion: 1.0,
-        };
-        assert!(raw
-            .to_agent_commodity(&commodities, &milestone_years)
-            .is_err());
-    }
+    use std::rc::Rc;
 
     #[test]
-    fn test_validate_agent_commodities() {
-        let region_ids = HashSet::from([RegionID::new("region1")]);
+    fn test_validate_agent_commodity_portions() {
+        let region_ids = HashSet::from([RegionID::new("region1"), RegionID::new("region2")]);
         let milestone_years = [2020];
         let agents = IndexMap::from([(
             AgentID::new("agent1"),
             Agent {
                 id: "agent1".into(),
                 description: "An agent".into(),
-                commodities: Vec::new(),
+                commodity_portions: AgentCommodityPortionsMap::new(),
                 search_space: Vec::new(),
                 decision_rule: DecisionRule::Single,
                 cost_limits: AgentCostLimitsMap::new(),
@@ -290,14 +229,11 @@ mod tests {
         )]);
 
         // Valid case
-        let agent_commodity = AgentCommodity {
-            year: 2020,
-            commodity: Rc::clone(commodities.get("commodity1").unwrap()),
-            commodity_portion: 1.0,
-        };
-        let agent_commodities = HashMap::from([(AgentID::new("agent1"), vec![agent_commodity])]);
-        assert!(validate_agent_commodities(
-            &agent_commodities,
+        let mut map = AgentCommodityPortionsMap::new();
+        map.insert(("commodity1".into(), 2020), 1.0);
+        let agent_commodity_portions = HashMap::from([("agent1".into(), map)]);
+        assert!(validate_agent_commodity_portions(
+            &agent_commodity_portions,
             &agents,
             &commodities,
             &region_ids,
@@ -306,14 +242,10 @@ mod tests {
         .is_ok());
 
         // Invalid case: portions do not sum to 1
-        let agent_commodity_v2 = AgentCommodity {
-            year: 2020,
-            commodity: Rc::clone(commodities.get("commodity1").unwrap()),
-            commodity_portion: 0.5,
-        };
-        let agent_commodities_v2 =
-            HashMap::from([(AgentID::new("agent1"), vec![agent_commodity_v2])]);
-        assert!(validate_agent_commodities(
+        let mut map_v2 = AgentCommodityPortionsMap::new();
+        map_v2.insert(("commodity1".into(), 2020), 0.5);
+        let agent_commodities_v2 = HashMap::from([("agent1".into(), map_v2)]);
+        assert!(validate_agent_commodity_portions(
             &agent_commodities_v2,
             &agents,
             &commodities,
@@ -334,8 +266,8 @@ mod tests {
                 demand: DemandMap::new(),
             }),
         );
-        assert!(validate_agent_commodities(
-            &agent_commodities,
+        assert!(validate_agent_commodity_portions(
+            &agent_commodity_portions,
             &agents,
             &commodities,
             &region_ids,
