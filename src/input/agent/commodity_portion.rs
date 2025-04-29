@@ -24,7 +24,7 @@ struct AgentCommodityPortionRaw {
     commodity_portion: f64,
 }
 
-/// Read agent commodity portions info from the agent_commodity_portrions.csv file.
+/// Read agent commodity portions info from the agent_commodity_portions.csv file.
 ///
 /// # Arguments
 ///
