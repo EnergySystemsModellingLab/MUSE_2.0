@@ -232,7 +232,7 @@ fn calculate_cost_coefficient(
         coeff += asset
             .process
             .parameters
-            .get(&asset.commission_year)
+            .get(&(asset.region_id.clone(), asset.commission_year))
             .unwrap()
             .variable_operating_cost
     }
@@ -290,8 +290,8 @@ mod tests {
             capacity_to_activity: 1.0,
         };
         let mut process_parameter_map = ProcessParameterMap::new();
-        process_parameter_map.insert(2010, process_param.clone());
-        process_parameter_map.insert(2020, process_param.clone());
+        process_parameter_map.insert(("GBR".into(), 2010), process_param.clone());
+        process_parameter_map.insert(("GBR".into(), 2020), process_param.clone());
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
             description: "Some description".into(),

@@ -243,7 +243,7 @@ fn validate_svd_commodity(
                                 .get(&*flow.process_id)
                                 .unwrap()
                                 .keys()
-                                .contains(&year)
+                                .contains(&(region_id.clone(), year))
                             && params
                                 .availabilities
                                 .get(&*flow.process_id)
@@ -319,7 +319,7 @@ mod tests {
                     capacity_to_activity: 0.0,
                 };
                 for year in [2010, 2020] {
-                    parameter_map.insert(year, parameter.clone());
+                    parameter_map.insert(("GBR".into(), year), parameter.clone());
                 }
                 (id.into(), parameter_map)
             })
