@@ -2,7 +2,7 @@
 use super::*;
 use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::process::{
-    EnergyLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameterMap,
+    ProcessEnergyLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameterMap,
 };
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::TimeSliceInfo;
@@ -57,7 +57,7 @@ pub fn read_processes(
     let mut processes = read_processes_file(model_dir, &year_range, region_ids)?;
     let process_ids = processes.keys().cloned().collect();
 
-    let mut energy_limits = read_process_availabilities(model_dir, &process_ids, time_slice_info)?;
+    let mut energy_limits = read_process_availabilities(model_dir, &process_ids, &processes, time_slice_info)?;
     let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
     let mut parameters =
         read_process_parameters(model_dir, &process_ids, &processes, milestone_years)?;
@@ -133,7 +133,7 @@ where
             id: process_raw.id.clone(),
             description: process_raw.description,
             years: start_year..=end_year,
-            energy_limits: EnergyLimitsMap::new(),
+            energy_limits: ProcessEnergyLimitsMap::new(),
             flows: Vec::new(),
             parameters: ProcessParameterMap::new(),
             regions,
@@ -154,7 +154,7 @@ struct ValidationParams<'a> {
     milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
     parameters: &'a HashMap<ProcessID, ProcessParameterMap>,
-    availabilities: &'a HashMap<ProcessID, EnergyLimitsMap>,
+    availabilities: &'a HashMap<ProcessID, ProcessEnergyLimitsMap>,
 }
 
 /// Perform consistency checks for commodity flows.
@@ -165,7 +165,7 @@ fn validate_commodities(
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
     parameters: &HashMap<ProcessID, ProcessParameterMap>,
-    availabilities: &HashMap<ProcessID, EnergyLimitsMap>,
+    availabilities: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
 ) -> anyhow::Result<()> {
     let params = ValidationParams {
         flows,
@@ -248,7 +248,7 @@ fn validate_svd_commodity(
                                 .availabilities
                                 .get(&*flow.process_id)
                                 .unwrap()
-                                .get(time_slice)
+                                .get(&(region_id.clone(), year, time_slice.clone()))
                                 .unwrap()
                                 .end()
                                 > &0.0
@@ -284,7 +284,7 @@ mod tests {
     use super::*;
 
     struct ProcessData {
-        availabilities: HashMap<ProcessID, EnergyLimitsMap>,
+        availabilities: HashMap<ProcessID, ProcessEnergyLimitsMap>,
         parameters: HashMap<ProcessID, ProcessParameterMap>,
         region_ids: HashSet<RegionID>,
     }
@@ -294,7 +294,7 @@ mod tests {
         let availabilities = ["process1", "process2"]
             .into_iter()
             .map(|id| {
-                let mut map = EnergyLimitsMap::new();
+                let mut map = ProcessEnergyLimitsMap::new();
                 map.insert(
                     TimeSliceID {
                         season: "winter".into(),

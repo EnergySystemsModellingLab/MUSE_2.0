@@ -95,7 +95,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::{EnergyLimitsMap, Process, ProcessParameterMap};
+    use crate::process::{Process, ProcessEnergyLimitsMap, ProcessParameterMap};
     use itertools::assert_equal;
     use std::iter;
 
@@ -106,7 +106,7 @@ mod tests {
             id: "process1".into(),
             description: "Description".into(),
             years: 2010..=2020,
-            energy_limits: EnergyLimitsMap::new(),
+            energy_limits: ProcessEnergyLimitsMap::new(),
             flows: vec![],
             parameters: ProcessParameterMap::new(),
             regions: region_ids.clone(),
@@ -181,7 +181,7 @@ mod tests {
             id: "process1".into(),
             description: "Description".into(),
             years: 2010..=2020,
-            energy_limits: EnergyLimitsMap::new(),
+            energy_limits: ProcessEnergyLimitsMap::new(),
             flows: vec![],
             parameters: ProcessParameterMap::new(),
             regions: HashSet::from(["GBR".into()]),

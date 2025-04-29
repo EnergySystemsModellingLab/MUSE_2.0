@@ -1,8 +1,10 @@
 //! Code for reading process availabilities CSV file
 use super::super::*;
 use crate::id::IDCollection;
-use crate::process::{EnergyLimitsMap, ProcessID};
+use crate::process::{Process, ProcessEnergyLimitsMap, ProcessID};
+use crate::region::parse_region_str;
 use crate::time_slice::TimeSliceInfo;
+use crate::year::parse_year_str;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -15,8 +17,10 @@ const PROCESS_AVAILABILITIES_FILE_NAME: &str = "process_availabilities.csv";
 #[derive(Deserialize)]
 struct ProcessAvailabilityRaw {
     process_id: String,
-    limit_type: LimitType,
+    regions: String,
+    year: String,
     time_slice: String,
+    limit_type: LimitType,
     value: f64,
 }
 
@@ -49,37 +53,62 @@ enum LimitType {
 pub fn read_process_availabilities(
     model_dir: &Path,
     process_ids: &HashSet<ProcessID>,
+    processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<ProcessID, EnergyLimitsMap>> {
+) -> Result<HashMap<ProcessID, ProcessEnergyLimitsMap>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let process_availabilities_csv = read_csv(&file_path)?;
-    read_process_availabilities_from_iter(process_availabilities_csv, process_ids, time_slice_info)
-        .with_context(|| input_err_msg(&file_path))
+    read_process_availabilities_from_iter(
+        process_availabilities_csv,
+        process_ids,
+        processes,
+        time_slice_info,
+    )
+    .with_context(|| input_err_msg(&file_path))
 }
 
 /// Process raw process availabilities input data into [`EnergyLimitsMap`]s
 fn read_process_availabilities_from_iter<I>(
     iter: I,
     process_ids: &HashSet<ProcessID>,
+    processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<ProcessID, EnergyLimitsMap>>
+) -> Result<HashMap<ProcessID, ProcessEnergyLimitsMap>>
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
     let mut map = HashMap::new();
-
     for record in iter {
-        let process_id = process_ids.get_id_by_str(&record.process_id)?;
+        // Get process
+        let id = process_ids.get_id_by_str(&record.process_id)?;
+        let process = processes
+            .get(&id)
+            .with_context(|| format!("Process {id} not found"))?;
 
+        // Check availability value
         ensure!(
             record.value >= 0.0 && record.value <= 1.0,
             "value for availability must be between 0 and 1 inclusive"
         );
 
+        // Get regions
+        let process_regions = process.regions.clone();
+        let parameter_regions =
+            parse_region_str(&record.regions, &process_regions).with_context(|| {
+                format!("Invalid region for process {id}. Valid regions are {process_regions:?}")
+            })?;
+
+        // Get years
+        let process_years = process.years.clone();
+        let parameter_years = parse_year_str(&record.year, &process_years).with_context(|| {
+            format!("Invalid year for process {id}. Valid years are {process_years:?}")
+        })?;
+
+        // Get timeslices
         let ts_selection = time_slice_info.get_selection(&record.time_slice)?;
 
-        let map = map.entry(process_id).or_insert_with(EnergyLimitsMap::new);
-
+        // Insert the energy limit into the map
+        let entry = map.entry(id).or_insert_with(ProcessEnergyLimitsMap::new);
         for (time_slice, ts_length) in time_slice_info.iter_selection(&ts_selection) {
             // Calculate fraction of annual energy as availability multiplied by time slice length
             // The resulting limits are max/min PAC energy produced/consumed in each timeslice per
@@ -91,14 +120,11 @@ where
                 LimitType::Equality => value..=value,
             };
 
-            let existing = map.insert(time_slice.clone(), bounds.clone()).is_some();
-            ensure!(
-                !existing,
-                "Process availability entry covered by more than one time slice \
-                (process: {}, time slice: {})",
-                record.process_id,
-                time_slice
-            )
+            for region in parameter_regions {
+                for year in parameter_years {
+                    try_insert(entry, (region, year, *time_slice), bounds.clone())?;
+                }
+            }
         }
     }
 
@@ -109,7 +135,7 @@ where
 
 /// Check that every energy limits map has an entry for every time slice
 fn validate_energy_limits_maps(
-    map: &HashMap<ProcessID, EnergyLimitsMap>,
+    map: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
     for (process_id, map) in map.iter() {

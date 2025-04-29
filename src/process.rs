@@ -26,7 +26,7 @@ pub struct Process {
     /// The years in which this process is available for investment
     pub years: RangeInclusive<u32>,
     /// Limits on PAC energy consumption/production for each time slice (as a fraction of maximum)
-    pub energy_limits: EnergyLimitsMap,
+    pub energy_limits: ProcessEnergyLimitsMap,
     /// Maximum annual commodity flows for this process
     pub flows: Vec<ProcessFlow>,
     /// Additional parameters for this process
@@ -58,7 +58,7 @@ impl Process {
 ///
 /// The limits are given as ranges, depending on the user-specified limit type and value for
 /// availability.
-pub type EnergyLimitsMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
+pub type ProcessEnergyLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<f64>>;
 
 /// A map of [`ProcessParameter`]s, keyed by year
 pub type ProcessParameterMap = HashMap<(RegionID, u32), ProcessParameter>;
