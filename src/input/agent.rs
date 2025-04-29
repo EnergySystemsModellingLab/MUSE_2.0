@@ -164,7 +164,7 @@ mod tests {
             description: "".into(),
             decision_rule: "single".into(),
             decision_lexico_tolerance: None,
-            region_id: "GBR".into(),
+            regions: "GBR".into(),
         };
         let agent_out = Agent {
             id: "agent".into(),
@@ -187,14 +187,14 @@ mod tests {
                 description: "".into(),
                 decision_rule: "single".into(),
                 decision_lexico_tolerance: None,
-                region_id: "GBR".into(),
+                regions: "GBR".into(),
             },
             AgentRaw {
                 id: "agent".into(),
                 description: "".into(),
                 decision_rule: "single".into(),
                 decision_lexico_tolerance: None,
-                region_id: "GBR".into(),
+                regions: "GBR".into(),
             },
         ];
         assert!(read_agents_file_from_iter(agents.into_iter(), &region_ids).is_err());
@@ -205,7 +205,7 @@ mod tests {
             description: "".into(),
             decision_rule: "lexico".into(),
             decision_lexico_tolerance: None,
-            region_id: "GBR".into(),
+            regions: "GBR".into(),
         };
         assert!(read_agents_file_from_iter(iter::once(agent), &region_ids).is_err());
     }
