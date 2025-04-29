@@ -79,7 +79,9 @@ pub fn read_agents(
         if let Some(search_space) = search_spaces.remove(id) {
             agent.search_space = search_space;
         }
-        agent.commodity_portions = agent_commodities.remove(id).unwrap();
+        agent.commodity_portions = agent_commodities
+            .remove(id)
+            .with_context(|| format!("Missing commodity portions for agent {}", id))?;
         if let Some(cost_limits) = cost_limits.remove(id) {
             agent.cost_limits = cost_limits;
         }

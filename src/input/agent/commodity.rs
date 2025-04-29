@@ -1,7 +1,7 @@
 //! Code for reading the agent commodities CSV file.
 use super::super::*;
 use crate::agent::{AgentCommodityPortionsMap, AgentID, AgentMap};
-use crate::commodity::{CommodityMap, CommodityType};
+use crate::commodity::{CommodityID, CommodityMap, CommodityType};
 use crate::region::RegionID;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
@@ -108,7 +108,25 @@ fn validate_agent_commodities(
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<()> {
-    // CHECK 1: Each specified commodity must have data for all years (TODO)
+    // CHECK 1: Each specified commodity must have data for all years
+    for (id, portions) in agent_commodity_portions {
+        // Colate set of commodities for this agent
+        let commodity_ids: HashSet<CommodityID> =
+            HashSet::from_iter(portions.keys().map(|(id, _)| id.clone()));
+
+        // Check that each commodity has data for all milestone years
+        for commodity_id in commodity_ids {
+            for year in milestone_years {
+                ensure!(
+                    portions.contains_key(&(commodity_id.clone(), *year)),
+                    "Agent {} does not have data for commodity {} in year {}",
+                    id,
+                    commodity_id,
+                    year
+                );
+            }
+        }
+    }
 
     // CHECK 2: Total portions for each commodity/year/region must sum to 1
     // First step is to create a map with the key as (commodity_id, year, region_id), and the value
