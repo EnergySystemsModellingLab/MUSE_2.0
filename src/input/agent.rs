@@ -17,8 +17,8 @@ mod region;
 use region::read_agent_regions;
 mod search_space;
 use search_space::read_agent_search_space;
-mod commodity;
-use commodity::read_agent_commodities;
+mod commodity_portion;
+use commodity_portion::read_agent_commodity_portions;
 mod cost_limit;
 use cost_limit::read_agent_cost_limits;
 
@@ -69,8 +69,13 @@ pub fn read_agents(
         commodities,
         milestone_years,
     )?;
-    let mut agent_commodities =
-        read_agent_commodities(model_dir, &agents, commodities, region_ids, milestone_years)?;
+    let mut agent_commodities = read_agent_commodity_portions(
+        model_dir,
+        &agents,
+        commodities,
+        region_ids,
+        milestone_years,
+    )?;
     let mut cost_limits = read_agent_cost_limits(model_dir, &agent_ids, milestone_years)?;
 
     for (id, agent) in agents.iter_mut() {

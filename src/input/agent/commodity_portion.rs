@@ -24,7 +24,7 @@ struct AgentCommodityPortionRaw {
     commodity_portion: f64,
 }
 
-/// Read agent commodities info from the agent_commodities.csv file.
+/// Read agent commodity portions info from the agent_commodity_portrions.csv file.
 ///
 /// # Arguments
 ///
@@ -33,7 +33,7 @@ struct AgentCommodityPortionRaw {
 /// # Returns
 ///
 /// A map of Agents, with the agent ID as the key
-pub fn read_agent_commodities(
+pub fn read_agent_commodity_portions(
     model_dir: &Path,
     agents: &AgentMap,
     commodities: &CommodityMap,
@@ -42,7 +42,7 @@ pub fn read_agent_commodities(
 ) -> Result<HashMap<AgentID, AgentCommodityPortionsMap>> {
     let file_path = model_dir.join(AGENT_COMMODITIES_FILE_NAME);
     let agent_commodity_portions_csv = read_csv(&file_path)?;
-    read_agent_commodities_from_iter(
+    read_agent_commodity_portions_from_iter(
         agent_commodity_portions_csv,
         agents,
         commodities,
@@ -52,7 +52,7 @@ pub fn read_agent_commodities(
     .with_context(|| input_err_msg(&file_path))
 }
 
-fn read_agent_commodities_from_iter<I>(
+fn read_agent_commodity_portions_from_iter<I>(
     iter: I,
     agents: &AgentMap,
     commodities: &CommodityMap,
@@ -90,7 +90,7 @@ where
         }
     }
 
-    validate_agent_commodities(
+    validate_agent_commodity_portions(
         &agent_commodity_portions,
         agents,
         commodities,
@@ -101,7 +101,7 @@ where
     Ok(agent_commodity_portions)
 }
 
-fn validate_agent_commodities(
+fn validate_agent_commodity_portions(
     agent_commodity_portions: &HashMap<AgentID, AgentCommodityPortionsMap>,
     agents: &AgentMap,
     commodities: &CommodityMap,
@@ -201,7 +201,7 @@ mod tests {
     use std::rc::Rc;
 
     #[test]
-    fn test_validate_agent_commodities() {
+    fn test_validate_agent_commodity_portions() {
         let agents = IndexMap::from([(
             AgentID::new("agent1"),
             Agent {
@@ -233,7 +233,7 @@ mod tests {
         let mut map = AgentCommodityPortionsMap::new();
         map.insert(("commodity1".into(), 2020), 1.0);
         let agent_commodity_portions = HashMap::from([("agent1".into(), map)]);
-        assert!(validate_agent_commodities(
+        assert!(validate_agent_commodity_portions(
             &agent_commodity_portions,
             &agents,
             &commodities,
@@ -246,7 +246,7 @@ mod tests {
         let mut map_v2 = AgentCommodityPortionsMap::new();
         map_v2.insert(("commodity1".into(), 2020), 0.5);
         let agent_commodities_v2 = HashMap::from([("agent1".into(), map_v2)]);
-        assert!(validate_agent_commodities(
+        assert!(validate_agent_commodity_portions(
             &agent_commodities_v2,
             &agents,
             &commodities,
@@ -267,7 +267,7 @@ mod tests {
                 demand: DemandMap::new(),
             }),
         );
-        assert!(validate_agent_commodities(
+        assert!(validate_agent_commodity_portions(
             &agent_commodity_portions,
             &agents,
             &commodities,
