@@ -55,6 +55,7 @@ pub fn read_process_availabilities(
     process_ids: &HashSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
+    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessEnergyLimitsMap>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let process_availabilities_csv = read_csv(&file_path)?;
@@ -63,6 +64,7 @@ pub fn read_process_availabilities(
         process_ids,
         processes,
         time_slice_info,
+        milestone_years,
     )
     .with_context(|| input_err_msg(&file_path))
 }
@@ -73,6 +75,7 @@ fn read_process_availabilities_from_iter<I>(
     process_ids: &HashSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
+    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessEnergyLimitsMap>>
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
@@ -93,14 +96,19 @@ where
 
         // Get regions
         let process_regions = process.regions.clone();
-        let parameter_regions =
+        let record_regions =
             parse_region_str(&record.regions, &process_regions).with_context(|| {
                 format!("Invalid region for process {id}. Valid regions are {process_regions:?}")
             })?;
 
         // Get years
-        let process_years = process.years.clone();
-        let parameter_years = parse_year_str(&record.year, &process_years).with_context(|| {
+        let process_year_range = &process.years;
+        let process_years: Vec<u32> = milestone_years
+            .iter()
+            .copied()
+            .filter(|year| process_year_range.contains(year))
+            .collect();
+        let record_years = parse_year_str(&record.year, &process_years).with_context(|| {
             format!("Invalid year for process {id}. Valid years are {process_years:?}")
         })?;
 
@@ -120,9 +128,13 @@ where
                 LimitType::Equality => value..=value,
             };
 
-            for region in parameter_regions {
-                for year in parameter_years {
-                    try_insert(entry, (region, year, *time_slice), bounds.clone())?;
+            for region in &record_regions {
+                for year in record_years.clone() {
+                    try_insert(
+                        entry,
+                        (region.clone(), year, time_slice.clone()),
+                        bounds.clone(),
+                    )?;
                 }
             }
         }
