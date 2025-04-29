@@ -9,7 +9,6 @@ use crate::time_slice::TimeSliceInfo;
 use anyhow::{bail, ensure, Context, Ok, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use std::ops::RangeInclusive;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -41,7 +40,7 @@ define_id_getter! {ProcessRaw, ProcessID}
 /// * `commodities` - Commodities for the model
 /// * `region_ids` - All possible region IDs
 /// * `time_slice_info` - Information about seasons and times of day
-/// * `year_range` - The possible range of milestone years
+/// * `milestone_years` - Years for which the model is run
 ///
 /// # Returns
 ///
@@ -53,8 +52,7 @@ pub fn read_processes(
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<ProcessMap> {
-    let year_range = milestone_years[0]..=milestone_years[milestone_years.len() - 1];
-    let mut processes = read_processes_file(model_dir, &year_range, region_ids)?;
+    let mut processes = read_processes_file(model_dir, region_ids, milestone_years)?;
     let process_ids = processes.keys().cloned().collect();
 
     let mut energy_limits = read_process_availabilities(
@@ -65,8 +63,7 @@ pub fn read_processes(
         milestone_years,
     )?;
     let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
-    let mut parameters =
-        read_process_parameters(model_dir, &process_ids, &processes, milestone_years)?;
+    let mut parameters = read_process_parameters(model_dir, &process_ids, &processes)?;
 
     // Validate commodities after the flows have been read
     validate_commodities(
@@ -103,27 +100,30 @@ pub fn read_processes(
 
 fn read_processes_file(
     model_dir: &Path,
-    year_range: &RangeInclusive<u32>,
     region_ids: &HashSet<RegionID>,
+    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, Process>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let processes_csv = read_csv(&file_path)?;
-    read_processes_file_from_iter(processes_csv, year_range, region_ids)
+    read_processes_file_from_iter(processes_csv, region_ids, milestone_years)
         .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_processes_file_from_iter<I>(
     iter: I,
-    year_range: &RangeInclusive<u32>,
     region_ids: &HashSet<RegionID>,
+    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, Process>>
 where
     I: Iterator<Item = ProcessRaw>,
 {
     let mut processes = HashMap::new();
     for process_raw in iter {
-        let start_year = process_raw.start_year.unwrap_or(*year_range.start());
-        let end_year = process_raw.end_year.unwrap_or(*year_range.end());
+        let start_year = process_raw.start_year.unwrap_or(milestone_years[0]);
+        let end_year = process_raw
+            .end_year
+            .unwrap_or(milestone_years[milestone_years.len() - 1]);
+        let year_range = start_year..=end_year;
 
         // Check year range is valid
         ensure!(
@@ -132,13 +132,21 @@ where
             process_raw.id
         );
 
+        // Get years
+        let process_years: Vec<u32> = milestone_years
+            .iter()
+            .copied()
+            .filter(|year| year_range.contains(year))
+            .collect();
+
         // Parse region ID
         let regions = parse_region_str(&process_raw.regions, region_ids)?;
 
         let process = Process {
             id: process_raw.id.clone(),
             description: process_raw.description,
-            years: start_year..=end_year,
+            years: process_years,
+            year_range,
             energy_limits: ProcessEnergyLimitsMap::new(),
             flows: Vec::new(),
             parameters: ProcessParameterMap::new(),
