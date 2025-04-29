@@ -2,7 +2,7 @@
 use super::*;
 use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::process::{
-    ProcessEnergyLimitsMap, Process, ProcessFlow, ProcessID, ProcessMap, ProcessParameterMap,
+    Process, ProcessEnergyLimitsMap, ProcessFlow, ProcessID, ProcessMap, ProcessParameterMap,
 };
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::TimeSliceInfo;
@@ -57,7 +57,8 @@ pub fn read_processes(
     let mut processes = read_processes_file(model_dir, &year_range, region_ids)?;
     let process_ids = processes.keys().cloned().collect();
 
-    let mut energy_limits = read_process_availabilities(model_dir, &process_ids, &processes, time_slice_info)?;
+    let mut energy_limits =
+        read_process_availabilities(model_dir, &process_ids, &processes, time_slice_info)?;
     let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
     let mut parameters =
         read_process_parameters(model_dir, &process_ids, &processes, milestone_years)?;
