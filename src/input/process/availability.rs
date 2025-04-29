@@ -273,7 +273,8 @@ mod tests {
         assert!(read_process_availabilities_from_iter(
             avail.into_iter(),
             &process_ids,
-            &time_slice_info
+            &time_slice_info,
+            &milestone_years,
         )
         .is_err());
     }
@@ -301,6 +302,7 @@ mod tests {
     #[test]
     fn test_read_process_availabilities_from_iter_bad_missing_entry() {
         let process_ids = iter::once("process1".into()).collect();
+        let milestone_years = [2010, 2020];
         let slices = [
             TimeSliceID {
                 season: "winter".into(),
@@ -322,30 +324,43 @@ mod tests {
             .into_iter()
             .map(|time_slice| ProcessAvailabilityRaw {
                 process_id: "process1".into(),
-                limit_type: LimitType::Equality,
+                regions: "all".into(),
+                year: "all".into(),
                 time_slice,
+                limit_type: LimitType::Equality,
                 value: 0.0,
             });
-        assert!(
-            read_process_availabilities_from_iter(avail, &process_ids, &time_slice_info).is_ok()
-        );
+        assert!(read_process_availabilities_from_iter(
+            avail,
+            &process_ids,
+            &time_slice_info,
+            &milestone_years
+        )
+        .is_ok());
 
         // Missing entry
         let avail = ["winter.day".into()]
             .into_iter()
             .map(|time_slice| ProcessAvailabilityRaw {
                 process_id: "process1".into(),
-                limit_type: LimitType::Equality,
+                regions: "all".into(),
+                year: "all".into(),
                 time_slice,
+                limit_type: LimitType::Equality,
                 value: 0.0,
             });
         assert_eq!(
-            read_process_availabilities_from_iter(avail, &process_ids, &time_slice_info)
-                .unwrap_err()
-                .chain()
-                .next()
-                .unwrap()
-                .to_string(),
+            read_process_availabilities_from_iter(
+                avail,
+                &process_ids,
+                &time_slice_info,
+                &milestone_years
+            )
+            .unwrap_err()
+            .chain()
+            .next()
+            .unwrap()
+            .to_string(),
             "Missing process availability entries for process process1. \
             There must be entries covering every time slice."
         );
