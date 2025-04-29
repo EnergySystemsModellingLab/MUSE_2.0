@@ -154,7 +154,7 @@ where
     // Check parameters cover all years and regions of the process
     for (id, parameters) in map.iter() {
         let process = processes.get(id).unwrap();
-        let year_range = process.years.clone();
+        let year_range = &process.years;
         let reference_years: HashSet<u32> = milestone_years
             .iter()
             .copied()
@@ -165,8 +165,9 @@ where
         let mut missing_keys = Vec::new();
         for year in &reference_years {
             for region in &reference_regions {
-                if !parameters.contains_key(&(region.clone(), *year)) {
-                    missing_keys.push((region, *year));
+                let key = (region.clone(), *year);
+                if !parameters.contains_key(&key) {
+                    missing_keys.push(key);
                 }
             }
         }
