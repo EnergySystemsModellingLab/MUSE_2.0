@@ -5,6 +5,7 @@ use crate::asset::{Asset, AssetID, AssetPool};
 use crate::commodity::{BalanceType, CommodityID};
 use crate::model::Model;
 use crate::process::ProcessFlow;
+use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
@@ -81,17 +82,17 @@ impl Solution<'_> {
     /// Keys and dual values for commodity balance constraints.
     pub fn iter_commodity_balance_duals(
         &self,
-    ) -> impl Iterator<Item = (&CommodityID, &TimeSliceID, f64)> {
+    ) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, f64)> {
         // Each commodity balance constraint applies to a particular time slice
         // selection (depending on time slice level). Where this covers multiple timeslices,
         // we return the same dual for each individual timeslice.
         self.commodity_balance_constraint_keys
             .iter()
             .zip(self.solution.dual_rows())
-            .flat_map(|((commodity_id, ts_selection), price)| {
+            .flat_map(|((commodity_id, region_id, ts_selection), price)| {
                 self.time_slice_info
                     .iter_selection(ts_selection)
-                    .map(move |(ts, _)| (commodity_id, ts, *price))
+                    .map(move |(ts, _)| (commodity_id, region_id, ts, *price))
             })
     }
 
@@ -230,7 +231,7 @@ fn calculate_cost_coefficient(
     if flow.is_pac {
         coeff += asset
             .process
-            .parameter
+            .parameters
             .get(&(asset.region_id.clone(), asset.commission_year))
             .unwrap()
             .variable_operating_cost
@@ -270,9 +271,9 @@ mod tests {
     use crate::process::{
         EnergyLimitsMap, FlowType, Process, ProcessParameter, ProcessParameterMap,
     };
-    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
+    use std::collections::HashSet;
     use std::rc::Rc;
 
     fn get_cost_coeff_args(
@@ -313,8 +314,8 @@ mod tests {
             years: 2010..=2020,
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![flow.clone()],
-            parameter: process_parameter_map,
-            regions: RegionSelection::All,
+            parameters: process_parameter_map,
+            regions: HashSet::from([RegionID("GBR".into())]),
         });
         let asset = Asset::new(
             "agent1".into(),

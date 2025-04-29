@@ -1,9 +1,9 @@
 //! Code for reading in agent-related data from CSV files.
 use super::*;
-use crate::agent::{Agent, AgentID, AgentMap, DecisionRule};
+use crate::agent::{Agent, AgentCostLimitsMap, AgentID, AgentMap, DecisionRule};
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
-use crate::region::{RegionID, RegionSelection};
+use crate::region::{parse_region_str, RegionID};
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -11,12 +11,12 @@ use std::path::Path;
 
 mod objective;
 use objective::read_agent_objectives;
-mod region;
-use region::read_agent_regions;
 mod search_space;
 use search_space::read_agent_search_space;
 mod commodity;
 use commodity::read_agent_commodities;
+mod cost_limit;
+use cost_limit::read_agent_cost_limits;
 
 const AGENT_FILE_NAME: &str = "agents.csv";
 
@@ -27,12 +27,10 @@ struct AgentRaw {
     id: String,
     /// A text description of the agent.
     description: String,
+    /// The region(s) in which the agent operates.
+    regions: String,
     /// The decision rule that the agent uses to decide investment.
     decision_rule: String,
-    /// The maximum capital cost the agent will pay.
-    capex_limit: Option<f64>,
-    /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
-    annual_cost_limit: Option<f64>,
     /// The tolerance around the main objective to consider secondary objectives.
     decision_lexico_tolerance: Option<f64>,
 }
@@ -57,10 +55,9 @@ pub fn read_agents(
     milestone_years: &[u32],
 ) -> Result<AgentMap> {
     let process_ids = processes.keys().cloned().collect();
-    let mut agents = read_agents_file(model_dir)?;
+    let mut agents = read_agents_file(model_dir, region_ids)?;
     let agent_ids = agents.keys().cloned().collect();
 
-    let mut agent_regions = read_agent_regions(model_dir, &agent_ids, region_ids)?;
     let mut objectives = read_agent_objectives(model_dir, &agents, milestone_years)?;
     let mut search_spaces = read_agent_search_space(
         model_dir,
@@ -71,14 +68,17 @@ pub fn read_agents(
     )?;
     let mut agent_commodities =
         read_agent_commodities(model_dir, &agents, commodities, region_ids, milestone_years)?;
+    let mut cost_limits = read_agent_cost_limits(model_dir, &agent_ids, milestone_years)?;
 
     for (id, agent) in agents.iter_mut() {
-        agent.regions = agent_regions.remove(id).unwrap();
         agent.objectives = objectives.remove(id).unwrap();
         if let Some(search_space) = search_spaces.remove(id) {
             agent.search_space = search_space;
         }
         agent.commodities = agent_commodities.remove(id).unwrap();
+        if let Some(cost_limits) = cost_limits.remove(id) {
+            agent.cost_limits = cost_limits;
+        }
     }
 
     Ok(agents)
@@ -95,19 +95,22 @@ pub fn read_agents(
 /// # Returns
 ///
 /// A map of Agents, with the agent ID as the key
-fn read_agents_file(model_dir: &Path) -> Result<AgentMap> {
+fn read_agents_file(model_dir: &Path, region_ids: &HashSet<RegionID>) -> Result<AgentMap> {
     let file_path = model_dir.join(AGENT_FILE_NAME);
     let agents_csv = read_csv(&file_path)?;
-    read_agents_file_from_iter(agents_csv).with_context(|| input_err_msg(&file_path))
+    read_agents_file_from_iter(agents_csv, region_ids).with_context(|| input_err_msg(&file_path))
 }
 
 /// Read agents info from an iterator.
-fn read_agents_file_from_iter<I>(iter: I) -> Result<AgentMap>
+fn read_agents_file_from_iter<I>(iter: I, region_ids: &HashSet<RegionID>) -> Result<AgentMap>
 where
     I: Iterator<Item = AgentRaw>,
 {
     let mut agents = AgentMap::new();
     for agent_raw in iter {
+        // Parse region ID
+        let regions = parse_region_str(&agent_raw.regions, region_ids)?;
+
         // Parse decision rule
         let decision_rule = match agent_raw.decision_rule.to_ascii_lowercase().as_str() {
             "single" => DecisionRule::Single,
@@ -132,9 +135,8 @@ where
             commodities: Vec::new(),
             search_space: Vec::new(),
             decision_rule,
-            capex_limit: agent_raw.capex_limit,
-            annual_cost_limit: agent_raw.annual_cost_limit,
-            regions: RegionSelection::default(),
+            cost_limits: AgentCostLimitsMap::new(),
+            regions,
             objectives: Vec::new(),
         };
 
@@ -151,19 +153,18 @@ where
 mod tests {
     use super::*;
     use crate::agent::DecisionRule;
-    use crate::region::RegionSelection;
     use std::iter;
 
     #[test]
     fn test_read_agents_file_from_iter() {
         // Valid case
+        let region_ids = HashSet::from(["GBR".into()]);
         let agent = AgentRaw {
             id: "agent".into(),
             description: "".into(),
             decision_rule: "single".into(),
-            capex_limit: None,
-            annual_cost_limit: None,
             decision_lexico_tolerance: None,
+            regions: "GBR".into(),
         };
         let agent_out = Agent {
             id: "agent".into(),
@@ -171,13 +172,12 @@ mod tests {
             commodities: Vec::new(),
             search_space: Vec::new(),
             decision_rule: DecisionRule::Single,
-            capex_limit: None,
-            annual_cost_limit: None,
-            regions: RegionSelection::default(),
+            cost_limits: AgentCostLimitsMap::new(),
+            regions: HashSet::from(["GBR".into()]),
             objectives: Vec::new(),
         };
         let expected = AgentMap::from_iter(iter::once(("agent".into(), agent_out)));
-        let actual = read_agents_file_from_iter(iter::once(agent)).unwrap();
+        let actual = read_agents_file_from_iter(iter::once(agent), &region_ids).unwrap();
         assert_eq!(actual, expected);
 
         // Duplicate agent ID
@@ -186,30 +186,27 @@ mod tests {
                 id: "agent".into(),
                 description: "".into(),
                 decision_rule: "single".into(),
-                capex_limit: None,
-                annual_cost_limit: None,
                 decision_lexico_tolerance: None,
+                regions: "GBR".into(),
             },
             AgentRaw {
                 id: "agent".into(),
                 description: "".into(),
                 decision_rule: "single".into(),
-                capex_limit: None,
-                annual_cost_limit: None,
                 decision_lexico_tolerance: None,
+                regions: "GBR".into(),
             },
         ];
-        assert!(read_agents_file_from_iter(agents.into_iter()).is_err());
+        assert!(read_agents_file_from_iter(agents.into_iter(), &region_ids).is_err());
 
         // Lexico tolerance missing for lexico decision rule
         let agent = AgentRaw {
             id: "agent".into(),
             description: "".into(),
             decision_rule: "lexico".into(),
-            capex_limit: None,
-            annual_cost_limit: None,
             decision_lexico_tolerance: None,
+            regions: "GBR".into(),
         };
-        assert!(read_agents_file_from_iter(iter::once(agent)).is_err());
+        assert!(read_agents_file_from_iter(iter::once(agent), &region_ids).is_err());
     }
 }

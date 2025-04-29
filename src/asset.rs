@@ -61,7 +61,7 @@ impl Asset {
         self.commission_year
             + self
                 .process
-                .parameter
+                .parameters
                 .get(&(self.region_id.clone(), self.commission_year))
                 .unwrap()
                 .lifetime
@@ -83,7 +83,7 @@ impl Asset {
         self.capacity
             * self
                 .process
-                .parameter
+                .parameters
                 .get(&(self.region_id.clone(), self.commission_year))
                 .unwrap()
                 .capacity_to_activity
@@ -203,7 +203,6 @@ mod tests {
     use crate::process::{
         EnergyLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter, ProcessParameterMap,
     };
-    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
     use std::iter;
@@ -252,8 +251,8 @@ mod tests {
             years: 2010..=2020,
             energy_limits,
             flows: vec![flow.clone()],
-            parameter: process_parameter_map,
-            regions: RegionSelection::All,
+            parameters: process_parameter_map,
+            regions: HashSet::from(["GBR".into()]),
         });
         let asset = Asset {
             id: AssetID(0),
@@ -287,8 +286,8 @@ mod tests {
             years: 2010..=2020,
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
-            parameter: process_parameter_map,
-            regions: RegionSelection::All,
+            parameters: process_parameter_map,
+            regions: HashSet::from(["GBR".into()]),
         });
         let future = [2020, 2010]
             .map(|year| {

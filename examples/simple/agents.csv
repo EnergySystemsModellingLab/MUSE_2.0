@@ -1,5 +1,5 @@
-id,description,decision_rule,capex_limit,annual_cost_limit,decision_lexico_tolerance
-A0_GEX,Gas extractors,single,,,
-A0_GPR,Gas processors,single,,,
-A0_ELC,Electricity generators,single,,,
-A0_RES,Residential consumer,single,,,
+id,description,regions,decision_rule,decision_lexico_tolerance
+A0_GEX,Gas extractors,GBR,single,
+A0_GPR,Gas processors,GBR,single,
+A0_ELC,Electricity generators,GBR,single,
+A0_RES,Residential consumer,GBR,single,

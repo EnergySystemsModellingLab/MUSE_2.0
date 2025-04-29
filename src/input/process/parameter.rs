@@ -2,9 +2,8 @@
 use super::super::*;
 use crate::id::IDCollection;
 use crate::process::{Process, ProcessID, ProcessParameter, ProcessParameterMap};
-use crate::region::{deserialize_region, RegionID, RegionSelection};
-use crate::utils::try_insert;
-use crate::year::{deserialize_year, YearSelection};
+use crate::region::parse_region_str;
+use crate::year::parse_year_str;
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -16,16 +15,14 @@ const PROCESS_PARAMETERS_FILE_NAME: &str = "process_parameters.csv";
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessParameterRaw {
     process_id: String,
+    regions: String,
+    year: String,
     capital_cost: f64,
     fixed_operating_cost: f64,
     variable_operating_cost: f64,
     lifetime: u32,
     discount_rate: Option<f64>,
     capacity_to_activity: Option<f64>,
-    #[serde(deserialize_with = "deserialize_year")]
-    year: YearSelection,
-    #[serde(deserialize_with = "deserialize_region")]
-    region_id: RegionSelection,
 }
 
 impl ProcessParameterRaw {
@@ -101,20 +98,11 @@ pub fn read_process_parameters(
     process_ids: &HashSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
-    region_ids: &HashSet<RegionID>,
-    process_regions: &HashMap<ProcessID, RegionSelection>,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
-    read_process_parameters_from_iter(
-        iter,
-        process_ids,
-        processes,
-        milestone_years,
-        region_ids,
-        process_regions,
-    )
-    .with_context(|| input_err_msg(&file_path))
+    read_process_parameters_from_iter(iter, process_ids, processes, milestone_years)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_process_parameters_from_iter<I>(
@@ -122,47 +110,43 @@ fn read_process_parameters_from_iter<I>(
     process_ids: &HashSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
-    region_ids: &HashSet<RegionID>,
-    process_regions: &HashMap<ProcessID, RegionSelection>,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
     let mut params: HashMap<ProcessID, ProcessParameterMap> = HashMap::new();
     for param_raw in iter {
+        // Get process
         let id = process_ids.get_id_by_str(&param_raw.process_id)?;
-        let year = param_raw.year.clone();
-        let region = param_raw.region_id.clone();
-        let param = param_raw.into_parameter()?;
-
-        let entry = params.entry(id.clone()).or_default();
         let process = processes
             .get(&id)
-            .ok_or_else(|| anyhow::anyhow!("Process {} not found", id))?;
-        let year_range = process.years.clone();
-        let process_regions = process_regions
-            .get(&id)
-            .ok_or_else(|| anyhow::anyhow!("Regions not found for process {}", id))?;
+            .with_context(|| format!("Process {id} not found"))?;
 
-        let selected_regions: Vec<_> = match region {
-            RegionSelection::Some(regions) => regions.iter().cloned().collect(),
-            RegionSelection::All => region_ids
-                .iter()
-                .filter(|r| process_regions.contains(r))
-                .cloned()
-                .collect(),
-        };
-        let selected_years: Vec<_> = match year {
-            YearSelection::Some(years) => years.iter().cloned().collect(),
-            YearSelection::All => milestone_years
-                .iter()
-                .cloned()
-                .filter(|y| year_range.contains(y))
-                .collect(),
-        };
-        for region in selected_regions {
-            for year in &selected_years {
-                try_insert(entry, (region.clone(), *year), param.clone())?;
+        // Get years
+        let process_year_range = &process.years;
+        let process_years: Vec<u32> = milestone_years
+            .iter()
+            .copied()
+            .filter(|year| process_year_range.contains(year))
+            .collect();
+        let parameter_years =
+            parse_year_str(&param_raw.year, &process_years).with_context(|| {
+                format!("Invalid year for process {id}. Valid years are {process_years:?}")
+            })?;
+
+        // Get regions
+        let process_regions = process.regions.clone();
+        let parameter_regions = parse_region_str(&param_raw.regions, &process_regions)
+            .with_context(|| {
+                format!("Invalid region for process {id}. Valid regions are {process_regions:?}")
+            })?;
+
+        // Insert parameter into the map
+        let param = param_raw.into_parameter()?;
+        let entry = params.entry(id.clone()).or_default();
+        for year in parameter_years {
+            for region in parameter_regions.clone() {
+                try_insert(entry, (region, year), param.clone())?;
             }
         }
     }
@@ -176,20 +160,18 @@ where
 
     // Check parameters cover all years and regions of the process
     for (id, parameter) in params.iter() {
-        let year_range = &processes.get(id).unwrap().years;
+        let process = processes.get(id).unwrap();
+        let year_range = process.years.clone();
         let reference_years: HashSet<u32> = milestone_years
             .iter()
             .copied()
             .filter(|year| year_range.contains(year))
             .collect();
-        let reference_regions = match process_regions.get(id).unwrap() {
-            RegionSelection::All => region_ids,
-            RegionSelection::Some(ref regions) => regions,
-        };
+        let reference_regions = process.regions.clone();
 
         let mut missing_keys = Vec::new();
         for year in &reference_years {
-            for region in reference_regions {
+            for region in &reference_regions {
                 if !parameter.contains_key(&(region.clone(), *year)) {
                     missing_keys.push((region, *year));
                 }
@@ -223,8 +205,8 @@ mod tests {
             lifetime,
             discount_rate,
             capacity_to_activity,
-            year: YearSelection::All,
-            region_id: RegionSelection::All,
+            year: "all".to_string(),
+            regions: "all".to_string(),
         }
     }
 

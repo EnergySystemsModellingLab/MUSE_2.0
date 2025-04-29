@@ -1,7 +1,7 @@
-id,description,start_year,end_year
-GASDRV,Dry gas extraction,2020,2030
-GASPRC,Gas processing,2020,2030
-WNDFRM,Wind farm,2020,2030
-GASCGT,Gas combined cycle turbine,2020,2030
-RGASBR,Gas boiler,2020,2030
-RELCHP,Heat pump,2020,2030
+id,description,regions,start_year,end_year
+GASDRV,Dry gas extraction,GBR,2020,2030
+GASPRC,Gas processing,GBR,2020,2030
+WNDFRM,Wind farm,GBR,2020,2030
+GASCGT,Gas combined cycle turbine,GBR,2020,2030
+RGASBR,Gas boiler,GBR,2020,2030
+RELCHP,Heat pump,GBR,2020,2030

@@ -88,6 +88,7 @@ struct CommodityFlowRow {
 struct CommodityPriceRow {
     milestone_year: u32,
     commodity_id: CommodityID,
+    region_id: RegionID,
     time_slice: String,
     price: f64,
 }
@@ -153,10 +154,11 @@ impl DataWriter {
 
     /// Write commodity prices to a CSV file
     pub fn write_prices(&mut self, milestone_year: u32, prices: &CommodityPrices) -> Result<()> {
-        for (commodity_id, time_slice, price) in prices.iter() {
+        for (commodity_id, region_id, time_slice, price) in prices.iter() {
             let row = CommodityPriceRow {
                 milestone_year,
                 commodity_id: commodity_id.clone(),
+                region_id: region_id.clone(),
                 time_slice: time_slice.to_string(),
                 price,
             };
@@ -180,16 +182,16 @@ impl DataWriter {
 mod tests {
     use super::*;
     use crate::process::{Process, ProcessParameterMap};
-    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
+    use std::collections::HashSet;
     use std::rc::Rc;
     use std::{collections::HashMap, iter};
     use tempfile::tempdir;
 
     fn get_asset() -> Asset {
         let process_id = ProcessID::new("process1");
-        let region_id = "GBR".into();
+        let region_id: RegionID = "GBR".into();
         let agent_id = "agent1".into();
         let commission_year = 2015;
         let process = Rc::new(Process {
@@ -198,8 +200,8 @@ mod tests {
             years: 2010..=2020,
             energy_limits: HashMap::new(),
             flows: vec![],
-            parameter: ProcessParameterMap::new(),
-            regions: RegionSelection::All,
+            parameters: ProcessParameterMap::new(),
+            regions: HashSet::from([region_id.clone()]),
         });
 
         Asset::new(agent_id, process, region_id, 2.0, commission_year)
@@ -276,6 +278,7 @@ mod tests {
     #[test]
     fn test_write_prices() {
         let commodity_id = "commodity1".into();
+        let region_id = "GBR".into();
         let time_slice = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
@@ -283,7 +286,7 @@ mod tests {
         let milestone_year = 2020;
         let price = 42.0;
         let mut prices = CommodityPrices::default();
-        prices.insert(&commodity_id, &time_slice, price);
+        prices.insert(&commodity_id, &region_id, &time_slice, price);
 
         let dir = tempdir().unwrap();
 
@@ -296,8 +299,9 @@ mod tests {
 
         // Read back and compare
         let expected = CommodityPriceRow {
-            commodity_id,
             milestone_year,
+            commodity_id,
+            region_id,
             time_slice: time_slice.to_string(),
             price,
         };
