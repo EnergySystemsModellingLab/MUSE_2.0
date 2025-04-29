@@ -9,7 +9,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 
-const AGENT_COMMODITIES_FILE_NAME: &str = "agent_commodities.csv";
+const AGENT_COMMODITIES_FILE_NAME: &str = "agent_commodity_portions.csv";
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct AgentCommodityPortionRaw {
