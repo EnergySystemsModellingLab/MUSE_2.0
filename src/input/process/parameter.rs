@@ -97,10 +97,11 @@ pub fn read_process_parameters(
     model_dir: &Path,
     process_ids: &HashSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
+    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
-    read_process_parameters_from_iter(iter, process_ids, processes)
+    read_process_parameters_from_iter(iter, process_ids, processes, milestone_years)
         .with_context(|| input_err_msg(&file_path))
 }
 
@@ -108,6 +109,7 @@ fn read_process_parameters_from_iter<I>(
     iter: I,
     process_ids: &HashSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
+    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
@@ -121,7 +123,12 @@ where
             .with_context(|| format!("Process {id} not found"))?;
 
         // Get years
-        let process_years = process.years.clone();
+        let process_year_range = &process.years;
+        let process_years: Vec<u32> = milestone_years
+            .iter()
+            .copied()
+            .filter(|year| process_year_range.contains(year))
+            .collect();
         let parameter_years =
             parse_year_str(&param_raw.year, &process_years).with_context(|| {
                 format!("Invalid year for process {id}. Valid years are {process_years:?}")
@@ -147,7 +154,12 @@ where
     // Check parameters cover all years and regions of the process
     for (id, parameters) in map.iter() {
         let process = processes.get(id).unwrap();
-        let reference_years = process.years.clone();
+        let year_range = process.years.clone();
+        let reference_years: HashSet<u32> = milestone_years
+            .iter()
+            .copied()
+            .filter(|year| year_range.contains(year))
+            .collect();
         let reference_regions = process.regions.clone();
 
         let mut missing_keys = Vec::new();
