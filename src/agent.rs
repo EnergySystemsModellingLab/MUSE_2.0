@@ -1,6 +1,6 @@
 //! Agents drive the economy of the MUSE 2.0 simulation, through relative investment in different
 //! assets.
-use crate::commodity::Commodity;
+use crate::commodity::{Commodity, CommodityID};
 use crate::id::{define_id_getter, define_id_type};
 use crate::process::ProcessID;
 use crate::region::RegionSelection;
@@ -19,6 +19,9 @@ pub type AgentMap = IndexMap<AgentID, Agent>;
 /// A map of cost limits for an agent, keyed by year
 pub type AgentCostLimitsMap = HashMap<u32, AgentCostLimits>;
 
+/// A map of commodity portions for an agent, keyed by commodity and year
+pub type AgentCommodityPortionsMap = HashMap<(CommodityID, u32), f64>;
+
 /// An agent in the simulation
 #[derive(Debug, Clone, PartialEq)]
 pub struct Agent {
@@ -26,8 +29,8 @@ pub struct Agent {
     pub id: AgentID,
     /// A text description of the agent.
     pub description: String,
-    /// The commodities that the agent is responsible for servicing.
-    pub commodities: Vec<AgentCommodity>,
+    /// The proportion of the commodity production that the agent is responsible for.
+    pub commodity_portions: AgentCommodityPortionsMap,
     /// The processes that the agent will consider investing in.
     pub search_space: Vec<AgentSearchSpace>,
     /// The decision rule that the agent uses to decide investment.
@@ -97,17 +100,6 @@ pub struct AgentObjective {
     pub decision_weight: Option<f64>,
     /// For the lexico decision rule, the order in which to consider objectives.
     pub decision_lexico_order: Option<u32>,
-}
-
-/// A commodity that the agent is responsible for servicing, with associated commodity portion
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct AgentCommodity {
-    /// The year the commodity portion applies to.
-    pub year: u32,
-    /// The commodity that the agent is responsible for servicing.
-    pub commodity: Rc<Commodity>,
-    /// The proportion of the commodity production that the agent is responsible for.
-    pub commodity_portion: f64,
 }
 
 /// The type of objective for the agent

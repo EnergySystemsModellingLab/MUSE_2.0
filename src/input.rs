@@ -143,11 +143,11 @@ where
 /// If the key already exists, it returns an error with a message indicating the key's existence.
 pub fn try_insert<K, V>(map: &mut HashMap<K, V>, key: K, value: V) -> Result<()>
 where
-    K: Eq + Hash + Clone + std::fmt::Display,
+    K: Eq + Hash + Clone + std::fmt::Debug,
 {
     let existing = map.insert(key.clone(), value);
     match existing {
-        Some(_) => bail!("Key {} already exists in the map", key),
+        Some(_) => bail!("Key {:?} already exists in the map", key),
         None => Ok(()),
     }
 }
