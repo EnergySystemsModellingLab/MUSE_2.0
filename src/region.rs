@@ -36,3 +36,38 @@ pub fn parse_region_str(s: &str, region_ids: &HashSet<RegionID>) -> Result<HashS
         .map(|y| region_ids.get_id_by_str(y.trim()))
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_region_str() {
+        let region_ids: HashSet<RegionID> = ["GBR".into(), "USA".into()].into_iter().collect();
+
+        // List of regions
+        let parsed = parse_region_str("GBR;USA", &region_ids).unwrap();
+        assert_eq!(parsed.len(), 2);
+        assert!(parsed.contains(&RegionID::from("GBR")));
+        assert!(parsed.contains(&RegionID::from("USA")));
+
+        // All regions
+        let parsed = parse_region_str("all", &region_ids).unwrap();
+        assert_eq!(parsed.len(), 2);
+        assert!(parsed.contains(&RegionID::from("GBR")));
+        assert!(parsed.contains(&RegionID::from("USA")));
+
+        // Single region
+        let parsed = parse_region_str("GBR", &region_ids).unwrap();
+        assert_eq!(parsed.len(), 1);
+        assert!(parsed.contains(&RegionID::from("GBR")));
+
+        // Empty string
+        let result = parse_region_str("", &region_ids);
+        assert!(result.is_err());
+
+        // Invalid region
+        let result = parse_region_str("GBR;INVALID", &region_ids);
+        assert!(result.is_err());
+    }
+}
