@@ -114,7 +114,7 @@ fn read_process_parameters_from_iter<I>(
 where
     I: Iterator<Item = ProcessParameterRaw>,
 {
-    let mut params: HashMap<ProcessID, ProcessParameterMap> = HashMap::new();
+    let mut map: HashMap<ProcessID, ProcessParameterMap> = HashMap::new();
     for param_raw in iter {
         // Get process
         let id = process_ids.get_id_by_str(&param_raw.process_id)?;
@@ -143,7 +143,7 @@ where
 
         // Insert parameter into the map
         let param = param_raw.into_parameter()?;
-        let entry = params.entry(id.clone()).or_default();
+        let entry = map.entry(id.clone()).or_default();
         for year in parameter_years {
             for region in parameter_regions.clone() {
                 try_insert(entry, (region, year), param.clone())?;
@@ -151,15 +151,8 @@ where
         }
     }
 
-    // Check if all processes are present in the parameters
-    for id in process_ids {
-        if !params.contains_key(id) {
-            return Err(anyhow::anyhow!("Process {} is missing parameters", id));
-        }
-    }
-
     // Check parameters cover all years and regions of the process
-    for (id, parameter) in params.iter() {
+    for (id, parameters) in map.iter() {
         let process = processes.get(id).unwrap();
         let year_range = process.years.clone();
         let reference_years: HashSet<u32> = milestone_years
@@ -172,20 +165,19 @@ where
         let mut missing_keys = Vec::new();
         for year in &reference_years {
             for region in &reference_regions {
-                if !parameter.contains_key(&(region.clone(), *year)) {
+                if !parameters.contains_key(&(region.clone(), *year)) {
                     missing_keys.push((region, *year));
                 }
             }
         }
-        if !missing_keys.is_empty() {
-            return Err(anyhow::anyhow!(
-                "Process {} is missing parameters for the following regions and years: {:?}",
-                id,
-                missing_keys
-            ));
-        }
+        ensure!(
+            !missing_keys.is_empty(),
+            "Process {} is missing parameters for the following regions and years: {:?}",
+            id,
+            missing_keys
+        );
     }
-    Ok(params)
+    Ok(map)
 }
 
 #[cfg(test)]

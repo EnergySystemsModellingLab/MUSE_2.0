@@ -4,17 +4,8 @@ use anyhow::{ensure, Result};
 use indexmap::IndexMap;
 use serde::Deserialize;
 use std::collections::HashSet;
-use std::str::FromStr;
 
 define_id_type! {RegionID}
-
-impl FromStr for RegionID {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(RegionID::from(s))
-    }
-}
 
 /// A map of [`Region`]s, keyed by region ID
 pub type RegionMap = IndexMap<RegionID, Region>;
