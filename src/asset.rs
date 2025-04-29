@@ -62,7 +62,7 @@ impl Asset {
             + self
                 .process
                 .parameters
-                .get(&self.commission_year)
+                .get(&(self.region_id.clone(), self.commission_year))
                 .unwrap()
                 .lifetime
     }
@@ -84,7 +84,7 @@ impl Asset {
             * self
                 .process
                 .parameters
-                .get(&self.commission_year)
+                .get(&(self.region_id.clone(), self.commission_year))
                 .unwrap()
                 .capacity_to_activity
     }
@@ -203,7 +203,6 @@ mod tests {
     use crate::process::{
         EnergyLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter, ProcessParameterMap,
     };
-    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
     use std::iter;
@@ -226,7 +225,7 @@ mod tests {
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
             .iter()
-            .map(|&year| (year, process_param.clone()))
+            .map(|&year| (("GBR".into(), year), process_param.clone()))
             .collect();
         let commodity = Rc::new(Commodity {
             id: "commodity1".into(),
@@ -253,7 +252,7 @@ mod tests {
             energy_limits,
             flows: vec![flow.clone()],
             parameters: process_parameter_map,
-            regions: RegionSelection::All,
+            regions: HashSet::from(["GBR".into()]),
         });
         let asset = Asset {
             id: AssetID(0),
@@ -279,7 +278,7 @@ mod tests {
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
             .iter()
-            .map(|&year| (year, process_param.clone()))
+            .map(|&year| (("GBR".into(), year), process_param.clone()))
             .collect();
         let process = Rc::new(Process {
             id: "process1".into(),
@@ -288,7 +287,7 @@ mod tests {
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
             parameters: process_parameter_map,
-            regions: RegionSelection::All,
+            regions: HashSet::from(["GBR".into()]),
         });
         let future = [2020, 2010]
             .map(|year| {
