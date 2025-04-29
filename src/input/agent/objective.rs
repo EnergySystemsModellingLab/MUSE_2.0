@@ -171,7 +171,6 @@ mod tests {
     use super::*;
     use crate::agent::ObjectiveType;
     use crate::agent::{Agent, AgentCostLimitsMap};
-    use crate::region::RegionSelection;
 
     #[test]
     fn test_check_objective_parameter() {
@@ -226,7 +225,7 @@ mod tests {
                 search_space: Vec::new(),
                 decision_rule: DecisionRule::Single,
                 cost_limits: AgentCostLimitsMap::new(),
-                regions: RegionSelection::All,
+                regions: HashSet::new(),
                 objectives: Vec::new(),
             },
         )]

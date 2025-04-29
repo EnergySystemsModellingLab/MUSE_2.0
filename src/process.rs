@@ -2,12 +2,12 @@
 //! module are used to represent these conversions along with the associated costs.
 use crate::commodity::Commodity;
 use crate::id::define_id_type;
-use crate::region::RegionSelection;
+use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -32,7 +32,7 @@ pub struct Process {
     /// Additional parameters for this process
     pub parameters: ProcessParameterMap,
     /// The regions in which this process can operate
-    pub regions: RegionSelection,
+    pub regions: HashSet<RegionID>,
 }
 
 impl Process {

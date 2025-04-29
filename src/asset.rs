@@ -203,7 +203,6 @@ mod tests {
     use crate::process::{
         EnergyLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter, ProcessParameterMap,
     };
-    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
     use std::iter;
@@ -253,7 +252,7 @@ mod tests {
             energy_limits,
             flows: vec![flow.clone()],
             parameters: process_parameter_map,
-            regions: RegionSelection::All,
+            regions: HashSet::from(["GBR".into()]),
         });
         let asset = Asset {
             id: AssetID(0),
@@ -288,7 +287,7 @@ mod tests {
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
             parameters: process_parameter_map,
-            regions: RegionSelection::All,
+            regions: HashSet::from(["GBR".into()]),
         });
         let future = [2020, 2010]
             .map(|year| {

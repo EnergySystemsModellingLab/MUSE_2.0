@@ -271,9 +271,9 @@ mod tests {
     use crate::process::{
         EnergyLimitsMap, FlowType, Process, ProcessParameter, ProcessParameterMap,
     };
-    use crate::region::RegionSelection;
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
+    use std::collections::HashSet;
     use std::rc::Rc;
 
     fn get_cost_coeff_args(
@@ -315,7 +315,7 @@ mod tests {
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![flow.clone()],
             parameters: process_parameter_map,
-            regions: RegionSelection::All,
+            regions: HashSet::from([RegionID("GBR".into())]),
         });
         let asset = Asset::new(
             "agent1".into(),

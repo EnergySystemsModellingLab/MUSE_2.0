@@ -96,12 +96,12 @@ where
 mod tests {
     use super::*;
     use crate::process::{EnergyLimitsMap, Process, ProcessParameterMap};
-    use crate::region::RegionSelection;
     use itertools::assert_equal;
     use std::iter;
 
     #[test]
     fn test_read_assets_from_iter() {
+        let region_ids: HashSet<RegionID> = ["GBR".into(), "USA".into()].into_iter().collect();
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
@@ -109,13 +109,12 @@ mod tests {
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
             parameters: ProcessParameterMap::new(),
-            regions: RegionSelection::All,
+            regions: region_ids.clone(),
         });
         let processes = [(process.id.clone(), Rc::clone(&process))]
             .into_iter()
             .collect();
         let agent_ids = ["agent1".into()].into_iter().collect();
-        let region_ids = ["GBR".into(), "USA".into()].into_iter().collect();
 
         // Valid
         let asset_in = AssetRaw {
@@ -185,7 +184,7 @@ mod tests {
             energy_limits: EnergyLimitsMap::new(),
             flows: vec![],
             parameters: ProcessParameterMap::new(),
-            regions: RegionSelection::Some(["GBR".into()].into_iter().collect()),
+            regions: HashSet::from(["GBR".into()]),
         });
         let asset_in = AssetRaw {
             agent_id: "agent1".into(),
