@@ -28,7 +28,7 @@ struct AgentRaw {
     /// A text description of the agent.
     description: String,
     /// The region(s) in which the agent operates.
-    region_id: String,
+    regions: String,
     /// The decision rule that the agent uses to decide investment.
     decision_rule: String,
     /// The tolerance around the main objective to consider secondary objectives.
@@ -109,7 +109,7 @@ where
     let mut agents = AgentMap::new();
     for agent_raw in iter {
         // Parse region ID
-        let regions = parse_region_str(&agent_raw.region_id, region_ids)?;
+        let regions = parse_region_str(&agent_raw.regions, region_ids)?;
 
         // Parse decision rule
         let decision_rule = match agent_raw.decision_rule.to_ascii_lowercase().as_str() {

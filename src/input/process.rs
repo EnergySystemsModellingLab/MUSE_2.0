@@ -27,7 +27,7 @@ const PROCESSES_FILE_NAME: &str = "processes.csv";
 struct ProcessRaw {
     id: ProcessID,
     description: String,
-    region_id: String,
+    regions: String,
     start_year: Option<u32>,
     end_year: Option<u32>,
 }
@@ -127,7 +127,7 @@ where
         );
 
         // Parse region ID
-        let regions = parse_region_str(&process_raw.region_id, region_ids)?;
+        let regions = parse_region_str(&process_raw.regions, region_ids)?;
 
         let process = Process {
             id: process_raw.id.clone(),

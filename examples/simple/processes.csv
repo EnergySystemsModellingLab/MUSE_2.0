@@ -1,4 +1,4 @@
-id,description,region_id,start_year,end_year
+id,description,regions,start_year,end_year
 GASDRV,Dry gas extraction,GBR,2020,2030
 GASPRC,Gas processing,GBR,2020,2030
 WNDFRM,Wind farm,GBR,2020,2030
