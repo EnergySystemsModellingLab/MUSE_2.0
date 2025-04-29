@@ -120,9 +120,13 @@ where
                 LimitType::Equality => value..=value,
             };
 
-            for region in parameter_regions {
-                for year in parameter_years {
-                    try_insert(entry, (region, year, *time_slice), bounds.clone())?;
+            for region in &parameter_regions {
+                for year in &parameter_years {
+                    try_insert(
+                        entry,
+                        (region.clone(), *year, time_slice.clone()),
+                        bounds.clone(),
+                    )?;
                 }
             }
         }
