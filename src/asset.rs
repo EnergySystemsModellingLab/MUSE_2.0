@@ -253,8 +253,13 @@ mod tests {
             is_pac: true,
         };
         let fraction_limits = 1.0..=f64::INFINITY;
-        let energy_limits =
-            iter::once((("GBR".into(), 2020, time_slice.clone()), fraction_limits)).collect();
+        let mut energy_limits = ProcessEnergyLimitsMap::new();
+        for year in [2010, 2020] {
+            energy_limits.insert(
+                ("GBR".into(), year, time_slice.clone()),
+                fraction_limits.clone(),
+            );
+        }
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),

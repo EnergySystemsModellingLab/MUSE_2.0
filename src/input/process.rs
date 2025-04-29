@@ -301,10 +301,11 @@ mod tests {
             .into_iter()
             .map(|id| {
                 let mut map = ProcessEnergyLimitsMap::new();
+
                 map.insert(
                     (
                         "GBR".into(),
-                        2020,
+                        2010,
                         TimeSliceID {
                             season: "winter".into(),
                             time_of_day: "day".into(),
@@ -328,9 +329,7 @@ mod tests {
                     discount_rate: 1.0,
                     capacity_to_activity: 0.0,
                 };
-                for year in [2010, 2020] {
-                    parameter_map.insert(("GBR".into(), year), parameter.clone());
-                }
+                parameter_map.insert(("GBR".into(), 2010), parameter.clone());
                 (id.into(), parameter_map)
             })
             .collect();
@@ -357,7 +356,7 @@ mod tests {
             demand: DemandMap::new(),
         });
 
-        let milestone_years = [2010, 2020];
+        let milestone_years = [2010];
 
         // Set the TimeSliceInfo
         let id = TimeSliceID {
