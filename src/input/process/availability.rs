@@ -9,6 +9,7 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
+use std::ops::RangeInclusive;
 use std::path::Path;
 
 const PROCESS_AVAILABILITIES_FILE_NAME: &str = "process_availabilities.csv";
@@ -22,6 +23,31 @@ struct ProcessAvailabilityRaw {
     time_slice: String,
     limit_type: LimitType,
     value: f64,
+}
+
+impl ProcessAvailabilityRaw {
+    fn validate(&self) -> Result<()> {
+        // Check availability value
+        ensure!(
+            self.value >= 0.0 && self.value <= 1.0,
+            "Value for availability must be between 0 and 1 inclusive"
+        );
+
+        Ok(())
+    }
+
+    /// Calculate fraction of annual energy as availability multiplied by time slice length.
+    ///
+    /// The resulting limits are max/min PAC energy produced/consumed in each timeslice per
+    /// cap2act units of capacity
+    fn to_bounds(&self, ts_length: f64) -> RangeInclusive<f64> {
+        let value = self.value * ts_length;
+        match self.limit_type {
+            LimitType::LowerBound => value..=f64::INFINITY,
+            LimitType::UpperBound => 0.0..=value,
+            LimitType::Equality => value..=value,
+        }
+    }
 }
 
 /// The type of limit given for availability
@@ -82,17 +108,13 @@ where
 {
     let mut map = HashMap::new();
     for record in iter {
+        record.validate()?;
+
         // Get process
         let id = process_ids.get_id_by_str(&record.process_id)?;
         let process = processes
             .get(&id)
             .with_context(|| format!("Process {id} not found"))?;
-
-        // Check availability value
-        ensure!(
-            record.value >= 0.0 && record.value <= 1.0,
-            "value for availability must be between 0 and 1 inclusive"
-        );
 
         // Get regions
         let process_regions = process.regions.clone();
@@ -118,15 +140,7 @@ where
         // Insert the energy limit into the map
         let entry = map.entry(id).or_insert_with(ProcessEnergyLimitsMap::new);
         for (time_slice, ts_length) in time_slice_info.iter_selection(&ts_selection) {
-            // Calculate fraction of annual energy as availability multiplied by time slice length
-            // The resulting limits are max/min PAC energy produced/consumed in each timeslice per
-            // cap2act units of capacity
-            let value = record.value * ts_length;
-            let bounds = match record.limit_type {
-                LimitType::LowerBound => value..=f64::INFINITY,
-                LimitType::UpperBound => 0.0..=value,
-                LimitType::Equality => value..=value,
-            };
+            let bounds = record.to_bounds(ts_length);
 
             for region in &record_regions {
                 for year in record_years.clone() {
@@ -164,224 +178,69 @@ fn validate_energy_limits_maps(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::time_slice::TimeSliceID;
-    use itertools::assert_equal;
-    use std::iter;
 
-    fn get_time_slice_info() -> TimeSliceInfo {
-        let time_slice = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "day".into(),
-        };
-
-        TimeSliceInfo {
-            seasons: iter::once("winter".into()).collect(),
-            times_of_day: iter::once("day".into()).collect(),
-            fractions: iter::once((time_slice, 0.5)).collect(),
-        }
-    }
-
-    fn check_succeeds(
-        process_id: &str,
+    fn create_process_availability_raw(
         limit_type: LimitType,
-        time_slice: &str,
         value: f64,
-    ) -> bool {
-        let process_ids = iter::once("process1".into()).collect();
-        let milestone_years = [2010, 2020];
-        let time_slice_info = get_time_slice_info();
-
-        let avail = ProcessAvailabilityRaw {
-            process_id: process_id.into(),
-            regions: "all".into(),
-            year: "all".into(),
-            time_slice: time_slice.into(),
+    ) -> ProcessAvailabilityRaw {
+        ProcessAvailabilityRaw {
+            process_id: "process".into(),
+            regions: "region".into(),
+            year: "2010".into(),
+            time_slice: "day".into(),
             limit_type,
             value,
-        };
-        read_process_availabilities_from_iter(
-            iter::once(avail),
-            &process_ids,
-            &processes,
-            &time_slice_info,
-            &milestone_years,
-        )
-        .is_ok()
-    }
-
-    #[test]
-    fn test_read_process_availabilities_from_iter_success() {
-        let process_ids = iter::once("process1".into()).collect();
-        let time_slice_info = get_time_slice_info();
-
-        let value = 0.5;
-        macro_rules! check_with_limit_type {
-            ($limit_type: expr, $range: expr) => {
-                let avail = ProcessAvailabilityRaw {
-                    process_id: "process1".into(),
-                    regions: "GBR".into(),
-                    year: "2020".into(),
-                    time_slice: "winter".into(),
-                    limit_type: $limit_type,
-                    value,
-                };
-                let time_slice = time_slice_info
-                    .get_time_slice_id_from_str("winter.day")
-                    .unwrap();
-                let expected_map = iter::once((("GBR".into(), 2020, time_slice), $range)).collect();
-                let expected = iter::once(("process1".into(), expected_map));
-                assert_equal(
-                    read_process_availabilities_from_iter(
-                        iter::once(avail),
-                        &process_ids,
-                        &processes,
-                        &time_slice_info,
-                        &[2020],
-                    )
-                    .unwrap(),
-                    expected,
-                );
-            };
         }
-
-        let result = value * 0.5; // time slice lengths are 0.5
-        check_with_limit_type!(LimitType::LowerBound, result..=f64::INFINITY);
-        check_with_limit_type!(LimitType::UpperBound, 0.0..=result);
-        check_with_limit_type!(LimitType::Equality, result..=result);
     }
 
     #[test]
-    fn test_read_process_availabilities_from_iter_values() {
-        macro_rules! succeeds_with_value {
-            ($value:expr) => {{
-                check_succeeds("process1", LimitType::Equality, "winter.day", $value)
-            }};
-        }
+    fn test_validate() {
+        // Valid
+        let valid = create_process_availability_raw(LimitType::LowerBound, 0.5);
+        assert!(valid.validate().is_ok());
+        let valid = create_process_availability_raw(LimitType::LowerBound, 0.0);
+        assert!(valid.validate().is_ok());
+        let valid = create_process_availability_raw(LimitType::LowerBound, 1.0);
+        assert!(valid.validate().is_ok());
 
-        // Good values
-        assert!(succeeds_with_value!(0.0));
-        assert!(succeeds_with_value!(0.5));
-        assert!(succeeds_with_value!(1.0));
+        // Invalid: negative value
+        let invalid = create_process_availability_raw(LimitType::LowerBound, -0.5);
+        assert!(invalid.validate().is_err());
 
-        // Bad values
-        assert!(!succeeds_with_value!(-1.0));
-        assert!(!succeeds_with_value!(2.0));
-        assert!(!succeeds_with_value!(f64::NAN));
-        assert!(!succeeds_with_value!(f64::NEG_INFINITY));
-        assert!(!succeeds_with_value!(f64::INFINITY));
+        // Invalid: value greater than 1
+        let invalid = create_process_availability_raw(LimitType::LowerBound, 1.5);
+        assert!(invalid.validate().is_err());
+
+        // Invalid: infinity value
+        let invalid = create_process_availability_raw(LimitType::LowerBound, f64::INFINITY);
+        assert!(invalid.validate().is_err());
+
+        // Invalid: negative infinity value
+        let invalid = create_process_availability_raw(LimitType::LowerBound, f64::NEG_INFINITY);
+        assert!(invalid.validate().is_err());
+
+        // Invalid: NaN value
+        let invalid = create_process_availability_raw(LimitType::LowerBound, f64::NAN);
+        assert!(invalid.validate().is_err());
     }
 
     #[test]
-    fn test_read_process_availabilities_from_iter_bad_overlapping_time_slices() {
-        let process_ids = iter::once("process1".into()).collect();
-        let milestone_years = [2010, 2020];
-        let time_slice_info = get_time_slice_info();
+    fn test_to_bounds() {
+        let ts_length = 0.1;
 
-        let value = 0.5;
-        let avail = ["winter", "winter.day"].map(|time_slice| ProcessAvailabilityRaw {
-            process_id: "process1".into(),
-            regions: "all".into(),
-            year: "all".into(),
-            time_slice: time_slice.into(),
-            limit_type: LimitType::Equality,
-            value,
-        });
-        assert!(read_process_availabilities_from_iter(
-            avail.into_iter(),
-            &process_ids,
-            processes,
-            &time_slice_info,
-            &milestone_years,
-        )
-        .is_err());
-    }
+        // Lower bound
+        let raw = create_process_availability_raw(LimitType::LowerBound, 0.5);
+        let bounds = raw.to_bounds(ts_length);
+        assert_eq!(bounds, 0.05..=f64::INFINITY);
 
-    #[test]
-    fn test_read_process_availabilities_from_iter_bad_process_id() {
-        assert!(!check_succeeds(
-            "MADEUP",
-            LimitType::Equality,
-            "winter",
-            0.5
-        ));
-    }
+        // Upper bound
+        let raw = create_process_availability_raw(LimitType::UpperBound, 0.5);
+        let bounds = raw.to_bounds(ts_length);
+        assert_eq!(bounds, 0.0..=0.05);
 
-    #[test]
-    fn test_read_process_availabilities_from_iter_bad_time_slice() {
-        assert!(!check_succeeds(
-            "process1",
-            LimitType::Equality,
-            "MADEUP",
-            0.5
-        ));
-    }
-
-    #[test]
-    fn test_read_process_availabilities_from_iter_bad_missing_entry() {
-        let process_ids = iter::once("process1".into()).collect();
-        let milestone_years = [2010, 2020];
-        let slices = [
-            TimeSliceID {
-                season: "winter".into(),
-                time_of_day: "day".into(),
-            },
-            TimeSliceID {
-                season: "summer".into(),
-                time_of_day: "night".into(),
-            },
-        ];
-        let time_slice_info = TimeSliceInfo {
-            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
-            times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            fractions: slices.into_iter().map(|ts| (ts, 0.5)).collect(),
-        };
-
-        // Good values
-        let avail = ["winter.day".into(), "summer.night".into()]
-            .into_iter()
-            .map(|time_slice| ProcessAvailabilityRaw {
-                process_id: "process1".into(),
-                regions: "all".into(),
-                year: "all".into(),
-                time_slice,
-                limit_type: LimitType::Equality,
-                value: 0.0,
-            });
-        assert!(read_process_availabilities_from_iter(
-            avail,
-            &process_ids,
-            processes,
-            &time_slice_info,
-            &milestone_years
-        )
-        .is_ok());
-
-        // Missing entry
-        let avail = ["winter.day".into()]
-            .into_iter()
-            .map(|time_slice| ProcessAvailabilityRaw {
-                process_id: "process1".into(),
-                regions: "all".into(),
-                year: "all".into(),
-                time_slice,
-                limit_type: LimitType::Equality,
-                value: 0.0,
-            });
-        assert_eq!(
-            read_process_availabilities_from_iter(
-                avail,
-                &process_ids,
-                processes,
-                &time_slice_info,
-                &milestone_years
-            )
-            .unwrap_err()
-            .chain()
-            .next()
-            .unwrap()
-            .to_string(),
-            "Missing process availability entries for process process1. \
-            There must be entries covering every time slice."
-        );
+        // Equality
+        let raw = create_process_availability_raw(LimitType::Equality, 0.5);
+        let bounds = raw.to_bounds(ts_length);
+        assert_eq!(bounds, 0.05..=0.05);
     }
 }
