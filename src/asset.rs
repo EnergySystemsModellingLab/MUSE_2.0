@@ -14,7 +14,7 @@ use std::rc::Rc;
 pub struct AssetID(u32);
 
 impl AssetID {
-    /// Sentinel value assigned to [`Asset`]s when they are initially created
+    /// Sentinel value assigned to [`Asset`]s when they are added to the pool
     pub const INVALID: AssetID = AssetID(u32::MAX);
 }
 
@@ -98,7 +98,8 @@ impl Asset {
             .unwrap();
         let max_act = self.maximum_activity();
 
-        // Multiply the fractional capacity in self.process by this asset's actual capacity
+        // Multiply the fractional energy limits by this asset's maximum activity to get energy
+        // limits in real units (which are user defined)
         (max_act * limits.start())..=(max_act * limits.end())
     }
 
