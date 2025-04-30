@@ -36,6 +36,25 @@ pub enum TimeSliceSelection {
     Single(TimeSliceID),
 }
 
+impl TimeSliceSelection {
+    /// Run the specified function for every time slice in this selection
+    pub fn for_each<F: FnMut(&TimeSliceID)>(&self, time_slice_info: &TimeSliceInfo, mut f: F) {
+        match self {
+            Self::Annual => {
+                for ts in time_slice_info.iter_ids() {
+                    f(ts);
+                }
+            }
+            Self::Season(season) => {
+                for ts in time_slice_info.iter_ids().filter(|ts| ts.season == *season) {
+                    f(ts);
+                }
+            }
+            Self::Single(ts) => f(ts),
+        }
+    }
+}
+
 /// The time granularity for a particular operation
 #[derive(PartialEq, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
 pub enum TimeSliceLevel {

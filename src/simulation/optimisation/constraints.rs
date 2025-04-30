@@ -96,13 +96,7 @@ fn add_commodity_balance_constraints(
                 .time_slice_info
                 .iter_selections_for_level(commodity.time_slice_level)
             {
-                // Note about performance: this loop **may** prove to be a bottleneck as
-                // `time_slice_info.iter_selection` returns a `Box` and so requires a heap
-                // allocation each time. For commodities with a `TimeSliceLevel` of `TimeSlice` (the
-                // worst case), this means the number of additional heap allocations will equal the
-                // number of time slices, which for this function could be in the
-                // hundreds/thousands.
-                for (time_slice, _) in model.time_slice_info.iter_selection(&ts_selection) {
+                ts_selection.for_each(&model.time_slice_info, |time_slice| {
                     // Add terms for this asset + commodity at this time slice. The coefficient for
                     // each variable is one.
                     terms.extend(
@@ -110,7 +104,7 @@ fn add_commodity_balance_constraints(
                             .iter_for_region_and_commodity(region_id, commodity)
                             .map(|asset| (variables.get(asset.id, &commodity.id, time_slice), 1.0)),
                     );
-                }
+                });
 
                 // Get the RHS of the equation for a commodity balance constraint. For SED
                 // commodities, the RHS will be zero and for SVD commodities it will be equal to the
