@@ -95,35 +95,26 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::{EnergyLimitsMap, Process, ProcessParameter};
-    use crate::region::RegionSelection;
+    use crate::process::{Process, ProcessEnergyLimitsMap, ProcessParameterMap};
     use itertools::assert_equal;
     use std::iter;
 
     #[test]
     fn test_read_assets_from_iter() {
-        let process_param = ProcessParameter {
-            years: 2010..=2020,
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
-            lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 1.0,
-        };
+        let region_ids: HashSet<RegionID> = ["GBR".into(), "USA".into()].into_iter().collect();
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            energy_limits: EnergyLimitsMap::new(),
+            years: 2010..=2020,
+            energy_limits: ProcessEnergyLimitsMap::new(),
             flows: vec![],
-            parameter: process_param.clone(),
-            regions: RegionSelection::All,
+            parameters: ProcessParameterMap::new(),
+            regions: region_ids.clone(),
         });
         let processes = [(process.id.clone(), Rc::clone(&process))]
             .into_iter()
             .collect();
         let agent_ids = ["agent1".into()].into_iter().collect();
-        let region_ids = ["GBR".into(), "USA".into()].into_iter().collect();
 
         // Valid
         let asset_in = AssetRaw {
@@ -189,10 +180,11 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            energy_limits: EnergyLimitsMap::new(),
+            years: 2010..=2020,
+            energy_limits: ProcessEnergyLimitsMap::new(),
             flows: vec![],
-            parameter: process_param,
-            regions: RegionSelection::Some(["GBR".into()].into_iter().collect()),
+            parameters: ProcessParameterMap::new(),
+            regions: HashSet::from(["GBR".into()]),
         });
         let asset_in = AssetRaw {
             agent_id: "agent1".into(),

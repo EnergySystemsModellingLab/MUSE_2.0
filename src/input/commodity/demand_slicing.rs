@@ -1,6 +1,5 @@
 //! Demand slicing determines how annual demand is distributed across the year.
 use super::super::*;
-use super::demand::*;
 use crate::commodity::CommodityID;
 use crate::id::IDCollection;
 use crate::region::RegionID;
@@ -36,18 +35,16 @@ pub type DemandSliceMap = HashMap<(CommodityID, RegionID, TimeSliceID), f64>;
 /// * `time_slice_info` - Information about seasons and times of day
 pub fn read_demand_slices(
     model_dir: &Path,
-    commodity_ids: &HashSet<CommodityID>,
+    svd_commodity_ids: &HashSet<CommodityID>,
     region_ids: &HashSet<RegionID>,
-    commodity_regions: &CommodityRegionPairs,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap> {
     let file_path = model_dir.join(DEMAND_SLICING_FILE_NAME);
     let demand_slices_csv = read_csv(&file_path)?;
     read_demand_slices_from_iter(
         demand_slices_csv,
-        commodity_ids,
+        svd_commodity_ids,
         region_ids,
-        commodity_regions,
         time_slice_info,
     )
     .with_context(|| input_err_msg(file_path))
@@ -56,9 +53,8 @@ pub fn read_demand_slices(
 /// Read demand slices from an iterator
 fn read_demand_slices_from_iter<I>(
     iter: I,
-    commodity_ids: &HashSet<CommodityID>,
+    svd_commodity_ids: &HashSet<CommodityID>,
     region_ids: &HashSet<RegionID>,
-    commodity_regions: &CommodityRegionPairs,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap>
 where
@@ -67,13 +63,15 @@ where
     let mut demand_slices = DemandSliceMap::new();
 
     for slice in iter {
-        let commodity_id = commodity_ids.get_id_by_str(&slice.commodity_id)?;
+        let commodity_id = svd_commodity_ids
+            .get_id_by_str(&slice.commodity_id)
+            .with_context(|| {
+                format!(
+                    "Can only provide demand slice data for SVD commodities. Found entry for '{}'",
+                    slice.commodity_id
+                )
+            })?;
         let region_id = region_ids.get_id_by_str(&slice.region_id)?;
-        ensure!(
-            commodity_regions.contains(&(commodity_id.clone(), region_id.clone())),
-            "Demand slicing provided for commodity {commodity_id} in region {region_id} \
-            without a corresponding entry in demand CSV file"
-        );
 
         // We need to know how many time slices are covered by the current demand slice entry and
         // how long they are relative to one another so that we can divide up the demand for this
@@ -89,7 +87,12 @@ where
         }
     }
 
-    validate_demand_slices(commodity_regions, &demand_slices, time_slice_info)?;
+    validate_demand_slices(
+        svd_commodity_ids,
+        region_ids,
+        &demand_slices,
+        time_slice_info,
+    )?;
 
     Ok(demand_slices)
 }
@@ -99,14 +102,18 @@ where
 /// Specifically, check:
 ///
 /// * It is non-empty
-/// * If an entry is provided for any commodity + region pair, there must be entries covering every
-///   time slice
+/// * For every commodity + region pair, there must be entries covering every time slice
 /// * The demand fractions for all entries related to a commodity + region pair sum to one
 fn validate_demand_slices(
-    commodity_regions: &CommodityRegionPairs,
+    svd_commodity_ids: &HashSet<CommodityID>,
+    region_ids: &HashSet<RegionID>,
     demand_slices: &DemandSliceMap,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
+    let commodity_regions = svd_commodity_ids
+        .iter()
+        .cartesian_product(region_ids.iter())
+        .collect::<HashSet<_>>();
     for (commodity_id, region_id) in commodity_regions {
         time_slice_info
             .iter_ids()
@@ -132,7 +139,6 @@ fn validate_demand_slices(
 mod tests {
     use super::*;
     use crate::time_slice::TimeSliceID;
-    use itertools::iproduct;
     use std::iter;
 
     #[test]
@@ -152,8 +158,6 @@ mod tests {
         };
         let commodity_ids = HashSet::from_iter(iter::once("COM1".into()));
         let region_ids = HashSet::from_iter(iter::once("GBR".into()));
-        let commodity_regions =
-            iproduct!(commodity_ids.iter().cloned(), region_ids.iter().cloned()).collect();
 
         // Valid
         let demand_slice = DemandSlice {
@@ -172,7 +176,6 @@ mod tests {
                 iter::once(demand_slice.clone()),
                 &commodity_ids,
                 &region_ids,
-                &commodity_regions,
                 &time_slice_info,
             )
             .unwrap(),
@@ -282,7 +285,6 @@ mod tests {
                     demand_slices.into_iter(),
                     &commodity_ids,
                     &region_ids,
-                    &commodity_regions,
                     &time_slice_info,
                 )
                 .unwrap(),
@@ -295,7 +297,6 @@ mod tests {
             iter::empty(),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -311,7 +312,6 @@ mod tests {
             iter::once(demand_slice.clone()),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -327,7 +327,6 @@ mod tests {
             iter::once(demand_slice.clone()),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -343,7 +342,6 @@ mod tests {
             iter::once(demand_slice.clone()),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -382,7 +380,6 @@ mod tests {
                 iter::once(demand_slice.clone()),
                 &commodity_ids,
                 &region_ids,
-                &commodity_regions,
                 &time_slice_info,
             )
             .is_err());
@@ -399,7 +396,6 @@ mod tests {
             iter::repeat_n(demand_slice.clone(), 2),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -415,7 +411,6 @@ mod tests {
             [demand_slice, demand_slice_season].into_iter(),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
             &time_slice_info,
         )
         .is_err());
@@ -431,23 +426,6 @@ mod tests {
             iter::once(demand_slice),
             &commodity_ids,
             &region_ids,
-            &commodity_regions,
-            &time_slice_info,
-        )
-        .is_err());
-
-        // No corresponding entry for commodity + region in demand CSV file
-        let demand_slice = DemandSlice {
-            commodity_id: "COM1".into(),
-            region_id: "GBR".into(),
-            time_slice: "winter".into(),
-            fraction: 1.0,
-        };
-        assert!(read_demand_slices_from_iter(
-            iter::once(demand_slice),
-            &commodity_ids,
-            &region_ids,
-            &HashSet::new(),
             &time_slice_info,
         )
         .is_err());
