@@ -269,7 +269,7 @@ mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
     use crate::process::{
-        EnergyLimitsMap, FlowType, Process, ProcessParameter, ProcessParameterMap,
+        FlowType, Process, ProcessEnergyLimitsMap, ProcessParameter, ProcessParameterMap,
     };
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
@@ -312,7 +312,7 @@ mod tests {
             id: "process1".into(),
             description: "Description".into(),
             years: 2010..=2020,
-            energy_limits: EnergyLimitsMap::new(),
+            energy_limits: ProcessEnergyLimitsMap::new(),
             flows: vec![flow.clone()],
             parameters: process_parameter_map,
             regions: HashSet::from([RegionID("GBR".into())]),

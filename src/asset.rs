@@ -71,7 +71,15 @@ impl Asset {
     ///
     /// This is an absolute max and min on the PAC energy produced/consumed in that time slice.
     pub fn get_energy_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
-        let limits = self.process.energy_limits.get(time_slice).unwrap();
+        let limits = self
+            .process
+            .energy_limits
+            .get(&(
+                self.region_id.clone(),
+                self.commission_year,
+                time_slice.clone(),
+            ))
+            .unwrap();
         let max_act = self.maximum_activity();
 
         // Multiply the fractional capacity in self.process by this asset's actual capacity
@@ -201,7 +209,8 @@ mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
     use crate::process::{
-        EnergyLimitsMap, FlowType, Process, ProcessFlow, ProcessParameter, ProcessParameterMap,
+        FlowType, Process, ProcessEnergyLimitsMap, ProcessFlow, ProcessParameter,
+        ProcessParameterMap,
     };
     use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
@@ -244,7 +253,13 @@ mod tests {
             is_pac: true,
         };
         let fraction_limits = 1.0..=f64::INFINITY;
-        let energy_limits = iter::once((time_slice.clone(), fraction_limits)).collect();
+        let mut energy_limits = ProcessEnergyLimitsMap::new();
+        for year in [2010, 2020] {
+            energy_limits.insert(
+                ("GBR".into(), year, time_slice.clone()),
+                fraction_limits.clone(),
+            );
+        }
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
@@ -284,7 +299,7 @@ mod tests {
             id: "process1".into(),
             description: "Description".into(),
             years: 2010..=2020,
-            energy_limits: EnergyLimitsMap::new(),
+            energy_limits: ProcessEnergyLimitsMap::new(),
             flows: vec![],
             parameters: process_parameter_map,
             regions: HashSet::from(["GBR".into()]),
