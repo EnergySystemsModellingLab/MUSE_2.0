@@ -7,8 +7,9 @@ use float_cmp::approx_eq;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::hash::Hash;
 use std::path::Path;
 
 mod agent;
@@ -135,6 +136,20 @@ where
     );
 
     Ok(())
+}
+
+/// Inserts a key-value pair into a HashMap if the key does not already exist.
+///
+/// If the key already exists, it returns an error with a message indicating the key's existence.
+pub fn try_insert<K, V>(map: &mut HashMap<K, V>, key: K, value: V) -> Result<()>
+where
+    K: Eq + Hash + Clone + std::fmt::Debug,
+{
+    let existing = map.insert(key.clone(), value);
+    match existing {
+        Some(_) => bail!("Key {:?} already exists in the map", key),
+        None => Ok(()),
+    }
 }
 
 /// Read a model from the specified directory.

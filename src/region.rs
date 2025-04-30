@@ -1,11 +1,9 @@
 //! Regions represent different geographical areas in which agents, processes, etc. are active.
-use crate::id::define_id_getter;
-use crate::id::define_id_type;
+use crate::id::{define_id_getter, define_id_type, IDCollection};
+use anyhow::{ensure, Result};
 use indexmap::IndexMap;
-use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::HashSet;
-use std::fmt::Display;
 
 define_id_type! {RegionID}
 
@@ -22,31 +20,54 @@ pub struct Region {
 }
 define_id_getter! {Region, RegionID}
 
-/// Represents multiple regions
-#[derive(PartialEq, Debug, Clone, Default)]
-pub enum RegionSelection {
-    /// All regions are covered
-    #[default]
-    All,
-    /// Only some regions are covered
-    Some(HashSet<RegionID>),
-}
+/// Parse a string of regions separated by semicolons into a vector of RegionID.
+///
+/// The string can be either "all" (case-insensitive), a single region, or a semicolon-separated
+/// list of regions (e.g. "GBR;FRA;USA" or "GBR; FRA; USA")
+pub fn parse_region_str(s: &str, region_ids: &HashSet<RegionID>) -> Result<HashSet<RegionID>> {
+    let s = s.trim();
+    ensure!(!s.is_empty(), "No regions provided");
 
-impl RegionSelection {
-    /// Returns true if the [`RegionSelection`] covers a given region
-    pub fn contains(&self, region_id: &RegionID) -> bool {
-        match self {
-            Self::All => true,
-            Self::Some(regions) => regions.contains(region_id),
-        }
+    if s.eq_ignore_ascii_case("all") {
+        return Ok(region_ids.clone());
     }
+
+    s.split(";")
+        .map(|y| region_ids.get_id_by_str(y.trim()))
+        .collect()
 }
 
-impl Display for RegionSelection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::All => write!(f, "all"),
-            Self::Some(regions) => write!(f, "{}", regions.iter().join(", ")),
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_region_str() {
+        let region_ids: HashSet<RegionID> = ["GBR".into(), "USA".into()].into_iter().collect();
+
+        // List of regions
+        let parsed = parse_region_str("GBR;USA", &region_ids).unwrap();
+        assert_eq!(parsed.len(), 2);
+        assert!(parsed.contains(&RegionID::from("GBR")));
+        assert!(parsed.contains(&RegionID::from("USA")));
+
+        // All regions
+        let parsed = parse_region_str("all", &region_ids).unwrap();
+        assert_eq!(parsed.len(), 2);
+        assert!(parsed.contains(&RegionID::from("GBR")));
+        assert!(parsed.contains(&RegionID::from("USA")));
+
+        // Single region
+        let parsed = parse_region_str("GBR", &region_ids).unwrap();
+        assert_eq!(parsed.len(), 1);
+        assert!(parsed.contains(&RegionID::from("GBR")));
+
+        // Empty string
+        let result = parse_region_str("", &region_ids);
+        assert!(result.is_err());
+
+        // Invalid region
+        let result = parse_region_str("GBR;INVALID", &region_ids);
+        assert!(result.is_err());
     }
 }

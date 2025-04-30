@@ -2,12 +2,12 @@
 //! module are used to represent these conversions along with the associated costs.
 use crate::commodity::Commodity;
 use crate::id::define_id_type;
-use crate::region::RegionSelection;
+use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -23,14 +23,16 @@ pub struct Process {
     pub id: ProcessID,
     /// A human-readable description for the process (e.g. dry gas extraction)
     pub description: String,
+    /// The years in which this process is available for investment
+    pub years: RangeInclusive<u32>,
     /// Limits on PAC energy consumption/production for each time slice (as a fraction of maximum)
-    pub energy_limits: EnergyLimitsMap,
+    pub energy_limits: ProcessEnergyLimitsMap,
     /// Maximum annual commodity flows for this process
     pub flows: Vec<ProcessFlow>,
     /// Additional parameters for this process
-    pub parameter: ProcessParameter,
+    pub parameters: ProcessParameterMap,
     /// The regions in which this process can operate
-    pub regions: RegionSelection,
+    pub regions: HashSet<RegionID>,
 }
 
 impl Process {
@@ -56,7 +58,10 @@ impl Process {
 ///
 /// The limits are given as ranges, depending on the user-specified limit type and value for
 /// availability.
-pub type EnergyLimitsMap = HashMap<TimeSliceID, RangeInclusive<f64>>;
+pub type ProcessEnergyLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<f64>>;
+
+/// A map of [`ProcessParameter`]s, keyed by year
+pub type ProcessParameterMap = HashMap<(RegionID, u32), ProcessParameter>;
 
 /// Represents a maximum annual commodity flow for a given process
 #[derive(PartialEq, Debug, Deserialize, Clone)]
@@ -97,8 +102,6 @@ pub enum FlowType {
 /// Additional parameters for a process
 #[derive(PartialEq, Clone, Debug, Deserialize)]
 pub struct ProcessParameter {
-    /// The years in which this process is available for investment
-    pub years: RangeInclusive<u32>,
     /// Overnight capital cost per unit capacity
     pub capital_cost: f64,
     /// Annual operating cost per unit capacity

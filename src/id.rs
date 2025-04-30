@@ -1,5 +1,4 @@
 //! Code for handing IDs
-use crate::region::RegionID;
 use anyhow::{Context, Result};
 use std::collections::HashSet;
 
@@ -64,12 +63,6 @@ pub trait HasID<ID: IDLike> {
     fn get_id(&self) -> &ID;
 }
 
-/// An object which is associated with a single region
-pub trait HasRegionID {
-    /// Get the associated region ID
-    fn get_region_id(&self) -> &RegionID;
-}
-
 /// Implement the `HasID` trait for the given type, assuming it has a field called `id`
 macro_rules! define_id_getter {
     ($t:ty, $id_ty:ty) => {
@@ -81,18 +74,6 @@ macro_rules! define_id_getter {
     };
 }
 pub(crate) use define_id_getter;
-
-/// Implement the `HasRegionID` trait for the given type, assuming it has a field called `region_id`
-macro_rules! define_region_id_getter {
-    ($t:ty) => {
-        impl crate::id::HasRegionID for $t {
-            fn get_region_id(&self) -> &RegionID {
-                &self.region_id
-            }
-        }
-    };
-}
-pub(crate) use define_region_id_getter;
 
 /// A data structure containing a set of IDs
 pub trait IDCollection<ID: IDLike> {
