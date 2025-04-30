@@ -154,21 +154,45 @@ where
         }
     }
 
-    validate_energy_limits_maps(&map, time_slice_info)?;
+    validate_energy_limits_maps(&map, processes, time_slice_info, milestone_years)?;
 
     Ok(map)
 }
 
-/// Check that every energy limits map has an entry for every time slice
+/// Check that every energy limits covers every time slice, and all regions/years of the process
 fn validate_energy_limits_maps(
     map: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
+    processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
+    milestone_years: &[u32],
 ) -> Result<()> {
     for (process_id, map) in map.iter() {
+        let process = processes.get(process_id).unwrap();
+        let year_range = &process.years;
+        let reference_years: HashSet<u32> = milestone_years
+            .iter()
+            .copied()
+            .filter(|year| year_range.contains(year))
+            .collect();
+        let reference_regions = process.regions.clone();
+        let reference_time_slices = time_slice_info.iter_ids().collect::<HashSet<_>>();
+
+        let mut missing_keys = Vec::new();
+        for year in &reference_years {
+            for region in &reference_regions {
+                for time_slice in reference_time_slices.clone() {
+                    let key = (region.clone(), *year, time_slice.clone());
+                    if !map.contains_key(&key) {
+                        missing_keys.push(key);
+                    }
+                }
+            }
+        }
         ensure!(
-            map.len() == time_slice_info.fractions.len(),
-            "Missing process availability entries for process {process_id}. \
-            There must be entries covering every time slice.",
+            missing_keys.is_empty(),
+            "Process {} is missing availabilities for the following regions, years and timeslice: {:?}",
+            process_id,
+            missing_keys
         );
     }
 

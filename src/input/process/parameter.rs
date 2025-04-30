@@ -172,7 +172,7 @@ where
             }
         }
         ensure!(
-            !missing_keys.is_empty(),
+            missing_keys.is_empty(),
             "Process {} is missing parameters for the following regions and years: {:?}",
             id,
             missing_keys
