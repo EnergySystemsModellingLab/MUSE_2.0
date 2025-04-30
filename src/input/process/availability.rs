@@ -143,7 +143,7 @@ where
             let bounds = record.to_bounds(ts_length);
 
             for region in &record_regions {
-                for year in record_years.clone() {
+                for year in record_years.iter().copied() {
                     try_insert(
                         entry,
                         (region.clone(), year, time_slice.clone()),
@@ -174,13 +174,11 @@ fn validate_energy_limits_maps(
             .copied()
             .filter(|year| year_range.contains(year))
             .collect();
-        let reference_regions = process.regions.clone();
-        let reference_time_slices = time_slice_info.iter_ids().collect::<HashSet<_>>();
-
+        let reference_regions = &process.regions;
         let mut missing_keys = Vec::new();
         for year in &reference_years {
-            for region in &reference_regions {
-                for time_slice in reference_time_slices.clone() {
+            for region in reference_regions {
+                for time_slice in time_slice_info.iter_ids() {
                     let key = (region.clone(), *year, time_slice.clone());
                     if !map.contains_key(&key) {
                         missing_keys.push(key);
