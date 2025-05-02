@@ -1,7 +1,7 @@
 //! The command line interface for the simulation.
 use crate::input::load_model;
 use crate::log;
-use crate::output::create_output_directory;
+use crate::output::{create_output_directory, get_output_dir};
 use crate::settings::Settings;
 use ::log::{error, info};
 use anyhow::{ensure, Context, Result};
@@ -64,8 +64,8 @@ pub fn handle_run_command(model_path: &Path) -> Result<()> {
     let settings = Settings::from_path(model_path).context("Failed to load settings.")?;
 
     // Create output folder
-    let output_path =
-        create_output_directory(model_path).context("Failed to create output directory.")?;
+    let output_path = get_output_dir(model_path)?;
+    create_output_directory(&output_path).context("Failed to create output directory.")?;
 
     // Initialise program logger
     log::init(settings.log_level.as_deref(), &output_path)
