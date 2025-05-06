@@ -14,17 +14,17 @@ use tempfile::TempDir;
 /// The directory containing the example models.
 pub const EXAMPLES_DIR: Dir = include_dir!("examples");
 
+/// The command line interface for the simulation.
 #[derive(Parser)]
 #[command(version, about)]
-/// The command line interface for the simulation.
 pub struct Cli {
-    #[command(subcommand)]
     /// The available commands.
+    #[command(subcommand)]
     pub command: Commands,
 }
 
-#[derive(Subcommand)]
 /// The available commands.
+#[derive(Subcommand)]
 pub enum Commands {
     /// Run a simulation model.
     Run {
@@ -33,14 +33,14 @@ pub enum Commands {
     },
     /// Manage example models.
     Example {
-        #[command(subcommand)]
         /// The available subcommands for managing example models.
+        #[command(subcommand)]
         subcommand: ExampleSubcommands,
     },
 }
 
-#[derive(Subcommand)]
 /// The available subcommands for managing example models.
+#[derive(Subcommand)]
 pub enum ExampleSubcommands {
     /// List available examples.
     List,
