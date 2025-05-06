@@ -30,6 +30,9 @@ pub enum Commands {
     Run {
         /// Path to the model directory.
         model_dir: PathBuf,
+        /// Directory for output files
+        #[arg(short, long)]
+        output_dir: Option<PathBuf>,
     },
     /// Manage example models.
     Example {
@@ -55,16 +58,22 @@ pub enum ExampleSubcommands {
     Run {
         /// The name of the example to run.
         name: String,
+        /// Directory for output files
+        #[arg(short, long)]
+        output_dir: Option<PathBuf>,
     },
 }
 
 /// Handle the `run` command.
-pub fn handle_run_command(model_path: &Path) -> Result<()> {
+pub fn handle_run_command(model_path: &Path, output_path: Option<&Path>) -> Result<()> {
     // Load program settings
     let settings = Settings::from_path(model_path).context("Failed to load settings.")?;
 
     // Create output folder
-    let output_path = get_output_dir(model_path)?;
+    let output_path = match output_path {
+        Some(p) => p.to_owned(),
+        None => get_output_dir(model_path)?,
+    };
     create_output_directory(&output_path).context("Failed to create output directory.")?;
 
     // Initialise program logger
@@ -130,9 +139,9 @@ fn extract_example(name: &str, new_path: &Path) -> Result<()> {
 }
 
 /// Handle the `example run` command.
-pub fn handle_example_run_command(name: &str) -> Result<()> {
+pub fn handle_example_run_command(name: &str, output_path: Option<&Path>) -> Result<()> {
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
     let model_path = temp_dir.path().join(name);
     extract_example(name, &model_path)?;
-    handle_run_command(&model_path)
+    handle_run_command(&model_path, output_path)
 }

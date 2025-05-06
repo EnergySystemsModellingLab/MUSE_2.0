@@ -5,5 +5,5 @@ use muse2::commands::handle_example_run_command;
 #[test]
 fn test_handle_example_run_command() {
     std::env::set_var("MUSE2_LOG_LEVEL", "off");
-    handle_example_run_command("simple").unwrap();
+    handle_example_run_command("simple", None).unwrap();
 }

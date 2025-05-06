@@ -11,11 +11,11 @@ fn get_model_dir() -> PathBuf {
 #[test]
 fn test_handle_run_command() {
     std::env::set_var("MUSE2_LOG_LEVEL", "off");
-    handle_run_command(&get_model_dir()).unwrap();
+    handle_run_command(&get_model_dir(), None).unwrap();
 
     // Second time will fail because the logging is already initialised
     assert_eq!(
-        handle_run_command(&get_model_dir())
+        handle_run_command(&get_model_dir(), None)
             .unwrap_err()
             .chain()
             .next()
