@@ -4,6 +4,7 @@ use crate::commodity::{CommodityID, CommodityMap};
 use crate::id::IDCollection;
 use crate::process::{FlowType, ProcessFlow, ProcessID};
 use anyhow::{ensure, Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -25,7 +26,7 @@ struct ProcessFlowRaw {
 /// Read process flows from a CSV file
 pub fn read_process_flows(
     model_dir: &Path,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     commodities: &CommodityMap,
 ) -> Result<HashMap<ProcessID, Vec<ProcessFlow>>> {
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
@@ -37,7 +38,7 @@ pub fn read_process_flows(
 /// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.
 fn read_process_flows_from_iter<I>(
     iter: I,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     commodities: &CommodityMap,
 ) -> Result<HashMap<ProcessID, Vec<ProcessFlow>>>
 where

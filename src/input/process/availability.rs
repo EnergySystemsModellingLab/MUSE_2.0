@@ -6,6 +6,7 @@ use crate::region::parse_region_str;
 use crate::time_slice::TimeSliceInfo;
 use crate::year::parse_year_str;
 use anyhow::{Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
@@ -78,7 +79,7 @@ enum LimitType {
 /// error.
 pub fn read_process_availabilities(
     model_dir: &Path,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
@@ -98,7 +99,7 @@ pub fn read_process_availabilities(
 /// Process raw process availabilities input data into [`ProcessEnergyLimitsMap`]s
 fn read_process_availabilities_from_iter<I>(
     iter: I,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],

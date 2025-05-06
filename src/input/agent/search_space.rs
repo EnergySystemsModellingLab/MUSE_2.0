@@ -5,6 +5,7 @@ use crate::commodity::CommodityMap;
 use crate::id::IDCollection;
 use crate::process::ProcessID;
 use anyhow::{Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -28,7 +29,7 @@ struct AgentSearchSpaceRaw {
 impl AgentSearchSpaceRaw {
     fn to_agent_search_space(
         &self,
-        process_ids: &HashSet<ProcessID>,
+        process_ids: &IndexSet<ProcessID>,
         commodities: &CommodityMap,
         milestone_years: &[u32],
     ) -> Result<AgentSearchSpace> {
@@ -77,7 +78,7 @@ impl AgentSearchSpaceRaw {
 pub fn read_agent_search_space(
     model_dir: &Path,
     agents: &AgentMap,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     commodities: &CommodityMap,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, Vec<AgentSearchSpace>>> {
@@ -90,7 +91,7 @@ pub fn read_agent_search_space(
 fn read_agent_search_space_from_iter<I>(
     iter: I,
     agents: &AgentMap,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     commodities: &CommodityMap,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, Vec<AgentSearchSpace>>>
