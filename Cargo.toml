@@ -32,4 +32,3 @@ human-panic = "2.0.2"
 
 [dev-dependencies]
 regex = "1.11.1"
-rstest = "0.25.0"
