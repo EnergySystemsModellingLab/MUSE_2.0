@@ -28,7 +28,6 @@ pub struct Cli {
 pub enum Commands {
     /// Run a simulation model.
     Run {
-        #[arg(help = "Path to the model directory")]
         /// Path to the model directory.
         model_dir: PathBuf,
     },
