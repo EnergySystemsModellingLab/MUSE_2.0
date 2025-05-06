@@ -53,15 +53,6 @@ pub struct AgentCostLimits {
     pub annual_cost_limit: Option<f64>,
 }
 
-/// Which processes apply to this agent
-#[derive(Debug, Clone, PartialEq)]
-pub enum SearchSpace {
-    /// All processes are considered
-    AllProcesses,
-    /// Only these specific processes are considered
-    Some(HashSet<ProcessID>),
-}
-
 /// Search space for an agent
 #[derive(Debug, Clone, PartialEq)]
 pub struct AgentSearchSpace {
@@ -70,7 +61,7 @@ pub struct AgentSearchSpace {
     /// The commodity to apply the search space to
     pub commodity: Rc<Commodity>,
     /// The agent's search space
-    pub search_space: SearchSpace,
+    pub search_space: Vec<ProcessID>,
 }
 
 /// The decision rule for a particular objective
