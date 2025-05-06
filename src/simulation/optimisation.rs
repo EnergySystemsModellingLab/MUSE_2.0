@@ -196,7 +196,12 @@ fn add_variables(
     let mut variables = VariableMap::default();
 
     for asset in assets.iter() {
-        for flow in asset.process.flows.iter() {
+        let flows = asset
+            .process
+            .flows
+            .get(&(asset.region_id.clone(), asset.commission_year))
+            .unwrap();
+        for flow in flows.iter() {
             for time_slice in model.time_slice_info.iter_ids() {
                 let coeff = calculate_cost_coefficient(asset, flow, year, time_slice);
 
