@@ -1,4 +1,4 @@
-//! Integration tests for the `example run` command.
+//! Regression tests for example models.
 //!
 //! If you add a new example, you must add a test case below.
 use float_cmp::approx_eq;
@@ -11,10 +11,10 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 
-/// An integration test for the `example run` command.
+/// Regression tests for the example models.
 #[rstest]
 #[case("simple")]
-fn test_handle_example_run_command(#[case] example_name: &str) {
+fn test_regression(#[case] example_name: &str) {
     std::env::set_var("MUSE2_LOG_LEVEL", "off");
 
     let is_float = Regex::new(r"^-?[0-9]+\.[0-9]+$").unwrap();
