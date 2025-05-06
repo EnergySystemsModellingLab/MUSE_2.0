@@ -1,7 +1,7 @@
 //! Assets are instances of a process which are owned and invested in by agents.
 use crate::agent::AgentID;
 use crate::commodity::Commodity;
-use crate::process::Process;
+use crate::process::{Process, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use std::collections::HashSet;
@@ -26,6 +26,8 @@ pub struct Asset {
     pub agent_id: AgentID,
     /// The [`Process`] that this asset corresponds to
     pub process: Rc<Process>,
+    /// The [`ProcessParameter`] corresponding to this region and year
+    pub process_parameter: Rc<ProcessParameter>,
     /// The region in which the asset is located
     pub region_id: RegionID,
     /// Capacity of asset
@@ -46,10 +48,16 @@ impl Asset {
         capacity: f64,
         commission_year: u32,
     ) -> Self {
+        let process_parameter = process
+            .parameters
+            .get(&(region_id.clone(), commission_year))
+            .expect("No process parameter for specified region and year")
+            .clone();
         Self {
             id: AssetID::INVALID,
             agent_id,
             process,
+            process_parameter,
             region_id,
             capacity,
             commission_year,
@@ -58,13 +66,7 @@ impl Asset {
 
     /// The last year in which this asset should be decommissioned
     pub fn decommission_year(&self) -> u32 {
-        self.commission_year
-            + self
-                .process
-                .parameters
-                .get(&(self.region_id.clone(), self.commission_year))
-                .unwrap()
-                .lifetime
+        self.commission_year + self.process_parameter.lifetime
     }
 
     /// Get the energy limits for this asset in a particular time slice
@@ -88,13 +90,7 @@ impl Asset {
 
     /// Maximum activity for this asset (PAC energy produced/consumed per year)
     pub fn maximum_activity(&self) -> f64 {
-        self.capacity
-            * self
-                .process
-                .parameters
-                .get(&(self.region_id.clone(), self.commission_year))
-                .unwrap()
-                .capacity_to_activity
+        self.capacity * self.process_parameter.capacity_to_activity
     }
 }
 
@@ -269,14 +265,13 @@ mod tests {
             parameters: process_parameter_map,
             regions: HashSet::from(["GBR".into()]),
         });
-        let asset = Asset {
-            id: AssetID(0),
-            agent_id: "agent1".into(),
-            process: Rc::clone(&process),
-            region_id: "GBR".into(),
-            capacity: 2.0,
-            commission_year: 2010,
-        };
+        let asset = Asset::new(
+            "agent1".into(),
+            Rc::clone(&process),
+            "GBR".into(),
+            2.0,
+            2010,
+        );
 
         assert_eq!(asset.get_energy_limits(&time_slice), 6.0..=f64::INFINITY);
     }
