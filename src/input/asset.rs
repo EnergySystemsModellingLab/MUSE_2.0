@@ -128,7 +128,7 @@ mod tests {
             2010,
         );
         assert_equal(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
+            read_assets_from_iter(iter::once(asset_in), &agent_ids, &processes, &region_ids)
                 .unwrap(),
             iter::once(asset_out),
         );
