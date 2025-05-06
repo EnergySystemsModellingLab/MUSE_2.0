@@ -1,7 +1,7 @@
 //! The command line interface for the simulation.
 use crate::input::load_model;
 use crate::log;
-use crate::output::create_output_directory;
+use crate::output::{create_output_directory, get_output_dir};
 use crate::settings::Settings;
 use ::log::{error, info};
 use anyhow::{ensure, Context, Result};
@@ -14,34 +14,36 @@ use tempfile::TempDir;
 /// The directory containing the example models.
 pub const EXAMPLES_DIR: Dir = include_dir!("examples");
 
+/// The command line interface for the simulation.
 #[derive(Parser)]
 #[command(version, about)]
-/// The command line interface for the simulation.
 pub struct Cli {
-    #[command(subcommand)]
     /// The available commands.
+    #[command(subcommand)]
     pub command: Commands,
 }
 
-#[derive(Subcommand)]
 /// The available commands.
+#[derive(Subcommand)]
 pub enum Commands {
     /// Run a simulation model.
     Run {
-        #[arg(help = "Path to the model directory")]
         /// Path to the model directory.
         model_dir: PathBuf,
+        /// Directory for output files
+        #[arg(short, long)]
+        output_dir: Option<PathBuf>,
     },
     /// Manage example models.
     Example {
-        #[command(subcommand)]
         /// The available subcommands for managing example models.
+        #[command(subcommand)]
         subcommand: ExampleSubcommands,
     },
 }
 
-#[derive(Subcommand)]
 /// The available subcommands for managing example models.
+#[derive(Subcommand)]
 pub enum ExampleSubcommands {
     /// List available examples.
     List,
@@ -56,17 +58,23 @@ pub enum ExampleSubcommands {
     Run {
         /// The name of the example to run.
         name: String,
+        /// Directory for output files
+        #[arg(short, long)]
+        output_dir: Option<PathBuf>,
     },
 }
 
 /// Handle the `run` command.
-pub fn handle_run_command(model_path: &Path) -> Result<()> {
+pub fn handle_run_command(model_path: &Path, output_path: Option<&Path>) -> Result<()> {
     // Load program settings
     let settings = Settings::from_path(model_path).context("Failed to load settings.")?;
 
     // Create output folder
-    let output_path =
-        create_output_directory(model_path).context("Failed to create output directory.")?;
+    let output_path = match output_path {
+        Some(p) => p.to_owned(),
+        None => get_output_dir(model_path)?,
+    };
+    create_output_directory(&output_path).context("Failed to create output directory.")?;
 
     // Initialise program logger
     log::init(settings.log_level.as_deref(), &output_path)
@@ -131,9 +139,9 @@ fn extract_example(name: &str, new_path: &Path) -> Result<()> {
 }
 
 /// Handle the `example run` command.
-pub fn handle_example_run_command(name: &str) -> Result<()> {
+pub fn handle_example_run_command(name: &str, output_path: Option<&Path>) -> Result<()> {
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
     let model_path = temp_dir.path().join(name);
     extract_example(name, &model_path)?;
-    handle_run_command(&model_path)
+    handle_run_command(&model_path, output_path)
 }
