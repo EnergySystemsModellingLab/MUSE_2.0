@@ -317,18 +317,18 @@ mod tests {
             })
             .collect();
 
+        let parameter = Rc::new(ProcessParameter {
+            capital_cost: 0.0,
+            fixed_operating_cost: 0.0,
+            variable_operating_cost: 0.0,
+            lifetime: 1,
+            discount_rate: 1.0,
+            capacity_to_activity: 0.0,
+        });
         let parameters = ["process1", "process2"]
             .into_iter()
             .map(|id| {
                 let mut parameter_map: ProcessParameterMap = HashMap::new();
-                let parameter = ProcessParameter {
-                    capital_cost: 0.0,
-                    fixed_operating_cost: 0.0,
-                    variable_operating_cost: 0.0,
-                    lifetime: 1,
-                    discount_rate: 1.0,
-                    capacity_to_activity: 0.0,
-                };
                 parameter_map.insert(("GBR".into(), 2010), parameter.clone());
                 (id.into(), parameter_map)
             })

@@ -10,6 +10,7 @@ use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::rc::Rc;
 
 const PROCESS_PARAMETERS_FILE_NAME: &str = "process_parameters.csv";
 
@@ -143,7 +144,7 @@ where
             })?;
 
         // Insert parameter into the map
-        let param = param_raw.into_parameter()?;
+        let param = Rc::new(param_raw.into_parameter()?);
         let entry = map.entry(id.clone()).or_default();
         for year in parameter_years {
             for region in parameter_regions.clone() {
