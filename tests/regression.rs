@@ -1,11 +1,8 @@
-//! Regression tests for example models.
-//!
-//! If you add a new example, you must add a test case below.
+//! Common code for running regression tests.
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use muse2::commands::handle_example_run_command;
 use regex::Regex;
-use rstest::rstest;
 use std::fs::{read_dir, File};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -13,9 +10,7 @@ use std::sync::OnceLock;
 use tempfile::tempdir;
 
 /// Regression tests for the example models.
-#[rstest]
-#[case("simple")]
-fn test_regression(#[case] example_name: &str) {
+pub fn run_regression_test(example_name: &str) {
     std::env::set_var("MUSE2_LOG_LEVEL", "off");
 
     let tempdir = tempdir().unwrap();
