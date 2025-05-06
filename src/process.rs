@@ -61,7 +61,7 @@ impl Process {
 pub type ProcessEnergyLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<f64>>;
 
 /// A map of [`ProcessParameter`]s, keyed by region and year
-pub type ProcessParameterMap = HashMap<(RegionID, u32), ProcessParameter>;
+pub type ProcessParameterMap = HashMap<(RegionID, u32), Rc<ProcessParameter>>;
 
 /// Represents a maximum annual commodity flow for a given process
 #[derive(PartialEq, Debug, Deserialize, Clone)]

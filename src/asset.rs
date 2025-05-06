@@ -223,14 +223,14 @@ mod tests {
             season: "winter".into(),
             time_of_day: "day".into(),
         };
-        let process_param = ProcessParameter {
+        let process_param = Rc::new(ProcessParameter {
             capital_cost: 5.0,
             fixed_operating_cost: 2.0,
             variable_operating_cost: 1.0,
             lifetime: 5,
             discount_rate: 0.9,
             capacity_to_activity: 3.0,
-        };
+        });
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
             .iter()
@@ -282,14 +282,14 @@ mod tests {
     }
 
     fn create_asset_pool() -> AssetPool {
-        let process_param = ProcessParameter {
+        let process_param = Rc::new(ProcessParameter {
             capital_cost: 5.0,
             fixed_operating_cost: 2.0,
             variable_operating_cost: 1.0,
             lifetime: 5,
             discount_rate: 0.9,
             capacity_to_activity: 1.0,
-        };
+        });
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
             .iter()
