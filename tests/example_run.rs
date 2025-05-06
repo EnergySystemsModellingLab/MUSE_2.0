@@ -1,7 +1,10 @@
 //! Integration tests for the `example run` command.
 //!
 //! If you add a new example, you must add a test case below.
+use float_cmp::approx_eq;
+use itertools::Itertools;
 use muse2::commands::handle_example_run_command;
+use regex::Regex;
 use rstest::rstest;
 use std::fs::{read_dir, File};
 use std::io::{BufRead, BufReader};
@@ -14,6 +17,7 @@ use tempfile::tempdir;
 fn test_handle_example_run_command(#[case] example_name: &str) {
     std::env::set_var("MUSE2_LOG_LEVEL", "off");
 
+    let is_float = Regex::new(r"^-?[0-9]+\.[0-9]+$").unwrap();
     let tempdir = tempdir().unwrap();
     let output_dir = tempdir.path();
     handle_example_run_command(example_name, Some(output_dir)).unwrap();
@@ -42,7 +46,44 @@ fn test_handle_example_run_command(#[case] example_name: &str) {
 
         // Compare each line
         for (num, (line1, line2)) in lines1.into_iter().zip(lines2).enumerate() {
-            if line1 != line2 {
+            let fields1 = line1.split(",").collect_vec();
+            let fields2 = line2.split(",").collect_vec();
+            if fields1.len() != fields2.len() {
+                errors.push(format!(
+                    "{}: line {}: Different number of fields: {} vs {}",
+                    file_name,
+                    num,
+                    fields1.len(),
+                    fields2.len()
+                ));
+            }
+
+            // Lambda for approximately comparing floating-point fields
+            let compare_float_fields = |field1: &str, field2: &str| {
+                // Use a regex to filter out non-floating point values, as well as things that are
+                // technically valid but have strange properties (e.g. inf, NaN)
+                if !is_float.is_match(field1) || !is_float.is_match(field2) {
+                    return None;
+                }
+
+                let float1: f64 = field1.parse().unwrap();
+                let float2: f64 = field2.parse().unwrap();
+                Some(approx_eq!(f64, float1, float2))
+            };
+
+            // Compare each field in turn
+            let mut line_matches = true;
+            for (field1, field2) in fields1.into_iter().zip(fields2) {
+                // First try to compare fields as floating-point values, falling back on string
+                // comparison
+                let result =
+                    compare_float_fields(field1, field2).unwrap_or_else(|| field1 == field2);
+                if !result {
+                    line_matches = false;
+                }
+            }
+
+            if !line_matches {
                 errors.push(format!(
                     "{}: line {}:\n    + \"{}\"\n    - \"{}\"",
                     file_name, num, line1, line2
