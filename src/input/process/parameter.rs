@@ -6,6 +6,7 @@ use crate::region::parse_region_str;
 use crate::year::parse_year_str;
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -95,7 +96,7 @@ impl ProcessParameterRaw {
 /// Read process parameters from the specified model directory
 pub fn read_process_parameters(
     model_dir: &Path,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
@@ -107,7 +108,7 @@ pub fn read_process_parameters(
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>>

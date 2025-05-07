@@ -1,5 +1,6 @@
 //! Code for handing IDs
 use anyhow::{Context, Result};
+use indexmap::IndexSet;
 use std::collections::HashSet;
 
 /// A trait alias for ID types
@@ -100,18 +101,28 @@ pub trait IDCollection<ID: IDLike> {
     fn get_id(&self, id: &ID) -> Result<ID>;
 }
 
-impl<ID: IDLike> IDCollection<ID> for HashSet<ID> {
-    fn get_id_by_str(&self, id: &str) -> Result<ID> {
-        let found = self
-            .get(id)
-            .with_context(|| format!("Unknown ID {id} found"))?;
-        Ok(found.clone())
-    }
+macro_rules! define_id_methods {
+    () => {
+        fn get_id_by_str(&self, id: &str) -> Result<ID> {
+            let found = self
+                .get(id)
+                .with_context(|| format!("Unknown ID {id} found"))?;
+            Ok(found.clone())
+        }
 
-    fn get_id(&self, id: &ID) -> Result<ID> {
-        let found = self
-            .get(id.borrow())
-            .with_context(|| format!("Unknown ID {id} found"))?;
-        Ok(found.clone())
-    }
+        fn get_id(&self, id: &ID) -> Result<ID> {
+            let found = self
+                .get(id.borrow())
+                .with_context(|| format!("Unknown ID {id} found"))?;
+            Ok(found.clone())
+        }
+    };
+}
+
+impl<ID: IDLike> IDCollection<ID> for HashSet<ID> {
+    define_id_methods!();
+}
+
+impl<ID: IDLike> IDCollection<ID> for IndexSet<ID> {
+    define_id_methods!();
 }
