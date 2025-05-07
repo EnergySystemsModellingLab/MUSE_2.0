@@ -1,0 +1,139 @@
+//! Common code for running regression tests.
+use float_cmp::approx_eq;
+use itertools::Itertools;
+use muse2::commands::handle_example_run_command;
+use regex::Regex;
+use std::fs::{read_dir, File};
+use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use tempfile::tempdir;
+
+/// Regression tests for the example models.
+pub fn run_regression_test(example_name: &str) {
+    std::env::set_var("MUSE2_LOG_LEVEL", "off");
+
+    let tempdir = tempdir().unwrap();
+    let output_dir = tempdir.path();
+    handle_example_run_command(example_name, Some(output_dir)).unwrap();
+
+    let test_data_dir = PathBuf::from(format!("tests/data/{example_name}"));
+    compare_output_dirs(output_dir, &test_data_dir);
+}
+
+fn compare_output_dirs(output_dir1: &Path, output_dir2: &Path) {
+    let file_names1 = get_csv_file_names(output_dir1);
+    let file_names2 = get_csv_file_names(output_dir2);
+
+    // Check that output files haven't been added/removed
+    assert!(file_names1 == file_names2);
+
+    let mut errors = Vec::new();
+    for file_name in file_names1 {
+        compare_lines(output_dir1, output_dir2, &file_name, &mut errors);
+    }
+
+    assert!(
+        errors.is_empty(),
+        "The following errors occurred:\n  * {}",
+        errors.join("\n  * ")
+    );
+}
+
+fn compare_lines(
+    output_dir1: &Path,
+    output_dir2: &Path,
+    file_name: &str,
+    errors: &mut Vec<String>,
+) {
+    let lines1 = read_lines(&output_dir1.join(file_name));
+    let lines2 = read_lines(&output_dir2.join(file_name));
+
+    // Check for different number of lines
+    if lines1.len() != lines2.len() {
+        errors.push(format!(
+            "{}: Different number of lines: {} vs {}",
+            file_name,
+            lines1.len(),
+            lines2.len()
+        ));
+    }
+
+    // Compare each line
+    for (num, (line1, line2)) in lines1.into_iter().zip(lines2).enumerate() {
+        if !compare_line(num, &line1, &line2, file_name, errors) {
+            errors.push(format!(
+                "{}: line {}:\n    + \"{}\"\n    - \"{}\"",
+                file_name, num, line1, line2
+            ))
+        }
+    }
+}
+
+fn compare_line(
+    num: usize,
+    line1: &str,
+    line2: &str,
+    file_name: &str,
+    errors: &mut Vec<String>,
+) -> bool {
+    let fields1 = line1.split(",").collect_vec();
+    let fields2 = line2.split(",").collect_vec();
+    if fields1.len() != fields2.len() {
+        errors.push(format!(
+            "{}: line {}: Different number of fields: {} vs {}",
+            file_name,
+            num,
+            fields1.len(),
+            fields2.len()
+        ));
+    }
+
+    // Check every field matches
+    fields1.into_iter().zip(fields2).all(|(f1, f2)| {
+        // First try to compare fields as floating-point values, falling back on string comparison
+        try_compare_floats(f1, f2).unwrap_or_else(|| f1 == f2)
+    })
+}
+
+fn try_compare_floats(s1: &str, s2: &str) -> Option<bool> {
+    // Use a regex to filter out non-floating point values, as well as things that are
+    // technically valid but have strange properties (e.g. inf, NaN)
+    static IS_FLOAT: OnceLock<Regex> = OnceLock::new();
+    let is_float = IS_FLOAT.get_or_init(|| Regex::new(r"^-?[0-9]+\.[0-9]+$").unwrap());
+
+    if !is_float.is_match(s1) || !is_float.is_match(s2) {
+        return None;
+    }
+
+    // We can safely unwrap because we know they're valid floats
+    let float1: f64 = s1.parse().unwrap();
+    let float2: f64 = s2.parse().unwrap();
+
+    Some(approx_eq!(f64, float1, float2))
+}
+
+/// Get the names of CSV files expected to appear in the given folder
+fn get_csv_file_names(dir_path: &Path) -> Vec<String> {
+    let entries = read_dir(dir_path).unwrap();
+    let mut file_names = Vec::new();
+    for entry in entries {
+        let file_name = entry.unwrap().file_name();
+        let file_name = file_name.to_str().unwrap();
+        if file_name.ends_with(".csv") {
+            file_names.push(file_name.to_string());
+        }
+    }
+
+    file_names.sort();
+    file_names
+}
+
+// Read all lines from a file into a `Vec`
+fn read_lines(path: &Path) -> Vec<String> {
+    let file1 = File::open(path).unwrap();
+    BufReader::new(file1)
+        .lines()
+        .map_while(Result::ok)
+        .collect()
+}
