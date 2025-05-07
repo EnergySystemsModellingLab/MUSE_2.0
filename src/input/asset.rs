@@ -95,6 +95,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fixture::{processes, region_ids};
     use crate::process::{Process, ProcessEnergyLimitsMap, ProcessParameterMap};
     use indexmap::indexmap;
     use itertools::assert_equal;
@@ -104,25 +105,6 @@ mod tests {
     #[fixture]
     fn agent_ids() -> HashSet<AgentID> {
         iter::once("agent1".into()).collect()
-    }
-
-    #[fixture]
-    fn region_ids() -> HashSet<RegionID> {
-        ["GBR".into(), "USA".into()].into_iter().collect()
-    }
-
-    #[fixture]
-    fn processes(region_ids: HashSet<RegionID>) -> ProcessMap {
-        let process = Rc::new(Process {
-            id: "process1".into(),
-            description: "Description".into(),
-            years: 2010..=2020,
-            energy_limits: ProcessEnergyLimitsMap::new(),
-            flows: vec![],
-            parameters: ProcessParameterMap::new(),
-            regions: region_ids.clone(),
-        });
-        indexmap! { process.id.clone() => Rc::clone(&process)}
     }
 
     #[rstest]
@@ -140,7 +122,7 @@ mod tests {
         };
         let asset_out = Asset::new(
             "agent1".into(),
-            Rc::clone(&processes.values().next().unwrap()),
+            Rc::clone(processes.values().next().unwrap()),
             "GBR".into(),
             1.0,
             2010,
