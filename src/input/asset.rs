@@ -5,7 +5,7 @@ use crate::asset::Asset;
 use crate::id::IDCollection;
 use crate::process::ProcessMap;
 use crate::region::RegionID;
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -74,12 +74,6 @@ where
             .get(asset.process_id.as_str())
             .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
         let region_id = region_ids.get_id_by_str(&asset.region_id)?;
-        ensure!(
-            process.regions.contains(&region_id),
-            "Region {} is not one of the regions in which process {} operates",
-            region_id,
-            process.id
-        );
 
         Asset::new(
             agent_id,

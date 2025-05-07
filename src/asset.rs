@@ -50,6 +50,12 @@ impl Asset {
         commission_year: u32,
     ) -> Result<Self> {
         ensure!(commission_year > 0, "Commission year must be > 0");
+        ensure!(
+            process.regions.contains(&region_id),
+            "Region {} is not one of the regions in which process {} operates",
+            region_id,
+            process.id
+        );
 
         let process_parameter = process
             .parameters
