@@ -323,7 +323,8 @@ mod tests {
             "GBR".into(),
             1.0,
             2010,
-        );
+        )
+        .unwrap();
 
         (asset, flow)
     }
