@@ -49,7 +49,6 @@ impl Asset {
         capacity: f64,
         commission_year: u32,
     ) -> Result<Self> {
-        ensure!(commission_year > 0, "Commission year must be > 0");
         ensure!(
             process.regions.contains(&region_id),
             "Region {} is not one of the regions in which process {} operates",
@@ -126,12 +125,12 @@ impl Asset {
 
 /// A pool of [`Asset`]s
 pub struct AssetPool {
-    /// The pool of assets, both active and yet to be commissioned.
-    ///
-    /// Sorted in order of commission year.
-    assets: Vec<Asset>,
-    /// Current milestone year.
-    current_year: u32,
+    /// The pool of active assets, sorted by commission year
+    active: Vec<Asset>,
+    /// Assets that have not yet been commissioned, sorted by commission year
+    future: Vec<Asset>,
+    /// Next available asset ID number
+    next_id: u32,
 }
 
 impl AssetPool {
@@ -140,34 +139,34 @@ impl AssetPool {
         // Sort in order of commission year
         assets.sort_by(|a, b| a.commission_year.cmp(&b.commission_year));
 
-        // Assign each asset a unique ID
-        for (id, asset) in assets.iter_mut().enumerate() {
-            asset.id = AssetID(id as u32);
-        }
-
         Self {
-            assets,
-            current_year: 0,
+            active: Vec::new(),
+            future: assets,
+            next_id: 0,
         }
     }
 
     /// Commission new assets for the specified milestone year
     pub fn commission_new(&mut self, year: u32) {
-        assert!(
-            year >= self.current_year,
-            "Assets have already been commissioned for year {year}"
-        );
-        self.current_year = year;
+        // Count the number of assets to move
+        let count = self
+            .future
+            .iter()
+            .take_while(|asset| asset.commission_year <= year)
+            .count();
+
+        // Move assets from future to active
+        for mut asset in self.future.drain(0..count) {
+            asset.id = AssetID(self.next_id);
+            self.next_id += 1;
+
+            self.active.push(asset);
+        }
     }
 
     /// Decommission old assets for the specified milestone year
     pub fn decomission_old(&mut self, year: u32) {
-        assert!(
-            year >= self.current_year,
-            "Cannot decommission assets in the past (current year: {})",
-            self.current_year
-        );
-        self.assets.retain(|asset| asset.decommission_year() > year);
+        self.active.retain(|asset| asset.decommission_year() > year);
     }
 
     /// Get an asset with the specified ID.
@@ -179,18 +178,16 @@ impl AssetPool {
     pub fn get(&self, id: AssetID) -> Option<&Asset> {
         // The assets in `active` are in order of ID
         let idx = self
-            .assets
+            .active
             .binary_search_by(|asset| asset.id.cmp(&id))
             .ok()?;
 
-        Some(&self.assets[idx])
+        Some(&self.active[idx])
     }
 
     /// Iterate over active assets
     pub fn iter(&self) -> impl Iterator<Item = &Asset> {
-        self.assets
-            .iter()
-            .take_while(|asset| asset.commission_year <= self.current_year)
+        self.active.iter()
     }
 
     /// Iterate over active assets for a particular region
@@ -229,9 +226,8 @@ impl AssetPool {
             "One or more asset IDs were invalid"
         );
 
-        self.assets.retain(|asset| {
-            assets_to_keep.contains(&asset.id) || asset.commission_year > self.current_year
-        });
+        self.active
+            .retain(|asset| assets_to_keep.contains(&asset.id));
     }
 }
 
@@ -253,16 +249,6 @@ mod tests {
         let region_id = RegionID("GBR".into());
         let asset = Asset::new(agent_id, process.into(), region_id, 1.0, 2015).unwrap();
         assert!(asset.id == AssetID::INVALID);
-    }
-
-    #[rstest]
-    fn test_asset_new_invalid_commission_year_zero(process: Process) {
-        let agent_id = AgentID("agent1".into());
-        let region_id = RegionID("GBR".into());
-        assert_error!(
-            Asset::new(agent_id, process.into(), region_id, 1.0, 0),
-            "Commission year must be > 0"
-        );
     }
 
     #[rstest]
@@ -376,57 +362,53 @@ mod tests {
 
     #[rstest]
     fn test_asset_pool_new(asset_pool: AssetPool) {
-        assert!(asset_pool.current_year == 0);
-
         // Should be in order of commission year
-        assert!(asset_pool.assets.len() == 2);
-        assert!(asset_pool.assets[0].commission_year == 2010);
-        assert!(asset_pool.assets[1].commission_year == 2020);
+        assert!(asset_pool.active.is_empty());
+        assert!(asset_pool.future.len() == 2);
+        assert!(asset_pool.future[0].commission_year == 2010);
+        assert!(asset_pool.future[1].commission_year == 2020);
     }
 
     #[rstest]
     fn test_asset_pool_commission_new1(mut asset_pool: AssetPool) {
         // Asset to be commissioned in this year
         asset_pool.commission_new(2010);
-        assert!(asset_pool.current_year == 2010);
-        assert_equal(asset_pool.iter(), iter::once(&asset_pool.assets[0]));
+        assert_equal(asset_pool.iter(), iter::once(&asset_pool.active[0]));
     }
 
     #[rstest]
     fn test_asset_pool_commission_new2(mut asset_pool: AssetPool) {
         // Commission year has passed
         asset_pool.commission_new(2011);
-        assert!(asset_pool.current_year == 2011);
-        assert_equal(asset_pool.iter(), iter::once(&asset_pool.assets[0]));
+        assert_equal(asset_pool.iter(), iter::once(&asset_pool.active[0]));
     }
 
     #[rstest]
     fn test_asset_pool_commission_new3(mut asset_pool: AssetPool) {
         // Nothing to commission for this year
         asset_pool.commission_new(2000);
-        assert!(asset_pool.current_year == 2000);
         assert!(asset_pool.iter().next().is_none()); // no active assets
     }
 
     #[rstest]
     fn test_asset_pool_decommission_old(mut asset_pool: AssetPool) {
-        let asset_pool2 = asset_pool.assets.clone();
-
         asset_pool.commission_new(2020);
-        assert!(asset_pool.assets.len() == 2);
+        assert!(asset_pool.active.len() == 2);
         asset_pool.decomission_old(2020); // should decommission first asset (lifetime == 5)
-        assert_equal(&asset_pool.assets, iter::once(&asset_pool2[1]));
+        assert!(asset_pool.active.len() == 1);
+        assert_eq!(asset_pool.active[0].commission_year, 2020);
         asset_pool.decomission_old(2022); // nothing to decommission
-        assert_equal(&asset_pool.assets, iter::once(&asset_pool2[1]));
+        assert!(asset_pool.active.len() == 1);
+        assert_eq!(asset_pool.active[0].commission_year, 2020);
         asset_pool.decomission_old(2025); // should decommission second asset
-        assert!(asset_pool.assets.is_empty());
+        assert!(asset_pool.active.is_empty());
     }
 
     #[rstest]
     fn test_asset_pool_get(mut asset_pool: AssetPool) {
         asset_pool.commission_new(2020);
-        assert!(asset_pool.get(AssetID(0)) == Some(&asset_pool.assets[0]));
-        assert!(asset_pool.get(AssetID(1)) == Some(&asset_pool.assets[1]));
+        assert_eq!(asset_pool.get(AssetID(0)), Some(&asset_pool.active[0]));
+        assert_eq!(asset_pool.get(AssetID(1)), Some(&asset_pool.active[1]));
     }
 
     #[rstest]
@@ -434,21 +416,22 @@ mod tests {
         // Even though we are retaining no assets, none have been commissioned so the asset pool
         // should not be changed
         asset_pool.retain(&HashSet::new());
-        assert_eq!(asset_pool.assets.len(), 2);
+        assert!(asset_pool.active.is_empty());
 
         // Decommission all active assets
         asset_pool.commission_new(2010); // Commission first asset
+        assert_eq!(asset_pool.active.len(), 1);
         asset_pool.retain(&HashSet::new());
-        assert_eq!(asset_pool.assets.len(), 1);
-        assert_eq!(asset_pool.assets[0].id, AssetID(1));
+        assert!(asset_pool.active.is_empty());
     }
 
     #[rstest]
     fn test_asset_pool_retain2(mut asset_pool: AssetPool) {
         // Decommission single asset
         asset_pool.commission_new(2020); // Commission all assets
+        assert_eq!(asset_pool.active.len(), 2);
         asset_pool.retain(&iter::once(AssetID(1)).collect());
-        assert_eq!(asset_pool.assets.len(), 1);
-        assert_eq!(asset_pool.assets[0].id, AssetID(1));
+        assert_eq!(asset_pool.active.len(), 1);
+        assert_eq!(asset_pool.active[0].id, AssetID(1));
     }
 }
