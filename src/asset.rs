@@ -4,7 +4,7 @@ use crate::commodity::Commodity;
 use crate::process::{Process, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Context, Result};
 use std::collections::HashSet;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
@@ -60,8 +60,11 @@ impl Asset {
         let process_parameter = process
             .parameters
             .get(&(region_id.clone(), commission_year))
-            .expect("No process parameter for specified region and year")
+            .with_context(|| {
+                format!("No process parameter for region {region_id} and year {commission_year}")
+            })?
             .clone();
+
         Ok(Self {
             id: AssetID::INVALID,
             agent_id,
