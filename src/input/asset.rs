@@ -96,12 +96,23 @@ where
 mod tests {
     use super::*;
     use crate::process::{Process, ProcessEnergyLimitsMap, ProcessParameterMap};
+    use indexmap::indexmap;
     use itertools::assert_equal;
+    use rstest::{fixture, rstest};
     use std::iter;
 
-    #[test]
-    fn test_read_assets_from_iter() {
-        let region_ids: HashSet<RegionID> = ["GBR".into(), "USA".into()].into_iter().collect();
+    #[fixture]
+    fn agent_ids() -> HashSet<AgentID> {
+        iter::once("agent1".into()).collect()
+    }
+
+    #[fixture]
+    fn region_ids() -> HashSet<RegionID> {
+        ["GBR".into(), "USA".into()].into_iter().collect()
+    }
+
+    #[fixture]
+    fn processes(region_ids: HashSet<RegionID>) -> ProcessMap {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
@@ -111,12 +122,15 @@ mod tests {
             parameters: ProcessParameterMap::new(),
             regions: region_ids.clone(),
         });
-        let processes = [(process.id.clone(), Rc::clone(&process))]
-            .into_iter()
-            .collect();
-        let agent_ids = ["agent1".into()].into_iter().collect();
+        indexmap! { process.id.clone() => Rc::clone(&process)}
+    }
 
-        // Valid
+    #[rstest]
+    fn test_read_assets_from_iter_valid(
+        agent_ids: HashSet<AgentID>,
+        processes: ProcessMap,
+        region_ids: HashSet<RegionID>,
+    ) {
         let asset_in = AssetRaw {
             agent_id: "agent1".into(),
             process_id: "process1".into(),
@@ -126,7 +140,7 @@ mod tests {
         };
         let asset_out = Asset::new(
             "agent1".into(),
-            Rc::clone(&process),
+            Rc::clone(&processes.values().next().unwrap()),
             "GBR".into(),
             1.0,
             2010,
@@ -136,46 +150,46 @@ mod tests {
                 .unwrap(),
             iter::once(asset_out),
         );
+    }
 
-        // Bad process ID
-        let asset_in = AssetRaw {
+    #[rstest]
+    #[case(AssetRaw { // Bad process ID
             agent_id: "agent1".into(),
             process_id: "process2".into(),
             region_id: "GBR".into(),
             capacity: 1.0,
             commission_year: 2010,
-        };
-        assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
-                .is_err()
-        );
-
-        // Bad agent ID
-        let asset_in = AssetRaw {
+        })]
+    #[case(AssetRaw { // Bad agent ID
             agent_id: "agent2".into(),
             process_id: "process1".into(),
             region_id: "GBR".into(),
             capacity: 1.0,
             commission_year: 2010,
-        };
-        assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
-                .is_err()
-        );
-
-        // Bad region ID: not in region_ids
-        let asset_in = AssetRaw {
+        })]
+    #[case(AssetRaw { // Bad region ID: not in region_ids
             agent_id: "agent1".into(),
             process_id: "process1".into(),
             region_id: "FRA".into(),
             capacity: 1.0,
             commission_year: 2010,
-        };
+        })]
+    fn test_read_assets_from_iter_invalid(
+        #[case] asset: AssetRaw,
+        agent_ids: HashSet<AgentID>,
+        processes: ProcessMap,
+        region_ids: HashSet<RegionID>,
+    ) {
         assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
-                .is_err()
+            read_assets_from_iter(iter::once(asset), &agent_ids, &processes, &region_ids).is_err()
         );
+    }
 
+    #[rstest]
+    fn test_read_assets_from_iter_invalid_process_not_active_in_region(
+        agent_ids: HashSet<AgentID>,
+        region_ids: HashSet<RegionID>,
+    ) {
         // Bad region ID: process not active there
         let process = Rc::new(Process {
             id: "process1".into(),
@@ -186,19 +200,16 @@ mod tests {
             parameters: ProcessParameterMap::new(),
             regions: HashSet::from(["GBR".into()]),
         });
-        let asset_in = AssetRaw {
+        let asset = AssetRaw {
             agent_id: "agent1".into(),
             process_id: "process1".into(),
             region_id: "USA".into(), // NB: In region_ids, but not in process.regions
             capacity: 1.0,
             commission_year: 2010,
         };
-        let processes = [(process.id.clone(), Rc::clone(&process))]
-            .into_iter()
-            .collect();
+        let processes = indexmap! {process.id.clone()=> Rc::clone(&process)};
         assert!(
-            read_assets_from_iter([asset_in].into_iter(), &agent_ids, &processes, &region_ids)
-                .is_err()
+            read_assets_from_iter(iter::once(asset), &agent_ids, &processes, &region_ids).is_err()
         );
     }
 }
