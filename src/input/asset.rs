@@ -81,13 +81,13 @@ where
             process.id
         );
 
-        Ok(Asset::new(
+        Asset::new(
             agent_id,
             Rc::clone(process),
             region_id,
             asset.capacity,
             asset.commission_year,
-        ))
+        )
     })
     .try_collect()
 }
@@ -126,7 +126,8 @@ mod tests {
             "GBR".into(),
             1.0,
             2010,
-        );
+        )
+        .unwrap();
         assert_equal(
             read_assets_from_iter(iter::once(asset_in), &agent_ids, &processes, &region_ids)
                 .unwrap(),

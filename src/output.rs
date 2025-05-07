@@ -199,7 +199,7 @@ mod tests {
         let region_id: RegionID = "GBR".into();
         let agent_id = "agent1".into();
         let commission_year = 2015;
-        Asset::new(agent_id, process.into(), region_id, 2.0, commission_year)
+        Asset::new(agent_id, process.into(), region_id, 2.0, commission_year).unwrap()
     }
 
     #[rstest]

@@ -4,6 +4,7 @@ use crate::commodity::Commodity;
 use crate::process::{Process, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
+use anyhow::{ensure, Result};
 use std::collections::HashSet;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
@@ -47,13 +48,15 @@ impl Asset {
         region_id: RegionID,
         capacity: f64,
         commission_year: u32,
-    ) -> Self {
+    ) -> Result<Self> {
+        ensure!(commission_year > 0, "Commission year must be > 0");
+
         let process_parameter = process
             .parameters
             .get(&(region_id.clone(), commission_year))
             .expect("No process parameter for specified region and year")
             .clone();
-        Self {
+        Ok(Self {
             id: AssetID::INVALID,
             agent_id,
             process,
@@ -61,7 +64,7 @@ impl Asset {
             region_id,
             capacity,
             commission_year,
-        }
+        })
     }
 
     /// The last year in which this asset should be decommissioned
@@ -271,7 +274,8 @@ mod tests {
             "GBR".into(),
             2.0,
             2010,
-        );
+        )
+        .unwrap();
 
         assert_eq!(asset.get_energy_limits(&time_slice), 6.0..=f64::INFINITY);
     }
@@ -308,6 +312,7 @@ mod tests {
                     1.0,
                     year,
                 )
+                .unwrap()
             })
             .into_iter()
             .collect_vec();
