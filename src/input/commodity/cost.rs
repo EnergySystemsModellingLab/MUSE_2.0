@@ -75,7 +75,7 @@ where
 
     // Keep track of commodity/region combinations specified. We will check that all years and
     // time slices are covered for each commodity/region combination.
-    let mut commodity_regions = HashSet::new();
+    let mut commodity_regions: HashMap<CommodityID, HashSet<RegionID>> = HashMap::new();
 
     for cost in iter {
         let commodity_id = commodity_ids.get_id_by_str(&cost.commodity_id)?;
@@ -96,7 +96,10 @@ where
 
         // Insert cost into map for each region/year/time slice
         for region in regions.iter() {
-            commodity_regions.insert((commodity_id.clone(), region.clone()));
+            commodity_regions
+                .entry(commodity_id.clone())
+                .or_default()
+                .insert(region.clone());
             for year in years.iter() {
                 for (time_slice, _) in time_slice_info.iter_selection(&ts_selection) {
                     try_insert(
@@ -110,26 +113,30 @@ where
     }
 
     // Validate map
-    validate_commodity_costs(&map, &commodity_regions, milestone_years, time_slice_info)?;
+    for (commodity_id, regions) in commodity_regions.iter() {
+        let map = map.get(commodity_id).unwrap();
+        validate_commodity_costs_map(map, regions, milestone_years, time_slice_info)
+            .with_context(|| format!("Missing costs for commodity {}", commodity_id))?;
+    }
     Ok(map)
 }
 
-fn validate_commodity_costs(
-    map: &HashMap<CommodityID, CommodityCostMap>,
-    commodity_regions: &HashSet<(CommodityID, RegionID)>,
+fn validate_commodity_costs_map(
+    map: &CommodityCostMap,
+    regions: &HashSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
-    // Check that all years and time slices are covered for each commodity/region combination
-    for (commodity_id, region_id) in commodity_regions.iter() {
-        let map = map.get(commodity_id).unwrap();
+    // Check that all regions, years and time slices are covered
+    for region_id in regions.iter() {
         for year in milestone_years.iter() {
             for time_slice in time_slice_info.iter_ids() {
                 ensure!(
                     map.contains_key(&(region_id.clone(), *year, time_slice.clone())),
-                    "Commodity {} in region {} requires cost for all milestone years and time slices",
-                    commodity_id,
+                    "Missing cost for region {}, year {}, time slice {}",
                     region_id,
+                    year,
+                    time_slice
                 );
             }
         }
