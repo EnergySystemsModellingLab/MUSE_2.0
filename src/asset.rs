@@ -27,7 +27,7 @@ pub struct Asset {
     pub agent_id: AgentID,
     /// The [`Process`] that this asset corresponds to
     pub process: Rc<Process>,
-    /// The [`ProcessParameter`] corresponding to this region and year
+    /// The [`ProcessParameter`] corresponding to the asset's region and commission year
     pub process_parameter: Rc<ProcessParameter>,
     /// The region in which the asset is located
     pub region_id: RegionID,
