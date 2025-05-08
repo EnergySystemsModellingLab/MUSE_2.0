@@ -52,7 +52,7 @@ pub fn read_commodities(
         milestone_years,
     )?;
 
-    // Populate Vecs for each Commodity
+    // Populate maps for each Commodity
     Ok(commodities
         .into_iter()
         .map(|(id, mut commodity)| {

@@ -178,7 +178,7 @@ mod tests {
                 AgentObjective {
                     agent_id: "agent".into(),
                     year: 2020,
-                    objective_type: ObjectiveType::EquivalentAnnualCost,
+                    objective_type: ObjectiveType::LevelisedCostOfX,
                     decision_weight: $decision_weight,
                     decision_lexico_order: $decision_lexico_order,
                 }
@@ -236,7 +236,7 @@ mod tests {
         let objective = AgentObjective {
             agent_id: "agent".into(),
             year: 2020,
-            objective_type: ObjectiveType::EquivalentAnnualCost,
+            objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: None,
             decision_lexico_order: None,
         };
@@ -266,7 +266,7 @@ mod tests {
         let bad_objective = AgentObjective {
             agent_id: "agent".into(),
             year: 2020,
-            objective_type: ObjectiveType::EquivalentAnnualCost,
+            objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: Some(1.0), // Should only accept None for DecisionRule::Single
             decision_lexico_order: None,
         };
@@ -284,14 +284,14 @@ mod tests {
         let objective1 = AgentObjective {
             agent_id: agent_id.clone(),
             year: 2020,
-            objective_type: ObjectiveType::EquivalentAnnualCost,
+            objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: None,
             decision_lexico_order: Some(1),
         };
         let objective2 = AgentObjective {
             agent_id: agent_id.clone(),
             year: 2020,
-            objective_type: ObjectiveType::EquivalentAnnualCost,
+            objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: None,
             decision_lexico_order: Some(2),
         };
