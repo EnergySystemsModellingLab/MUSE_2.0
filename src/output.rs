@@ -186,37 +186,25 @@ impl DataWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::{Process, ProcessParameterMap};
+    use crate::fixture::process;
+    use crate::process::Process;
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
-    use std::collections::HashSet;
-    use std::rc::Rc;
-    use std::{collections::HashMap, iter};
+    use rstest::{fixture, rstest};
+    use std::iter;
     use tempfile::tempdir;
 
-    fn get_asset() -> Asset {
-        let process_id = ProcessID::new("process1");
+    #[fixture]
+    pub fn asset(process: Process) -> Asset {
         let region_id: RegionID = "GBR".into();
         let agent_id = "agent1".into();
         let commission_year = 2015;
-        let process = Rc::new(Process {
-            id: process_id,
-            description: "Description".into(),
-            years: 2010..=2020,
-            energy_limits: HashMap::new(),
-            flows: vec![],
-            parameters: ProcessParameterMap::new(),
-            regions: HashSet::from([region_id.clone()]),
-        });
-
-        Asset::new(agent_id, process, region_id, 2.0, commission_year)
+        Asset::new(agent_id, process.into(), region_id, 2.0, commission_year).unwrap()
     }
 
-    #[test]
-    fn test_write_assets() {
+    #[rstest]
+    fn test_write_assets(asset: Asset) {
         let milestone_year = 2020;
-        let asset = get_asset();
-
         let dir = tempdir().unwrap();
 
         // Write an asset
@@ -238,15 +226,15 @@ mod tests {
         assert_equal(records, iter::once(expected));
     }
 
-    #[test]
-    fn test_write_flows() {
+    #[rstest]
+    fn test_write_flows(asset: Asset) {
         let milestone_year = 2020;
         let commodity_id = "commodity1".into();
         let time_slice = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
         };
-        let mut assets = AssetPool::new(vec![get_asset()]);
+        let mut assets = AssetPool::new(vec![asset]);
         assets.commission_new(2020);
         let flow_item = (
             assets.iter().next().unwrap().id,

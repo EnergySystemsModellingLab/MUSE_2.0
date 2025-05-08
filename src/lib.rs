@@ -15,3 +15,6 @@ pub mod settings;
 pub mod simulation;
 pub mod time_slice;
 pub mod year;
+
+#[cfg(test)]
+mod fixture;
