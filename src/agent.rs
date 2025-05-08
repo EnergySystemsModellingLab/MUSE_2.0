@@ -94,14 +94,9 @@ pub struct AgentObjective {
 }
 
 /// The type of objective for the agent
-///
-/// **TODO** Add more objective types
 #[derive(Debug, Clone, PartialEq, DeserializeLabeledStringEnum)]
 pub enum ObjectiveType {
     /// Average cost of one unit of output commodity over its lifetime
     #[string = "lcox"]
     LevelisedCostOfX,
-    /// Cost of serving agent's demand for a year, considering the asset's entire lifetime
-    #[string = "eac"]
-    EquivalentAnnualCost,
 }
