@@ -61,7 +61,10 @@ impl Asset {
             .parameters
             .get(&(region_id.clone(), commission_year))
             .with_context(|| {
-                format!("No process parameter for region {region_id} and year {commission_year}")
+                format!(
+                    "Process {} does not operate in year {}.",
+                    process.id, commission_year
+                )
             })?
             .clone();
 
