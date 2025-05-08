@@ -10,6 +10,17 @@ use rstest::fixture;
 use std::collections::HashSet;
 use std::rc::Rc;
 
+/// Assert that an error with the given message occurs
+macro_rules! assert_error {
+    ($result:expr, $msg:expr) => {
+        assert_eq!(
+            $result.unwrap_err().chain().next().unwrap().to_string(),
+            $msg
+        );
+    };
+}
+pub(crate) use assert_error;
+
 #[fixture]
 pub fn region_ids() -> HashSet<RegionID> {
     ["GBR".into(), "USA".into()].into_iter().collect()
