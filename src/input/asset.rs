@@ -90,8 +90,7 @@ where
 mod tests {
     use super::*;
     use crate::fixture::{processes, region_ids};
-    use crate::process::{Process, ProcessEnergyLimitsMap, ProcessParameterMap};
-    use indexmap::indexmap;
+
     use itertools::assert_equal;
     use rstest::{fixture, rstest};
     use std::iter;
@@ -157,34 +156,6 @@ mod tests {
         processes: ProcessMap,
         region_ids: HashSet<RegionID>,
     ) {
-        assert!(
-            read_assets_from_iter(iter::once(asset), &agent_ids, &processes, &region_ids).is_err()
-        );
-    }
-
-    #[rstest]
-    fn test_read_assets_from_iter_invalid_process_not_active_in_region(
-        agent_ids: HashSet<AgentID>,
-        region_ids: HashSet<RegionID>,
-    ) {
-        // Bad region ID: process not active there
-        let process = Rc::new(Process {
-            id: "process1".into(),
-            description: "Description".into(),
-            years: 2010..=2020,
-            energy_limits: ProcessEnergyLimitsMap::new(),
-            flows: vec![],
-            parameters: ProcessParameterMap::new(),
-            regions: HashSet::from(["GBR".into()]),
-        });
-        let asset = AssetRaw {
-            agent_id: "agent1".into(),
-            process_id: "process1".into(),
-            region_id: "USA".into(), // NB: In region_ids, but not in process.regions
-            capacity: 1.0,
-            commission_year: 2010,
-        };
-        let processes = indexmap! {process.id.clone()=> Rc::clone(&process)};
         assert!(
             read_assets_from_iter(iter::once(asset), &agent_ids, &processes, &region_ids).is_err()
         );

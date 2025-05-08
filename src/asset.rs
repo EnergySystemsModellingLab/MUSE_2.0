@@ -62,7 +62,7 @@ impl Asset {
             .get(&(region_id.clone(), commission_year))
             .with_context(|| {
                 format!(
-                    "Process {} does not operate in year {}.",
+                    "Process {} does not operate in the year {}",
                     process.id, commission_year
                 )
             })?
@@ -219,6 +219,7 @@ impl AssetPool {
 mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
+    use crate::fixture::{assert_error, process};
     use crate::process::{
         FlowType, Process, ProcessEnergyLimitsMap, ProcessFlow, ProcessParameter,
         ProcessParameterMap,
@@ -228,6 +229,44 @@ mod tests {
     use rstest::{fixture, rstest};
     use std::iter;
     use std::ops::RangeInclusive;
+
+    #[rstest]
+    fn test_asset_new_valid(process: Process) {
+        let agent_id = AgentID("agent1".into());
+        let region_id = RegionID("GBR".into());
+        let asset = Asset::new(agent_id, process.into(), region_id, 1.0, 2015).unwrap();
+        assert!(asset.id == AssetID::INVALID);
+    }
+
+    #[rstest]
+    fn test_asset_new_invalid_commission_year_zero(process: Process) {
+        let agent_id = AgentID("agent1".into());
+        let region_id = RegionID("GBR".into());
+        assert_error!(
+            Asset::new(agent_id, process.into(), region_id, 1.0, 0),
+            "Commission year must be > 0"
+        );
+    }
+
+    #[rstest]
+    fn test_asset_new_invalid_commission_year(process: Process) {
+        let agent_id = AgentID("agent1".into());
+        let region_id = RegionID("GBR".into());
+        assert_error!(
+            Asset::new(agent_id, process.into(), region_id, 1.0, 2009),
+            "Process process1 does not operate in the year 2009"
+        );
+    }
+
+    #[rstest]
+    fn test_asset_new_invalid_region(process: Process) {
+        let agent_id = AgentID("agent1".into());
+        let region_id = RegionID("FRA".into());
+        assert_error!(
+            Asset::new(agent_id, process.into(), region_id, 1.0, 2015),
+            "Region FRA is not one of the regions in which process process1 operates"
+        );
+    }
 
     #[fixture]
     fn asset_pool() -> AssetPool {
