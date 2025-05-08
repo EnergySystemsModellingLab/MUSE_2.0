@@ -1,3 +1,2 @@
-commodity_id,region_id,balance_type,year,time_slice,value
-CO2EMT,GBR,net,2020,annual,0.04
-CO2EMT,GBR,net,2030,annual,0.04
+commodity_id,regions,year,time_slice,balance_type,value
+CO2EMT,GBR,all,annual,net,0.04
