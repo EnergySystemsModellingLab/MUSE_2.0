@@ -94,7 +94,7 @@ pub struct AgentObjective {
 }
 
 /// The type of objective for the agent
-#[derive(Debug, Clone, PartialEq, DeserializeLabeledStringEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, DeserializeLabeledStringEnum)]
 pub enum ObjectiveType {
     /// Average cost of one unit of output commodity over its lifetime
     #[string = "lcox"]
