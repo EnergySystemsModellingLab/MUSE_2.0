@@ -6,9 +6,11 @@ use crate::region::parse_region_str;
 use crate::year::parse_year_str;
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::rc::Rc;
 
 const PROCESS_PARAMETERS_FILE_NAME: &str = "process_parameters.csv";
 
@@ -95,7 +97,7 @@ impl ProcessParameterRaw {
 /// Read process parameters from the specified model directory
 pub fn read_process_parameters(
     model_dir: &Path,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
@@ -107,7 +109,7 @@ pub fn read_process_parameters(
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>>
@@ -142,7 +144,7 @@ where
             })?;
 
         // Insert parameter into the map
-        let param = param_raw.into_parameter()?;
+        let param = Rc::new(param_raw.into_parameter()?);
         let entry = map.entry(id.clone()).or_default();
         for year in parameter_years {
             for region in parameter_regions.clone() {

@@ -71,8 +71,8 @@ impl Process {
 /// availability.
 pub type ProcessEnergyLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<f64>>;
 
-/// A map of [`ProcessParameter`]s, keyed by year
-pub type ProcessParameterMap = HashMap<(RegionID, u32), ProcessParameter>;
+/// A map of [`ProcessParameter`]s, keyed by region and year
+pub type ProcessParameterMap = HashMap<(RegionID, u32), Rc<ProcessParameter>>;
 
 pub type ProcessFlowsMap = HashMap<(RegionID, u32), Vec<ProcessFlow>>;
 

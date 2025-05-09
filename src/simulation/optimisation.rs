@@ -286,14 +286,14 @@ mod tests {
         is_pac: bool,
         costs: CommodityCostMap,
     ) -> (Asset, ProcessFlow) {
-        let process_param = ProcessParameter {
+        let process_param = Rc::new(ProcessParameter {
             capital_cost: 5.0,
             fixed_operating_cost: 2.0,
             variable_operating_cost: 1.0,
             lifetime: 5,
             discount_rate: 0.9,
             capacity_to_activity: 1.0,
-        };
+        });
         let mut process_parameter_map = ProcessParameterMap::new();
         process_parameter_map.insert(("GBR".into(), 2010), process_param.clone());
         process_parameter_map.insert(("GBR".into(), 2020), process_param.clone());
@@ -328,7 +328,8 @@ mod tests {
             "GBR".into(),
             1.0,
             2010,
-        );
+        )
+        .unwrap();
 
         (asset, flow)
     }

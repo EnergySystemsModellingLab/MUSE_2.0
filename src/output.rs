@@ -25,13 +25,14 @@ const COMMODITY_PRICES_FILE_NAME: &str = "commodity_prices.csv";
 /// The output file name for assets
 const ASSETS_FILE_NAME: &str = "assets.csv";
 
-/// Create a new output directory for the model specified at `model_dir`.
-pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
+/// Get the model name from the specified directory path
+pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
     // Get the model name from the dir path. This ends up being convoluted because we need to check
     // for all possible errors. Ugh.
     let model_dir = model_dir
         .canonicalize() // canonicalise in case the user has specified "."
         .context("Could not resolve path to model")?;
+
     let model_name = model_dir
         .file_name()
         .context("Model cannot be in root folder")?
@@ -39,16 +40,20 @@ pub fn create_output_directory(model_dir: &Path) -> Result<PathBuf> {
         .context("Invalid chars in model dir name")?;
 
     // Construct path
-    let path: PathBuf = [OUTPUT_DIRECTORY_ROOT, model_name].iter().collect();
-    if path.is_dir() {
+    Ok([OUTPUT_DIRECTORY_ROOT, model_name].iter().collect())
+}
+
+/// Create a new output directory for the model specified at `model_dir`.
+pub fn create_output_directory(output_dir: &Path) -> Result<()> {
+    if output_dir.is_dir() {
         // already exists
-        return Ok(path);
+        return Ok(());
     }
 
     // Try to create the directory, with parents
-    fs::create_dir_all(&path)?;
+    fs::create_dir_all(output_dir)?;
 
-    Ok(path)
+    Ok(())
 }
 
 /// Represents a row in the assets output CSV file
@@ -181,37 +186,25 @@ impl DataWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::{Process, ProcessParameterMap};
+    use crate::fixture::process;
+    use crate::process::Process;
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
-    use std::collections::HashSet;
-    use std::rc::Rc;
-    use std::{collections::HashMap, iter};
+    use rstest::{fixture, rstest};
+    use std::iter;
     use tempfile::tempdir;
 
-    fn get_asset() -> Asset {
-        let process_id = ProcessID::new("process1");
+    #[fixture]
+    pub fn asset(process: Process) -> Asset {
         let region_id: RegionID = "GBR".into();
         let agent_id = "agent1".into();
         let commission_year = 2015;
-        let process = Rc::new(Process {
-            id: process_id,
-            description: "Description".into(),
-            years: 2010..=2020,
-            energy_limits: HashMap::new(),
-            flows: vec![],
-            parameters: ProcessParameterMap::new(),
-            regions: HashSet::from([region_id.clone()]),
-        });
-
-        Asset::new(agent_id, process, region_id, 2.0, commission_year)
+        Asset::new(agent_id, process.into(), region_id, 2.0, commission_year).unwrap()
     }
 
-    #[test]
-    fn test_write_assets() {
+    #[rstest]
+    fn test_write_assets(asset: Asset) {
         let milestone_year = 2020;
-        let asset = get_asset();
-
         let dir = tempdir().unwrap();
 
         // Write an asset
@@ -233,15 +226,15 @@ mod tests {
         assert_equal(records, iter::once(expected));
     }
 
-    #[test]
-    fn test_write_flows() {
+    #[rstest]
+    fn test_write_flows(asset: Asset) {
         let milestone_year = 2020;
         let commodity_id = "commodity1".into();
         let time_slice = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
         };
-        let mut assets = AssetPool::new(vec![get_asset()]);
+        let mut assets = AssetPool::new(vec![asset]);
         assets.commission_new(2020);
         let flow_item = (
             assets.iter().next().unwrap().id,

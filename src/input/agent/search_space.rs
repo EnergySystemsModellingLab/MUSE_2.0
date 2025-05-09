@@ -1,10 +1,11 @@
 //! Code for reading the agent search space CSV file.
 use super::super::*;
-use crate::agent::{AgentID, AgentMap, AgentSearchSpace, SearchSpace};
+use crate::agent::{AgentID, AgentMap, AgentSearchSpace};
 use crate::commodity::CommodityMap;
 use crate::id::IDCollection;
 use crate::process::ProcessID;
 use anyhow::{Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -22,27 +23,18 @@ struct AgentSearchSpaceRaw {
     year: u32,
     /// The processes that the agent will consider investing in. Expressed as process IDs separated
     /// by semicolons or `None`, meaning all processes.
-    search_space: Option<String>,
+    search_space: String,
 }
 
 impl AgentSearchSpaceRaw {
     fn to_agent_search_space(
         &self,
-        process_ids: &HashSet<ProcessID>,
+        process_ids: &IndexSet<ProcessID>,
         commodities: &CommodityMap,
         milestone_years: &[u32],
     ) -> Result<AgentSearchSpace> {
         // Parse search_space string
-        let search_space = match &self.search_space {
-            None => SearchSpace::AllProcesses,
-            Some(processes) => {
-                let mut set = HashSet::new();
-                for id in processes.split(';') {
-                    set.insert(process_ids.get_id_by_str(id)?);
-                }
-                SearchSpace::Some(set)
-            }
-        };
+        let search_space = parse_search_space_str(&self.search_space, process_ids)?;
 
         // Get commodity
         let commodity = commodities
@@ -65,6 +57,27 @@ impl AgentSearchSpaceRaw {
     }
 }
 
+/// Parse a string representing the processes the agent will invest in.
+///
+/// This string can either be:
+///  * Empty, meaning all processes
+///  * "all", meaning the same
+///  * A list of process IDs separated by semicolons
+fn parse_search_space_str(
+    search_space: &str,
+    process_ids: &IndexSet<ProcessID>,
+) -> Result<Vec<ProcessID>> {
+    let search_space = search_space.trim();
+    if search_space.is_empty() || search_space.eq_ignore_ascii_case("all") {
+        Ok(process_ids.iter().cloned().collect())
+    } else {
+        search_space
+            .split(';')
+            .map(|id| process_ids.get_id_by_str(id.trim()))
+            .try_collect()
+    }
+}
+
 /// Read agent search space info from the agent_search_space.csv file.
 ///
 /// # Arguments
@@ -77,7 +90,7 @@ impl AgentSearchSpaceRaw {
 pub fn read_agent_search_space(
     model_dir: &Path,
     agents: &AgentMap,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     commodities: &CommodityMap,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, Vec<AgentSearchSpace>>> {
@@ -90,7 +103,7 @@ pub fn read_agent_search_space(
 fn read_agent_search_space_from_iter<I>(
     iter: I,
     agents: &AgentMap,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     commodities: &CommodityMap,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, Vec<AgentSearchSpace>>>
@@ -141,7 +154,7 @@ mod tests {
             agent_id: "agent1".into(),
             commodity_id: "commodity1".into(),
             year: 2020,
-            search_space: Some("A;B".into()),
+            search_space: "A;B".into(),
         };
         assert!(raw
             .to_agent_search_space(&process_ids, &commodities, &[2020])
@@ -152,7 +165,7 @@ mod tests {
             agent_id: "agent1".into(),
             commodity_id: "invalid_commodity".into(),
             year: 2020,
-            search_space: Some("A;B".into()),
+            search_space: "A;B".into(),
         };
         assert!(raw
             .to_agent_search_space(&process_ids, &commodities, &[2020])
@@ -163,7 +176,7 @@ mod tests {
             agent_id: "agent1".into(),
             commodity_id: "commodity1".into(),
             year: 2020,
-            search_space: Some("A;D".into()),
+            search_space: "A;D".into(),
         };
         assert!(raw
             .to_agent_search_space(&process_ids, &commodities, &[2020])

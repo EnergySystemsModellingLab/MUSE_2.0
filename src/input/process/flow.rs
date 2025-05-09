@@ -6,6 +6,7 @@ use crate::process::{FlowType, Process, ProcessFlow, ProcessFlowsMap, ProcessID}
 use crate::region::parse_region_str;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -59,7 +60,7 @@ impl ProcessFlowRaw {
 /// Read process flows from a CSV file
 pub fn read_process_flows(
     model_dir: &Path,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     commodities: &CommodityMap,
     milestone_years: &[u32],
@@ -79,7 +80,7 @@ pub fn read_process_flows(
 /// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.
 fn read_process_flows_from_iter<I>(
     iter: I,
-    process_ids: &HashSet<ProcessID>,
+    process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     commodities: &CommodityMap,
     milestone_years: &[u32],
