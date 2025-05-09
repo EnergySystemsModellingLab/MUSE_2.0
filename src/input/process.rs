@@ -2,7 +2,8 @@
 use super::*;
 use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::process::{
-    Process, ProcessEnergyLimitsMap, ProcessFlow, ProcessID, ProcessMap, ProcessParameterMap,
+    Process, ProcessEnergyLimitsMap, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap,
+    ProcessParameterMap,
 };
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::TimeSliceInfo;
@@ -64,7 +65,13 @@ pub fn read_processes(
         time_slice_info,
         milestone_years,
     )?;
-    let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
+    let mut flows = read_process_flows(
+        model_dir,
+        &process_ids,
+        &processes,
+        commodities,
+        milestone_years,
+    )?;
     let mut parameters =
         read_process_parameters(model_dir, &process_ids, &processes, milestone_years)?;
 
@@ -140,7 +147,7 @@ where
             description: process_raw.description,
             years: start_year..=end_year,
             energy_limits: ProcessEnergyLimitsMap::new(),
-            flows: Vec::new(),
+            flows: ProcessFlowsMap::new(),
             parameters: ProcessParameterMap::new(),
             regions,
         };
@@ -155,7 +162,7 @@ where
 }
 
 struct ValidationParams<'a> {
-    flows: &'a HashMap<ProcessID, Vec<ProcessFlow>>,
+    flows: &'a HashMap<ProcessID, ProcessFlowsMap>,
     region_ids: &'a HashSet<RegionID>,
     milestone_years: &'a [u32],
     time_slice_info: &'a TimeSliceInfo,
@@ -166,7 +173,7 @@ struct ValidationParams<'a> {
 /// Perform consistency checks for commodity flows.
 fn validate_commodities(
     commodities: &CommodityMap,
-    flows: &HashMap<ProcessID, Vec<ProcessFlow>>,
+    flows: &HashMap<ProcessID, ProcessFlowsMap>,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
@@ -198,7 +205,7 @@ fn validate_commodities(
 fn validate_sed_commodity(
     commodity_id: &CommodityID,
     commodity: &Rc<Commodity>,
-    flows: &HashMap<ProcessID, Vec<ProcessFlow>>,
+    flows: &HashMap<ProcessID, ProcessFlowsMap>,
 ) -> Result<()> {
     let mut has_producer = false;
     let mut has_consumer = false;
