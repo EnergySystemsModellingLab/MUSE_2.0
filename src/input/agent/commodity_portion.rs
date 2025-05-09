@@ -194,7 +194,7 @@ fn validate_agent_commodity_portions(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::{Agent, AgentCostLimitsMap, DecisionRule};
+    use crate::agent::{Agent, AgentCostLimitsMap, AgentObjectiveMap, DecisionRule};
     use crate::commodity::{Commodity, CommodityCostMap, CommodityID, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
     use std::rc::Rc;
@@ -213,7 +213,7 @@ mod tests {
                 decision_rule: DecisionRule::Single,
                 cost_limits: AgentCostLimitsMap::new(),
                 regions: region_ids.clone(),
-                objectives: Vec::new(),
+                objectives: AgentObjectiveMap::new(),
             },
         )]);
         let mut commodities = IndexMap::from([(
