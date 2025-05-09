@@ -1,6 +1,7 @@
 //! Code for reading the agent objectives CSV file.
 use super::super::*;
 use crate::agent::{AgentID, AgentMap, AgentObjectiveMap, DecisionRule, ObjectiveType};
+use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -13,8 +14,8 @@ const AGENT_OBJECTIVES_FILE_NAME: &str = "agent_objectives.csv";
 struct AgentObjectiveRaw {
     /// Unique agent id identifying the agent this objective belongs to
     agent_id: AgentID,
-    /// The year the objective is relevant for
-    year: u32,
+    /// The year(s) the objective is relevant for
+    year: String,
     /// Acronym identifying the objective (e.g. LCOX)
     objective_type: ObjectiveType,
     /// For the weighted sum decision rule, the set of weights to apply to each objective.
@@ -51,7 +52,7 @@ fn read_agent_objectives_from_iter<I>(
 where
     I: Iterator<Item = AgentObjectiveRaw>,
 {
-    let mut objectives = HashMap::new();
+    let mut all_objectives = HashMap::new();
     for objective in iter {
         let (id, agent) = agents
             .get_key_value(&objective.agent_id)
@@ -60,45 +61,34 @@ where
         // Check that required parameters are present and others are absent
         check_objective_parameter(&objective, &agent.decision_rule)?;
 
-        // Check that the year is a valid milestone year
-        ensure!(
-            milestone_years.binary_search(&objective.year).is_ok(),
-            "Invalid milestone year {}",
-            objective.year
-        );
-
-        // Append to Vec with the corresponding key or create
-        objectives
+        let agent_objectives = all_objectives
             .entry(id.clone())
-            .or_insert_with(|| Vec::with_capacity(1))
-            .push(objective);
+            .or_insert_with(AgentObjectiveMap::new);
+        for year in parse_year_str(&objective.year, milestone_years)? {
+            try_insert(agent_objectives, year, objective.objective_type).with_context(|| {
+                format!(
+                    "Duplicate agent objective entry for agent {} and year {}",
+                    id, year
+                )
+            })?;
+        }
     }
 
-    // Check that agents have appropriate objectives for their decision rule every year and populate
-    // the objective map
-    let mut objective_map = HashMap::new();
-    for (agent_id, agent) in agents {
-        let agent_objectives = objectives
-            .remove(agent_id)
+    // Check that agents have one objective per milestone year
+    for agent_id in agents.keys() {
+        let agent_objectives = all_objectives
+            .get(agent_id)
             .with_context(|| format!("Agent {} has no objectives", agent_id))?;
-        for &year in milestone_years {
-            let objectives_for_year: Vec<_> = agent_objectives
-                .iter()
-                .filter(|obj| obj.year == year)
-                .collect();
-            check_agent_objectives(&objectives_for_year, &agent.decision_rule, agent_id, year)?;
-        }
 
-        let mut current_map = AgentObjectiveMap::new();
-        for objective in agent_objectives {
-            // As we only support the "single" decision rule, we will only have one objective per
-            // year
-            try_insert(&mut current_map, objective.year, objective.objective_type)?;
+        for year in milestone_years.iter() {
+            ensure!(
+                agent_objectives.contains_key(year),
+                "Agent {agent_id} is missing objectives for year {year}"
+            );
         }
-        objective_map.insert(agent_id.clone(), current_map);
     }
 
-    Ok(objective_map)
+    Ok(all_objectives)
 }
 
 /// Check that required parameters are present and others are absent
@@ -146,7 +136,10 @@ fn check_objective_parameter(
     Ok(())
 }
 
-/// Check that a set of objectives meets the requirements of a decision rule
+/// Check that a set of objectives meets the requirements of a decision rule.
+///
+/// NB: Unused for now as we only support the "single" decision rule.
+#[cfg(test)]
 fn check_agent_objectives(
     objectives: &[&AgentObjectiveRaw],
     decision_rule: &DecisionRule,
@@ -205,7 +198,7 @@ mod tests {
             ($decision_weight:expr, $decision_lexico_order:expr) => {
                 AgentObjectiveRaw {
                     agent_id: "agent".into(),
-                    year: 2020,
+                    year: "2020".into(),
                     objective_type: ObjectiveType::LevelisedCostOfX,
                     decision_weight: $decision_weight,
                     decision_lexico_order: $decision_lexico_order,
@@ -263,7 +256,7 @@ mod tests {
         // Valid
         let objective = AgentObjectiveRaw {
             agent_id: "agent".into(),
-            year: 2020,
+            year: "2020".into(),
             objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: None,
             decision_lexico_order: None,
@@ -292,7 +285,7 @@ mod tests {
         // Bad parameter
         let bad_objective = AgentObjectiveRaw {
             agent_id: "agent".into(),
-            year: 2020,
+            year: "2020".into(),
             objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: Some(1.0), // Should only accept None for DecisionRule::Single
             decision_lexico_order: None,
@@ -310,14 +303,14 @@ mod tests {
         let agent_id = AgentID::new("agent");
         let objective1 = AgentObjectiveRaw {
             agent_id: agent_id.clone(),
-            year: 2020,
+            year: "2020".into(),
             objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: None,
             decision_lexico_order: Some(1),
         };
         let objective2 = AgentObjectiveRaw {
             agent_id: agent_id.clone(),
-            year: 2020,
+            year: "2020".into(),
             objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: None,
             decision_lexico_order: Some(2),
