@@ -8,6 +8,7 @@ use indexmap::IndexMap;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::rc::Rc;
 
 define_id_type! {AgentID}
 
@@ -21,7 +22,7 @@ pub type AgentCostLimitsMap = HashMap<u32, AgentCostLimits>;
 pub type AgentCommodityPortionsMap = HashMap<(CommodityID, u32), f64>;
 
 /// A map for the agent's search space, keyed by commodity and year
-pub type AgentSearchSpaceMap = HashMap<(CommodityID, u32), Vec<ProcessID>>;
+pub type AgentSearchSpaceMap = HashMap<(CommodityID, u32), Rc<Vec<ProcessID>>>;
 
 /// A map of objectives for an agent, keyed by commodity and year.
 ///
