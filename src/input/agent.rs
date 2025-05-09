@@ -138,6 +138,11 @@ where
             invalid_rule => bail!("Invalid decision rule: {}", invalid_rule),
         };
 
+        ensure!(
+            decision_rule == DecisionRule::Single,
+            "Currently only the \"single\" decision rule is supported"
+        );
+
         let agent = Agent {
             id: AgentID(agent_raw.id.into()),
             description: agent_raw.description,
