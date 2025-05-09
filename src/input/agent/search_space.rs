@@ -1,7 +1,7 @@
 //! Code for reading the agent search space CSV file.
 use super::super::*;
-use crate::agent::{AgentID, AgentMap, AgentSearchSpace};
-use crate::commodity::CommodityMap;
+use crate::agent::{AgentID, AgentMap, AgentSearchSpaceMap};
+use crate::commodity::CommodityID;
 use crate::id::IDCollection;
 use crate::process::ProcessID;
 use anyhow::{Context, Result};
@@ -9,7 +9,6 @@ use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
-use std::rc::Rc;
 
 const AGENT_SEARCH_SPACE_FILE_NAME: &str = "agent_search_space.csv";
 
@@ -26,20 +25,32 @@ struct AgentSearchSpaceRaw {
     search_space: String,
 }
 
+/// Search space for an agent
+#[derive(Debug)]
+struct AgentSearchSpace {
+    /// The agent to which this search space applies
+    agent_id: AgentID,
+    /// The commodity to apply the search space to
+    commodity_id: CommodityID,
+    /// The year the objective is relevant for
+    year: u32,
+    /// The agent's search space
+    search_space: Vec<ProcessID>,
+}
+
 impl AgentSearchSpaceRaw {
-    fn to_agent_search_space(
-        &self,
+    fn into_agent_search_space(
+        self,
+        agents: &AgentMap,
         process_ids: &IndexSet<ProcessID>,
-        commodities: &CommodityMap,
+        commodity_ids: &HashSet<CommodityID>,
         milestone_years: &[u32],
     ) -> Result<AgentSearchSpace> {
         // Parse search_space string
         let search_space = parse_search_space_str(&self.search_space, process_ids)?;
 
         // Get commodity
-        let commodity = commodities
-            .get(self.commodity_id.as_str())
-            .context("Invalid commodity ID")?;
+        let commodity_id = commodity_ids.get_id_by_str(&self.commodity_id)?;
 
         // Check that the year is a valid milestone year
         ensure!(
@@ -48,10 +59,14 @@ impl AgentSearchSpaceRaw {
             self.year
         );
 
-        // Create AgentSearchSpace
+        let (agent_id, _) = agents
+            .get_key_value(self.agent_id.as_str())
+            .context("Invalid agent ID")?;
+
         Ok(AgentSearchSpace {
+            agent_id: agent_id.clone(),
+            commodity_id,
             year: self.year,
-            commodity: Rc::clone(commodity),
             search_space,
         })
     }
@@ -91,12 +106,12 @@ pub fn read_agent_search_space(
     model_dir: &Path,
     agents: &AgentMap,
     process_ids: &IndexSet<ProcessID>,
-    commodities: &CommodityMap,
+    commodity_ids: &HashSet<CommodityID>,
     milestone_years: &[u32],
-) -> Result<HashMap<AgentID, Vec<AgentSearchSpace>>> {
+) -> Result<HashMap<AgentID, AgentSearchSpaceMap>> {
     let file_path = model_dir.join(AGENT_SEARCH_SPACE_FILE_NAME);
     let iter = read_csv_optional::<AgentSearchSpaceRaw>(&file_path)?;
-    read_agent_search_space_from_iter(iter, agents, process_ids, commodities, milestone_years)
+    read_agent_search_space_from_iter(iter, agents, process_ids, commodity_ids, milestone_years)
         .with_context(|| input_err_msg(&file_path))
 }
 
@@ -104,26 +119,32 @@ fn read_agent_search_space_from_iter<I>(
     iter: I,
     agents: &AgentMap,
     process_ids: &IndexSet<ProcessID>,
-    commodities: &CommodityMap,
+    commodity_ids: &HashSet<CommodityID>,
     milestone_years: &[u32],
-) -> Result<HashMap<AgentID, Vec<AgentSearchSpace>>>
+) -> Result<HashMap<AgentID, AgentSearchSpaceMap>>
 where
     I: Iterator<Item = AgentSearchSpaceRaw>,
 {
     let mut search_spaces = HashMap::new();
     for search_space_raw in iter {
-        let search_space =
-            search_space_raw.to_agent_search_space(process_ids, commodities, milestone_years)?;
+        let search_space = search_space_raw.into_agent_search_space(
+            agents,
+            process_ids,
+            commodity_ids,
+            milestone_years,
+        )?;
 
-        let (id, _agent) = agents
-            .get_key_value(search_space_raw.agent_id.as_str())
-            .context("Invalid agent ID")?;
+        // Get or create search space map
+        let map = search_spaces
+            .entry(search_space.agent_id)
+            .or_insert_with(AgentSearchSpaceMap::new);
 
-        // Append to Vec with the corresponding key or create
-        search_spaces
-            .entry(id.clone())
-            .or_insert_with(|| Vec::with_capacity(1))
-            .push(search_space);
+        // Store process IDs
+        try_insert(
+            map,
+            (search_space.commodity_id, search_space.year),
+            search_space.search_space,
+        )?;
     }
 
     Ok(search_spaces)
@@ -132,23 +153,26 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
-    use crate::time_slice::TimeSliceLevel;
+    use crate::fixture::{agents, assert_error};
+    use rstest::{fixture, rstest};
     use std::iter;
 
-    #[test]
-    fn test_search_space_raw_into_search_space() {
-        let process_ids = ["A".into(), "B".into(), "C".into()].into_iter().collect();
-        let commodity = Rc::new(Commodity {
-            id: "commodity1".into(),
-            description: "A commodity".into(),
-            kind: CommodityType::SupplyEqualsDemand,
-            time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::new(),
-            demand: DemandMap::new(),
-        });
-        let commodities = iter::once(("commodity1".into(), Rc::clone(&commodity))).collect();
+    #[fixture]
+    fn process_ids() -> IndexSet<ProcessID> {
+        ["A".into(), "B".into(), "C".into()].into_iter().collect()
+    }
 
+    #[fixture]
+    fn commodity_ids() -> HashSet<CommodityID> {
+        iter::once("commodity1".into()).collect()
+    }
+
+    #[rstest]
+    fn test_search_space_raw_into_search_space_valid(
+        agents: AgentMap,
+        process_ids: IndexSet<ProcessID>,
+        commodity_ids: HashSet<CommodityID>,
+    ) {
         // Valid search space
         let raw = AgentSearchSpaceRaw {
             agent_id: "agent1".into(),
@@ -157,9 +181,16 @@ mod tests {
             search_space: "A;B".into(),
         };
         assert!(raw
-            .to_agent_search_space(&process_ids, &commodities, &[2020])
+            .into_agent_search_space(&agents, &process_ids, &commodity_ids, &[2020])
             .is_ok());
+    }
 
+    #[rstest]
+    fn test_search_space_raw_into_search_space_invalid_commodity_id(
+        agents: AgentMap,
+        process_ids: IndexSet<ProcessID>,
+        commodity_ids: HashSet<CommodityID>,
+    ) {
         // Invalid commodity ID
         let raw = AgentSearchSpaceRaw {
             agent_id: "agent1".into(),
@@ -167,10 +198,18 @@ mod tests {
             year: 2020,
             search_space: "A;B".into(),
         };
-        assert!(raw
-            .to_agent_search_space(&process_ids, &commodities, &[2020])
-            .is_err());
+        assert_error!(
+            raw.into_agent_search_space(&agents, &process_ids, &commodity_ids, &[2020]),
+            "Unknown ID invalid_commodity found"
+        );
+    }
 
+    #[rstest]
+    fn test_search_space_raw_into_search_space_invalid_process_id(
+        agents: AgentMap,
+        process_ids: IndexSet<ProcessID>,
+        commodity_ids: HashSet<CommodityID>,
+    ) {
         // Invalid process ID
         let raw = AgentSearchSpaceRaw {
             agent_id: "agent1".into(),
@@ -178,8 +217,9 @@ mod tests {
             year: 2020,
             search_space: "A;D".into(),
         };
-        assert!(raw
-            .to_agent_search_space(&process_ids, &commodities, &[2020])
-            .is_err());
+        assert_error!(
+            raw.into_agent_search_space(&agents, &process_ids, &commodity_ids, &[2020]),
+            "Unknown ID D found"
+        );
     }
 }

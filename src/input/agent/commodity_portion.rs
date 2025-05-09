@@ -194,7 +194,9 @@ fn validate_agent_commodity_portions(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::{Agent, AgentCostLimitsMap, AgentObjectiveMap, DecisionRule};
+    use crate::agent::{
+        Agent, AgentCostLimitsMap, AgentObjectiveMap, AgentSearchSpaceMap, DecisionRule,
+    };
     use crate::commodity::{Commodity, CommodityCostMap, CommodityID, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
     use std::rc::Rc;
@@ -209,7 +211,7 @@ mod tests {
                 id: "agent1".into(),
                 description: "An agent".into(),
                 commodity_portions: AgentCommodityPortionsMap::new(),
-                search_space: Vec::new(),
+                search_space: AgentSearchSpaceMap::new(),
                 decision_rule: DecisionRule::Single,
                 cost_limits: AgentCostLimitsMap::new(),
                 regions: region_ids.clone(),
