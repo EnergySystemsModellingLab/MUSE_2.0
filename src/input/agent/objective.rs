@@ -140,55 +140,6 @@ fn check_objective_parameter(
     Ok(())
 }
 
-/// Check that a set of objectives meets the requirements of a decision rule.
-///
-/// NB: Unused for now as we only support the "single" decision rule.
-#[cfg(test)]
-fn check_agent_objectives(
-    objectives: &[&AgentObjectiveRaw],
-    decision_rule: &DecisionRule,
-    agent_id: &AgentID,
-    year: u32,
-) -> Result<()> {
-    let count = objectives.len();
-    match decision_rule {
-        DecisionRule::Single => {
-            ensure!(
-                count == 1,
-                "Agent {} has {} objectives for milestone year {} but should have exactly 1",
-                agent_id,
-                count,
-                year
-            );
-        }
-        DecisionRule::Weighted => {
-            ensure!(
-                count > 1,
-                "Agent {} has {} objectives for milestone year {} but should have more than 1",
-                agent_id,
-                count,
-                year
-            );
-        }
-        DecisionRule::Lexicographical { tolerance: _ } => {
-            let mut lexico_orders: Vec<u32> = objectives
-                .iter()
-                .filter_map(|obj| obj.decision_lexico_order)
-                .collect();
-            lexico_orders.sort_unstable();
-            ensure!(
-                lexico_orders == [1, 2],
-                "Agent {} must have objectives with decision_lexico_order values of 1 and 2 for milestone year {}, but found {:?}",
-                agent_id,
-                year,
-                lexico_orders
-            );
-        }
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use std::iter;
@@ -300,46 +251,5 @@ mod tests {
             &milestone_years
         )
         .is_err());
-    }
-
-    #[test]
-    fn test_check_agent_objectives() {
-        let agent_id = AgentID::new("agent");
-        let objective1 = AgentObjectiveRaw {
-            agent_id: agent_id.clone(),
-            year: "2020".into(),
-            objective_type: ObjectiveType::LevelisedCostOfX,
-            decision_weight: None,
-            decision_lexico_order: Some(1),
-        };
-        let objective2 = AgentObjectiveRaw {
-            agent_id: agent_id.clone(),
-            year: "2020".into(),
-            objective_type: ObjectiveType::LevelisedCostOfX,
-            decision_weight: None,
-            decision_lexico_order: Some(2),
-        };
-
-        // DecisionRule::Single
-        let decision_rule = DecisionRule::Single;
-        let objectives = [&objective1];
-
-        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_ok());
-        let objectives = [&objective1, &objective2];
-        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_err());
-
-        // DecisionRule::Weighted
-        let decision_rule = DecisionRule::Weighted;
-        let objectives = [&objective1, &objective2];
-        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_ok());
-        let objectives = [&objective1];
-        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_err());
-
-        // DecisionRule::Lexicographical
-        let decision_rule = DecisionRule::Lexicographical { tolerance: 1.0 };
-        let objectives = [&objective1, &objective2];
-        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_ok());
-        let objectives = [&objective1, &objective1];
-        assert!(check_agent_objectives(&objectives, &decision_rule, &agent_id, 2020).is_err());
     }
 }
