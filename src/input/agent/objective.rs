@@ -80,12 +80,16 @@ where
             .get(agent_id)
             .with_context(|| format!("Agent {} has no objectives", agent_id))?;
 
-        for year in milestone_years.iter() {
-            ensure!(
-                agent_objectives.contains_key(year),
-                "Agent {agent_id} is missing objectives for year {year}"
-            );
-        }
+        let missing_years = milestone_years
+            .iter()
+            .filter(|year| !agent_objectives.contains_key(year))
+            .collect_vec();
+        ensure!(
+            missing_years.is_empty(),
+            "Agent {} is missing objectives for the following milestone years: {:?}",
+            agent_id,
+            missing_years
+        );
     }
 
     Ok(all_objectives)
