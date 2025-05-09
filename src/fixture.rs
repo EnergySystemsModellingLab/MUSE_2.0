@@ -1,5 +1,9 @@
 //! Fixtures for tests
 
+use crate::agent::{
+    Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, AgentMap, AgentObjectiveMap,
+    AgentSearchSpaceMap, DecisionRule,
+};
 use crate::process::{
     Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessMap, ProcessParameter,
     ProcessParameterMap,
@@ -9,6 +13,7 @@ use indexmap::indexmap;
 use itertools::Itertools;
 use rstest::fixture;
 use std::collections::HashSet;
+use std::iter;
 use std::rc::Rc;
 
 /// Assert that an error with the given message occurs
@@ -64,4 +69,22 @@ pub fn process(
 #[fixture]
 pub fn processes(process: Process) -> ProcessMap {
     indexmap! { process.id.clone() => process.into()}
+}
+
+#[fixture]
+pub fn agents() -> AgentMap {
+    iter::once((
+        "agent1".into(),
+        Agent {
+            id: "agent1".into(),
+            description: "".into(),
+            commodity_portions: AgentCommodityPortionsMap::new(),
+            search_space: AgentSearchSpaceMap::new(),
+            decision_rule: DecisionRule::Single,
+            cost_limits: AgentCostLimitsMap::new(),
+            regions: HashSet::new(),
+            objectives: AgentObjectiveMap::new(),
+        },
+    ))
+    .collect()
 }

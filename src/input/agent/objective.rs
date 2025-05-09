@@ -143,10 +143,8 @@ fn check_objective_parameter(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        agent::{Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, ObjectiveType},
-        fixture::assert_error,
-    };
+    use crate::agent::ObjectiveType;
+    use crate::fixture::{agents, assert_error};
     use rstest::{fixture, rstest};
     use std::iter;
 
@@ -196,24 +194,6 @@ mod tests {
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
         let objective = objective!(Some(1.0), None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
-    }
-
-    #[fixture]
-    fn agents() -> AgentMap {
-        iter::once((
-            "agent1".into(),
-            Agent {
-                id: "agent1".into(),
-                description: "".into(),
-                commodity_portions: AgentCommodityPortionsMap::new(),
-                search_space: Vec::new(),
-                decision_rule: DecisionRule::Single,
-                cost_limits: AgentCostLimitsMap::new(),
-                regions: HashSet::new(),
-                objectives: AgentObjectiveMap::new(),
-            },
-        ))
-        .collect()
     }
 
     #[fixture]

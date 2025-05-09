@@ -2,7 +2,7 @@
 use super::*;
 use crate::agent::{
     Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, AgentID, AgentMap, AgentObjectiveMap,
-    DecisionRule,
+    AgentSearchSpaceMap, DecisionRule,
 };
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
@@ -62,11 +62,12 @@ pub fn read_agents(
     let agent_ids = agents.keys().cloned().collect();
 
     let mut objectives = read_agent_objectives(model_dir, &agents, milestone_years)?;
+    let commodity_ids = commodities.keys().cloned().collect();
     let mut search_spaces = read_agent_search_space(
         model_dir,
         &agents,
         &process_ids,
-        commodities,
+        &commodity_ids,
         milestone_years,
     )?;
     let mut agent_commodities = read_agent_commodity_portions(
@@ -148,7 +149,7 @@ where
             id: AgentID(agent_raw.id.into()),
             description: agent_raw.description,
             commodity_portions: AgentCommodityPortionsMap::new(),
-            search_space: Vec::new(),
+            search_space: AgentSearchSpaceMap::new(),
             decision_rule,
             cost_limits: AgentCostLimitsMap::new(),
             regions,
@@ -185,7 +186,7 @@ mod tests {
             id: "agent".into(),
             description: "".into(),
             commodity_portions: AgentCommodityPortionsMap::new(),
-            search_space: Vec::new(),
+            search_space: AgentSearchSpaceMap::new(),
             decision_rule: DecisionRule::Single,
             cost_limits: AgentCostLimitsMap::new(),
             regions: HashSet::from(["GBR".into()]),

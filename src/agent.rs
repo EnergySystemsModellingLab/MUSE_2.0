@@ -1,6 +1,6 @@
 //! Agents drive the economy of the MUSE 2.0 simulation, through relative investment in different
 //! assets.
-use crate::commodity::{Commodity, CommodityID};
+use crate::commodity::CommodityID;
 use crate::id::{define_id_getter, define_id_type};
 use crate::process::ProcessID;
 use crate::region::RegionID;
@@ -8,7 +8,6 @@ use indexmap::IndexMap;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::rc::Rc;
 
 define_id_type! {AgentID}
 
@@ -20,6 +19,9 @@ pub type AgentCostLimitsMap = HashMap<u32, AgentCostLimits>;
 
 /// A map of commodity portions for an agent, keyed by commodity and year
 pub type AgentCommodityPortionsMap = HashMap<(CommodityID, u32), f64>;
+
+/// A map for the agent's search space, keyed by commodity and year
+pub type AgentSearchSpaceMap = HashMap<(CommodityID, u32), Vec<ProcessID>>;
 
 /// A map of objectives for an agent, keyed by commodity and year.
 ///
@@ -37,7 +39,7 @@ pub struct Agent {
     /// The proportion of the commodity production that the agent is responsible for.
     pub commodity_portions: AgentCommodityPortionsMap,
     /// The processes that the agent will consider investing in.
-    pub search_space: Vec<AgentSearchSpace>,
+    pub search_space: AgentSearchSpaceMap,
     /// The decision rule that the agent uses to decide investment.
     pub decision_rule: DecisionRule,
     /// Cost limits (e.g. capital cost, annual operating cost)
@@ -56,17 +58,6 @@ pub struct AgentCostLimits {
     pub capex_limit: Option<f64>,
     /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
     pub annual_cost_limit: Option<f64>,
-}
-
-/// Search space for an agent
-#[derive(Debug, Clone, PartialEq)]
-pub struct AgentSearchSpace {
-    /// The year the objective is relevant for
-    pub year: u32,
-    /// The commodity to apply the search space to
-    pub commodity: Rc<Commodity>,
-    /// The agent's search space
-    pub search_space: Vec<ProcessID>,
 }
 
 /// The decision rule for a particular objective
