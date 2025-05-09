@@ -142,25 +142,28 @@ fn check_objective_parameter(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::{
+        agent::{Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, ObjectiveType},
+        fixture::assert_error,
+    };
+    use rstest::{fixture, rstest};
     use std::iter;
 
-    use super::*;
-    use crate::agent::{Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, ObjectiveType};
+    macro_rules! objective {
+        ($decision_weight:expr, $decision_lexico_order:expr) => {
+            AgentObjectiveRaw {
+                agent_id: "agent".into(),
+                year: "2020".into(),
+                objective_type: ObjectiveType::LevelisedCostOfX,
+                decision_weight: $decision_weight,
+                decision_lexico_order: $decision_lexico_order,
+            }
+        };
+    }
 
     #[test]
-    fn test_check_objective_parameter() {
-        macro_rules! objective {
-            ($decision_weight:expr, $decision_lexico_order:expr) => {
-                AgentObjectiveRaw {
-                    agent_id: "agent".into(),
-                    year: "2020".into(),
-                    objective_type: ObjectiveType::LevelisedCostOfX,
-                    decision_weight: $decision_weight,
-                    decision_lexico_order: $decision_lexico_order,
-                }
-            };
-        }
-
+    fn test_check_objective_parameter_single() {
         // DecisionRule::Single
         let decision_rule = DecisionRule::Single;
         let objective = objective!(None, None);
@@ -169,7 +172,10 @@ mod tests {
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
         let objective = objective!(None, Some(1));
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
+    }
 
+    #[test]
+    fn test_check_objective_parameter_weighted() {
         // DecisionRule::Weighted
         let decision_rule = DecisionRule::Weighted;
         let objective = objective!(Some(1.0), None);
@@ -178,7 +184,10 @@ mod tests {
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
         let objective = objective!(None, Some(1));
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
+    }
 
+    #[test]
+    fn test_check_objective_parameter_lexico() {
         // DecisionRule::Lexicographical
         let decision_rule = DecisionRule::Lexicographical { tolerance: 1.0 };
         let objective = objective!(None, Some(1));
@@ -189,12 +198,12 @@ mod tests {
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
     }
 
-    #[test]
-    fn test_read_agent_objectives_from_iter() {
-        let agents = [(
-            "agent".into(),
+    #[fixture]
+    fn agents() -> AgentMap {
+        iter::once((
+            "agent1".into(),
             Agent {
-                id: "agent".into(),
+                id: "agent1".into(),
                 description: "".into(),
                 commodity_portions: AgentCommodityPortionsMap::new(),
                 search_space: Vec::new(),
@@ -203,53 +212,75 @@ mod tests {
                 regions: HashSet::new(),
                 objectives: AgentObjectiveMap::new(),
             },
-        )]
-        .into_iter()
-        .collect();
-        let milestone_years = [2020];
+        ))
+        .collect()
+    }
 
-        // Valid
-        let objective = AgentObjectiveRaw {
-            agent_id: "agent".into(),
+    #[fixture]
+    fn objective_raw() -> AgentObjectiveRaw {
+        AgentObjectiveRaw {
+            agent_id: "agent1".into(),
             year: "2020".into(),
             objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: None,
             decision_lexico_order: None,
-        };
+        }
+    }
+
+    #[rstest]
+    fn test_read_agent_objectives_from_iter_valid(
+        agents: AgentMap,
+        objective_raw: AgentObjectiveRaw,
+    ) {
+        let milestone_years = [2020];
         let expected = iter::once((
-            "agent".into(),
-            iter::once((2020, objective.objective_type)).collect(),
+            "agent1".into(),
+            iter::once((2020, objective_raw.objective_type)).collect(),
         ))
         .collect();
         let actual = read_agent_objectives_from_iter(
-            iter::once(objective.clone()),
+            iter::once(objective_raw.clone()),
             &agents,
             &milestone_years,
         )
         .unwrap();
         assert_eq!(actual, expected);
+    }
 
+    #[rstest]
+    fn test_read_agent_objectives_from_iter_invalid_no_objective_for_agent(agents: AgentMap) {
         // Missing objective for agent
-        assert!(read_agent_objectives_from_iter(iter::empty(), &agents, &milestone_years).is_err());
-
-        // Missing objective for milestone year
-        assert!(
-            read_agent_objectives_from_iter(iter::once(objective), &agents, &[2020, 2030]).is_err()
+        assert_error!(
+            read_agent_objectives_from_iter(iter::empty(), &agents, &[2020]),
+            "Agent agent1 has no objectives"
         );
+    }
 
+    #[rstest]
+    fn test_read_agent_objectives_from_iter_invalid_no_objective_for_year(
+        agents: AgentMap,
+        objective_raw: AgentObjectiveRaw,
+    ) {
+        // Missing objective for milestone year
+        assert_error!(
+            read_agent_objectives_from_iter(iter::once(objective_raw), &agents, &[2020, 2030]),
+            "Agent agent1 is missing objectives for the following milestone years: [2030]"
+        );
+    }
+
+    #[rstest]
+    fn test_read_agent_objectives_from_iter_invalid_bad_param(agents: AgentMap) {
         // Bad parameter
         let bad_objective = AgentObjectiveRaw {
-            agent_id: "agent".into(),
+            agent_id: "agent1".into(),
             year: "2020".into(),
             objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: Some(1.0), // Should only accept None for DecisionRule::Single
             decision_lexico_order: None,
         };
-        assert!(read_agent_objectives_from_iter(
-            [bad_objective].into_iter(),
-            &agents,
-            &milestone_years
-        )
-        .is_err());
+        assert_error!(
+            read_agent_objectives_from_iter([bad_objective].into_iter(), &agents, &[2020]),
+            "Field decision_weight should be empty for this decision rule"
+        );
     }
 }
