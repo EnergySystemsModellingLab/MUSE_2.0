@@ -5,7 +5,6 @@ use crate::id::{define_id_getter, define_id_type};
 use crate::process::ProcessID;
 use crate::region::RegionID;
 use indexmap::IndexMap;
-use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -21,6 +20,12 @@ pub type AgentCostLimitsMap = HashMap<u32, AgentCostLimits>;
 
 /// A map of commodity portions for an agent, keyed by commodity and year
 pub type AgentCommodityPortionsMap = HashMap<(CommodityID, u32), f64>;
+
+/// A map of objectives for an agent, keyed by commodity and year.
+///
+/// NB: As we currently only support the "single" decision rule, the only parameter we need for
+/// objectives is the type.
+pub type AgentObjectiveMap = HashMap<u32, ObjectiveType>;
 
 /// An agent in the simulation
 #[derive(Debug, Clone, PartialEq)]
@@ -40,7 +45,7 @@ pub struct Agent {
     /// The regions in which this agent operates.
     pub regions: HashSet<RegionID>,
     /// The agent's objectives.
-    pub objectives: Vec<AgentObjective>,
+    pub objectives: AgentObjectiveMap,
 }
 define_id_getter! {Agent, AgentID}
 
@@ -76,21 +81,6 @@ pub enum DecisionRule {
         /// The tolerance around the main objective to consider secondary objectives. This is an absolute value of maximum deviation in the units of the main objective.
         tolerance: f64,
     },
-}
-
-/// An objective for an agent with associated parameters
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct AgentObjective {
-    /// Unique agent id identifying the agent this objective belongs to
-    pub agent_id: AgentID,
-    /// The year the objective is relevant for
-    pub year: u32,
-    /// Acronym identifying the objective (e.g. LCOX)
-    pub objective_type: ObjectiveType,
-    /// For the weighted sum decision rule, the set of weights to apply to each objective.
-    pub decision_weight: Option<f64>,
-    /// For the lexico decision rule, the order in which to consider objectives.
-    pub decision_lexico_order: Option<u32>,
 }
 
 /// The type of objective for the agent

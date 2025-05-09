@@ -1,7 +1,8 @@
 //! Code for reading in agent-related data from CSV files.
 use super::*;
 use crate::agent::{
-    Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, AgentID, AgentMap, DecisionRule,
+    Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, AgentID, AgentMap, AgentObjectiveMap,
+    DecisionRule,
 };
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
@@ -151,7 +152,7 @@ where
             decision_rule,
             cost_limits: AgentCostLimitsMap::new(),
             regions,
-            objectives: Vec::new(),
+            objectives: AgentObjectiveMap::new(),
         };
 
         ensure!(
@@ -188,7 +189,7 @@ mod tests {
             decision_rule: DecisionRule::Single,
             cost_limits: AgentCostLimitsMap::new(),
             regions: HashSet::from(["GBR".into()]),
-            objectives: Vec::new(),
+            objectives: AgentObjectiveMap::new(),
         };
         let expected = AgentMap::from_iter(iter::once(("agent".into(), agent_out)));
         let actual = read_agents_file_from_iter(iter::once(agent), &region_ids).unwrap();

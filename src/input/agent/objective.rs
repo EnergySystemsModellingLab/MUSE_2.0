@@ -1,11 +1,27 @@
 //! Code for reading the agent objectives CSV file.
 use super::super::*;
-use crate::agent::{AgentID, AgentMap, AgentObjective, DecisionRule};
+use crate::agent::{AgentID, AgentMap, AgentObjectiveMap, DecisionRule, ObjectiveType};
 use anyhow::{ensure, Context, Result};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 
 const AGENT_OBJECTIVES_FILE_NAME: &str = "agent_objectives.csv";
+
+/// An objective for an agent with associated parameters
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+struct AgentObjectiveRaw {
+    /// Unique agent id identifying the agent this objective belongs to
+    agent_id: AgentID,
+    /// The year the objective is relevant for
+    year: u32,
+    /// Acronym identifying the objective (e.g. LCOX)
+    objective_type: ObjectiveType,
+    /// For the weighted sum decision rule, the set of weights to apply to each objective.
+    decision_weight: Option<f64>,
+    /// For the lexico decision rule, the order in which to consider objectives.
+    decision_lexico_order: Option<u32>,
+}
 
 /// Read agent objective info from the agent_objectives.csv file.
 ///
@@ -20,7 +36,7 @@ pub fn read_agent_objectives(
     model_dir: &Path,
     agents: &AgentMap,
     milestone_years: &[u32],
-) -> Result<HashMap<AgentID, Vec<AgentObjective>>> {
+) -> Result<HashMap<AgentID, AgentObjectiveMap>> {
     let file_path = model_dir.join(AGENT_OBJECTIVES_FILE_NAME);
     let agent_objectives_csv = read_csv(&file_path)?;
     read_agent_objectives_from_iter(agent_objectives_csv, agents, milestone_years)
@@ -31,9 +47,9 @@ fn read_agent_objectives_from_iter<I>(
     iter: I,
     agents: &AgentMap,
     milestone_years: &[u32],
-) -> Result<HashMap<AgentID, Vec<AgentObjective>>>
+) -> Result<HashMap<AgentID, AgentObjectiveMap>>
 where
-    I: Iterator<Item = AgentObjective>,
+    I: Iterator<Item = AgentObjectiveRaw>,
 {
     let mut objectives = HashMap::new();
     for objective in iter {
@@ -58,10 +74,12 @@ where
             .push(objective);
     }
 
-    // Check that agents have appropriate objectives for their decision rule every year
+    // Check that agents have appropriate objectives for their decision rule every year and populate
+    // the objective map
+    let mut objective_map = HashMap::new();
     for (agent_id, agent) in agents {
         let agent_objectives = objectives
-            .get(agent_id)
+            .remove(agent_id)
             .with_context(|| format!("Agent {} has no objectives", agent_id))?;
         for &year in milestone_years {
             let objectives_for_year: Vec<_> = agent_objectives
@@ -70,14 +88,22 @@ where
                 .collect();
             check_agent_objectives(&objectives_for_year, &agent.decision_rule, agent_id, year)?;
         }
+
+        let mut current_map = AgentObjectiveMap::new();
+        for objective in agent_objectives {
+            // As we only support the "single" decision rule, we will only have one objective per
+            // year
+            try_insert(&mut current_map, objective.year, objective.objective_type)?;
+        }
+        objective_map.insert(agent_id.clone(), current_map);
     }
 
-    Ok(objectives)
+    Ok(objective_map)
 }
 
 /// Check that required parameters are present and others are absent
 fn check_objective_parameter(
-    objective: &AgentObjective,
+    objective: &AgentObjectiveRaw,
     decision_rule: &DecisionRule,
 ) -> Result<()> {
     // Check that the user hasn't supplied a value for a field we're not using
@@ -122,7 +148,7 @@ fn check_objective_parameter(
 
 /// Check that a set of objectives meets the requirements of a decision rule
 fn check_agent_objectives(
-    objectives: &[&AgentObjective],
+    objectives: &[&AgentObjectiveRaw],
     decision_rule: &DecisionRule,
     agent_id: &AgentID,
     year: u32,
@@ -168,6 +194,8 @@ fn check_agent_objectives(
 
 #[cfg(test)]
 mod tests {
+    use std::iter;
+
     use super::*;
     use crate::agent::{Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, ObjectiveType};
 
@@ -175,7 +203,7 @@ mod tests {
     fn test_check_objective_parameter() {
         macro_rules! objective {
             ($decision_weight:expr, $decision_lexico_order:expr) => {
-                AgentObjective {
+                AgentObjectiveRaw {
                     agent_id: "agent".into(),
                     year: 2020,
                     objective_type: ObjectiveType::LevelisedCostOfX,
@@ -225,7 +253,7 @@ mod tests {
                 decision_rule: DecisionRule::Single,
                 cost_limits: AgentCostLimitsMap::new(),
                 regions: HashSet::new(),
-                objectives: Vec::new(),
+                objectives: AgentObjectiveMap::new(),
             },
         )]
         .into_iter()
@@ -233,18 +261,20 @@ mod tests {
         let milestone_years = [2020];
 
         // Valid
-        let objective = AgentObjective {
+        let objective = AgentObjectiveRaw {
             agent_id: "agent".into(),
             year: 2020,
             objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: None,
             decision_lexico_order: None,
         };
-        let expected = [("agent".into(), vec![objective.clone()])]
-            .into_iter()
-            .collect();
+        let expected = iter::once((
+            "agent".into(),
+            iter::once((2020, objective.objective_type)).collect(),
+        ))
+        .collect();
         let actual = read_agent_objectives_from_iter(
-            [objective.clone()].into_iter(),
+            iter::once(objective.clone()),
             &agents,
             &milestone_years,
         )
@@ -252,18 +282,15 @@ mod tests {
         assert_eq!(actual, expected);
 
         // Missing objective for agent
-        assert!(
-            read_agent_objectives_from_iter([].into_iter(), &agents, &milestone_years).is_err()
-        );
+        assert!(read_agent_objectives_from_iter(iter::empty(), &agents, &milestone_years).is_err());
 
         // Missing objective for milestone year
         assert!(
-            read_agent_objectives_from_iter([objective].into_iter(), &agents, &[2020, 2030])
-                .is_err()
+            read_agent_objectives_from_iter(iter::once(objective), &agents, &[2020, 2030]).is_err()
         );
 
         // Bad parameter
-        let bad_objective = AgentObjective {
+        let bad_objective = AgentObjectiveRaw {
             agent_id: "agent".into(),
             year: 2020,
             objective_type: ObjectiveType::LevelisedCostOfX,
@@ -281,14 +308,14 @@ mod tests {
     #[test]
     fn test_check_agent_objectives() {
         let agent_id = AgentID::new("agent");
-        let objective1 = AgentObjective {
+        let objective1 = AgentObjectiveRaw {
             agent_id: agent_id.clone(),
             year: 2020,
             objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: None,
             decision_lexico_order: Some(1),
         };
-        let objective2 = AgentObjective {
+        let objective2 = AgentObjectiveRaw {
             agent_id: agent_id.clone(),
             year: 2020,
             objective_type: ObjectiveType::LevelisedCostOfX,
