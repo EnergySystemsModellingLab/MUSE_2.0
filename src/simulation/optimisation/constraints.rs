@@ -165,13 +165,7 @@ fn add_fixed_asset_constraints(
         for time_slice in time_slice_info.iter_ids() {
             let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
             let pac_term = (pac_var, -1.0 / pac1.flow);
-
-            let asset_flows = asset
-                .process
-                .flows
-                .get(&(asset.region_id.clone(), asset.commission_year))
-                .unwrap();
-            for flow in asset_flows {
+            for flow in asset.iter_flows() {
                 // Don't add a constraint for the PAC itself
                 if Rc::ptr_eq(&flow.commodity, &pac1.commodity) {
                     continue;

@@ -142,43 +142,46 @@ where
         }
     }
 
-    // Validate flows map
-    validate_process_flows_map(&map, processes, milestone_years)?;
+    // Validate flows
+    for (process_id, map) in map.iter() {
+        let process = processes.get(process_id).unwrap();
+        validate_process_flows_map(process, map, milestone_years)?;
+    }
 
     Ok(map)
 }
 
+/// Validate flows for a process
 fn validate_process_flows_map(
-    map: &HashMap<ProcessID, ProcessFlowsMap>,
-    processes: &HashMap<ProcessID, Process>,
+    process: &Process,
+    map: &ProcessFlowsMap,
     milestone_years: &[u32],
 ) -> Result<()> {
-    for (process_id, map) in map.iter() {
-        let process = processes.get(process_id).unwrap();
-        let year_range = &process.years;
-        let reference_years: HashSet<u32> = milestone_years
-            .iter()
-            .copied()
-            .filter(|year| year_range.contains(year))
-            .collect();
-        let reference_regions = &process.regions;
-        for year in &reference_years {
-            for region in reference_regions {
-                // Check that the process has flows for this region/year
-                let flows_vector = map.get(&(region.clone(), *year)).with_context(|| {
-                    format!("Missing entry for process {process_id} in {region}/{year}")
-                })?;
+    let process_id = process.id.clone();
+    let year_range = &process.years;
+    let reference_years: HashSet<u32> = milestone_years
+        .iter()
+        .copied()
+        .filter(|year| year_range.contains(year))
+        .collect();
+    let reference_regions = &process.regions;
+    for year in &reference_years {
+        for region in reference_regions {
+            // Check that the process has flows for this region/year
+            let flows_vector = map.get(&(region.clone(), *year)).with_context(|| {
+                format!("Missing entry for process {process_id} in {region}/{year}")
+            })?;
 
-                // Validate flows for this process/region/year
-                validate_flows_vector(flows_vector).with_context(|| {
-                    format!("Invalid flows for process {process_id} in {region}/{year}")
-                })?;
-            }
+            // Validate flows for this process/region/year
+            validate_flows_vector(flows_vector).with_context(|| {
+                format!("Invalid flows for process {process_id} in {region}/{year}")
+            })?;
         }
     }
     Ok(())
 }
 
+/// Validate a vector of flows for a process in a given region/year
 fn validate_flows_vector(flows: &[ProcessFlow]) -> Result<()> {
     // Do not allow multiple flows for the same commodity
     let mut commodities: HashSet<CommodityID> = HashSet::new();
