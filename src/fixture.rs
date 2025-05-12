@@ -1,7 +1,8 @@
 //! Fixtures for tests
 
 use crate::process::{
-    Process, ProcessEnergyLimitsMap, ProcessMap, ProcessParameter, ProcessParameterMap,
+    Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessMap, ProcessParameter,
+    ProcessParameterMap,
 };
 use crate::region::RegionID;
 use indexmap::indexmap;
@@ -54,7 +55,7 @@ pub fn process(
         description: "Description".into(),
         years: 2010..=2020,
         energy_limits: ProcessEnergyLimitsMap::new(),
-        flows: vec![],
+        flows: ProcessFlowsMap::new(),
         parameters: process_parameter_map,
         regions: region_ids,
     }

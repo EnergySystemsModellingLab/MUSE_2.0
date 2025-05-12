@@ -197,7 +197,7 @@ impl AssetPool {
             asset.process.contains_commodity_flow(
                 commodity,
                 asset.region_id.clone(),
-                self.current_year,
+                asset.commission_year,
             )
         })
     }
@@ -223,13 +223,10 @@ impl AssetPool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
     use crate::fixture::{assert_error, process};
     use crate::process::{
-        FlowType, Process, ProcessEnergyLimitsMap, ProcessFlow, ProcessParameter,
-        ProcessParameterMap,
+        Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessParameter, ProcessParameterMap,
     };
-    use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
     use rstest::{fixture, rstest};
     use std::iter;
@@ -293,7 +290,7 @@ mod tests {
             description: "Description".into(),
             years: 2010..=2020,
             energy_limits: ProcessEnergyLimitsMap::new(),
-            flows: vec![],
+            flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: HashSet::from(["GBR".into()]),
         });
@@ -333,21 +330,6 @@ mod tests {
             .iter()
             .map(|&year| (("GBR".into(), year), process_param.clone()))
             .collect();
-        let commodity = Rc::new(Commodity {
-            id: "commodity1".into(),
-            description: "Some description".into(),
-            kind: CommodityType::InputCommodity,
-            time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::new(),
-            demand: DemandMap::new(),
-        });
-        let flow = ProcessFlow {
-            commodity: Rc::clone(&commodity),
-            flow: 1.0,
-            flow_type: FlowType::Fixed,
-            flow_cost: 1.0,
-            is_pac: true,
-        };
         let fraction_limits = 1.0..=f64::INFINITY;
         let mut energy_limits = ProcessEnergyLimitsMap::new();
         for year in [2010, 2020] {
@@ -361,7 +343,7 @@ mod tests {
             description: "Description".into(),
             years: 2010..=2020,
             energy_limits,
-            flows: vec![flow.clone()],
+            flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: HashSet::from(["GBR".into()]),
         });

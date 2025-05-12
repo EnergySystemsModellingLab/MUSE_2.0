@@ -6,7 +6,7 @@ use crate::process::{
 };
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::TimeSliceInfo;
-use anyhow::{bail, ensure, Context, Ok, Result};
+use anyhow::{ensure, Context, Ok, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
@@ -78,10 +78,10 @@ pub fn read_processes(
     validate_commodities(
         commodities,
         &flows,
+        &energy_limits,
         region_ids,
         milestone_years,
         time_slice_info,
-        &energy_limits,
     )?;
 
     // Add data to Process objects
@@ -159,26 +159,15 @@ where
     Ok(processes)
 }
 
-struct ValidationParams<'a> {
-    flows: &'a HashMap<ProcessID, ProcessFlowsMap>,
-    time_slice_info: &'a TimeSliceInfo,
-    availabilities: &'a HashMap<ProcessID, ProcessEnergyLimitsMap>,
-}
-
 /// Perform consistency checks for commodity flows.
 fn validate_commodities(
     commodities: &CommodityMap,
     flows: &HashMap<ProcessID, ProcessFlowsMap>,
+    availabilities: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
-    availabilities: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
 ) -> anyhow::Result<()> {
-    let params = ValidationParams {
-        flows,
-        time_slice_info,
-        availabilities,
-    };
     for (commodity_id, commodity) in commodities {
         for region_id in region_ids.iter() {
             for year in milestone_years.iter() {
@@ -187,7 +176,15 @@ fn validate_commodities(
                         validate_sed_commodity(commodity_id, commodity, flows, region_id, year)?;
                     }
                     CommodityType::ServiceDemand => {
-                        validate_svd_commodity(commodity_id, commodity, &params, region_id, year)?;
+                        validate_svd_commodity(
+                            commodity_id,
+                            commodity,
+                            flows,
+                            availabilities,
+                            region_id,
+                            year,
+                            time_slice_info,
+                        )?;
                     }
                     _ => {}
                 }
@@ -204,9 +201,9 @@ fn validate_sed_commodity(
     region_id: &RegionID,
     year: &u32,
 ) -> Result<()> {
+    // Check that the commodity has a consumer and producer process
     let mut has_producer = false;
     let mut has_consumer = false;
-
     for (_process_id, flows) in flows.iter() {
         let flows = flows.get(&(region_id.clone(), *year)).unwrap();
         for flow in flows.iter() {
@@ -216,28 +213,29 @@ fn validate_sed_commodity(
                 } else if flow.flow < 0.0 {
                     has_consumer = true;
                 }
-
-                if has_producer && has_consumer {
-                    return Ok(());
-                }
             }
         }
     }
 
-    bail!(
-        "Commodity {} of 'SED' type must have both producer and consumer processes",
-        commodity_id
+    ensure!(has_consumer && has_producer,
+        "Commodity {} of 'SED' type must have both producer and consumer processes for region {} in year {}",
+        commodity_id,
+        region_id,
+        year,
     );
+    Ok(())
 }
 
 fn validate_svd_commodity(
     commodity_id: &CommodityID,
     commodity: &Rc<Commodity>,
-    params: &ValidationParams,
+    flows: &HashMap<ProcessID, ProcessFlowsMap>,
+    availabilities: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
     region_id: &RegionID,
     year: &u32,
+    time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
-    for time_slice in params.time_slice_info.iter_ids() {
+    for time_slice in time_slice_info.iter_ids() {
         // Check if the commodity has a demand in the given time slice, region and year.
         // We only need to check for producers if there is positive demand.
         let demand = commodity
@@ -249,10 +247,9 @@ fn validate_svd_commodity(
 
             // We must check for producers in every time slice for the given year and region.
             // This includes checking if flow > 0 and if availability > 0.
-            for (process_id, flows) in params.flows.iter() {
+            for (process_id, flows) in flows.iter() {
                 let flows = flows.get(&(region_id.clone(), *year)).unwrap();
-                let availability = params
-                    .availabilities
+                let availability = availabilities
                     .get(process_id)
                     .unwrap()
                     .get(&(region_id.clone(), *year, time_slice.clone()))
@@ -284,7 +281,7 @@ fn validate_svd_commodity(
 #[cfg(test)]
 mod tests {
     use crate::commodity::{CommodityCostMap, DemandMap};
-    use crate::process::{FlowType, ProcessFlow, ProcessParameter};
+    use crate::process::{FlowType, ProcessFlow};
     use crate::time_slice::TimeSliceID;
     use crate::time_slice::TimeSliceLevel;
     use std::iter;
@@ -418,10 +415,10 @@ mod tests {
         assert!(validate_commodities(
             &commodities,
             &process_flows,
+            &availabilities,
             &data.region_ids,
             &milestone_years,
             &time_slice_info,
-            &availabilities,
         )
         .is_ok());
 
@@ -443,10 +440,10 @@ mod tests {
         assert!(validate_commodities(
             &commodities,
             &process_flows_invalid,
+            &availabilities,
             &data.region_ids,
             &milestone_years,
             &time_slice_info,
-            &availabilities,
         )
         .is_err());
     }
