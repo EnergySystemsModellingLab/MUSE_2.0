@@ -113,8 +113,10 @@ where
 {
     let mut processes = HashMap::new();
     for process_raw in iter {
-        let start_year = process_raw.start_year.unwrap();
-        let end_year = process_raw.end_year.unwrap();
+        let start_year = process_raw.start_year.unwrap_or(milestone_years[0]);
+        let end_year = process_raw
+            .end_year
+            .unwrap_or(*milestone_years.last().unwrap());
 
         // Check year range is valid
         ensure!(
