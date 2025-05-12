@@ -1,7 +1,7 @@
 //! Assets are instances of a process which are owned and invested in by agents.
 use crate::agent::AgentID;
 use crate::commodity::Commodity;
-use crate::process::{Process, ProcessParameter};
+use crate::process::{Process, ProcessParameter, ProcessFlow};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use anyhow::{ensure, Context, Result};
@@ -106,6 +106,15 @@ impl Asset {
     /// Maximum activity for this asset (PAC energy produced/consumed per year)
     pub fn maximum_activity(&self) -> f64 {
         self.capacity * self.process_parameter.capacity_to_activity
+    }
+
+    /// Iterate over the asset's Primary Activity Commodity flows
+    pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
+        self.process.flows
+            .get(&(self.region_id.clone(), self.commission_year))
+            .unwrap()
+            .iter()
+            .filter(|flow| flow.is_pac)
     }
 }
 

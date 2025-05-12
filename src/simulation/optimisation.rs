@@ -318,7 +318,7 @@ mod tests {
             description: "Description".into(),
             years: 2010..=2020,
             energy_limits: ProcessEnergyLimitsMap::new(),
-            flows: ProcessFlowsMap::new(), // XXXXXXXXXXX
+            flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: HashSet::from([RegionID("GBR".into())]),
         });
