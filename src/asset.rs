@@ -120,11 +120,7 @@ impl Asset {
     /// Iterate over the asset's Primary Activity Commodity flows
     pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.process
-            .flows
-            .get(&(self.region_id.clone(), self.commission_year))
-            .unwrap()
-            .iter()
-            .filter(|flow| flow.is_pac)
+            .iter_pacs(self.region_id.clone(), self.commission_year)
     }
 }
 
