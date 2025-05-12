@@ -7,6 +7,7 @@ use crate::process::{
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{ensure, Context, Ok, Result};
+use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
@@ -167,41 +168,41 @@ fn validate_commodities(
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
-) -> anyhow::Result<()> {
-    for commodity in commodities.values() {
-        for region_id in region_ids.iter() {
-            for year in milestone_years.iter() {
-                match commodity.kind {
-                    CommodityType::SupplyEqualsDemand => {
-                        validate_sed_commodity(commodity, flows, region_id, year)?;
-                    }
-                    CommodityType::ServiceDemand => {
-                        for time_slice in time_slice_info.iter_ids() {
-                            validate_svd_commodity(
-                                commodity,
-                                flows,
-                                availabilities,
-                                region_id,
-                                year,
-                                time_slice,
-                            )?;
-                        }
-                    }
-                    _ => {}
+) -> Result<()> {
+    for (commodity, region_id, year) in iproduct!(
+        commodities.values(),
+        region_ids.iter(),
+        milestone_years.iter(),
+    ) {
+        match commodity.kind {
+            CommodityType::SupplyEqualsDemand => {
+                validate_sed_commodity(commodity, flows, region_id, year)?;
+            }
+            CommodityType::ServiceDemand => {
+                for time_slice in time_slice_info.iter_ids() {
+                    validate_svd_commodity(
+                        commodity,
+                        flows,
+                        availabilities,
+                        region_id,
+                        year,
+                        time_slice,
+                    )?;
                 }
             }
+            _ => {}
         }
     }
     Ok(())
 }
 
+/// Check that an SED commodity has a consumer and producer process
 fn validate_sed_commodity(
     commodity: &Rc<Commodity>,
     flows: &HashMap<ProcessID, ProcessFlowsMap>,
     region_id: &RegionID,
     year: &u32,
 ) -> Result<()> {
-    // Check that the commodity has a consumer and producer process
     let mut has_producer = false;
     let mut has_consumer = false;
     for flows in flows.values() {
@@ -240,39 +241,37 @@ fn validate_svd_commodity(
         .demand
         .get(&(region_id.clone(), *year, time_slice.clone()))
         .unwrap();
-    if demand > &0.0 {
-        let mut has_producer = false;
+    if demand <= &0.0 {
+        return Ok(());
+    }
 
-        // We must check for producers in every time slice for the given year and region.
-        // This includes checking if flow > 0 and if availability > 0.
-        for (process_id, flows) in flows.iter() {
-            let flows = flows.get(&(region_id.clone(), *year)).unwrap();
-            let availability = availabilities
-                .get(process_id)
-                .unwrap()
-                .get(&(region_id.clone(), *year, time_slice.clone()))
-                .unwrap();
-            for flow in flows.iter() {
-                if Rc::ptr_eq(&flow.commodity, commodity)
-                    && flow.flow > 0.0
-                    && availability.end() > &0.0
-                {
-                    has_producer = true;
-                    break;
-                }
+    // We must check for producers in the given year, region and time slice.
+    // This includes checking if flow > 0 and if availability > 0.
+    for (process_id, flows) in flows.iter() {
+        let flows = flows.get(&(region_id.clone(), *year)).unwrap();
+        let availability = availabilities
+            .get(process_id)
+            .unwrap()
+            .get(&(region_id.clone(), *year, time_slice.clone()))
+            .unwrap();
+        for flow in flows.iter() {
+            if Rc::ptr_eq(&flow.commodity, commodity)
+                && flow.flow > 0.0
+                && availability.end() > &0.0
+            {
+                return Ok(());
             }
         }
-
-        ensure!(
-            has_producer,
-            "Commodity {} of 'SVD' type must have producer processes for region {} in year {} and time slice {}",
-            commodity.id,
-            region_id,
-            year,
-            time_slice,
-        );
     }
-    Ok(())
+
+    // If we reach this point it means there is no producer, so we return an error.
+    Err(anyhow::anyhow!(
+        "Commodity {} of 'SVD' type must have a producer process for region {} in year {} and time slice {}",
+        commodity.id,
+        region_id,
+        year,
+        time_slice,
+    ))
 }
 
 #[cfg(test)]

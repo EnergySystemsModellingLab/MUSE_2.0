@@ -29,7 +29,7 @@ struct ProcessFlowRaw {
 
 impl ProcessFlowRaw {
     fn validate(&self) -> Result<()> {
-        // Check that flow is not infinity, nan, etc.
+        // Check that flow is not infinity, nan, 0 etc.
         ensure!(
             self.flow.is_normal(),
             "Invalid value for flow ({})",
@@ -45,13 +45,10 @@ impl ProcessFlowRaw {
         // Check that flow cost is non-negative
         if let Some(flow_cost) = self.flow_cost {
             ensure!(
-                (0.0..f64::INFINITY).contains(&flow_cost),
+                flow_cost >= 0.0,
                 "Invalid value for flow cost ({flow_cost}). Must be >=0."
             )
         }
-
-        // Check that flow is not zero
-        ensure!(self.flow != 0.0, "Flow cannot be zero");
 
         Ok(())
     }
@@ -133,7 +130,7 @@ where
         // Insert flow into the map
         let entry = map.entry(id.clone()).or_default();
         for year in record_years {
-            for region in record_regions.clone() {
+            for region in record_regions.iter() {
                 entry
                     .entry((region.clone(), year))
                     .or_default()
