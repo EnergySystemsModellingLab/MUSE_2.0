@@ -306,7 +306,6 @@ mod tests {
             demand: DemandMap::new(),
         });
         let flow = ProcessFlow {
-            process_id: "id1".into(),
             commodity: Rc::clone(&commodity),
             flow,
             flow_type: FlowType::Fixed,

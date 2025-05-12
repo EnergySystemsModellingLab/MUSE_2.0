@@ -74,6 +74,7 @@ pub type ProcessEnergyLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInc
 /// A map of [`ProcessParameter`]s, keyed by region and year
 pub type ProcessParameterMap = HashMap<(RegionID, u32), Rc<ProcessParameter>>;
 
+/// A map of [`Vec<ProcessFlow>`]s, keyed by region and year
 pub type ProcessFlowsMap = HashMap<(RegionID, u32), Vec<ProcessFlow>>;
 
 /// Represents a maximum annual commodity flow for a given process

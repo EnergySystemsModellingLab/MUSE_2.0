@@ -136,7 +136,7 @@ where
             for region in record_regions.clone() {
                 entry
                     .entry((region.clone(), year))
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(process_flow.clone());
             }
         }
@@ -179,7 +179,7 @@ fn validate_process_flows_map(
     Ok(())
 }
 
-fn validate_flows_vector(flows: &Vec<ProcessFlow>) -> Result<()> {
+fn validate_flows_vector(flows: &[ProcessFlow]) -> Result<()> {
     // Do not allow multiple flows for the same commodity
     let mut commodities: HashSet<CommodityID> = HashSet::new();
     for flow in flows.iter() {
@@ -301,6 +301,7 @@ mod tests {
             create_process_flow(commodity1.clone(), 1.0, true),
             create_process_flow(commodity2.clone(), 1.0, true),
         ];
+        assert!(validate_flows_vector(&flows).is_ok());
 
         // Invalid: No PACs
         let flows = vec![

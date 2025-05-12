@@ -193,8 +193,13 @@ impl AssetPool {
         region_id: &'a RegionID,
         commodity: &'a Rc<Commodity>,
     ) -> impl Iterator<Item = &'a Asset> {
-        self.iter_for_region(region_id)
-            .filter(|asset| asset.process.contains_commodity_flow(commodity))
+        self.iter_for_region(region_id).filter(|asset| {
+            asset.process.contains_commodity_flow(
+                commodity,
+                asset.region_id.clone(),
+                self.current_year,
+            )
+        })
     }
 
     /// Retain all assets whose IDs are in `assets_to_keep`.
@@ -337,7 +342,6 @@ mod tests {
             demand: DemandMap::new(),
         });
         let flow = ProcessFlow {
-            process_id: "id1".into(),
             commodity: Rc::clone(&commodity),
             flow: 1.0,
             flow_type: FlowType::Fixed,

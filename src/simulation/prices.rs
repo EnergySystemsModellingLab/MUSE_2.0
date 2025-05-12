@@ -65,7 +65,7 @@ impl CommodityPrices {
             let year = asset.commission_year;
 
             // Iterate over process pacs
-            let process_pacs = asset.process.iter_pacs(region_id, year);
+            let process_pacs = asset.process.iter_pacs(region_id.clone(), year);
             for pac in process_pacs {
                 let commodity = &pac.commodity;
 
