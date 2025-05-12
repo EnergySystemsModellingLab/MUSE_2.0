@@ -260,6 +260,16 @@ impl AssetPool {
         self.iter().filter(|asset| asset.region_id == *region_id)
     }
 
+    /// Iterate over active assets for in a given region a particular agent
+    pub fn iter_for_region_and_agent<'a>(
+        &'a self,
+        region_id: &'a RegionID,
+        agent_id: &'a AgentID,
+    ) -> impl Iterator<Item = &'a AssetRef> {
+        self.iter_for_region(region_id)
+            .filter(|asset| asset.agent_id == *agent_id)
+    }
+
     /// Iterate over the active assets in a given region that produce/consume a commodity with the
     /// associated process flow
     pub fn iter_for_region_and_commodity<'a>(
