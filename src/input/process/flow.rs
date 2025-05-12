@@ -63,18 +63,11 @@ pub fn read_process_flows(
     process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     commodities: &CommodityMap,
-    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessFlowsMap>> {
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let process_flow_csv = read_csv(&file_path)?;
-    read_process_flows_from_iter(
-        process_flow_csv,
-        process_ids,
-        processes,
-        commodities,
-        milestone_years,
-    )
-    .with_context(|| input_err_msg(&file_path))
+    read_process_flows_from_iter(process_flow_csv, process_ids, processes, commodities)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 /// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.
@@ -83,7 +76,6 @@ fn read_process_flows_from_iter<I>(
     process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     commodities: &CommodityMap,
-    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessFlowsMap>>
 where
     I: Iterator<Item = ProcessFlowRaw>,
@@ -106,12 +98,7 @@ where
             })?;
 
         // Get years
-        let process_year_range = &process.years;
-        let process_years: Vec<u32> = milestone_years
-            .iter()
-            .copied()
-            .filter(|year| process_year_range.contains(year))
-            .collect();
+        let process_years = process.years.clone();
         let record_years = parse_year_str(&record.year, &process_years).with_context(|| {
             format!("Invalid year for process {id}. Valid years are {process_years:?}")
         })?;
@@ -145,27 +132,18 @@ where
     // Validate flows
     for (process_id, map) in map.iter() {
         let process = processes.get(process_id).unwrap();
-        validate_process_flows_map(process, map, milestone_years)?;
+        validate_process_flows_map(process, map)?;
     }
 
     Ok(map)
 }
 
 /// Validate flows for a process
-fn validate_process_flows_map(
-    process: &Process,
-    map: &ProcessFlowsMap,
-    milestone_years: &[u32],
-) -> Result<()> {
+fn validate_process_flows_map(process: &Process, map: &ProcessFlowsMap) -> Result<()> {
     let process_id = process.id.clone();
-    let year_range = &process.years;
-    let reference_years: HashSet<u32> = milestone_years
-        .iter()
-        .copied()
-        .filter(|year| year_range.contains(year))
-        .collect();
+    let reference_years = &process.years;
     let reference_regions = &process.regions;
-    for year in &reference_years {
+    for year in &reference_years.clone() {
         for region in reference_regions {
             // Check that the process has flows for this region/year
             let flows_vector = map.get(&(region.clone(), *year)).with_context(|| {

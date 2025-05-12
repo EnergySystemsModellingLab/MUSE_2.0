@@ -8,7 +8,7 @@ use ::log::warn;
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexSet;
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -99,11 +99,10 @@ pub fn read_process_parameters(
     model_dir: &Path,
     process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
-    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
-    read_process_parameters_from_iter(iter, process_ids, processes, milestone_years)
+    read_process_parameters_from_iter(iter, process_ids, processes)
         .with_context(|| input_err_msg(&file_path))
 }
 
@@ -111,7 +110,6 @@ fn read_process_parameters_from_iter<I>(
     iter: I,
     process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
-    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
@@ -125,12 +123,7 @@ where
             .with_context(|| format!("Process {id} not found"))?;
 
         // Get years
-        let process_year_range = &process.years;
-        let process_years: Vec<u32> = milestone_years
-            .iter()
-            .copied()
-            .filter(|year| process_year_range.contains(year))
-            .collect();
+        let process_years = process.years.clone();
         let parameter_years =
             parse_year_str(&param_raw.year, &process_years).with_context(|| {
                 format!("Invalid year for process {id}. Valid years are {process_years:?}")
@@ -156,12 +149,7 @@ where
     // Check parameters cover all years and regions of the process
     for (id, parameters) in map.iter() {
         let process = processes.get(id).unwrap();
-        let year_range = &process.years;
-        let reference_years: HashSet<u32> = milestone_years
-            .iter()
-            .copied()
-            .filter(|year| year_range.contains(year))
-            .collect();
+        let reference_years = process.years.clone();
         let reference_regions = process.regions.clone();
 
         let mut missing_keys = Vec::new();

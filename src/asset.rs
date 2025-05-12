@@ -307,7 +307,7 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            years: 2010..=2020,
+            years: vec![2010, 2020],
             energy_limits: ProcessEnergyLimitsMap::new(),
             flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
@@ -360,7 +360,7 @@ mod tests {
         let process = Rc::new(Process {
             id: "process1".into(),
             description: "Description".into(),
-            years: 2010..=2020,
+            years: vec![2010, 2020],
             energy_limits,
             flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
