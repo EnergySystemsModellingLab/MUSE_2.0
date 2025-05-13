@@ -6,7 +6,6 @@ use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use indexmap::IndexMap;
-use log::warn;
 use std::collections::{HashMap, HashSet};
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
@@ -99,16 +98,16 @@ impl CommodityPrices {
     ///
     /// * `commodity_ids` - IDs of commodities to update
     /// * `time_slice_info` - Information about time slices
-    fn add_remaining<'a, I>(&mut self, commodity_regions: I, time_slice_info: &TimeSliceInfo)
+    fn add_remaining<'a, I>(&mut self, _commodity_regions: I, _time_slice_info: &TimeSliceInfo)
     where
         I: Iterator<Item = &'a (CommodityID, RegionID)>,
     {
-        for (commodity_id, region_id) in commodity_regions {
-            warn!("No prices calculated for commodity {commodity_id} in region {region_id}; setting to NaN");
-            for time_slice in time_slice_info.iter_ids() {
-                self.insert(commodity_id, region_id, time_slice, f64::NAN);
-            }
-        }
+        // for (commodity_id, region_id) in commodity_regions {
+        //     warn!("No prices calculated for commodity {commodity_id} in region {region_id}; setting to NaN");
+        //     for time_slice in time_slice_info.iter_ids() {
+        //         self.insert(commodity_id, region_id, time_slice, f64::NAN);
+        //     }
+        // }
     }
 
     /// Get a commodity price.
