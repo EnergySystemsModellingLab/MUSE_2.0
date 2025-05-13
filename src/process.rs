@@ -24,7 +24,7 @@ pub struct Process {
     /// A human-readable description for the process (e.g. dry gas extraction)
     pub description: String,
     /// The years in which this process is available for investment
-    pub years: RangeInclusive<u32>,
+    pub years: Vec<u32>,
     /// Limits on PAC energy consumption/production for each time slice (as a fraction of maximum)
     pub energy_limits: ProcessEnergyLimitsMap,
     /// Maximum annual commodity flows for this process

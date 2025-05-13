@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 use indexmap::IndexSet;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::path::Path;
 
@@ -82,7 +82,6 @@ pub fn read_process_availabilities(
     process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
-    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessEnergyLimitsMap>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let process_availabilities_csv = read_csv(&file_path)?;
@@ -91,7 +90,6 @@ pub fn read_process_availabilities(
         process_ids,
         processes,
         time_slice_info,
-        milestone_years,
     )
     .with_context(|| input_err_msg(&file_path))
 }
@@ -102,7 +100,6 @@ fn read_process_availabilities_from_iter<I>(
     process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
-    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessEnergyLimitsMap>>
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
@@ -125,12 +122,7 @@ where
             })?;
 
         // Get years
-        let process_year_range = &process.years;
-        let process_years: Vec<u32> = milestone_years
-            .iter()
-            .copied()
-            .filter(|year| process_year_range.contains(year))
-            .collect();
+        let process_years = process.years.clone();
         let record_years = parse_year_str(&record.year, &process_years).with_context(|| {
             format!("Invalid year for process {id}. Valid years are {process_years:?}")
         })?;
@@ -155,7 +147,7 @@ where
         }
     }
 
-    validate_energy_limits_maps(&map, processes, time_slice_info, milestone_years)?;
+    validate_energy_limits_maps(&map, processes, time_slice_info)?;
 
     Ok(map)
 }
@@ -165,19 +157,13 @@ fn validate_energy_limits_maps(
     map: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
-    milestone_years: &[u32],
 ) -> Result<()> {
     for (process_id, map) in map.iter() {
         let process = processes.get(process_id).unwrap();
-        let year_range = &process.years;
-        let reference_years: HashSet<u32> = milestone_years
-            .iter()
-            .copied()
-            .filter(|year| year_range.contains(year))
-            .collect();
+        let reference_years = &process.years.clone();
         let reference_regions = &process.regions;
         let mut missing_keys = Vec::new();
-        for year in &reference_years {
+        for year in reference_years {
             for region in reference_regions {
                 for time_slice in time_slice_info.iter_ids() {
                     let key = (region.clone(), *year, time_slice.clone());
