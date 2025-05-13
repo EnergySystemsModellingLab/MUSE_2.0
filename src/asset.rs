@@ -3,6 +3,7 @@ use crate::agent::AgentID;
 use crate::commodity::CommodityID;
 use crate::process::{Process, ProcessFlow, ProcessParameter};
 use crate::region::RegionID;
+use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
@@ -131,6 +132,55 @@ impl Asset {
     pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.process
             .iter_pacs(&self.region_id, self.commission_year)
+    }
+
+    /// Get the marginal cost of this asset
+    pub fn marginal_cost(
+        &self,
+        commodity_of_interest: &CommodityID,
+        prices: &CommodityPrices,
+        year: u32,
+        time_slice: &TimeSliceID,
+    ) -> Option<f64> {
+        let get_output_flow = || {
+            let flow = self.get_flow(commodity_of_interest)?;
+            if flow.flow < 0.0 {
+                None
+            } else {
+                Some(flow)
+            }
+        };
+
+        let Some(output_flow) = get_output_flow() else {
+            panic!("{commodity_of_interest} is not an output commodity for asset");
+        };
+
+        // Cost per unit flow
+        let flow_cost = output_flow.flow_cost;
+
+        // If there is a user-provided cost for this commodity, include it
+        let commodity_cost = output_flow.get_commodity_cost(&self.region_id, year, time_slice);
+
+        // Only applies if commodity is PAC
+        let var_opex = self.process.get_variable_operating_cost(
+            output_flow,
+            &self.region_id,
+            self.commission_year,
+        );
+
+        // Normalise
+        let mut cost = output_flow.flow * (flow_cost + commodity_cost + var_opex);
+
+        for flow in self.iter_flows() {
+            if &flow.commodity.id != commodity_of_interest {
+                let ratio = flow.flow / output_flow.flow;
+
+                // If price is not available, return None
+                cost += ratio * prices.get(&flow.commodity.id, &self.region_id, time_slice)?;
+            }
+        }
+
+        Some(cost)
     }
 }
 
