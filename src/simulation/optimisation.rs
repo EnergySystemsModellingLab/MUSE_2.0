@@ -1,15 +1,15 @@
 //! Code for performing dispatch optimisation.
 //!
 //! This is used to calculate commodity flows and prices.
-use crate::asset::{Asset, AssetID, AssetPool};
+use crate::asset::{AssetID, AssetPool};
 use crate::commodity::{BalanceType, CommodityID};
 use crate::model::Model;
-use crate::process::ProcessFlow;
+use crate::process::{Process, ProcessFlow, ProcessID};
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 
 mod constraints;
 use constraints::{add_asset_constraints, CapacityConstraintKeys, CommodityBalanceConstraintKeys};
@@ -30,23 +30,36 @@ type Variable = highs::Col;
 /// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
 ///    are reading the results of the optimisation.
 #[derive(Default)]
-pub struct VariableMap(IndexMap<(AssetID, CommodityID, TimeSliceID), Variable>);
+pub struct VariableMap(IndexMap<(AssetOrProcess, CommodityID, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
-    fn get(
+    fn get_asset(
         &self,
         asset_id: AssetID,
         commodity_id: &CommodityID,
         time_slice: &TimeSliceID,
     ) -> Variable {
-        let key = (asset_id, commodity_id.clone(), time_slice.clone());
+        let key = (
+            AssetOrProcess::Asset(asset_id),
+            commodity_id.clone(),
+            time_slice.clone(),
+        );
 
         *self
             .0
             .get(&key)
             .expect("No variable found for given params")
     }
+}
+
+/// An asset or process entry for [`VariableMap`] etc.
+#[derive(Clone, Hash, Eq, PartialEq)]
+pub enum AssetOrProcess {
+    /// An asset ID
+    Asset(AssetID),
+    /// A process ID and region ID
+    Process((ProcessID, RegionID)),
 }
 
 /// The solution to the dispatch optimisation problem
@@ -74,8 +87,11 @@ impl Solution<'_> {
             .0
             .keys()
             .zip(self.solution.columns().iter().copied())
-            .map(|((asset_id, commodity_id, time_slice), flow)| {
-                (*asset_id, commodity_id, time_slice, flow)
+            .filter_map(|((id, commodity_id, time_slice), flow)| match id {
+                AssetOrProcess::Process(_) => None,
+                AssetOrProcess::Asset(asset_id) => {
+                    Some((*asset_id, commodity_id, time_slice, flow))
+                }
             })
     }
 
@@ -194,22 +210,49 @@ fn add_variables(
     year: u32,
 ) -> VariableMap {
     let mut variables = VariableMap::default();
+    let mut processes_added = IndexSet::new();
 
     for asset in assets.iter() {
+        let id = AssetOrProcess::Asset(asset.id);
+        processes_added.insert(asset.process.id.clone());
         for flow in asset.iter_flows() {
-            for time_slice in model.time_slice_info.iter_ids() {
-                let coeff = calculate_cost_coefficient(asset, flow, year, time_slice);
+            add_variables_for_process(
+                problem,
+                &mut variables,
+                model,
+                year,
+                &id,
+                &asset.process,
+                flow,
+                &asset.region_id,
+                asset.commission_year,
+            );
+        }
+    }
 
-                // var's value must be <= 0 for inputs and >= 0 for outputs
-                let var = if flow.flow < 0.0 {
-                    problem.add_column(coeff, ..=0.0)
-                } else {
-                    problem.add_column(coeff, 0.0..)
-                };
+    for process in model.processes.values() {
+        // Process already covered by at least one asset
+        if processes_added.contains(&process.id) {
+            continue;
+        }
 
-                let key = (asset.id, flow.commodity.id.clone(), time_slice.clone());
-                let existing = variables.0.insert(key, var).is_some();
-                assert!(!existing, "Duplicate entry for var");
+        // **FIXME**: ORDER ISN'T DETERMINISTIC!
+        for region_id in process.regions.iter() {
+            let id = AssetOrProcess::Process((process.id.clone(), region_id.clone()));
+
+            let flows = process.flows.get(&(region_id.clone(), year)).unwrap();
+            for flow in flows {
+                add_variables_for_process(
+                    problem,
+                    &mut variables,
+                    model,
+                    year,
+                    &id,
+                    process,
+                    flow,
+                    region_id,
+                    year,
+                );
             }
         }
     }
@@ -217,11 +260,51 @@ fn add_variables(
     variables
 }
 
+fn add_variables_for_process(
+    problem: &mut Problem,
+    variables: &mut VariableMap,
+    model: &Model,
+    current_year: u32,
+    asset_or_process: &AssetOrProcess,
+    process: &Process,
+    flow: &ProcessFlow,
+    region_id: &RegionID,
+    commission_year: u32,
+) {
+    for time_slice in model.time_slice_info.iter_ids() {
+        let coeff = calculate_cost_coefficient(
+            process,
+            region_id,
+            commission_year,
+            flow,
+            current_year,
+            time_slice,
+        );
+
+        // var's value must be <= 0 for inputs and >= 0 for outputs
+        let var = if flow.flow < 0.0 {
+            problem.add_column(coeff, ..=0.0)
+        } else {
+            problem.add_column(coeff, 0.0..)
+        };
+
+        let key = (
+            asset_or_process.clone(),
+            flow.commodity.id.clone(),
+            time_slice.clone(),
+        );
+        let existing = variables.0.insert(key, var).is_some();
+        assert!(!existing, "Duplicate entry for var");
+    }
+}
+
 /// Calculate the cost coefficient for a decision variable
 fn calculate_cost_coefficient(
-    asset: &Asset,
+    process: &Process,
+    region_id: &RegionID,
+    commission_year: u32,
     flow: &ProcessFlow,
-    year: u32,
+    current_year: u32,
     time_slice: &TimeSliceID,
 ) -> f64 {
     // Cost per unit flow
@@ -229,10 +312,9 @@ fn calculate_cost_coefficient(
 
     // Only applies if commodity is PAC
     if flow.is_pac {
-        coeff += asset
-            .process
+        coeff += process
             .parameters
-            .get(&(asset.region_id.clone(), asset.commission_year))
+            .get(&(region_id.clone(), commission_year))
             .unwrap()
             .variable_operating_cost
     }
@@ -242,7 +324,7 @@ fn calculate_cost_coefficient(
         let cost = flow
             .commodity
             .costs
-            .get(&(asset.region_id.clone(), year, time_slice.clone()))
+            .get(&(region_id.clone(), current_year, time_slice.clone()))
             .unwrap();
         let apply_cost = match cost.balance_type {
             BalanceType::Net => true,

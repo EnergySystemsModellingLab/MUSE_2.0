@@ -108,7 +108,12 @@ fn add_commodity_balance_constraints(
                     terms.extend(
                         assets
                             .iter_for_region_and_commodity(region_id, commodity)
-                            .map(|asset| (variables.get(asset.id, &commodity.id, time_slice), 1.0)),
+                            .map(|asset| {
+                                (
+                                    variables.get_asset(asset.id, &commodity.id, time_slice),
+                                    1.0,
+                                )
+                            }),
                     );
                 }
 
@@ -163,7 +168,7 @@ fn add_fixed_asset_constraints(
         let pac1 = asset.iter_pacs().next().unwrap();
 
         for time_slice in time_slice_info.iter_ids() {
-            let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
+            let pac_var = variables.get_asset(asset.id, &pac1.commodity.id, time_slice);
             let pac_term = (pac_var, -1.0 / pac1.flow);
             for flow in asset.iter_flows() {
                 // Don't add a constraint for the PAC itself
@@ -172,7 +177,7 @@ fn add_fixed_asset_constraints(
                 }
 
                 // We are enforcing that (var / flow) - (pac_var / pac_flow) = 0
-                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
+                let var = variables.get_asset(asset.id, &flow.commodity.id, time_slice);
                 problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
             }
         }
@@ -210,7 +215,7 @@ fn add_asset_capacity_constraints(
             for flow in asset.iter_pacs() {
                 is_input = flow.flow < 0.0; // NB: PACs will be all inputs or all outputs
 
-                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
+                let var = variables.get_asset(asset.id, &flow.commodity.id, time_slice);
                 terms.push((var, 1.0));
             }
 
