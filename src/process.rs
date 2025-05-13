@@ -68,6 +68,27 @@ impl Process {
             .contains_key(commodity_id)
     }
 
+    /// Get the variable operating cost for the specified flow.
+    ///
+    /// This only applies if `flow` is a PAC.
+    ///
+    /// No checks are performed on the input arguments.
+    pub fn get_variable_operating_cost(
+        &self,
+        flow: &ProcessFlow,
+        region_id: &RegionID,
+        commission_year: u32,
+    ) -> f64 {
+        if !flow.is_pac {
+            return 0.0;
+        }
+
+        self.parameters
+            .get(&(region_id.clone(), commission_year))
+            .unwrap()
+            .variable_operating_cost
+    }
+
     /// Iterate over this process's Primary Activity Commodity flows
     pub fn iter_pacs(&self, region_id: &RegionID, year: u32) -> impl Iterator<Item = &ProcessFlow> {
         self.flows

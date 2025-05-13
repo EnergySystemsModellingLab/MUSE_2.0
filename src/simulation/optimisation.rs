@@ -228,14 +228,10 @@ fn calculate_cost_coefficient(
     let mut coeff = flow.flow_cost;
 
     // Only applies if commodity is PAC
-    if flow.is_pac {
-        coeff += asset
+    coeff +=
+        asset
             .process
-            .parameters
-            .get(&(asset.region_id.clone(), asset.commission_year))
-            .unwrap()
-            .variable_operating_cost
-    }
+            .get_variable_operating_cost(flow, &asset.region_id, asset.commission_year);
 
     // If there is a user-provided cost for this commodity, include it
     if !flow.commodity.costs.is_empty() {
