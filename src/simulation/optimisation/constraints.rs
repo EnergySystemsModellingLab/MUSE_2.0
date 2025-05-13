@@ -160,13 +160,12 @@ fn add_fixed_asset_constraints(
 ) {
     for asset in assets.iter() {
         // Get first PAC. unwrap is safe because all processes have at least one PAC.
-        let pac1 = asset.process.iter_pacs().next().unwrap();
+        let pac1 = asset.iter_pacs().next().unwrap();
 
         for time_slice in time_slice_info.iter_ids() {
             let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
             let pac_term = (pac_var, -1.0 / pac1.flow);
-
-            for flow in asset.process.flows.iter() {
+            for flow in asset.iter_flows() {
                 // Don't add a constraint for the PAC itself
                 if Rc::ptr_eq(&flow.commodity, &pac1.commodity) {
                     continue;
@@ -208,7 +207,7 @@ fn add_asset_capacity_constraints(
     for asset in assets.iter() {
         for time_slice in time_slice_info.iter_ids() {
             let mut is_input = false; // NB: there will be at least one PAC
-            for flow in asset.process.iter_pacs() {
+            for flow in asset.iter_pacs() {
                 is_input = flow.flow < 0.0; // NB: PACs will be all inputs or all outputs
 
                 let var = variables.get(asset.id, &flow.commodity.id, time_slice);

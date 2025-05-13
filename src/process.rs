@@ -28,7 +28,7 @@ pub struct Process {
     /// Limits on PAC energy consumption/production for each time slice (as a fraction of maximum)
     pub energy_limits: ProcessEnergyLimitsMap,
     /// Maximum annual commodity flows for this process
-    pub flows: Vec<ProcessFlow>,
+    pub flows: ProcessFlowsMap,
     /// Additional parameters for this process
     pub parameters: ProcessParameterMap,
     /// The regions in which this process can operate
@@ -37,15 +37,26 @@ pub struct Process {
 
 impl Process {
     /// Whether the process contains a flow for a given commodity
-    pub fn contains_commodity_flow(&self, commodity: &Rc<Commodity>) -> bool {
+    pub fn contains_commodity_flow(
+        &self,
+        commodity: &Rc<Commodity>,
+        region_id: RegionID,
+        year: u32,
+    ) -> bool {
         self.flows
+            .get(&(region_id, year))
+            .unwrap()
             .iter()
             .any(|flow| Rc::ptr_eq(&flow.commodity, commodity))
     }
 
     /// Iterate over this process's Primary Activity Commodity flows
-    pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
-        self.flows.iter().filter(|flow| flow.is_pac)
+    pub fn iter_pacs(&self, region_id: RegionID, year: u32) -> impl Iterator<Item = &ProcessFlow> {
+        self.flows
+            .get(&(region_id, year))
+            .unwrap()
+            .iter()
+            .filter(|flow| flow.is_pac)
     }
 }
 
@@ -63,11 +74,12 @@ pub type ProcessEnergyLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInc
 /// A map of [`ProcessParameter`]s, keyed by region and year
 pub type ProcessParameterMap = HashMap<(RegionID, u32), Rc<ProcessParameter>>;
 
+/// A map of [`Vec<ProcessFlow>`]s, keyed by region and year
+pub type ProcessFlowsMap = HashMap<(RegionID, u32), Vec<ProcessFlow>>;
+
 /// Represents a maximum annual commodity flow for a given process
 #[derive(PartialEq, Debug, Deserialize, Clone)]
 pub struct ProcessFlow {
-    /// A unique identifier for the process
-    pub process_id: String,
     /// The commodity produced or consumed by this flow
     pub commodity: Rc<Commodity>,
     /// Maximum annual commodity flow quantity relative to other commodity flows.

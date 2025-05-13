@@ -1,12 +1,13 @@
 //! Code for reading process-related information from CSV files.
 use super::*;
-use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
+use crate::commodity::{Commodity, CommodityMap, CommodityType};
 use crate::process::{
-    Process, ProcessEnergyLimitsMap, ProcessFlow, ProcessID, ProcessMap, ProcessParameterMap,
+    Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessID, ProcessMap, ProcessParameterMap,
 };
 use crate::region::{parse_region_str, RegionID};
-use crate::time_slice::TimeSliceInfo;
-use anyhow::{bail, ensure, Context, Ok, Result};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use anyhow::{ensure, Context, Ok, Result};
+use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
@@ -64,7 +65,13 @@ pub fn read_processes(
         time_slice_info,
         milestone_years,
     )?;
-    let mut flows = read_process_flows(model_dir, &process_ids, commodities)?;
+    let mut flows = read_process_flows(
+        model_dir,
+        &process_ids,
+        &processes,
+        commodities,
+        milestone_years,
+    )?;
     let mut parameters =
         read_process_parameters(model_dir, &process_ids, &processes, milestone_years)?;
 
@@ -72,11 +79,10 @@ pub fn read_processes(
     validate_commodities(
         commodities,
         &flows,
+        &energy_limits,
         region_ids,
         milestone_years,
         time_slice_info,
-        &parameters,
-        &energy_limits,
     )?;
 
     // Add data to Process objects
@@ -140,7 +146,7 @@ where
             description: process_raw.description,
             years: start_year..=end_year,
             energy_limits: ProcessEnergyLimitsMap::new(),
-            flows: Vec::new(),
+            flows: ProcessFlowsMap::new(),
             parameters: ProcessParameterMap::new(),
             regions,
         };
@@ -154,40 +160,35 @@ where
     Ok(processes)
 }
 
-struct ValidationParams<'a> {
-    flows: &'a HashMap<ProcessID, Vec<ProcessFlow>>,
-    region_ids: &'a HashSet<RegionID>,
-    milestone_years: &'a [u32],
-    time_slice_info: &'a TimeSliceInfo,
-    parameters: &'a HashMap<ProcessID, ProcessParameterMap>,
-    availabilities: &'a HashMap<ProcessID, ProcessEnergyLimitsMap>,
-}
-
 /// Perform consistency checks for commodity flows.
 fn validate_commodities(
     commodities: &CommodityMap,
-    flows: &HashMap<ProcessID, Vec<ProcessFlow>>,
+    flows: &HashMap<ProcessID, ProcessFlowsMap>,
+    availabilities: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
-    parameters: &HashMap<ProcessID, ProcessParameterMap>,
-    availabilities: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
-) -> anyhow::Result<()> {
-    let params = ValidationParams {
-        flows,
-        region_ids,
-        milestone_years,
-        time_slice_info,
-        parameters,
-        availabilities,
-    };
-    for (commodity_id, commodity) in commodities {
+) -> Result<()> {
+    for (commodity, region_id, year) in iproduct!(
+        commodities.values(),
+        region_ids.iter(),
+        milestone_years.iter(),
+    ) {
         match commodity.kind {
             CommodityType::SupplyEqualsDemand => {
-                validate_sed_commodity(commodity_id, commodity, flows)?;
+                validate_sed_commodity(commodity, flows, region_id, year)?;
             }
             CommodityType::ServiceDemand => {
-                validate_svd_commodity(commodity_id, commodity, &params)?;
+                for time_slice in time_slice_info.iter_ids() {
+                    validate_svd_commodity(
+                        commodity,
+                        flows,
+                        availabilities,
+                        region_id,
+                        year,
+                        time_slice,
+                    )?;
+                }
             }
             _ => {}
         }
@@ -195,159 +196,96 @@ fn validate_commodities(
     Ok(())
 }
 
+/// Check that an SED commodity has a consumer and producer process
 fn validate_sed_commodity(
-    commodity_id: &CommodityID,
     commodity: &Rc<Commodity>,
-    flows: &HashMap<ProcessID, Vec<ProcessFlow>>,
+    flows: &HashMap<ProcessID, ProcessFlowsMap>,
+    region_id: &RegionID,
+    year: &u32,
 ) -> Result<()> {
     let mut has_producer = false;
     let mut has_consumer = false;
-
-    for flow in flows.values().flatten() {
-        if Rc::ptr_eq(&flow.commodity, commodity) {
-            if flow.flow > 0.0 {
-                has_producer = true;
-            } else if flow.flow < 0.0 {
-                has_consumer = true;
-            }
-
-            if has_producer && has_consumer {
-                return Ok(());
-            }
-        }
-    }
-
-    bail!(
-        "Commodity {} of 'SED' type must have both producer and consumer processes",
-        commodity_id
-    );
-}
-
-fn validate_svd_commodity(
-    commodity_id: &CommodityID,
-    commodity: &Rc<Commodity>,
-    params: &ValidationParams,
-) -> Result<()> {
-    for region_id in params.region_ids.iter() {
-        for year in params.milestone_years.iter().copied() {
-            for time_slice in params.time_slice_info.iter_ids() {
-                let demand = commodity
-                    .demand
-                    .get(&(region_id.clone(), year, time_slice.clone()))
-                    .unwrap();
-                if demand > &0.0 {
-                    let mut has_producer = false;
-
-                    // We must check for producers in every time slice, region, and year.
-                    // This includes checking if flow > 0 and if availability > 0.
-
-                    for flow in params.flows.values().flatten() {
-                        if Rc::ptr_eq(&flow.commodity, commodity)
-                            && flow.flow > 0.0
-                            && params
-                                .parameters
-                                .get(&*flow.process_id)
-                                .unwrap()
-                                .keys()
-                                .contains(&(region_id.clone(), year))
-                            && params
-                                .availabilities
-                                .get(&*flow.process_id)
-                                .unwrap()
-                                .get(&(region_id.clone(), year, time_slice.clone()))
-                                .unwrap()
-                                .end()
-                                > &0.0
-                        {
-                            has_producer = true;
-                            break;
-                        }
-                    }
-
-                    ensure!(
-                        has_producer,
-                        "Commodity {} of 'SVD' type must have producer processes for region {} in year {}",
-                        commodity_id,
-                        region_id,
-                        year
-                    );
+    for flows in flows.values() {
+        let flows = flows.get(&(region_id.clone(), *year)).unwrap();
+        for flow in flows.iter() {
+            if Rc::ptr_eq(&flow.commodity, commodity) {
+                if flow.flow > 0.0 {
+                    has_producer = true;
+                } else if flow.flow < 0.0 {
+                    has_consumer = true;
                 }
             }
         }
     }
 
+    ensure!(has_consumer && has_producer,
+        "Commodity {} of 'SED' type must have both producer and consumer processes for region {} in year {}",
+        commodity.id,
+        region_id,
+        year,
+    );
     Ok(())
+}
+
+fn validate_svd_commodity(
+    commodity: &Rc<Commodity>,
+    flows: &HashMap<ProcessID, ProcessFlowsMap>,
+    availabilities: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
+    region_id: &RegionID,
+    year: &u32,
+    time_slice: &TimeSliceID,
+) -> Result<()> {
+    // Check if the commodity has a demand in the given time slice, region and year.
+    // We only need to check for producers if there is positive demand.
+    let demand = commodity
+        .demand
+        .get(&(region_id.clone(), *year, time_slice.clone()))
+        .unwrap();
+    if demand <= &0.0 {
+        return Ok(());
+    }
+
+    // We must check for producers in the given year, region and time slice.
+    // This includes checking if flow > 0 and if availability > 0.
+    for (process_id, flows) in flows.iter() {
+        let flows = flows.get(&(region_id.clone(), *year)).unwrap();
+        let availability = availabilities
+            .get(process_id)
+            .unwrap()
+            .get(&(region_id.clone(), *year, time_slice.clone()))
+            .unwrap();
+        for flow in flows.iter() {
+            if Rc::ptr_eq(&flow.commodity, commodity)
+                && flow.flow > 0.0
+                && availability.end() > &0.0
+            {
+                return Ok(());
+            }
+        }
+    }
+
+    // If we reach this point it means there is no producer, so we return an error.
+    bail!(
+        "Commodity {} of 'SVD' type must have a producer process for region {} in year {} and time slice {}",
+        commodity.id,
+        region_id,
+        year,
+        time_slice,
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use crate::commodity::{CommodityCostMap, DemandMap};
-    use crate::process::{FlowType, ProcessParameter, ProcessParameterMap};
+    use crate::process::{FlowType, ProcessFlow};
     use crate::time_slice::TimeSliceID;
     use crate::time_slice::TimeSliceLevel;
-    use std::iter;
 
     use super::*;
 
-    struct ProcessData {
-        availabilities: HashMap<ProcessID, ProcessEnergyLimitsMap>,
-        parameters: HashMap<ProcessID, ProcessParameterMap>,
-        region_ids: HashSet<RegionID>,
-    }
-
-    /// Returns example data (without errors) for processes
-    fn get_process_data() -> ProcessData {
-        let availabilities = ["process1", "process2"]
-            .into_iter()
-            .map(|id| {
-                let mut map = ProcessEnergyLimitsMap::new();
-
-                map.insert(
-                    (
-                        "GBR".into(),
-                        2010,
-                        TimeSliceID {
-                            season: "winter".into(),
-                            time_of_day: "day".into(),
-                        },
-                    ),
-                    0.1..=0.9,
-                );
-                (id.into(), map)
-            })
-            .collect();
-
-        let parameter = Rc::new(ProcessParameter {
-            capital_cost: 0.0,
-            fixed_operating_cost: 0.0,
-            variable_operating_cost: 0.0,
-            lifetime: 1,
-            discount_rate: 1.0,
-            capacity_to_activity: 0.0,
-        });
-        let parameters = ["process1", "process2"]
-            .into_iter()
-            .map(|id| {
-                let mut parameter_map: ProcessParameterMap = HashMap::new();
-                parameter_map.insert(("GBR".into(), 2010), parameter.clone());
-                (id.into(), parameter_map)
-            })
-            .collect();
-
-        let region_ids = HashSet::from_iter(iter::once("GBR".into()));
-
-        ProcessData {
-            availabilities,
-            parameters,
-            region_ids,
-        }
-    }
-
     #[test]
-    fn test_validate_commodities() {
-        let data = get_process_data();
-        // Create mock commodities
-        let commodity_sed = Rc::new(Commodity {
+    fn test_validate_sed_commodity() {
+        let commodity = Rc::new(Commodity {
             id: "commodity_sed".into(),
             description: "SED commodity".into(),
             kind: CommodityType::SupplyEqualsDemand,
@@ -356,121 +294,109 @@ mod tests {
             demand: DemandMap::new(),
         });
 
-        let milestone_years = [2010];
-
-        // Set the TimeSliceInfo
-        let id = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "day".into(),
-        };
-        let fractions: IndexMap<TimeSliceID, f64> = [(id.clone(), 1.0)].into_iter().collect();
-        let time_slice_info = TimeSliceInfo {
-            seasons: [id.season].into_iter().collect(),
-            times_of_day: [id.time_of_day].into_iter().collect(),
-            fractions,
-        };
-        let parameters = data.parameters;
-        let availabilities = data.availabilities;
-
-        // Create a dummy demand map for the non-SED commodity
-        let mut demand_map = DemandMap::new();
-        for region in data.region_ids.iter() {
-            for year in milestone_years {
-                for time_slice in time_slice_info.iter_ids() {
-                    demand_map.insert((region.clone(), year, time_slice.clone()), 0.5);
-                }
-            }
-        }
-        let commodity_non_sed = Rc::new(Commodity {
-            id: "commodity_non_sed".into(),
-            description: "Non-SED commodity".into(),
-            kind: CommodityType::ServiceDemand,
-            time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::new(),
-            demand: demand_map,
-        });
-
-        let commodities: CommodityMap = [
-            (commodity_sed.id.clone(), Rc::clone(&commodity_sed)),
-            (commodity_non_sed.id.clone(), Rc::clone(&commodity_non_sed)),
-        ]
-        .into_iter()
-        .collect();
-
-        // Create mock flows
-        let process_flows: HashMap<ProcessID, Vec<ProcessFlow>> = [
-            (
-                "process1".into(),
-                vec![
-                    ProcessFlow {
-                        process_id: "process1".into(),
-                        commodity: Rc::clone(&commodity_sed),
-                        flow: 10.0,
-                        flow_type: FlowType::Fixed,
-                        flow_cost: 1.0,
-                        is_pac: false,
-                    },
-                    ProcessFlow {
-                        process_id: "process1".into(),
-                        commodity: Rc::clone(&commodity_non_sed),
-                        flow: 5.0,
-                        flow_type: FlowType::Fixed,
-                        flow_cost: 1.0,
-                        is_pac: false,
-                    },
-                ],
-            ),
-            (
-                "process2".into(),
-                vec![ProcessFlow {
-                    process_id: "process2".into(),
-                    commodity: Rc::clone(&commodity_sed),
-                    flow: -10.0,
-                    flow_type: FlowType::Fixed,
-                    flow_cost: 1.0,
-                    is_pac: false,
-                }],
-            ),
-        ]
-        .into_iter()
-        .collect();
-
-        // Validate commodities
-        assert!(validate_commodities(
-            &commodities,
-            &process_flows,
-            &data.region_ids,
-            &milestone_years,
-            &time_slice_info,
-            &parameters,
-            &availabilities,
-        )
-        .is_ok());
-
-        // Modify flows to make the validation fail
-        let process_flows_invalid: HashMap<ProcessID, Vec<ProcessFlow>> = [(
-            "process1".into(),
+        let input_flow = ProcessFlowsMap::from_iter(vec![(
+            ("GBR".into(), 2010),
             vec![ProcessFlow {
-                process_id: "process1".into(),
-                commodity: Rc::clone(&commodity_sed),
+                commodity: Rc::clone(&commodity),
+                flow: -10.0,
+                flow_type: FlowType::Fixed,
+                flow_cost: 1.0,
+                is_pac: false,
+            }],
+        )]);
+        let output_flow = ProcessFlowsMap::from_iter(vec![(
+            ("GBR".into(), 2010),
+            vec![ProcessFlow {
+                commodity: Rc::clone(&commodity),
                 flow: 10.0,
                 flow_type: FlowType::Fixed,
                 flow_cost: 1.0,
                 is_pac: false,
             }],
-        )]
-        .into_iter()
-        .collect();
+        )]);
 
-        // Validate commodities should fail
-        assert!(validate_commodities(
-            &commodities,
-            &process_flows_invalid,
-            &data.region_ids,
-            &milestone_years,
-            &time_slice_info,
-            &parameters,
+        // Valid scenario
+        let flows = HashMap::from_iter(vec![
+            ("process1".into(), input_flow.clone()),
+            ("process2".into(), output_flow.clone()),
+        ]);
+        assert!(validate_sed_commodity(&commodity, &flows, &"GBR".into(), &2010,).is_ok());
+
+        // Invalid scenario: no producer
+        let flows = HashMap::from_iter(vec![("process1".into(), input_flow.clone())]);
+        assert!(validate_sed_commodity(&commodity, &flows, &"GBR".into(), &2010).is_err());
+
+        // Invalid scenario: no consumer
+        let flows = HashMap::from_iter(vec![("process2".into(), output_flow.clone())]);
+        assert!(validate_sed_commodity(&commodity, &flows, &"GBR".into(), &2010).is_err());
+    }
+
+    #[test]
+    fn test_validate_svd_commodity() {
+        let time_slice = TimeSliceID {
+            season: "all".into(),
+            time_of_day: "all".into(),
+        };
+
+        let demand = DemandMap::from_iter(vec![(("GBR".into(), 2010, time_slice.clone()), 10.0)]);
+
+        let commodity = Rc::new(Commodity {
+            id: "commodity_svd".into(),
+            description: "SVD commodity".into(),
+            kind: CommodityType::ServiceDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::new(),
+            demand,
+        });
+
+        let flows = HashMap::from_iter(vec![(
+            "process1".into(),
+            ProcessFlowsMap::from_iter(vec![(
+                ("GBR".into(), 2010),
+                vec![ProcessFlow {
+                    commodity: Rc::clone(&commodity),
+                    flow: 10.0,
+                    flow_type: FlowType::Fixed,
+                    flow_cost: 1.0,
+                    is_pac: false,
+                }],
+            )]),
+        )]);
+
+        let availabilities = HashMap::from_iter(vec![(
+            "process1".into(),
+            ProcessEnergyLimitsMap::from_iter(vec![(
+                ("GBR".into(), 2010, time_slice.clone()),
+                0.1..=0.9,
+            )]),
+        )]);
+
+        // Valid scenario
+        assert!(validate_svd_commodity(
+            &commodity,
+            &flows,
             &availabilities,
+            &"GBR".into(),
+            &2010,
+            &time_slice.clone(),
+        )
+        .is_ok());
+
+        // Invalid scenario: no availability
+        let availabilities = HashMap::from_iter(vec![(
+            "process1".into(),
+            ProcessEnergyLimitsMap::from_iter(vec![(
+                ("GBR".into(), 2010, time_slice.clone()),
+                0.0..=0.0,
+            )]),
+        )]);
+        assert!(validate_svd_commodity(
+            &commodity,
+            &flows,
+            &availabilities,
+            &"GBR".into(),
+            &2010,
+            &time_slice.clone(),
         )
         .is_err());
     }

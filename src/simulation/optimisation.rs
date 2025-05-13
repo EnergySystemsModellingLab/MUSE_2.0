@@ -196,7 +196,7 @@ fn add_variables(
     let mut variables = VariableMap::default();
 
     for asset in assets.iter() {
-        for flow in asset.process.flows.iter() {
+        for flow in asset.iter_flows() {
             for time_slice in model.time_slice_info.iter_ids() {
                 let coeff = calculate_cost_coefficient(asset, flow, year, time_slice);
 
@@ -269,7 +269,8 @@ mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
     use crate::process::{
-        FlowType, Process, ProcessEnergyLimitsMap, ProcessParameter, ProcessParameterMap,
+        FlowType, Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessParameter,
+        ProcessParameterMap,
     };
     use crate::time_slice::TimeSliceLevel;
     use float_cmp::assert_approx_eq;
@@ -301,7 +302,6 @@ mod tests {
             demand: DemandMap::new(),
         });
         let flow = ProcessFlow {
-            process_id: "id1".into(),
             commodity: Rc::clone(&commodity),
             flow,
             flow_type: FlowType::Fixed,
@@ -313,7 +313,7 @@ mod tests {
             description: "Description".into(),
             years: 2010..=2020,
             energy_limits: ProcessEnergyLimitsMap::new(),
-            flows: vec![flow.clone()],
+            flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: HashSet::from([RegionID("GBR".into())]),
         });

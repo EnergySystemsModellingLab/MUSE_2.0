@@ -1,7 +1,7 @@
 //! Assets are instances of a process which are owned and invested in by agents.
 use crate::agent::AgentID;
 use crate::commodity::Commodity;
-use crate::process::{Process, ProcessParameter};
+use crate::process::{Process, ProcessFlow, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use anyhow::{ensure, Context, Result};
@@ -107,6 +107,21 @@ impl Asset {
     pub fn maximum_activity(&self) -> f64 {
         self.capacity * self.process_parameter.capacity_to_activity
     }
+
+    /// Iterate over the asset's flows
+    pub fn iter_flows(&self) -> impl Iterator<Item = &ProcessFlow> {
+        self.process
+            .flows
+            .get(&(self.region_id.clone(), self.commission_year))
+            .unwrap()
+            .iter()
+    }
+
+    /// Iterate over the asset's Primary Activity Commodity flows
+    pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
+        self.process
+            .iter_pacs(self.region_id.clone(), self.commission_year)
+    }
 }
 
 /// A pool of [`Asset`]s
@@ -193,8 +208,13 @@ impl AssetPool {
         region_id: &'a RegionID,
         commodity: &'a Rc<Commodity>,
     ) -> impl Iterator<Item = &'a Asset> {
-        self.iter_for_region(region_id)
-            .filter(|asset| asset.process.contains_commodity_flow(commodity))
+        self.iter_for_region(region_id).filter(|asset| {
+            asset.process.contains_commodity_flow(
+                commodity,
+                asset.region_id.clone(),
+                asset.commission_year,
+            )
+        })
     }
 
     /// Retain all assets whose IDs are in `assets_to_keep`.
@@ -218,13 +238,10 @@ impl AssetPool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{CommodityCostMap, CommodityType, DemandMap};
     use crate::fixture::{assert_error, process};
     use crate::process::{
-        FlowType, Process, ProcessEnergyLimitsMap, ProcessFlow, ProcessParameter,
-        ProcessParameterMap,
+        Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessParameter, ProcessParameterMap,
     };
-    use crate::time_slice::TimeSliceLevel;
     use itertools::{assert_equal, Itertools};
     use rstest::{fixture, rstest};
     use std::iter;
@@ -288,7 +305,7 @@ mod tests {
             description: "Description".into(),
             years: 2010..=2020,
             energy_limits: ProcessEnergyLimitsMap::new(),
-            flows: vec![],
+            flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: HashSet::from(["GBR".into()]),
         });
@@ -328,22 +345,6 @@ mod tests {
             .iter()
             .map(|&year| (("GBR".into(), year), process_param.clone()))
             .collect();
-        let commodity = Rc::new(Commodity {
-            id: "commodity1".into(),
-            description: "Some description".into(),
-            kind: CommodityType::InputCommodity,
-            time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::new(),
-            demand: DemandMap::new(),
-        });
-        let flow = ProcessFlow {
-            process_id: "id1".into(),
-            commodity: Rc::clone(&commodity),
-            flow: 1.0,
-            flow_type: FlowType::Fixed,
-            flow_cost: 1.0,
-            is_pac: true,
-        };
         let fraction_limits = 1.0..=f64::INFINITY;
         let mut energy_limits = ProcessEnergyLimitsMap::new();
         for year in [2010, 2020] {
@@ -357,7 +358,7 @@ mod tests {
             description: "Description".into(),
             years: 2010..=2020,
             energy_limits,
-            flows: vec![flow.clone()],
+            flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: HashSet::from(["GBR".into()]),
         });

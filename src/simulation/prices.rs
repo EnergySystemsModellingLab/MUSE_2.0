@@ -63,9 +63,8 @@ impl CommodityPrices {
             let asset = assets.get(asset_id).unwrap();
             let region_id = asset.region_id.clone();
 
-            // Iterate over process pacs
-            let process_pacs = asset.process.iter_pacs();
-            for pac in process_pacs {
+            // Iterate over asset pacs
+            for pac in asset.iter_pacs() {
                 let commodity = &pac.commodity;
 
                 // If the commodity flow is positive (produced PAC)
