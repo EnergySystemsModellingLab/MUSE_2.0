@@ -34,21 +34,29 @@ pub struct VariableMap(IndexMap<(AssetOrProcess, CommodityID, TimeSliceID), Vari
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
+    fn get(
+        &self,
+        asset_or_process: &AssetOrProcess,
+        commodity_id: &CommodityID,
+        time_slice: &TimeSliceID,
+    ) -> Option<Variable> {
+        let key = (
+            asset_or_process.clone(),
+            commodity_id.clone(),
+            time_slice.clone(),
+        );
+
+        self.0.get(&key).cloned()
+    }
+
+    /// Get the [`Variable`] corresponding to the given parameters.
     fn get_asset(
         &self,
         asset_id: AssetID,
         commodity_id: &CommodityID,
         time_slice: &TimeSliceID,
     ) -> Variable {
-        let key = (
-            AssetOrProcess::Asset(asset_id),
-            commodity_id.clone(),
-            time_slice.clone(),
-        );
-
-        *self
-            .0
-            .get(&key)
+        self.get(&AssetOrProcess::Asset(asset_id), commodity_id, time_slice)
             .expect("No variable found for given params")
     }
 }
@@ -121,7 +129,13 @@ impl Solution<'_> {
                     .iter()
                     .copied(),
             )
-            .map(|((asset_id, time_slice), dual)| (*asset_id, time_slice, dual))
+            .filter_map(
+                |((asset_or_process, time_slice), dual)| match asset_or_process {
+                    // **HACK:** For now, ignore processes
+                    AssetOrProcess::Process(_) => None,
+                    AssetOrProcess::Asset(asset_id) => Some((*asset_id, time_slice, dual)),
+                },
+            )
     }
 }
 

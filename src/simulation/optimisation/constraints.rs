@@ -1,19 +1,20 @@
 //! Code for adding constraints to the dispatch optimisation problem.
-use crate::asset::{AssetID, AssetPool};
+use crate::asset::{Asset, AssetPool};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
+use crate::process::Process;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
 use highs::RowProblem as Problem;
 use std::rc::Rc;
 
-use super::VariableMap;
+use super::{AssetOrProcess, VariableMap};
 
 /// Indicates the commodity ID and time slice selection covered by each commodity balance constraint
 pub type CommodityBalanceConstraintKeys = Vec<(CommodityID, RegionID, TimeSliceSelection)>;
 
 /// Indicates the asset ID and time slice covered by each capacity constraint
-pub type CapacityConstraintKeys = Vec<(AssetID, TimeSliceID)>;
+pub type CapacityConstraintKeys = Vec<(AssetOrProcess, TimeSliceID)>;
 
 /// Add asset-level constraints
 ///
@@ -42,11 +43,11 @@ pub fn add_asset_constraints(
     let commodity_balance_constraint_keys =
         add_commodity_balance_constraints(problem, variables, model, assets, year);
 
-    let capacity_constraint_keys = add_asset_capacity_constraints(
+    let capacity_constraint_keys = add_capacity_constraints(
         problem,
         variables,
+        model,
         assets,
-        &model.time_slice_info,
         &commodity_balance_constraint_keys,
     );
 
@@ -193,11 +194,11 @@ fn add_fixed_asset_constraints(
 /// See description in [the dispatch optimisation documentation][1].
 ///
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#asset-level-capacity-and-availability-constraints
-fn add_asset_capacity_constraints(
+fn add_capacity_constraints(
     problem: &mut Problem,
     variables: &VariableMap,
+    model: &Model,
     assets: &AssetPool,
-    time_slice_info: &TimeSliceInfo,
     commodity_balance_constraint_keys: &CommodityBalanceConstraintKeys,
 ) -> CapacityConstraintKeys {
     // Sanity check: we rely on the dual rows corresponding to the capacity constraints being
@@ -207,18 +208,47 @@ fn add_asset_capacity_constraints(
         "Capacity constraints must be added immediately after commodity constraints."
     );
 
-    let mut terms = Vec::new();
     let mut keys = CapacityConstraintKeys::new();
     for asset in assets.iter() {
-        for time_slice in time_slice_info.iter_ids() {
-            let mut is_input = false; // NB: there will be at least one PAC
-            for flow in asset.iter_pacs() {
-                is_input = flow.flow < 0.0; // NB: PACs will be all inputs or all outputs
+        let asset_or_process = AssetOrProcess::Asset(asset.id);
+        let new_keys = add_capacity_constraint(
+            problem,
+            variables,
+            &model.time_slice_info,
+            &asset_or_process,
+            Some(asset),
+            &asset.process,
+            &asset.region_id,
+            asset.commission_year,
+        );
 
-                let var = variables.get_asset(asset.id, &flow.commodity.id, time_slice);
-                terms.push((var, 1.0));
-            }
+        keys.extend(new_keys);
+    }
 
+    keys
+}
+
+fn add_capacity_constraint<'a>(
+    problem: &'a mut Problem,
+    variables: &'a VariableMap,
+    time_slice_info: &'a TimeSliceInfo,
+    asset_or_process: &'a AssetOrProcess,
+    asset: Option<&'a Asset>,
+    process: &'a Process,
+    region_id: &'a RegionID,
+    commission_year: u32,
+) -> impl Iterator<Item = (AssetOrProcess, TimeSliceID)> + 'a {
+    let mut terms = Vec::new();
+    time_slice_info.iter_ids().filter_map(move |time_slice| {
+        let mut is_input = false; // NB: there will be at least one PAC
+        for flow in process.iter_pacs(region_id.clone(), commission_year) {
+            is_input = flow.flow < 0.0; // NB: PACs will be all inputs or all outputs
+
+            let var = variables.get(asset_or_process, &flow.commodity.id, time_slice)?;
+            terms.push((var, 1.0));
+        }
+
+        let limits = if let Some(asset) = asset {
             let mut limits = asset.get_energy_limits(time_slice);
 
             // If it's an input flow, the q's will be negative, so we need to invert the limits
@@ -226,11 +256,14 @@ fn add_asset_capacity_constraints(
                 limits = -limits.end()..=-limits.start();
             }
 
-            problem.add_row(limits, terms.drain(0..));
+            limits
+        } else {
+            0.0..=0.0
+        };
 
-            // Keep track of the order in which constraints were added
-            keys.push((asset.id, time_slice.clone()));
-        }
-    }
-    keys
+        problem.add_row(limits, terms.drain(0..));
+
+        // Keep track of the order in which constraints were added
+        Some((asset_or_process.clone(), time_slice.clone()))
+    })
 }
