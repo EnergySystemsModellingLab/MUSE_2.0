@@ -130,9 +130,7 @@ The result is a time sliced price for each commodity in each region.
 We also calculate the prices of commodities that are not present in the dispatch
 solution, but could exist in the solution for the next milestone year. These are calculated
 directly from input data. This is done by calculating the marginal price of the process producing
-the commodity in question with the best decision value, where decision values are calculated
-using the utilisation of the next most expensive (marginal cost) asset in the dispatch stack,
-adjusted for availability differences, and commodity prices from the price discovery at step 2(A).
+the commodity in question with the best decision value, assuming maximum utilisation.
 
   > **Issue 1:** There may be a better way to do this step 2(B).
   One could add all processes that could potentially exist in the
