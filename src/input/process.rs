@@ -265,13 +265,13 @@ fn validate_svd_commodity(
     }
 
     // If we reach this point it means there is no producer, so we return an error.
-    Err(anyhow::anyhow!(
+    bail!(
         "Commodity {} of 'SVD' type must have a producer process for region {} in year {} and time slice {}",
         commodity.id,
         region_id,
         year,
         time_slice,
-    ))
+    )
 }
 
 #[cfg(test)]
