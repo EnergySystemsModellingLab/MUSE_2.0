@@ -123,7 +123,7 @@ where
             .with_context(|| format!("Process {id} not found"))?;
 
         // Get years
-        let process_years = process.years.clone();
+        let process_years = &process.years;
         let parameter_years =
             parse_year_str(&param_raw.year, &process_years).with_context(|| {
                 format!("Invalid year for process {id}. Valid years are {process_years:?}")
@@ -149,12 +149,12 @@ where
     // Check parameters cover all years and regions of the process
     for (id, parameters) in map.iter() {
         let process = processes.get(id).unwrap();
-        let reference_years = process.years.clone();
-        let reference_regions = process.regions.clone();
+        let reference_years = &process.years;
+        let reference_regions = &process.regions;
 
         let mut missing_keys = Vec::new();
-        for year in &reference_years {
-            for region in &reference_regions {
+        for year in reference_years {
+            for region in reference_regions {
                 let key = (region.clone(), *year);
                 if !parameters.contains_key(&key) {
                     missing_keys.push(key);

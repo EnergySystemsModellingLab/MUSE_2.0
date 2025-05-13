@@ -140,7 +140,7 @@ fn validate_process_flows_map(process: &Process, map: &ProcessFlowsMap) -> Resul
     let process_id = process.id.clone();
     let reference_years = &process.years;
     let reference_regions = &process.regions;
-    for year in &reference_years.clone() {
+    for year in reference_years.iter() {
         for region in reference_regions {
             // Check that the process has flows for this region/year
             let flows_vector = map.get(&(region.clone(), *year)).with_context(|| {
