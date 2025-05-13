@@ -2,7 +2,7 @@
 //!
 //! This is used to calculate commodity flows and prices.
 use crate::asset::{Asset, AssetID, AssetPool};
-use crate::commodity::{BalanceType, CommodityID};
+use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::process::ProcessFlow;
 use crate::region::RegionID;
@@ -234,22 +234,7 @@ fn calculate_cost_coefficient(
             .get_variable_operating_cost(flow, &asset.region_id, asset.commission_year);
 
     // If there is a user-provided cost for this commodity, include it
-    if !flow.commodity.costs.is_empty() {
-        let cost = flow
-            .commodity
-            .costs
-            .get(&(asset.region_id.clone(), year, time_slice.clone()))
-            .unwrap();
-        let apply_cost = match cost.balance_type {
-            BalanceType::Net => true,
-            BalanceType::Consumption => flow.flow < 0.0,
-            BalanceType::Production => flow.flow > 0.0,
-        };
-
-        if apply_cost {
-            coeff += cost.value;
-        }
-    }
+    coeff += flow.get_commodity_cost(&asset.region_id, year, time_slice);
 
     // If flow is negative (representing an input), we multiply by -1 to ensure impact of
     // coefficient on objective function is a positive cost
@@ -263,7 +248,9 @@ fn calculate_cost_coefficient(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
+    use crate::commodity::{
+        BalanceType, Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap,
+    };
     use crate::process::{
         FlowType, Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessParameter,
         ProcessParameterMap,
