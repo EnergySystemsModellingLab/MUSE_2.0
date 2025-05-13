@@ -111,6 +111,19 @@ impl CommodityPrices {
         }
     }
 
+    /// Get a commodity price.
+    ///
+    /// If no price has been calculated for this year, this function returns `None`.
+    pub fn get(
+        &self,
+        commodity_id: &CommodityID,
+        region_id: &RegionID,
+        time_slice: &TimeSliceID,
+    ) -> Option<f64> {
+        let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
+        self.0.get(&key).cloned()
+    }
+
     /// Insert a price for the given commodity, time slice and region
     pub fn insert(
         &mut self,
