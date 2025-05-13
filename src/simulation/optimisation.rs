@@ -4,7 +4,7 @@
 use crate::asset::{AssetID, AssetPool};
 use crate::commodity::{BalanceType, CommodityID};
 use crate::model::Model;
-use crate::process::{Process, ProcessFlow, ProcessID};
+use crate::process::{Process, ProcessFlow, ProcessID, ProcessMap};
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{anyhow, Result};
@@ -70,6 +70,27 @@ pub enum AssetOrProcess {
     Process((ProcessID, RegionID)),
 }
 
+impl AssetOrProcess {
+    /// Get various params
+    pub fn get_parameters<'a>(
+        &'a self,
+        processes: &'a ProcessMap,
+        assets: &'a AssetPool,
+        current_year: u32,
+    ) -> (&'a Process, &'a RegionID, u32) {
+        match self {
+            AssetOrProcess::Asset(asset_id) => {
+                let asset = assets.get(*asset_id).unwrap();
+                (&asset.process, &asset.region_id, asset.commission_year)
+            }
+            AssetOrProcess::Process((process_id, region_id)) => {
+                let process = processes.get(process_id).unwrap();
+                (&process, region_id, current_year)
+            }
+        }
+    }
+}
+
 /// The solution to the dispatch optimisation problem
 pub struct Solution<'a> {
     solution: highs::Solution,
@@ -121,7 +142,9 @@ impl Solution<'_> {
     }
 
     /// Keys and dual values for capacity constraints.
-    pub fn iter_capacity_duals(&self) -> impl Iterator<Item = (AssetID, &TimeSliceID, f64)> {
+    pub fn iter_capacity_duals(
+        &self,
+    ) -> impl Iterator<Item = (&AssetOrProcess, &TimeSliceID, f64)> {
         self.capacity_constraint_keys
             .iter()
             .zip(
@@ -129,13 +152,7 @@ impl Solution<'_> {
                     .iter()
                     .copied(),
             )
-            .filter_map(
-                |((asset_or_process, time_slice), dual)| match asset_or_process {
-                    // **HACK:** For now, ignore processes
-                    AssetOrProcess::Process(_) => None,
-                    AssetOrProcess::Asset(asset_id) => Some((*asset_id, time_slice, dual)),
-                },
-            )
+            .map(|((asset_or_process, time_slice), dual)| (asset_or_process, time_slice, dual))
     }
 }
 

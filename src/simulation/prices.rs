@@ -3,6 +3,7 @@ use super::optimisation::Solution;
 use crate::asset::AssetPool;
 use crate::commodity::CommodityID;
 use crate::model::Model;
+use crate::process::ProcessMap;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use indexmap::IndexMap;
@@ -17,9 +18,15 @@ impl CommodityPrices {
     /// Calculate commodity prices based on the result of the dispatch optimisation.
     ///
     /// Missing prices will be calculated directly from the input data
-    pub fn from_model_and_solution(model: &Model, solution: &Solution, assets: &AssetPool) -> Self {
+    pub fn from_model_and_solution(
+        model: &Model,
+        solution: &Solution,
+        assets: &AssetPool,
+        year: u32,
+    ) -> Self {
         let mut prices = CommodityPrices::default();
-        let commodity_regions_updated = prices.add_from_solution(solution, assets);
+        let commodity_regions_updated =
+            prices.add_from_solution(solution, &model.processes, assets, year);
 
         // Find commodity/region combinations not updated in last step
         let mut remaining_commodity_regions = HashSet::new();
@@ -53,18 +60,20 @@ impl CommodityPrices {
     fn add_from_solution(
         &mut self,
         solution: &Solution,
+        processes: &ProcessMap,
         assets: &AssetPool,
+        year: u32,
     ) -> HashSet<(CommodityID, RegionID)> {
         let mut commodity_regions_updated = HashSet::new();
 
         // Calculate highest capacity dual for each commodity/region/timeslice
         let mut highest_duals = HashMap::new();
-        for (asset_id, time_slice, dual) in solution.iter_capacity_duals() {
-            let asset = assets.get(asset_id).unwrap();
-            let region_id = asset.region_id.clone();
+        for (asset_or_process, time_slice, dual) in solution.iter_capacity_duals() {
+            let (process, region_id, commission_year) =
+                asset_or_process.get_parameters(processes, assets, year);
 
             // Iterate over asset pacs
-            for pac in asset.iter_pacs() {
+            for pac in process.iter_pacs(region_id.clone(), commission_year) {
                 let commodity = &pac.commodity;
 
                 // If the commodity flow is positive (produced PAC)
