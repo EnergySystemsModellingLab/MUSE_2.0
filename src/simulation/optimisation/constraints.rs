@@ -107,7 +107,7 @@ fn add_commodity_balance_constraints(
                     // each variable is one.
                     terms.extend(
                         assets
-                            .iter_for_region_and_commodity(region_id, commodity)
+                            .iter_for_region_and_commodity(region_id, &commodity.id)
                             .map(|asset| (variables.get(asset.id, &commodity.id, time_slice), 1.0)),
                     );
                 }
