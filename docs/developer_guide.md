@@ -100,6 +100,15 @@ You can then view the documentation in your browser like so:
 mdbook serve -o
 ```
 
+### Recreate the `command_line_help.md` file
+
+This file is created automatically. In order to update it if needed, due to changes in
+the CLI, just run:
+
+```sh
+cargo run -- --markdown_help > docs/CommandLineHelp.md
+```
+
 ## Pre-Commit hooks
 
 Developers must install the `pre-commit` tool in order to automatically run this
