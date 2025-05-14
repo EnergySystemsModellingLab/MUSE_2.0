@@ -4,11 +4,13 @@ use crate::agent::{AgentID, AgentMap, AgentSearchSpaceMap};
 use crate::commodity::CommodityID;
 use crate::id::IDCollection;
 use crate::process::ProcessID;
+use crate::year::parse_year_str;
 use anyhow::{Context, Result};
 use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
+use std::rc::Rc;
 
 const AGENT_SEARCH_SPACE_FILE_NAME: &str = "agent_search_space.csv";
 
@@ -18,8 +20,8 @@ struct AgentSearchSpaceRaw {
     agent_id: String,
     /// The commodity to apply the search space to.
     commodity_id: String,
-    /// The year to apply the search space to.
-    year: u32,
+    /// The year(s) to apply the search space to.
+    year: String,
     /// The processes that the agent will consider investing in. Expressed as process IDs separated
     /// by semicolons or `None`, meaning all processes.
     search_space: String,
@@ -32,10 +34,10 @@ struct AgentSearchSpace {
     agent_id: AgentID,
     /// The commodity to apply the search space to
     commodity_id: CommodityID,
-    /// The year the objective is relevant for
-    year: u32,
+    /// The year(s) the objective is relevant for
+    year: Vec<u32>,
     /// The agent's search space
-    search_space: Vec<ProcessID>,
+    search_space: Rc<Vec<ProcessID>>,
 }
 
 impl AgentSearchSpaceRaw {
@@ -47,17 +49,13 @@ impl AgentSearchSpaceRaw {
         milestone_years: &[u32],
     ) -> Result<AgentSearchSpace> {
         // Parse search_space string
-        let search_space = parse_search_space_str(&self.search_space, process_ids)?;
+        let search_space = Rc::new(parse_search_space_str(&self.search_space, process_ids)?);
 
         // Get commodity
         let commodity_id = commodity_ids.get_id_by_str(&self.commodity_id)?;
 
         // Check that the year is a valid milestone year
-        ensure!(
-            milestone_years.binary_search(&self.year).is_ok(),
-            "Invalid milestone year {}",
-            self.year
-        );
+        let year = parse_year_str(&self.year, milestone_years)?;
 
         let (agent_id, _) = agents
             .get_key_value(self.agent_id.as_str())
@@ -66,7 +64,7 @@ impl AgentSearchSpaceRaw {
         Ok(AgentSearchSpace {
             agent_id: agent_id.clone(),
             commodity_id,
-            year: self.year,
+            year,
             search_space,
         })
     }
@@ -140,11 +138,13 @@ where
             .or_insert_with(AgentSearchSpaceMap::new);
 
         // Store process IDs
-        try_insert(
-            map,
-            (search_space.commodity_id, search_space.year),
-            search_space.search_space,
-        )?;
+        for year in search_space.year {
+            try_insert(
+                map,
+                (search_space.commodity_id.clone(), year),
+                search_space.search_space.clone(),
+            )?;
+        }
     }
 
     Ok(search_spaces)
@@ -177,7 +177,7 @@ mod tests {
         let raw = AgentSearchSpaceRaw {
             agent_id: "agent1".into(),
             commodity_id: "commodity1".into(),
-            year: 2020,
+            year: "2020".into(),
             search_space: "A;B".into(),
         };
         assert!(raw
@@ -195,7 +195,7 @@ mod tests {
         let raw = AgentSearchSpaceRaw {
             agent_id: "agent1".into(),
             commodity_id: "invalid_commodity".into(),
-            year: 2020,
+            year: "2020".into(),
             search_space: "A;B".into(),
         };
         assert_error!(
@@ -214,7 +214,7 @@ mod tests {
         let raw = AgentSearchSpaceRaw {
             agent_id: "agent1".into(),
             commodity_id: "commodity1".into(),
-            year: 2020,
+            year: "2020".into(),
             search_space: "A;D".into(),
         };
         assert_error!(
