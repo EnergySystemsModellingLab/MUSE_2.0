@@ -2,7 +2,7 @@
 
 ## Setting the log level
 
-MUSE uses the [`env_logger`] crate for logging. The default log level is `info`, though this can be
+MUSE uses the [`fern`] crate for logging. The default log level is `info`, though this can be
 configured either via the `log_level` option in [`settings.toml`] or by setting the
 `MUSE2_LOG_LEVEL` environment variable. (If both are used, the environment variable takes
 precedence.)
@@ -17,11 +17,10 @@ The possible options are:
 - `off`
 
 By default, MUSE will colourise the log output if this is available (i.e. it is outputting to a
-terminal rather than a file), but this can be overridden by modifying the `MUSE2_LOG_STYLE`
-environment variable.
+terminal rather than a file).
 
-For more information, please consult [the `env_logger` documentation].
+For more information, please consult [the `fern` documentation].
 
-[`env_logger`]: https://crates.io/crates/env_logger
+[`fern`]: https://crates.io/crates/fern
 [`settings.toml`]: ../examples/simple/settings.toml
-[the `env_logger` documentation]: https://docs.rs/env_logger/latest/env_logger
+[the `fern` documentation]: https://docs.rs/fern/latest/fern/
