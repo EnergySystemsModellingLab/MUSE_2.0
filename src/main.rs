@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use human_panic::{metadata, setup_panic};
 use muse2::commands::{
     handle_example_extract_command, handle_example_list_command, handle_example_run_command,
@@ -13,16 +13,23 @@ fn main() {
     )));
 
     let cli = Cli::parse();
+
+    // Invoked as: `$ muse2 --markdown-help`
+    if cli.markdown_help {
+        clap_markdown::print_help_markdown::<Cli>();
+        return;
+    }
+
     execute_cli_command(cli.command).unwrap_or_else(|err| eprintln!("Error: {:?}", err));
 }
 
-fn execute_cli_command(command: Commands) -> Result<()> {
+fn execute_cli_command(command: Option<Commands>) -> Result<()> {
     match command {
-        Commands::Run {
+        Some(Commands::Run {
             model_dir,
             output_dir,
-        } => handle_run_command(&model_dir, output_dir.as_deref())?,
-        Commands::Example { subcommand } => match subcommand {
+        }) => handle_run_command(&model_dir, output_dir.as_deref())?,
+        Some(Commands::Example { subcommand }) => match subcommand {
             ExampleSubcommands::List => handle_example_list_command(),
             ExampleSubcommands::Extract {
                 name,
@@ -32,6 +39,10 @@ fn execute_cli_command(command: Commands) -> Result<()> {
                 handle_example_run_command(&name, output_dir.as_deref())?
             }
         },
+        None => {
+            let help_str = Cli::command().render_long_help().to_string();
+            println!("{}", help_str)
+        }
     }
 
     Ok(())
