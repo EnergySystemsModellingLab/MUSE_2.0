@@ -16,6 +16,23 @@ define_id_type! {ProcessID}
 /// A map of [`Process`]es, keyed by process ID
 pub type ProcessMap = IndexMap<ProcessID, Rc<Process>>;
 
+/// A map indicating relative PAC energy limits for a [`Process`] throughout the year.
+///
+/// The value is calculated as availability multiplied by time slice length. Note that it is a
+/// **fraction** of energy for the year; to calculate **actual** energy limits for a given time
+/// slice you need to know the maximum activity (energy per year) for the specific instance of a
+/// [`Process`] in use.
+///
+/// The limits are given as ranges, depending on the user-specified limit type and value for
+/// availability.
+pub type ProcessEnergyLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<f64>>;
+
+/// A map of [`ProcessParameter`]s, keyed by region and year
+pub type ProcessParameterMap = HashMap<(RegionID, u32), Rc<ProcessParameter>>;
+
+/// A map of [`Vec<ProcessFlow>`]s, keyed by region and year
+pub type ProcessFlowsMap = HashMap<(RegionID, u32), Vec<ProcessFlow>>;
+
 /// Represents a process within the simulation
 #[derive(PartialEq, Debug)]
 pub struct Process {
@@ -59,23 +76,6 @@ impl Process {
             .filter(|flow| flow.is_pac)
     }
 }
-
-/// A map indicating relative PAC energy limits for a [`Process`] throughout the year.
-///
-/// The value is calculated as availability multiplied by time slice length. Note that it is a
-/// **fraction** of energy for the year; to calculate **actual** energy limits for a given time
-/// slice you need to know the maximum activity (energy per year) for the specific instance of a
-/// [`Process`] in use.
-///
-/// The limits are given as ranges, depending on the user-specified limit type and value for
-/// availability.
-pub type ProcessEnergyLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<f64>>;
-
-/// A map of [`ProcessParameter`]s, keyed by region and year
-pub type ProcessParameterMap = HashMap<(RegionID, u32), Rc<ProcessParameter>>;
-
-/// A map of [`Vec<ProcessFlow>`]s, keyed by region and year
-pub type ProcessFlowsMap = HashMap<(RegionID, u32), Vec<ProcessFlow>>;
 
 /// Represents a maximum annual commodity flow for a given process
 #[derive(PartialEq, Debug, Deserialize, Clone)]
