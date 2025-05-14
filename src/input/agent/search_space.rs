@@ -94,10 +94,11 @@ pub fn read_agent_search_space(
     commodities: &CommodityMap,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, Vec<AgentSearchSpace>>> {
-    let file_path = model_dir.join(AGENT_SEARCH_SPACE_FILE_NAME);
-    let iter = read_csv_optional::<AgentSearchSpaceRaw>(&file_path)?;
+    let file_path = &model_dir.join(AGENT_SEARCH_SPACE_FILE_NAME);
+    let iter = read_csv_optional::<AgentSearchSpaceRaw>(file_path)
+        .with_context(|| input_err_msg(file_path))?;
     read_agent_search_space_from_iter(iter, agents, process_ids, commodities, milestone_years)
-        .with_context(|| input_err_msg(&file_path))
+        .with_context(|| input_err_msg(file_path))
 }
 
 fn read_agent_search_space_from_iter<I>(
