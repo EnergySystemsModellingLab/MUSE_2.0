@@ -100,10 +100,11 @@ pub fn read_process_parameters(
     process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
-    let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
-    let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
+    let file_path = &model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
+    let iter =
+        read_csv::<ProcessParameterRaw>(file_path).with_context(|| input_err_msg(file_path))?;
     read_process_parameters_from_iter(iter, process_ids, processes)
-        .with_context(|| input_err_msg(&file_path))
+        .with_context(|| input_err_msg(file_path))
 }
 
 fn read_process_parameters_from_iter<I>(
