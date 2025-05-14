@@ -193,7 +193,7 @@ mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
-    use core::f64;
+    use rstest::{fixture, rstest};
 
     fn create_process_flow_raw(
         flow: f64,
@@ -248,57 +248,77 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_validate_flows_vector() {
-        let commodity1 = Rc::new(Commodity {
+    #[fixture]
+    fn commodity1() -> Commodity {
+        Commodity {
             id: "commodity1".into(),
             description: "A commodity".into(),
             kind: CommodityType::ServiceDemand,
             demand: DemandMap::default(),
             time_slice_level: TimeSliceLevel::Annual,
             costs: CommodityCostMap::default(),
-        });
-        let commodity2 = Rc::new(Commodity {
+        }
+    }
+
+    #[fixture]
+    fn commodity2() -> Commodity {
+        Commodity {
             id: "commodity2".into(),
             description: "Another commodity".into(),
             kind: CommodityType::ServiceDemand,
             demand: DemandMap::default(),
             time_slice_level: TimeSliceLevel::Annual,
             costs: CommodityCostMap::default(),
-        });
+        }
+    }
 
+    #[rstest]
+    fn test_validate_flows_vector_valid_single(commodity1: Commodity, commodity2: Commodity) {
         // Valid: Single PAC
         let flows = vec![
-            create_process_flow(commodity1.clone(), 1.0, true),
-            create_process_flow(commodity2.clone(), 1.0, false),
+            create_process_flow(commodity1.into(), 1.0, true),
+            create_process_flow(commodity2.into(), 1.0, false),
         ];
         assert!(validate_flows_vector(&flows).is_ok());
+    }
 
+    #[rstest]
+    fn test_validate_flows_vector_valid_multiple(commodity1: Commodity, commodity2: Commodity) {
         // Valid: Multiple PACs
         let flows = vec![
-            create_process_flow(commodity1.clone(), 1.0, true),
-            create_process_flow(commodity2.clone(), 1.0, true),
+            create_process_flow(commodity1.into(), 1.0, true),
+            create_process_flow(commodity2.into(), 1.0, true),
         ];
         assert!(validate_flows_vector(&flows).is_ok());
+    }
 
+    #[rstest]
+    fn test_validate_flows_vector_invalid_no_pacs(commodity1: Commodity, commodity2: Commodity) {
         // Invalid: No PACs
         let flows = vec![
-            create_process_flow(commodity1.clone(), 1.0, false),
-            create_process_flow(commodity2.clone(), 1.0, false),
+            create_process_flow(commodity1.into(), 1.0, false),
+            create_process_flow(commodity2.into(), 1.0, false),
         ];
         assert!(validate_flows_vector(&flows).is_err());
+    }
 
+    #[rstest]
+    fn test_validate_flows_vector(commodity1: Commodity, commodity2: Commodity) {
         // Invalid: Mixed PAC flow types
         let flows = vec![
-            create_process_flow(commodity1.clone(), 1.0, true),
-            create_process_flow(commodity2.clone(), -1.0, true),
+            create_process_flow(commodity1.into(), 1.0, true),
+            create_process_flow(commodity2.into(), -1.0, true),
         ];
         assert!(validate_flows_vector(&flows).is_err());
+    }
 
+    #[rstest]
+    fn test_validate_flows_vector_invalid_duplicate_flows(commodity1: Commodity) {
         // Invalid: Multiple flows for the same commodity
+        let commodity1: Rc<_> = commodity1.into();
         let flows = vec![
             create_process_flow(commodity1.clone(), 1.0, true),
-            create_process_flow(commodity1.clone(), 1.0, true),
+            create_process_flow(commodity1, 1.0, true),
         ];
         assert!(validate_flows_vector(&flows).is_err());
     }
