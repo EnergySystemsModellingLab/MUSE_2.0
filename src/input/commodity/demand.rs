@@ -80,8 +80,8 @@ fn read_demand_file(
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<AnnualDemandMap> {
-    let file_path = model_dir.join(DEMAND_FILE_NAME);
-    let iter = read_csv(&file_path)?;
+    let file_path = &model_dir.join(DEMAND_FILE_NAME);
+    let iter = read_csv(file_path).with_context(|| input_err_msg(file_path))?;
     read_demand_from_iter(iter, svd_commodity_ids, region_ids, milestone_years)
 }
 
