@@ -33,8 +33,9 @@ pub fn read_commodities(
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<CommodityMap> {
-    let commodities =
-        read_csv_id_file::<Commodity, CommodityID>(&model_dir.join(COMMODITY_FILE_NAME))?;
+    let filepath = &model_dir.join(COMMODITY_FILE_NAME);
+    let commodities = read_csv_id_file::<Commodity, CommodityID>(filepath)
+        .with_context(|| input_err_msg(filepath))?;
     let commodity_ids = commodities.keys().cloned().collect();
     let mut costs = read_commodity_costs(
         model_dir,
