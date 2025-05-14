@@ -15,7 +15,8 @@ const REGIONS_FILE_NAME: &str = "regions.csv";
 ///
 /// A `HashMap<RegionID, Region>` with the parsed regions data or an error
 pub fn read_regions(model_dir: &Path) -> Result<RegionMap> {
-    read_csv_id_file(&model_dir.join(REGIONS_FILE_NAME))
+    let filepath = &model_dir.join(REGIONS_FILE_NAME);
+    read_csv_id_file(&model_dir.join(filepath)).with_context(|| input_err_msg(filepath))
 }
 
 #[cfg(test)]

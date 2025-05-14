@@ -106,9 +106,9 @@ pub fn read_agents(
 ///
 /// A map of Agents, with the agent ID as the key
 fn read_agents_file(model_dir: &Path, region_ids: &HashSet<RegionID>) -> Result<AgentMap> {
-    let file_path = model_dir.join(AGENT_FILE_NAME);
-    let agents_csv = read_csv(&file_path)?;
-    read_agents_file_from_iter(agents_csv, region_ids).with_context(|| input_err_msg(&file_path))
+    let file_path = &model_dir.join(AGENT_FILE_NAME);
+    let agents_csv = read_csv(file_path).with_context(|| input_err_msg(file_path))?;
+    read_agents_file_from_iter(agents_csv, region_ids).with_context(|| input_err_msg(file_path))
 }
 
 /// Read agents info from an iterator.

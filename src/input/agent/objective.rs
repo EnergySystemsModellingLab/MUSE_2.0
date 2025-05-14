@@ -38,10 +38,10 @@ pub fn read_agent_objectives(
     agents: &AgentMap,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, AgentObjectiveMap>> {
-    let file_path = model_dir.join(AGENT_OBJECTIVES_FILE_NAME);
-    let agent_objectives_csv = read_csv(&file_path)?;
+    let file_path = &model_dir.join(AGENT_OBJECTIVES_FILE_NAME);
+    let agent_objectives_csv = read_csv(file_path).with_context(|| input_err_msg(file_path))?;
     read_agent_objectives_from_iter(agent_objectives_csv, agents, milestone_years)
-        .with_context(|| input_err_msg(&file_path))
+        .with_context(|| input_err_msg(file_path))
 }
 
 fn read_agent_objectives_from_iter<I>(

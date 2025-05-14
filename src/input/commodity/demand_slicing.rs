@@ -39,8 +39,8 @@ pub fn read_demand_slices(
     region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap> {
-    let file_path = model_dir.join(DEMAND_SLICING_FILE_NAME);
-    let demand_slices_csv = read_csv(&file_path)?;
+    let file_path = &model_dir.join(DEMAND_SLICING_FILE_NAME);
+    let demand_slices_csv = read_csv(file_path).with_context(|| input_err_msg(file_path))?;
     read_demand_slices_from_iter(
         demand_slices_csv,
         svd_commodity_ids,

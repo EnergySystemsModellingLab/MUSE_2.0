@@ -61,10 +61,10 @@ pub fn read_process_flows(
     processes: &HashMap<ProcessID, Process>,
     commodities: &CommodityMap,
 ) -> Result<HashMap<ProcessID, ProcessFlowsMap>> {
-    let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
-    let process_flow_csv = read_csv(&file_path)?;
+    let file_path = &model_dir.join(PROCESS_FLOWS_FILE_NAME);
+    let process_flow_csv = read_csv(file_path).with_context(|| input_err_msg(file_path))?;
     read_process_flows_from_iter(process_flow_csv, process_ids, processes, commodities)
-        .with_context(|| input_err_msg(&file_path))
+        .with_context(|| input_err_msg(file_path))
 }
 
 /// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.

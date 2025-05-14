@@ -75,12 +75,12 @@ where
 /// This function returns a `TimeSliceInfo` struct or, if the file doesn't exist, a single time
 /// slice covering the whole year (see `TimeSliceInfo::default()`).
 pub fn read_time_slice_info(model_dir: &Path) -> Result<TimeSliceInfo> {
-    let file_path = model_dir.join(TIME_SLICES_FILE_NAME);
+    let file_path = &model_dir.join(TIME_SLICES_FILE_NAME);
     if !file_path.exists() {
         return Ok(TimeSliceInfo::default());
     }
 
-    let time_slices_csv = read_csv(&file_path)?;
+    let time_slices_csv = read_csv(file_path).with_context(|| input_err_msg(file_path))?;
     read_time_slice_info_from_iter(time_slices_csv).with_context(|| input_err_msg(file_path))
 }
 

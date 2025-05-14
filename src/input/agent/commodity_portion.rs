@@ -40,8 +40,9 @@ pub fn read_agent_commodity_portions(
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, AgentCommodityPortionsMap>> {
-    let file_path = model_dir.join(AGENT_COMMODITIES_FILE_NAME);
-    let agent_commodity_portions_csv = read_csv(&file_path)?;
+    let file_path = &model_dir.join(AGENT_COMMODITIES_FILE_NAME);
+    let agent_commodity_portions_csv =
+        read_csv(file_path).with_context(|| input_err_msg(file_path))?;
     read_agent_commodity_portions_from_iter(
         agent_commodity_portions_csv,
         agents,
@@ -49,7 +50,7 @@ pub fn read_agent_commodity_portions(
         region_ids,
         milestone_years,
     )
-    .with_context(|| input_err_msg(&file_path))
+    .with_context(|| input_err_msg(file_path))
 }
 
 fn read_agent_commodity_portions_from_iter<I>(

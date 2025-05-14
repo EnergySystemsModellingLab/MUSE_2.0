@@ -41,10 +41,11 @@ pub fn read_agent_cost_limits(
     agent_ids: &HashSet<AgentID>,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, AgentCostLimitsMap>> {
-    let file_path = model_dir.join(AGENT_COST_LIMITS_FILE_NAME);
-    let agent_cost_limits_csv = read_csv_optional(&file_path)?;
+    let file_path = &model_dir.join(AGENT_COST_LIMITS_FILE_NAME);
+    let agent_cost_limits_csv =
+        read_csv_optional(file_path).with_context(|| input_err_msg(file_path))?;
     read_agent_cost_limits_from_iter(agent_cost_limits_csv, agent_ids, milestone_years)
-        .with_context(|| input_err_msg(&file_path))
+        .with_context(|| input_err_msg(file_path))
 }
 
 fn read_agent_cost_limits_from_iter<I>(

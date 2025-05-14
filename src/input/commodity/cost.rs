@@ -49,8 +49,9 @@ pub fn read_commodity_costs(
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<HashMap<CommodityID, CommodityCostMap>> {
-    let file_path = model_dir.join(COMMODITY_COSTS_FILE_NAME);
-    let commodity_costs_csv = read_csv::<CommodityCostRaw>(&file_path)?;
+    let file_path = &model_dir.join(COMMODITY_COSTS_FILE_NAME);
+    let commodity_costs_csv =
+        read_csv::<CommodityCostRaw>(file_path).with_context(|| input_err_msg(file_path))?;
     read_commodity_costs_iter(
         commodity_costs_csv,
         commodity_ids,
@@ -58,7 +59,7 @@ pub fn read_commodity_costs(
         time_slice_info,
         milestone_years,
     )
-    .with_context(|| input_err_msg(&file_path))
+    .with_context(|| input_err_msg(file_path))
 }
 
 fn read_commodity_costs_iter<I>(

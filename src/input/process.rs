@@ -99,7 +99,7 @@ fn read_processes_file(
     region_ids: &HashSet<RegionID>,
 ) -> Result<HashMap<ProcessID, Process>> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
-    let processes_csv = read_csv(&file_path)?;
+    let processes_csv = read_csv(&file_path).with_context(|| input_err_msg(&file_path))?;
     read_processes_file_from_iter(processes_csv, milestone_years, region_ids)
         .with_context(|| input_err_msg(&file_path))
 }

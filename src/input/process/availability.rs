@@ -83,15 +83,16 @@ pub fn read_process_availabilities(
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<HashMap<ProcessID, ProcessEnergyLimitsMap>> {
-    let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
-    let process_availabilities_csv = read_csv(&file_path)?;
+    let file_path = &model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
+    let process_availabilities_csv =
+        read_csv(file_path).with_context(|| input_err_msg(file_path))?;
     read_process_availabilities_from_iter(
         process_availabilities_csv,
         process_ids,
         processes,
         time_slice_info,
     )
-    .with_context(|| input_err_msg(&file_path))
+    .with_context(|| input_err_msg(file_path))
 }
 
 /// Process raw process availabilities input data into [`ProcessEnergyLimitsMap`]s
