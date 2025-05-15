@@ -159,15 +159,13 @@ fn add_fixed_asset_constraints(
     time_slice_info: &TimeSliceInfo,
 ) {
     for asset in assets.iter() {
-        // Get first PAC. unwrap is safe because all processes have at least one PAC.
-        let pac1 = asset.iter_pacs().next().unwrap();
-
+        let pac = asset.get_pac_flow();
         for time_slice in time_slice_info.iter_ids() {
-            let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
-            let pac_term = (pac_var, -1.0 / pac1.flow);
+            let pac_var = variables.get(asset.id, &pac.commodity.id, time_slice);
+            let pac_term = (pac_var, -1.0 / pac.flow);
             for flow in asset.iter_flows() {
                 // Don't add a constraint for the PAC itself
-                if Rc::ptr_eq(&flow.commodity, &pac1.commodity) {
+                if Rc::ptr_eq(&flow.commodity, &pac.commodity) {
                     continue;
                 }
 
@@ -202,26 +200,19 @@ fn add_asset_capacity_constraints(
         "Capacity constraints must be added immediately after commodity constraints."
     );
 
-    let mut terms = Vec::new();
     let mut keys = CapacityConstraintKeys::new();
     for asset in assets.iter() {
         for time_slice in time_slice_info.iter_ids() {
-            let mut is_input = false; // NB: there will be at least one PAC
-            for flow in asset.iter_pacs() {
-                is_input = flow.flow < 0.0; // NB: PACs will be all inputs or all outputs
-
-                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
-                terms.push((var, 1.0));
-            }
-
+            let pac = asset.get_pac_flow();
             let mut limits = asset.get_energy_limits(time_slice);
 
             // If it's an input flow, the q's will be negative, so we need to invert the limits
-            if is_input {
+            if pac.flow < 0.0 {
                 limits = -limits.end()..=-limits.start();
             }
 
-            problem.add_row(limits, terms.drain(0..));
+            let var = variables.get(asset.id, &pac.commodity.id, time_slice);
+            problem.add_row(limits, [(var, 1.0)]);
 
             // Keep track of the order in which constraints were added
             keys.push((asset.id, time_slice.clone()));

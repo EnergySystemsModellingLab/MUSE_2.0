@@ -118,9 +118,9 @@ impl Asset {
     }
 
     /// Iterate over the asset's Primary Activity Commodity flows
-    pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
+    pub fn get_pac_flow(&self) -> &ProcessFlow {
         self.process
-            .iter_pacs(&self.region_id, self.commission_year)
+            .get_pac_flow(&self.region_id, self.commission_year)
     }
 }
 

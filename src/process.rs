@@ -69,12 +69,13 @@ impl Process {
     }
 
     /// Iterate over this process's Primary Activity Commodity flows
-    pub fn iter_pacs(&self, region_id: &RegionID, year: u32) -> impl Iterator<Item = &ProcessFlow> {
+    pub fn get_pac_flow(&self, region_id: &RegionID, year: u32) -> &ProcessFlow {
         self.flows
             .get(&(region_id.clone(), year))
             .unwrap()
             .values()
-            .take_while(|flow| flow.is_pac)
+            .next()
+            .unwrap()
     }
 }
 

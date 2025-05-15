@@ -63,22 +63,20 @@ impl CommodityPrices {
             let asset = assets.get(asset_id).unwrap();
             let region_id = asset.region_id.clone();
 
-            // Iterate over asset pacs
-            for pac in asset.iter_pacs() {
-                let commodity = &pac.commodity;
+            let pac = asset.get_pac_flow();
+            let commodity = &pac.commodity;
 
-                // If the commodity flow is positive (produced PAC)
-                if pac.flow > 0.0 {
-                    // Update the highest dual for this commodity/timeslice
-                    highest_duals
-                        .entry((commodity.id.clone(), region_id.clone(), time_slice.clone()))
-                        .and_modify(|current_dual| {
-                            if dual > *current_dual {
-                                *current_dual = dual;
-                            }
-                        })
-                        .or_insert(dual);
-                }
+            // If the commodity flow is positive (produced PAC)
+            if pac.flow > 0.0 {
+                // Update the highest dual for this commodity/timeslice
+                highest_duals
+                    .entry((commodity.id.clone(), region_id.clone(), time_slice.clone()))
+                    .and_modify(|current_dual| {
+                        if dual > *current_dual {
+                            *current_dual = dual;
+                        }
+                    })
+                    .or_insert(dual);
             }
         }
 
