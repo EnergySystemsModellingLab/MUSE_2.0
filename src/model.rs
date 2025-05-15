@@ -1,5 +1,4 @@
-//! Code for simulation models.
-#![allow(missing_docs)]
+//! The model represents the static input data provided by the user.
 use crate::agent::AgentMap;
 use crate::commodity::CommodityMap;
 use crate::input::{input_err_msg, read_toml};
@@ -14,23 +13,31 @@ const MODEL_FILE_NAME: &str = "model.toml";
 
 /// Model definition
 pub struct Model {
+    /// Milestone years for the simulaton. Sorted.
     pub milestone_years: Vec<u32>,
+    /// Agents for the simulation
     pub agents: AgentMap,
+    /// Commodities for the simulation
     pub commodities: CommodityMap,
+    /// Processes for the simulation
     pub processes: ProcessMap,
+    /// Information about seasons and time slices
     pub time_slice_info: TimeSliceInfo,
+    /// Regions for the simulation
     pub regions: RegionMap,
 }
 
 /// Represents the contents of the entire model file.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct ModelFile {
+    /// Milestone years section of model file
     pub milestone_years: MilestoneYears,
 }
 
 /// Represents the "milestone_years" section of the model file.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct MilestoneYears {
+    /// Milestone years
     pub years: Vec<u32>,
 }
 
