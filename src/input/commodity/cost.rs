@@ -22,7 +22,7 @@ struct CommodityCostRaw {
     /// Type of balance for application of cost.
     balance_type: BalanceType,
     /// The year(s) to which the cost applies.
-    year: String,
+    years: String,
     /// The time slice to which the cost applies.
     time_slice: String,
     /// Cost per unit commodity. For example, if a CO2 price is specified in input data, it can be applied to net CO2 via this value.
@@ -80,7 +80,7 @@ where
     for cost in iter {
         let commodity_id = commodity_ids.get_id_by_str(&cost.commodity_id)?;
         let regions = parse_region_str(&cost.regions, region_ids)?;
-        let years = parse_year_str(&cost.year, milestone_years)?;
+        let years = parse_year_str(&cost.years, milestone_years)?;
         let ts_selection = time_slice_info.get_selection(&cost.time_slice)?;
 
         // Get or create CommodityCostMap for this commodity

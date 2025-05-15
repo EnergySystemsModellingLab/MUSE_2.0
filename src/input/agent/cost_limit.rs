@@ -13,7 +13,7 @@ const AGENT_COST_LIMITS_FILE_NAME: &str = "agent_cost_limits.csv";
 #[derive(PartialEq, Debug, Deserialize)]
 struct AgentCostLimitsRaw {
     agent_id: String,
-    year: String,
+    years: String,
     capex_limit: Option<f64>,
     annual_cost_limit: Option<f64>,
 }
@@ -58,7 +58,7 @@ where
     let mut map: HashMap<AgentID, AgentCostLimitsMap> = HashMap::new();
     for agent_cost_limits_raw in iter {
         let cost_limits = agent_cost_limits_raw.to_agent_cost_limits();
-        let years = parse_year_str(&agent_cost_limits_raw.year, milestone_years)?;
+        let years = parse_year_str(&agent_cost_limits_raw.years, milestone_years)?;
 
         // Get agent ID
         let agent_id = agent_ids.get_id_by_str(&agent_cost_limits_raw.agent_id)?;
@@ -99,7 +99,7 @@ mod tests {
     ) -> AgentCostLimitsRaw {
         AgentCostLimitsRaw {
             agent_id: agent_id.to_string(),
-            year: year.to_string(),
+            years: year.to_string(),
             capex_limit,
             annual_cost_limit,
         }

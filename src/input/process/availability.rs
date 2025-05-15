@@ -20,7 +20,7 @@ const PROCESS_AVAILABILITIES_FILE_NAME: &str = "process_availabilities.csv";
 struct ProcessAvailabilityRaw {
     process_id: String,
     regions: String,
-    year: String,
+    years: String,
     time_slice: String,
     limit_type: LimitType,
     value: f64,
@@ -123,7 +123,7 @@ where
 
         // Get years
         let process_years = process.years.clone();
-        let record_years = parse_year_str(&record.year, &process_years).with_context(|| {
+        let record_years = parse_year_str(&record.years, &process_years).with_context(|| {
             format!("Invalid year for process {id}. Valid years are {process_years:?}")
         })?;
 
@@ -195,7 +195,7 @@ mod tests {
         ProcessAvailabilityRaw {
             process_id: "process".into(),
             regions: "region".into(),
-            year: "2010".into(),
+            years: "2010".into(),
             time_slice: "day".into(),
             limit_type,
             value,

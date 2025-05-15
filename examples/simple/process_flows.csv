@@ -1,4 +1,4 @@
-process_id,commodity_id,regions,year,flow,flow_type,flow_cost,is_pac
+process_id,commodity_id,regions,years,flow,flow_type,flow_cost,is_pac
 GASDRV,GASPRD,all,all,1.0,fixed,,true
 GASPRC,GASPRD,all,all,-1.05,fixed,,false
 GASPRC,GASNAT,all,all,1.0,fixed,,true
