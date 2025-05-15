@@ -13,7 +13,7 @@ const MODEL_FILE_NAME: &str = "model.toml";
 
 /// Model definition
 pub struct Model {
-    /// Milestone years for the simulaton. Sorted.
+    /// Milestone years for the simulation. Sorted.
     pub milestone_years: Vec<u32>,
     /// Agents for the simulation
     pub agents: AgentMap,
