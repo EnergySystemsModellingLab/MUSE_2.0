@@ -74,7 +74,7 @@ impl Process {
             .get(&(region_id.clone(), year))
             .unwrap()
             .values()
-            .filter(|flow| flow.is_pac)
+            .take_while(|flow| flow.is_pac)
     }
 }
 

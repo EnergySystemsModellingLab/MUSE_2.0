@@ -133,13 +133,21 @@ where
         }
     }
 
-    // Validate flows
-    for (process_id, map) in map.iter() {
+    // Validate flows and sort flows so PACs are at the start
+    for (process_id, map) in map.iter_mut() {
         let process = processes.get(process_id).unwrap();
         validate_process_flows_map(process, map)?;
+        sort_flows(map);
     }
 
     Ok(map)
+}
+
+/// Sort flows so PACs come first
+fn sort_flows(map: &mut ProcessFlowsMap) {
+    for map in map.values_mut() {
+        map.sort_by(|_, a, _, b| b.is_pac.cmp(&a.is_pac));
+    }
 }
 
 /// Validate flows for a process
