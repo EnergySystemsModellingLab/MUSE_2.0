@@ -4,6 +4,7 @@ use crate::agent::{
     Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, AgentMap, AgentObjectiveMap,
     AgentSearchSpaceMap, DecisionRule,
 };
+use crate::commodity::CommodityID;
 use crate::process::{
     Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessMap, ProcessParameter,
     ProcessParameterMap,
@@ -27,6 +28,11 @@ macro_rules! assert_error {
     };
 }
 pub(crate) use assert_error;
+
+#[fixture]
+pub fn commodity_ids() -> HashSet<CommodityID> {
+    iter::once("commodity1".into()).collect()
+}
 
 #[fixture]
 pub fn region_ids() -> HashSet<RegionID> {

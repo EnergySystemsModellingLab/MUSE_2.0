@@ -209,183 +209,184 @@ fn compute_demand_maps(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fixture::{commodity_ids, region_ids};
+    use rstest::rstest;
     use std::fs::File;
     use std::io::Write;
     use std::iter;
     use std::path::Path;
     use tempfile::tempdir;
 
-    /// Create an example demand file in dir_path
-    fn create_demand_file(dir_path: &Path) {
-        let file_path = dir_path.join(DEMAND_FILE_NAME);
-        let mut file = File::create(file_path).unwrap();
-        writeln!(
-            file,
-            "commodity_id,region_id,year,demand
-COM1,North,2020,10
-COM1,South,2020,11
-COM1,East,2020,12
-COM1,West,2020,13"
-        )
-        .unwrap();
-    }
-
-    #[test]
-    fn test_read_demand_from_iter() {
-        let commodity_ids = ["COM1".into()].into_iter().collect();
-        let region_ids = ["North".into(), "South".into()].into_iter().collect();
-        let milestone_years = [2020];
-
-        // Valid
+    #[rstest]
+    fn test_read_demand_from_iter(
+        commodity_ids: HashSet<CommodityID>,
+        region_ids: HashSet<RegionID>,
+    ) {
         let demand = [
             Demand {
                 year: 2020,
-                region_id: "North".to_string(),
-                commodity_id: "COM1".to_string(),
+                region_id: "GBR".to_string(),
+                commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
                 year: 2020,
-                region_id: "South".to_string(),
-                commodity_id: "COM1".to_string(),
+                region_id: "USA".to_string(),
+                commodity_id: "commodity1".to_string(),
                 demand: 11.0,
             },
         ];
-        assert!(read_demand_from_iter(
-            demand.into_iter(),
-            &commodity_ids,
-            &region_ids,
-            &milestone_years
-        )
-        .is_ok());
 
+        // Valid
+        assert!(
+            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]).is_ok()
+        );
+    }
+
+    #[rstest]
+    fn test_read_demand_from_iter_bad_commodity_id(
+        commodity_ids: HashSet<CommodityID>,
+        region_ids: HashSet<RegionID>,
+    ) {
         // Bad commodity ID
         let demand = [
             Demand {
                 year: 2020,
-                region_id: "North".to_string(),
-                commodity_id: "COM2".to_string(),
+                region_id: "GBR".to_string(),
+                commodity_id: "commodity2".to_string(),
                 demand: 10.0,
             },
             Demand {
                 year: 2020,
-                region_id: "South".to_string(),
-                commodity_id: "COM1".to_string(),
+                region_id: "USA".to_string(),
+                commodity_id: "commodity1".to_string(),
                 demand: 11.0,
             },
         ];
-        assert!(read_demand_from_iter(
-            demand.into_iter(),
-            &commodity_ids,
-            &region_ids,
-            &milestone_years
-        )
-        .is_err());
+        assert!(
+            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020])
+                .is_err()
+        );
+    }
 
+    #[rstest]
+    fn test_read_demand_from_iter_bad_region_id(
+        commodity_ids: HashSet<CommodityID>,
+        region_ids: HashSet<RegionID>,
+    ) {
         // Bad region ID
         let demand = [
             Demand {
                 year: 2020,
-                region_id: "East".to_string(),
-                commodity_id: "COM1".to_string(),
+                region_id: "FRA".to_string(),
+                commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
                 year: 2020,
-                region_id: "South".to_string(),
-                commodity_id: "COM1".to_string(),
+                region_id: "USA".to_string(),
+                commodity_id: "commodity1".to_string(),
                 demand: 11.0,
             },
         ];
-        assert!(read_demand_from_iter(
-            demand.into_iter(),
-            &commodity_ids,
-            &region_ids,
-            &milestone_years
-        )
-        .is_err());
+        assert!(
+            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020])
+                .is_err()
+        );
+    }
 
+    #[rstest]
+    fn test_read_demand_from_iter_bad_year(
+        commodity_ids: HashSet<CommodityID>,
+        region_ids: HashSet<RegionID>,
+    ) {
         // Bad year
         let demand = [
             Demand {
                 year: 2010,
-                region_id: "North".to_string(),
-                commodity_id: "COM1".to_string(),
+                region_id: "GBR".to_string(),
+                commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
                 year: 2020,
-                region_id: "South".to_string(),
-                commodity_id: "COM1".to_string(),
+                region_id: "USA".to_string(),
+                commodity_id: "commodity1".to_string(),
                 demand: 11.0,
             },
         ];
-        assert!(read_demand_from_iter(
-            demand.into_iter(),
-            &commodity_ids,
-            &region_ids,
-            &milestone_years
-        )
-        .is_err());
+        assert!(
+            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020])
+                .is_err()
+        );
+    }
 
+    #[rstest]
+    #[case(-1.0)]
+    #[case(0.0)]
+    #[case(f64::NAN)]
+    #[case(f64::NEG_INFINITY)]
+    #[case(f64::INFINITY)]
+    fn test_read_demand_from_iter_bad_demand(
+        commodity_ids: HashSet<CommodityID>,
+        region_ids: HashSet<RegionID>,
+        #[case] quantity: f64,
+    ) {
         // Bad demand quantity
-        macro_rules! test_quantity {
-            ($quantity: expr) => {
-                let demand = [Demand {
-                    year: 2020,
-                    region_id: "North".to_string(),
-                    commodity_id: "COM1".to_string(),
-                    demand: $quantity,
-                }];
-                assert!(read_demand_from_iter(
-                    demand.into_iter(),
-                    &commodity_ids,
-                    &region_ids,
-                    &milestone_years,
-                )
-                .is_err());
-            };
-        }
-        test_quantity!(-1.0);
-        test_quantity!(0.0);
-        test_quantity!(f64::NAN);
-        test_quantity!(f64::NEG_INFINITY);
-        test_quantity!(f64::INFINITY);
+        let demand = [Demand {
+            year: 2020,
+            region_id: "GBR".to_string(),
+            commodity_id: "commodity1".to_string(),
+            demand: quantity,
+        }];
+        assert!(
+            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020],)
+                .is_err()
+        );
+    }
 
+    #[rstest]
+    fn test_read_demand_from_iter_multiple_entries(
+        commodity_ids: HashSet<CommodityID>,
+        region_ids: HashSet<RegionID>,
+    ) {
         // Multiple entries for same commodity and region
         let demand = [
             Demand {
                 year: 2020,
-                region_id: "North".to_string(),
-                commodity_id: "COM1".to_string(),
+                region_id: "GBR".to_string(),
+                commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
                 year: 2020,
-                region_id: "North".to_string(),
-                commodity_id: "COM1".to_string(),
+                region_id: "GBR".to_string(),
+                commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
                 year: 2020,
-                region_id: "South".to_string(),
-                commodity_id: "COM1".to_string(),
+                region_id: "USA".to_string(),
+                commodity_id: "commodity1".to_string(),
                 demand: 11.0,
             },
         ];
-        assert!(read_demand_from_iter(
-            demand.into_iter(),
-            &commodity_ids,
-            &region_ids,
-            &milestone_years
-        )
-        .is_err());
+        assert!(
+            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020])
+                .is_err()
+        );
+    }
 
+    #[rstest]
+    fn test_read_demand_from_iter_missing_year(
+        commodity_ids: HashSet<CommodityID>,
+        region_ids: HashSet<RegionID>,
+    ) {
         // Missing entry for a milestone year
         let demand = Demand {
             year: 2020,
-            region_id: "North".to_string(),
-            commodity_id: "COM1".to_string(),
+            region_id: "GBR".to_string(),
+            commodity_id: "commodity1".to_string(),
             demand: 10.0,
         };
         assert!(read_demand_from_iter(
@@ -397,19 +398,27 @@ COM1,West,2020,13"
         .is_err());
     }
 
-    #[test]
-    fn test_read_demand_file() {
+    /// Create an example demand file in dir_path
+    fn create_demand_file(dir_path: &Path) {
+        let file_path = dir_path.join(DEMAND_FILE_NAME);
+        let mut file = File::create(file_path).unwrap();
+        writeln!(
+            file,
+            "commodity_id,region_id,year,demand\n\
+            commodity1,GBR,2020,10\n\
+            commodity1,USA,2020,11\n"
+        )
+        .unwrap();
+    }
+
+    #[rstest]
+    fn test_read_demand_file(commodity_ids: HashSet<CommodityID>, region_ids: HashSet<RegionID>) {
         let dir = tempdir().unwrap();
         create_demand_file(dir.path());
-        let commodity_ids = HashSet::from_iter(iter::once("COM1".into()));
-        let region_ids =
-            HashSet::from_iter(["North".into(), "South".into(), "East".into(), "West".into()]);
         let milestone_years = [2020];
         let expected = AnnualDemandMap::from_iter([
-            (("COM1".into(), "North".into(), 2020), 10.0),
-            (("COM1".into(), "South".into(), 2020), 11.0),
-            (("COM1".into(), "East".into(), 2020), 12.0),
-            (("COM1".into(), "West".into(), 2020), 13.0),
+            (("commodity1".into(), "GBR".into(), 2020), 10.0),
+            (("commodity1".into(), "USA".into(), 2020), 11.0),
         ]);
         let demand =
             read_demand_file(dir.path(), &commodity_ids, &region_ids, &milestone_years).unwrap();
