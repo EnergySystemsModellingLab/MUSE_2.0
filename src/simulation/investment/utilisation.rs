@@ -1,53 +1,19 @@
 //! Code for calculating potential utilisation for assets
 use super::super::optimisation::UtilisationMap;
 use super::CommodityPrices;
-use crate::agent::{Agent, AgentID};
+use crate::agent::Agent;
 use crate::asset::{Asset, AssetID, AssetPool};
-use crate::commodity::{Commodity, CommodityID, CommodityType};
-use crate::model::Model;
+use crate::commodity::{Commodity, CommodityID};
 use crate::simulation::marginal_cost::marginal_cost_for_asset;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use itertools::{iproduct, Itertools};
 use std::collections::HashMap;
 
 /// Potential utilisation
-type PotentialUtilisationMap = HashMap<(AgentID, AssetID, CommodityID, TimeSliceID), f64>;
-
-/// Calculate the potential utilisation for assets
-pub fn calculate_potential_utilisation(
-    model: &Model,
-    utilisations: &UtilisationMap,
-    assets: &AssetPool,
-    prices: &CommodityPrices,
-    year: u32,
-) -> PotentialUtilisationMap {
-    let mut potentials = PotentialUtilisationMap::new();
-    for commodity in model.commodities.values() {
-        if commodity.kind != CommodityType::ServiceDemand {
-            continue;
-        }
-
-        for agent in model.agents.values() {
-            calculate_potential_utilisation_for_agent(
-                &mut potentials,
-                agent,
-                commodity,
-                year,
-                &model.time_slice_info,
-                assets,
-                prices,
-                utilisations,
-            );
-        }
-    }
-
-    potentials
-}
+type PotentialUtilisationMap = HashMap<(AssetID, TimeSliceID), f64>;
 
 /// Calculate the potential utilisation for a single agent, appending results to `potentials`
-#[allow(clippy::too_many_arguments)]
-fn calculate_potential_utilisation_for_agent(
-    potentials: &mut PotentialUtilisationMap,
+pub fn calculate_potential_utilisation(
     agent: &Agent,
     commodity: &Commodity,
     year: u32,
@@ -55,11 +21,13 @@ fn calculate_potential_utilisation_for_agent(
     assets: &AssetPool,
     prices: &CommodityPrices,
     utilisations: &UtilisationMap,
-) {
+) -> PotentialUtilisationMap {
+    let mut potentials = PotentialUtilisationMap::new();
+
     let Some(&commodity_portion) = agent.commodity_portions.get(&(commodity.id.clone(), year))
     else {
         // The agent isn't responsible for any of the demand
-        return;
+        return potentials;
     };
 
     for (time_slice, region_id) in iproduct!(time_slice_info.iter_ids(), agent.regions.iter()) {
@@ -99,17 +67,11 @@ fn calculate_potential_utilisation_for_agent(
                 utilisations,
             ));
 
-            potentials.insert(
-                (
-                    agent.id.clone(),
-                    asset.id,
-                    commodity.id.clone(),
-                    time_slice.clone(),
-                ),
-                value,
-            );
+            potentials.insert((asset.id, time_slice.clone()), value);
         }
     }
+
+    potentials
 }
 
 /// Get marginal costs for the specified assets and sort.

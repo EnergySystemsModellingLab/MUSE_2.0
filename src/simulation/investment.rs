@@ -2,6 +2,7 @@
 use super::optimisation::Solution;
 use super::CommodityPrices;
 use crate::asset::AssetPool;
+use crate::commodity::CommodityType;
 use crate::model::Model;
 use log::info;
 use std::collections::HashSet;
@@ -28,8 +29,28 @@ pub fn perform_agent_investment(
     info!("Performing agent investment...");
 
     let utilisations = solution.create_utilisation_map();
-    let _potentials = calculate_potential_utilisation(model, &utilisations, assets, prices, year);
 
+    for commodity in model.commodities.values() {
+        if commodity.kind != CommodityType::ServiceDemand {
+            continue;
+        }
+
+        for agent in model.agents.values() {
+            let _potentials = calculate_potential_utilisation(
+                agent,
+                commodity,
+                year,
+                &model.time_slice_info,
+                assets,
+                prices,
+                &utilisations,
+            );
+        }
+
+        // **TODO:** Implement rest of agent investment
+    }
+
+    // **PLACEHOLDER:** Keep all assets
     let mut assets_to_keep = HashSet::new();
     for (asset_id, _commodity_id, _time_slice, _flow) in solution.iter_commodity_flows_for_assets()
     {
@@ -38,7 +59,6 @@ pub fn perform_agent_investment(
             continue;
         }
 
-        // **TODO**: Implement agent investment. For now, just keep all assets.
         assets_to_keep.insert(asset_id);
     }
 
