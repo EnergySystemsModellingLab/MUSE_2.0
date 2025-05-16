@@ -6,6 +6,9 @@ use crate::model::Model;
 use log::info;
 use std::collections::HashSet;
 
+pub mod utilisation;
+use utilisation::calculate_potential_utilisation;
+
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
 /// # Arguments
@@ -14,13 +17,17 @@ use std::collections::HashSet;
 /// * `solution` - The solution to the dispatch optimisation
 /// * `prices` - Commodity prices
 /// * `assets` - The asset pool
+/// * `year` - The current year of the simulation
 pub fn perform_agent_investment(
-    _model: &Model,
+    model: &Model,
     solution: &Solution,
-    _prices: &CommodityPrices,
+    prices: &CommodityPrices,
     assets: &mut AssetPool,
+    year: u32,
 ) {
     info!("Performing agent investment...");
+
+    let _potentials = calculate_potential_utilisation(model, solution, assets, prices, year);
 
     let mut assets_to_keep = HashSet::new();
     for (asset_id, _commodity_id, _time_slice, _flow) in solution.iter_commodity_flows_for_assets()
