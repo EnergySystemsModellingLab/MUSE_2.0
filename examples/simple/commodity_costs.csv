@@ -1,2 +1,2 @@
-commodity_id,regions,year,time_slice,balance_type,value
+commodity_id,regions,years,time_slice,balance_type,value
 CO2EMT,GBR,all,annual,net,0.04

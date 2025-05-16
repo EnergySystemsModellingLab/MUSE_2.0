@@ -19,6 +19,7 @@ pub use prices::CommodityPrices;
 ///
 /// * `model` - The model to run
 /// * `assets` - The asset pool
+/// * `output_path` - The folder to which output files will be written
 pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()> {
     let mut writer = DataWriter::create(output_path)?;
 
@@ -27,7 +28,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         info!("Milestone year: {year}");
 
         // Assets that have been decommissioned cannot be selected by agents
-        assets.decomission_old(year);
+        assets.decommission_old(year);
 
         // NB: Agent investment is not carried out in first milestone year
         if let Some((solution, prices)) = opt_results {

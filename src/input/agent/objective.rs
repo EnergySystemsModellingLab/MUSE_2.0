@@ -15,7 +15,7 @@ struct AgentObjectiveRaw {
     /// Unique agent id identifying the agent this objective belongs to
     agent_id: AgentID,
     /// The year(s) the objective is relevant for
-    year: String,
+    years: String,
     /// Acronym identifying the objective (e.g. LCOX)
     objective_type: ObjectiveType,
     /// For the weighted sum decision rule, the set of weights to apply to each objective.
@@ -64,7 +64,7 @@ where
         let agent_objectives = all_objectives
             .entry(id.clone())
             .or_insert_with(AgentObjectiveMap::new);
-        for year in parse_year_str(&objective.year, milestone_years)? {
+        for year in parse_year_str(&objective.years, milestone_years)? {
             try_insert(agent_objectives, year, objective.objective_type).with_context(|| {
                 format!(
                     "Duplicate agent objective entry for agent {} and year {}",
@@ -143,10 +143,8 @@ fn check_objective_parameter(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        agent::{Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, ObjectiveType},
-        fixture::assert_error,
-    };
+    use crate::agent::ObjectiveType;
+    use crate::fixture::{agents, assert_error};
     use rstest::{fixture, rstest};
     use std::iter;
 
@@ -154,7 +152,7 @@ mod tests {
         ($decision_weight:expr, $decision_lexico_order:expr) => {
             AgentObjectiveRaw {
                 agent_id: "agent".into(),
-                year: "2020".into(),
+                years: "2020".into(),
                 objective_type: ObjectiveType::LevelisedCostOfX,
                 decision_weight: $decision_weight,
                 decision_lexico_order: $decision_lexico_order,
@@ -199,28 +197,10 @@ mod tests {
     }
 
     #[fixture]
-    fn agents() -> AgentMap {
-        iter::once((
-            "agent1".into(),
-            Agent {
-                id: "agent1".into(),
-                description: "".into(),
-                commodity_portions: AgentCommodityPortionsMap::new(),
-                search_space: Vec::new(),
-                decision_rule: DecisionRule::Single,
-                cost_limits: AgentCostLimitsMap::new(),
-                regions: HashSet::new(),
-                objectives: AgentObjectiveMap::new(),
-            },
-        ))
-        .collect()
-    }
-
-    #[fixture]
     fn objective_raw() -> AgentObjectiveRaw {
         AgentObjectiveRaw {
             agent_id: "agent1".into(),
-            year: "2020".into(),
+            years: "2020".into(),
             objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: None,
             decision_lexico_order: None,
@@ -273,7 +253,7 @@ mod tests {
         // Bad parameter
         let bad_objective = AgentObjectiveRaw {
             agent_id: "agent1".into(),
-            year: "2020".into(),
+            years: "2020".into(),
             objective_type: ObjectiveType::LevelisedCostOfX,
             decision_weight: Some(1.0), // Should only accept None for DecisionRule::Single
             decision_lexico_order: None,

@@ -18,7 +18,7 @@ const PROCESS_FLOWS_FILE_NAME: &str = "process_flows.csv";
 struct ProcessFlowRaw {
     process_id: String,
     commodity_id: String,
-    year: String,
+    years: String,
     regions: String,
     flow: f64,
     #[serde(default)]
@@ -96,7 +96,7 @@ where
 
         // Get years
         let process_years = process.years.clone();
-        let record_years = parse_year_str(&record.year, &process_years).with_context(|| {
+        let record_years = parse_year_str(&record.years, &process_years).with_context(|| {
             format!("Invalid year for process {id}. Valid years are {process_years:?}")
         })?;
 
@@ -204,7 +204,7 @@ mod tests {
         ProcessFlowRaw {
             process_id: "process".into(),
             commodity_id: "commodity".into(),
-            year: "2020".into(),
+            years: "2020".into(),
             regions: "region".into(),
             flow,
             flow_type,

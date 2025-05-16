@@ -17,8 +17,8 @@ struct AgentCommodityPortionRaw {
     agent_id: String,
     /// The commodity that the agent is responsible for.
     commodity_id: String,
-    /// The year the commodity portion applies to.
-    year: String,
+    /// The year(s) the commodity portion applies to.
+    years: String,
     /// The proportion of the commodity production that the agent is responsible for.
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     commodity_portion: f64,
@@ -80,7 +80,7 @@ where
         let (commodity_id, _commodity) = commodities
             .get_key_value(commodity_id_raw)
             .with_context(|| format!("Invalid commodity ID {commodity_id_raw}"))?;
-        let years = parse_year_str(&agent_commodity_portion_raw.year, milestone_years)?;
+        let years = parse_year_str(&agent_commodity_portion_raw.years, milestone_years)?;
         for year in years {
             try_insert(
                 entry,
@@ -194,7 +194,9 @@ fn validate_agent_commodity_portions(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agent::{Agent, AgentCostLimitsMap, AgentObjectiveMap, DecisionRule};
+    use crate::agent::{
+        Agent, AgentCostLimitsMap, AgentObjectiveMap, AgentSearchSpaceMap, DecisionRule,
+    };
     use crate::commodity::{Commodity, CommodityCostMap, CommodityID, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
     use std::rc::Rc;
@@ -209,7 +211,7 @@ mod tests {
                 id: "agent1".into(),
                 description: "An agent".into(),
                 commodity_portions: AgentCommodityPortionsMap::new(),
-                search_space: Vec::new(),
+                search_space: AgentSearchSpaceMap::new(),
                 decision_rule: DecisionRule::Single,
                 cost_limits: AgentCostLimitsMap::new(),
                 regions: region_ids.clone(),
