@@ -97,24 +97,31 @@ fn calculate_potential_utilisation_for_agent(
                 .get(&(region_id.clone(), year, time_slice.clone()))
                 .unwrap();
 
-        // **TODO:** Calculate max utilisation
-
         let utilisations = utilisations
             .get(&(commodity.id.clone(), time_slice.clone()))
             .unwrap();
 
-        for &(asset_id, marginal_cost) in marginal_costs.iter() {
-            let value = calculate_potential_utilisation_for_asset(
+        for &(asset, marginal_cost) in marginal_costs.iter() {
+            // The asset is constrained on how much demand it can serve by capacity and availability
+            let max_utilisation = asset.capacity
+                * asset
+                    .process
+                    .energy_limits
+                    .get(&(region_id.clone(), year, time_slice.clone()))
+                    .unwrap()
+                    .end();
+
+            let value = max_utilisation.min(calculate_potential_utilisation_for_asset(
                 demand,
                 marginal_cost,
                 &marginal_costs,
                 utilisations,
-            );
+            ));
 
             potentials.insert(
                 (
                     agent.id.clone(),
-                    asset_id,
+                    asset.id,
                     commodity.id.clone(),
                     time_slice.clone(),
                 ),
@@ -133,7 +140,7 @@ fn get_marginal_costs_sorted<'a, I>(
     commodity_of_interest: &CommodityID,
     year: u32,
     time_slice: &TimeSliceID,
-) -> Vec<(AssetID, f64)>
+) -> Vec<(&'a Asset, f64)>
 where
     I: Iterator<Item = &'a Asset>,
 {
@@ -148,7 +155,7 @@ where
         })
         .map(|asset| {
             (
-                asset.id,
+                asset,
                 marginal_cost_for_asset(asset, commodity_of_interest, year, time_slice, prices),
             )
         })
@@ -161,19 +168,18 @@ where
 fn calculate_potential_utilisation_for_asset(
     demand: f64,
     marginal_cost: f64,
-    marginal_costs: &[(AssetID, f64)],
+    marginal_costs: &[(&Asset, f64)],
     utilisations: &HashMap<AssetID, f64>,
 ) -> f64 {
     let cheaper_assets = marginal_costs
         .iter()
         .take_while(|(_, cost)| *cost <= marginal_cost)
-        .map(|(id, _)| id);
+        .map(|(asset, _)| &asset.id);
     let cheaper_demand = cheaper_assets
         .map(|id| utilisations.get(id).unwrap())
         .sum::<f64>();
     let remaining_demand = demand - cheaper_demand;
     assert!(remaining_demand >= 0.0);
 
-    // **TODO:** Cap remaining demand
     remaining_demand
 }
