@@ -60,18 +60,22 @@ impl Process {
         &self,
         commodity_id: &CommodityID,
         region_id: &RegionID,
-        year: u32,
+        commission_year: u32,
     ) -> bool {
         self.flows
-            .get(&(region_id.clone(), year))
+            .get(&(region_id.clone(), commission_year))
             .unwrap() // all regions and years are covered
             .contains_key(commodity_id)
     }
 
     /// Iterate over this process's Primary Activity Commodity flows
-    pub fn iter_pacs(&self, region_id: &RegionID, year: u32) -> impl Iterator<Item = &ProcessFlow> {
+    pub fn iter_pacs(
+        &self,
+        region_id: &RegionID,
+        commission_year: u32,
+    ) -> impl Iterator<Item = &ProcessFlow> {
         self.flows
-            .get(&(region_id.clone(), year))
+            .get(&(region_id.clone(), commission_year))
             .unwrap()
             .values()
             .take_while(|flow| flow.is_pac)
