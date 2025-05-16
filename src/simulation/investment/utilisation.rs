@@ -1,5 +1,5 @@
 //! Code for calculating potential utilisation for assets
-use super::super::optimisation::Solution;
+use super::super::optimisation::UtilisationMap;
 use super::CommodityPrices;
 use crate::agent::{Agent, AgentID};
 use crate::asset::{Asset, AssetID, AssetPool};
@@ -13,20 +13,14 @@ use std::collections::HashMap;
 /// Potential utilisation
 type PotentialUtilisationMap = HashMap<(AgentID, AssetID, CommodityID, TimeSliceID), f64>;
 
-/// Actual utilisation in last milestone year.
-///
-/// We group by commodity and time slice first to make it easier to look up values by asset ID.
-type UtilisationMap = HashMap<(CommodityID, TimeSliceID), HashMap<AssetID, f64>>;
-
 /// Calculate the potential utilisation for assets
 pub fn calculate_potential_utilisation(
     model: &Model,
-    solution: &Solution,
+    utilisations: &UtilisationMap,
     assets: &AssetPool,
     prices: &CommodityPrices,
     year: u32,
 ) -> PotentialUtilisationMap {
-    let utilisations = create_utilisation_map(solution);
     let mut potentials = PotentialUtilisationMap::new();
     for commodity in model.commodities.values() {
         if commodity.kind != CommodityType::ServiceDemand {
@@ -42,25 +36,12 @@ pub fn calculate_potential_utilisation(
                 &model.time_slice_info,
                 assets,
                 prices,
-                &utilisations,
+                utilisations,
             );
         }
     }
 
     potentials
-}
-
-/// Store the actual utilisation from the previous milestone year in a map
-fn create_utilisation_map(solution: &Solution) -> UtilisationMap {
-    let mut utilisations = HashMap::new();
-    for (asset_id, commodity_id, time_slice, flow) in solution.iter_commodity_flows_for_assets() {
-        let map = utilisations
-            .entry((commodity_id.clone(), time_slice.clone()))
-            .or_insert_with(HashMap::new);
-        map.insert(asset_id, flow);
-    }
-
-    utilisations
 }
 
 /// Calculate the potential utilisation for a single agent, appending results to `potentials`

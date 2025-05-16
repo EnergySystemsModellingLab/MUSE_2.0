@@ -27,7 +27,8 @@ pub fn perform_agent_investment(
 ) {
     info!("Performing agent investment...");
 
-    let _potentials = calculate_potential_utilisation(model, solution, assets, prices, year);
+    let utilisations = solution.create_utilisation_map();
+    let _potentials = calculate_potential_utilisation(model, &utilisations, assets, prices, year);
 
     let mut assets_to_keep = HashSet::new();
     for (asset_id, _commodity_id, _time_slice, _flow) in solution.iter_commodity_flows_for_assets()
