@@ -1,6 +1,6 @@
 //! Processes are used for converting between different commodities. The data structures in this
 //! module are used to represent these conversions along with the associated costs.
-use crate::commodity::Commodity;
+use crate::commodity::{Commodity, CommodityID};
 use crate::id::define_id_type;
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
@@ -15,6 +15,25 @@ define_id_type! {ProcessID}
 
 /// A map of [`Process`]es, keyed by process ID
 pub type ProcessMap = IndexMap<ProcessID, Rc<Process>>;
+
+/// A map indicating relative PAC energy limits for a [`Process`] throughout the year.
+///
+/// The value is calculated as availability multiplied by time slice length. Note that it is a
+/// **fraction** of energy for the year; to calculate **actual** energy limits for a given time
+/// slice you need to know the maximum activity (energy per year) for the specific instance of a
+/// [`Process`] in use.
+///
+/// The limits are given as ranges, depending on the user-specified limit type and value for
+/// availability.
+pub type ProcessEnergyLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<f64>>;
+
+/// A map of [`ProcessParameter`]s, keyed by region and year
+pub type ProcessParameterMap = HashMap<(RegionID, u32), Rc<ProcessParameter>>;
+
+/// A map of process flows, keyed by region and year.
+///
+/// The value is actually a map itself, keyed by commodity ID.
+pub type ProcessFlowsMap = HashMap<(RegionID, u32), IndexMap<CommodityID, ProcessFlow>>;
 
 /// Represents a process within the simulation
 #[derive(PartialEq, Debug)]
@@ -39,43 +58,25 @@ impl Process {
     /// Whether the process contains a flow for a given commodity
     pub fn contains_commodity_flow(
         &self,
-        commodity: &Rc<Commodity>,
-        region_id: RegionID,
+        commodity_id: &CommodityID,
+        region_id: &RegionID,
         year: u32,
     ) -> bool {
         self.flows
-            .get(&(region_id, year))
-            .unwrap()
-            .iter()
-            .any(|flow| Rc::ptr_eq(&flow.commodity, commodity))
+            .get(&(region_id.clone(), year))
+            .unwrap() // all regions and years are covered
+            .contains_key(commodity_id)
     }
 
     /// Iterate over this process's Primary Activity Commodity flows
-    pub fn iter_pacs(&self, region_id: RegionID, year: u32) -> impl Iterator<Item = &ProcessFlow> {
+    pub fn iter_pacs(&self, region_id: &RegionID, year: u32) -> impl Iterator<Item = &ProcessFlow> {
         self.flows
-            .get(&(region_id, year))
+            .get(&(region_id.clone(), year))
             .unwrap()
-            .iter()
-            .filter(|flow| flow.is_pac)
+            .values()
+            .take_while(|flow| flow.is_pac)
     }
 }
-
-/// A map indicating relative PAC energy limits for a [`Process`] throughout the year.
-///
-/// The value is calculated as availability multiplied by time slice length. Note that it is a
-/// **fraction** of energy for the year; to calculate **actual** energy limits for a given time
-/// slice you need to know the maximum activity (energy per year) for the specific instance of a
-/// [`Process`] in use.
-///
-/// The limits are given as ranges, depending on the user-specified limit type and value for
-/// availability.
-pub type ProcessEnergyLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<f64>>;
-
-/// A map of [`ProcessParameter`]s, keyed by region and year
-pub type ProcessParameterMap = HashMap<(RegionID, u32), Rc<ProcessParameter>>;
-
-/// A map of [`Vec<ProcessFlow>`]s, keyed by region and year
-pub type ProcessFlowsMap = HashMap<(RegionID, u32), Vec<ProcessFlow>>;
 
 /// Represents a maximum annual commodity flow for a given process
 #[derive(PartialEq, Debug, Deserialize, Clone)]
