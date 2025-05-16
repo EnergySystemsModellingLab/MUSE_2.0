@@ -106,7 +106,7 @@ This file is created automatically. In order to update it if needed, due to chan
 the CLI, just run:
 
 ```sh
-cargo run -- --markdown_help > docs/CommandLineHelp.md
+cargo run -- --markdown_help > docs/command_line_help.md
 ```
 
 ## Pre-Commit hooks
