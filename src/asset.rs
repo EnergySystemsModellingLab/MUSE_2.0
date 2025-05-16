@@ -3,15 +3,11 @@ use crate::agent::AgentID;
 use crate::commodity::CommodityID;
 use crate::process::{Process, ProcessFlow, ProcessParameter};
 use crate::region::RegionID;
-use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
 use anyhow::{ensure, Context, Result};
-use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
 use std::collections::HashSet;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
-use std::sync::{Mutex, OnceLock};
 
 /// A unique identifier for an asset
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -125,20 +121,6 @@ impl Asset {
     pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.process
             .iter_pacs(&self.region_id, self.commission_year)
-    }
-
-    /// Get the marginal cost of this asset.
-    ///
-    /// **PLACEHOLDER**: Currently just returns random number between 1.0 and 50.0 inclusive.
-    ///
-    /// See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/516
-    pub fn marginal_cost(&self, _prices: &CommodityPrices) -> f64 {
-        static RNG: OnceLock<Mutex<SmallRng>> = OnceLock::new();
-        let mut rng = RNG
-            .get_or_init(|| Mutex::new(SmallRng::seed_from_u64(42)))
-            .lock()
-            .unwrap();
-        rng.random_range(1.0..=50.0)
     }
 }
 
