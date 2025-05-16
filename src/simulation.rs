@@ -27,7 +27,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         info!("Milestone year: {year}");
 
         // Assets that have been decommissioned cannot be selected by agents
-        assets.decomission_old(year);
+        assets.decommission_old(year);
 
         // NB: Agent investment is not carried out in first milestone year
         if let Some((solution, prices)) = opt_results {
