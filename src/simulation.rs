@@ -19,6 +19,7 @@ pub use prices::CommodityPrices;
 ///
 /// * `model` - The model to run
 /// * `assets` - The asset pool
+/// * `output_path` - The folder to which output files will be written
 pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()> {
     let mut writer = DataWriter::create(output_path)?;
 
