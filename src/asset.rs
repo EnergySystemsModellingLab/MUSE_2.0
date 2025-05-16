@@ -5,6 +5,7 @@ use crate::process::{Process, ProcessFlow, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use anyhow::{ensure, Context, Result};
+use indexmap::IndexMap;
 use std::collections::HashSet;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
@@ -108,13 +109,22 @@ impl Asset {
         self.capacity * self.process_parameter.capacity_to_activity
     }
 
-    /// Iterate over the asset's flows
-    pub fn iter_flows(&self) -> impl Iterator<Item = &ProcessFlow> {
+    /// Get a specific process flow
+    pub fn get_flow(&self, commodity_id: &CommodityID) -> Option<&ProcessFlow> {
+        self.get_flows_map().get(commodity_id)
+    }
+
+    /// Get the process flows map for this asset
+    fn get_flows_map(&self) -> &IndexMap<CommodityID, ProcessFlow> {
         self.process
             .flows
             .get(&(self.region_id.clone(), self.commission_year))
             .unwrap()
-            .values()
+    }
+
+    /// Iterate over the asset's flows
+    pub fn iter_flows(&self) -> impl Iterator<Item = &ProcessFlow> {
+        self.get_flows_map().values()
     }
 
     /// Iterate over the asset's Primary Activity Commodity flows
@@ -214,6 +224,16 @@ impl AssetPool {
         region_id: &'a RegionID,
     ) -> impl Iterator<Item = &'a Asset> {
         self.iter().filter(|asset| asset.region_id == *region_id)
+    }
+
+    /// Iterate over active assets for in a given region a particular agent
+    pub fn iter_for_region_and_agent<'a>(
+        &'a self,
+        region_id: &'a RegionID,
+        agent_id: &'a AgentID,
+    ) -> impl Iterator<Item = &'a Asset> {
+        self.iter_for_region(region_id)
+            .filter(|asset| asset.agent_id == *agent_id)
     }
 
     /// Iterate over only the active assets in a given region that produce or consume a given

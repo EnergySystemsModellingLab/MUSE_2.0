@@ -10,6 +10,7 @@ use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
+use std::collections::HashMap;
 
 mod constraints;
 use constraints::{add_asset_constraints, CapacityConstraintKeys, CommodityBalanceConstraintKeys};
@@ -19,6 +20,11 @@ use constraints::{add_asset_constraints, CapacityConstraintKeys, CommodityBalanc
 /// Note that this type does **not** include the value of the variable; it just refers to a
 /// particular column of the problem.
 type Variable = highs::Col;
+
+/// Actual utilisation in last milestone year.
+///
+/// We group by commodity and time slice first to make it easier to look up values by asset ID.
+pub type UtilisationMap = HashMap<(CommodityID, TimeSliceID), HashMap<AssetID, f64>>;
 
 /// A map for easy lookup of variables in the problem.
 ///
@@ -59,6 +65,19 @@ pub struct Solution<'a> {
 }
 
 impl Solution<'_> {
+    /// Store the actual utilisation from the previous milestone year in a map
+    pub fn create_utilisation_map(&self) -> UtilisationMap {
+        let mut utilisations = HashMap::new();
+        for (asset_id, commodity_id, time_slice, flow) in self.iter_commodity_flows_for_assets() {
+            let map = utilisations
+                .entry((commodity_id.clone(), time_slice.clone()))
+                .or_insert_with(HashMap::new);
+            map.insert(asset_id, flow);
+        }
+
+        utilisations
+    }
+
     /// Iterate over the newly calculated commodity flows for assets.
     ///
     /// Note that this only includes commodity flows which relate to assets, so not every commodity
