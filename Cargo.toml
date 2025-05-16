@@ -29,6 +29,7 @@ include_dir = "0.7.4"
 highs = "1.8.0"
 indexmap = "2.9.0"
 human-panic = "2.0.2"
+clap-markdown = "0.1.5"
 
 [dev-dependencies]
 regex = "1.11.1"

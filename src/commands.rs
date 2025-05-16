@@ -20,7 +20,10 @@ pub const EXAMPLES_DIR: Dir = include_dir!("examples");
 pub struct Cli {
     /// The available commands.
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
+    /// Flag to provide the CLI docs as markdown
+    #[arg(long, hide = true)]
+    pub markdown_help: bool,
 }
 
 /// The available commands.
