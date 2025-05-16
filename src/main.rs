@@ -24,12 +24,19 @@ fn main() {
 }
 
 fn execute_cli_command(command: Option<Commands>) -> Result<()> {
+    let Some(command) = command else {
+        // Output program help in markdown format
+        let help_str = Cli::command().render_long_help().to_string();
+        println!("{}", help_str);
+        return Ok(());
+    };
+
     match command {
-        Some(Commands::Run {
+        Commands::Run {
             model_dir,
             output_dir,
-        }) => handle_run_command(&model_dir, output_dir.as_deref())?,
-        Some(Commands::Example { subcommand }) => match subcommand {
+        } => handle_run_command(&model_dir, output_dir.as_deref())?,
+        Commands::Example { subcommand } => match subcommand {
             ExampleSubcommands::List => handle_example_list_command(),
             ExampleSubcommands::Extract {
                 name,
@@ -39,10 +46,6 @@ fn execute_cli_command(command: Option<Commands>) -> Result<()> {
                 handle_example_run_command(&name, output_dir.as_deref())?
             }
         },
-        None => {
-            let help_str = Cli::command().render_long_help().to_string();
-            println!("{}", help_str)
-        }
     }
 
     Ok(())
