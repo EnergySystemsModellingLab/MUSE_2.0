@@ -33,7 +33,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
 
         // NB: Agent investment is not carried out in first milestone year
         if let Some((solution, prices)) = opt_results {
-            perform_agent_investment(&model, &solution, &prices, &mut assets);
+            perform_agent_investment(&model, &solution, &prices, &mut assets, year);
 
             // **TODO:** Remove this when we implement at least some of the agent investment code
             //   See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/304
