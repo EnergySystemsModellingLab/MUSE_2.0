@@ -1,4 +1,4 @@
-agent_id,year,objective_type,decision_weight,decision_lexico_order
+agent_id,years,objective_type,decision_weight,decision_lexico_order
 A0_GEX,2020,lcox,,
 A0_GEX,2030,lcox,,
 A0_GPR,2020,lcox,,

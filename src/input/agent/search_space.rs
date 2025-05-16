@@ -21,7 +21,7 @@ struct AgentSearchSpaceRaw {
     /// The commodity to apply the search space to.
     commodity_id: String,
     /// The year(s) to apply the search space to.
-    year: String,
+    years: String,
     /// The processes that the agent will consider investing in. Expressed as process IDs separated
     /// by semicolons or `None`, meaning all processes.
     search_space: String,
@@ -35,7 +35,7 @@ struct AgentSearchSpace {
     /// The commodity to apply the search space to
     commodity_id: CommodityID,
     /// The year(s) the objective is relevant for
-    year: Vec<u32>,
+    years: Vec<u32>,
     /// The agent's search space
     search_space: Rc<Vec<ProcessID>>,
 }
@@ -55,7 +55,7 @@ impl AgentSearchSpaceRaw {
         let commodity_id = commodity_ids.get_id_by_str(&self.commodity_id)?;
 
         // Check that the year is a valid milestone year
-        let year = parse_year_str(&self.year, milestone_years)?;
+        let year = parse_year_str(&self.years, milestone_years)?;
 
         let (agent_id, _) = agents
             .get_key_value(self.agent_id.as_str())
@@ -64,7 +64,7 @@ impl AgentSearchSpaceRaw {
         Ok(AgentSearchSpace {
             agent_id: agent_id.clone(),
             commodity_id,
-            year,
+            years: year,
             search_space,
         })
     }
@@ -138,7 +138,7 @@ where
             .or_insert_with(AgentSearchSpaceMap::new);
 
         // Store process IDs
-        for year in search_space.year {
+        for year in search_space.years {
             try_insert(
                 map,
                 (search_space.commodity_id.clone(), year),
@@ -177,7 +177,7 @@ mod tests {
         let raw = AgentSearchSpaceRaw {
             agent_id: "agent1".into(),
             commodity_id: "commodity1".into(),
-            year: "2020".into(),
+            years: "2020".into(),
             search_space: "A;B".into(),
         };
         assert!(raw
@@ -195,7 +195,7 @@ mod tests {
         let raw = AgentSearchSpaceRaw {
             agent_id: "agent1".into(),
             commodity_id: "invalid_commodity".into(),
-            year: "2020".into(),
+            years: "2020".into(),
             search_space: "A;B".into(),
         };
         assert_error!(
@@ -214,7 +214,7 @@ mod tests {
         let raw = AgentSearchSpaceRaw {
             agent_id: "agent1".into(),
             commodity_id: "commodity1".into(),
-            year: "2020".into(),
+            years: "2020".into(),
             search_space: "A;D".into(),
         };
         assert_error!(
