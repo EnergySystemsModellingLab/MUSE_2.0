@@ -141,7 +141,7 @@ fn validate_demand_slices(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::{commodity_ids, time_slice_info};
+    use crate::fixture::{assert_error, commodity_ids, time_slice_info};
     use rstest::{fixture, rstest};
     use std::iter;
 
@@ -301,13 +301,15 @@ mod tests {
         time_slice_info: TimeSliceInfo,
     ) {
         // Empty CSV file
-        assert!(read_demand_slices_from_iter(
-            iter::empty(),
-            &commodity_ids,
-            &region_ids,
-            &time_slice_info,
-        )
-        .is_err());
+        assert_error!(
+            read_demand_slices_from_iter(
+                iter::empty(),
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+            ),
+            "Demand slice missing for time slice winter.day (commodity: commodity1, region GBR)"
+        );
     }
 
     #[rstest]
@@ -323,13 +325,15 @@ mod tests {
             time_slice: "winter.day".into(),
             fraction: 1.0,
         };
-        assert!(read_demand_slices_from_iter(
-            iter::once(demand_slice.clone()),
-            &commodity_ids,
-            &region_ids,
-            &time_slice_info,
-        )
-        .is_err());
+        assert_error!(
+            read_demand_slices_from_iter(
+                iter::once(demand_slice.clone()),
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+            ),
+            "Can only provide demand slice data for SVD commodities. Found entry for 'commodity2'"
+        );
     }
 
     #[rstest]
@@ -345,13 +349,15 @@ mod tests {
             time_slice: "winter.day".into(),
             fraction: 1.0,
         };
-        assert!(read_demand_slices_from_iter(
-            iter::once(demand_slice.clone()),
-            &commodity_ids,
-            &region_ids,
-            &time_slice_info,
-        )
-        .is_err());
+        assert_error!(
+            read_demand_slices_from_iter(
+                iter::once(demand_slice.clone()),
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+            ),
+            "Unknown ID FRA found"
+        );
     }
 
     #[rstest]
@@ -367,13 +373,15 @@ mod tests {
             time_slice: "summer".into(),
             fraction: 1.0,
         };
-        assert!(read_demand_slices_from_iter(
-            iter::once(demand_slice.clone()),
-            &commodity_ids,
-            &region_ids,
-            &time_slice_info,
-        )
-        .is_err());
+        assert_error!(
+            read_demand_slices_from_iter(
+                iter::once(demand_slice.clone()),
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+            ),
+            "'summer' is not a valid season"
+        );
     }
 
     #[rstest]
@@ -410,13 +418,15 @@ mod tests {
             time_slice: "winter".into(),
             fraction: 1.0,
         };
-        assert!(read_demand_slices_from_iter(
-            iter::once(demand_slice.clone()),
-            &commodity_ids,
-            &region_ids,
-            &time_slice_info,
-        )
-        .is_err());
+        assert_error!(
+            read_demand_slices_from_iter(
+                iter::once(demand_slice.clone()),
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+            ),
+            "Demand slice missing for time slice summer.day (commodity: commodity1, region GBR)"
+        );
     }
 
     #[rstest]
@@ -432,13 +442,16 @@ mod tests {
             time_slice: "winter.day".into(),
             fraction: 0.5,
         };
-        assert!(read_demand_slices_from_iter(
-            iter::repeat_n(demand_slice.clone(), 2),
-            &commodity_ids,
-            &region_ids,
-            &time_slice_info,
-        )
-        .is_err());
+        assert_error!(
+            read_demand_slices_from_iter(
+                iter::repeat_n(demand_slice.clone(), 2),
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+            ),
+            "Duplicate demand slicing entry (or same time slice covered by more than one entry) \
+            (commodity: commodity1, region: GBR, time slice: winter.day)"
+        );
     }
 
     #[rstest]
@@ -460,13 +473,16 @@ mod tests {
             time_slice: "winter".into(),
             fraction: 0.5,
         };
-        assert!(read_demand_slices_from_iter(
-            [demand_slice, demand_slice_season].into_iter(),
-            &commodity_ids,
-            &region_ids,
-            &time_slice_info,
-        )
-        .is_err());
+        assert_error!(
+            read_demand_slices_from_iter(
+                [demand_slice, demand_slice_season].into_iter(),
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+            ),
+            "Duplicate demand slicing entry (or same time slice covered by more than one entry) \
+            (commodity: commodity1, region: GBR, time slice: winter.day)"
+        );
     }
 
     #[rstest]
@@ -482,12 +498,14 @@ mod tests {
             time_slice: "winter".into(),
             fraction: 0.5,
         };
-        assert!(read_demand_slices_from_iter(
-            iter::once(demand_slice),
-            &commodity_ids,
-            &region_ids,
-            &time_slice_info,
-        )
-        .is_err());
+        assert_error!(
+            read_demand_slices_from_iter(
+                iter::once(demand_slice),
+                &commodity_ids,
+                &region_ids,
+                &time_slice_info,
+            ),
+            "Invalid demand fractions"
+        );
     }
 }
