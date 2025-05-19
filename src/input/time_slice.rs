@@ -19,7 +19,7 @@ struct TimeSliceRaw {
 }
 
 /// Get the specified `String` from `set` or insert if it doesn't exist
-fn get_or_insert<T: IDLike + From<String>>(value: String, set: &mut IndexSet<T>) -> T {
+fn get_or_insert<T: IDLike>(value: String, set: &mut IndexSet<T>) -> T {
     // Sadly there's no entry API for HashSets: https://github.com/rust-lang/rfcs/issues/1490
     match set.get_id_by_str(&value) {
         Ok(id) => id.clone(),

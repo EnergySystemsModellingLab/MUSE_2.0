@@ -5,11 +5,11 @@ use std::collections::HashSet;
 
 /// A trait alias for ID types
 pub trait IDLike:
-    Eq + std::hash::Hash + std::borrow::Borrow<str> + Clone + std::fmt::Display
+    Eq + std::hash::Hash + std::borrow::Borrow<str> + Clone + std::fmt::Display + From<String>
 {
 }
 impl<T> IDLike for T where
-    T: Eq + std::hash::Hash + std::borrow::Borrow<str> + Clone + std::fmt::Display
+    T: Eq + std::hash::Hash + std::borrow::Borrow<str> + Clone + std::fmt::Display + From<String>
 {
 }
 
