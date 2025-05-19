@@ -15,7 +15,7 @@ pub fn run_regression_test(example_name: &str) {
 
     let tempdir = tempdir().unwrap();
     let output_dir = tempdir.path();
-    handle_example_run_command(example_name, Some(output_dir), false).unwrap();
+    handle_example_run_command(example_name, Some(output_dir), true).unwrap();
 
     let test_data_dir = PathBuf::from(format!("tests/data/{example_name}"));
     compare_output_dirs(output_dir, &test_data_dir);
