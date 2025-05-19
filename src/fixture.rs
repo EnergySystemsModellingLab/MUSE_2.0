@@ -9,6 +9,7 @@ use crate::process::{
     ProcessParameterMap,
 };
 use crate::region::RegionID;
+use crate::time_slice::TimeSliceID;
 use indexmap::indexmap;
 use itertools::Itertools;
 use rstest::fixture;
@@ -87,4 +88,12 @@ pub fn agents() -> AgentMap {
         },
     ))
     .collect()
+}
+
+#[fixture]
+pub fn time_slice() -> TimeSliceID {
+    TimeSliceID {
+        season: "winter".into(),
+        time_of_day: "day".into(),
+    }
 }

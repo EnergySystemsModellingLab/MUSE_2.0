@@ -8,7 +8,7 @@ use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexSet;
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -115,24 +115,39 @@ where
         };
 
         // Insert flow into the map
-        let entry = map.entry(id.clone()).or_default();
+        let region_year_map = map.entry(id.clone()).or_default();
         for year in record_years {
             for region in record_regions.iter() {
-                entry
-                    .entry((region.clone(), year))
-                    .or_default()
-                    .push(process_flow.clone());
+                let flows_map = region_year_map.entry((region.clone(), year)).or_default();
+                let existing = flows_map
+                    .insert(commodity.id.clone(), process_flow.clone())
+                    .is_some();
+                ensure!(
+                    !existing,
+                    "Duplicate process flow entry for region {}, year {} and commodity {}",
+                    region,
+                    year,
+                    commodity.id
+                );
             }
         }
     }
 
-    // Validate flows
-    for (process_id, map) in map.iter() {
+    // Validate flows and sort flows so PACs are at the start
+    for (process_id, map) in map.iter_mut() {
         let process = processes.get(process_id).unwrap();
         validate_process_flows_map(process, map)?;
+        sort_flows(map);
     }
 
     Ok(map)
+}
+
+/// Sort flows so PACs come first
+fn sort_flows(map: &mut ProcessFlowsMap) {
+    for map in map.values_mut() {
+        map.sort_by(|_, a, _, b| b.is_pac.cmp(&a.is_pac));
+    }
 }
 
 /// Validate flows for a process
@@ -143,12 +158,12 @@ fn validate_process_flows_map(process: &Process, map: &ProcessFlowsMap) -> Resul
     for year in reference_years.iter() {
         for region in reference_regions {
             // Check that the process has flows for this region/year
-            let flows_vector = map.get(&(region.clone(), *year)).with_context(|| {
+            let flow_map = map.get(&(region.clone(), *year)).with_context(|| {
                 format!("Missing entry for process {process_id} in {region}/{year}")
             })?;
 
             // Validate flows for this process/region/year
-            validate_flows_vector(flows_vector).with_context(|| {
+            validate_flow_map(flow_map).with_context(|| {
                 format!("Invalid flows for process {process_id} in {region}/{year}")
             })?;
         }
@@ -157,20 +172,10 @@ fn validate_process_flows_map(process: &Process, map: &ProcessFlowsMap) -> Resul
 }
 
 /// Validate a vector of flows for a process in a given region/year
-fn validate_flows_vector(flows: &[ProcessFlow]) -> Result<()> {
-    // Do not allow multiple flows for the same commodity
-    let mut commodities: HashSet<CommodityID> = HashSet::new();
-    for flow in flows.iter() {
-        let commodity_id = &flow.commodity.id;
-        ensure!(
-            commodities.insert(commodity_id.clone()),
-            "Multiple flows for commodity {commodity_id}",
-        );
-    }
-
+fn validate_flow_map(flow_map: &IndexMap<CommodityID, ProcessFlow>) -> Result<()> {
     // PACs must be either all inputs or all outputs
     let mut flow_sign: Option<bool> = None; // False for inputs, true for outputs
-    for flow in flows.iter().filter(|flow| flow.is_pac) {
+    for flow in flow_map.values().filter(|flow| flow.is_pac) {
         // Check that flow sign is consistent
         let current_flow_sign = flow.flow > 0.0;
         if let Some(flow_sign) = flow_sign {
@@ -193,7 +198,8 @@ mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
-    use core::f64;
+    use indexmap::indexmap;
+    use rstest::{fixture, rstest};
 
     fn create_process_flow_raw(
         flow: f64,
@@ -248,58 +254,67 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_validate_flows_vector() {
-        let commodity1 = Rc::new(Commodity {
+    #[fixture]
+    fn commodity1() -> Commodity {
+        Commodity {
             id: "commodity1".into(),
             description: "A commodity".into(),
             kind: CommodityType::ServiceDemand,
             demand: DemandMap::default(),
             time_slice_level: TimeSliceLevel::Annual,
             costs: CommodityCostMap::default(),
-        });
-        let commodity2 = Rc::new(Commodity {
+        }
+    }
+
+    #[fixture]
+    fn commodity2() -> Commodity {
+        Commodity {
             id: "commodity2".into(),
             description: "Another commodity".into(),
             kind: CommodityType::ServiceDemand,
             demand: DemandMap::default(),
             time_slice_level: TimeSliceLevel::Annual,
             costs: CommodityCostMap::default(),
-        });
+        }
+    }
 
+    #[rstest]
+    fn test_validate_flow_map_valid_single(commodity1: Commodity, commodity2: Commodity) {
         // Valid: Single PAC
-        let flows = vec![
-            create_process_flow(commodity1.clone(), 1.0, true),
-            create_process_flow(commodity2.clone(), 1.0, false),
-        ];
-        assert!(validate_flows_vector(&flows).is_ok());
+        let flows = indexmap! {
+            commodity1.id.clone() => create_process_flow(commodity1.into(), 1.0, true),
+            commodity2.id.clone() => create_process_flow(commodity2.into(), 1.0, false),
+        };
+        assert!(validate_flow_map(&flows).is_ok());
+    }
 
+    #[rstest]
+    fn test_validate_flow_map_valid_multiple(commodity1: Commodity, commodity2: Commodity) {
         // Valid: Multiple PACs
-        let flows = vec![
-            create_process_flow(commodity1.clone(), 1.0, true),
-            create_process_flow(commodity2.clone(), 1.0, true),
-        ];
-        assert!(validate_flows_vector(&flows).is_ok());
+        let flows = indexmap! {
+            commodity1.id.clone() => create_process_flow(commodity1.into(), 1.0, true),
+            commodity2.id.clone() => create_process_flow(commodity2.into(), 1.0, true),
+        };
+        assert!(validate_flow_map(&flows).is_ok());
+    }
 
+    #[rstest]
+    fn test_validate_flow_map_invalid_no_pacs(commodity1: Commodity, commodity2: Commodity) {
         // Invalid: No PACs
-        let flows = vec![
-            create_process_flow(commodity1.clone(), 1.0, false),
-            create_process_flow(commodity2.clone(), 1.0, false),
-        ];
-        assert!(validate_flows_vector(&flows).is_err());
+        let flows = indexmap! {
+            commodity1.id.clone() => create_process_flow(commodity1.into(), 1.0, false),
+            commodity2.id.clone() => create_process_flow(commodity2.into(), 1.0, false),
+        };
+        assert!(validate_flow_map(&flows).is_err());
+    }
 
+    #[rstest]
+    fn test_validate_flow_map(commodity1: Commodity, commodity2: Commodity) {
         // Invalid: Mixed PAC flow types
-        let flows = vec![
-            create_process_flow(commodity1.clone(), 1.0, true),
-            create_process_flow(commodity2.clone(), -1.0, true),
-        ];
-        assert!(validate_flows_vector(&flows).is_err());
-
-        // Invalid: Multiple flows for the same commodity
-        let flows = vec![
-            create_process_flow(commodity1.clone(), 1.0, true),
-            create_process_flow(commodity1.clone(), 1.0, true),
-        ];
-        assert!(validate_flows_vector(&flows).is_err());
+        let flows = indexmap! {
+            commodity1.id.clone() => create_process_flow(commodity1.into(), 1.0, true),
+            commodity2.id.clone() => create_process_flow(commodity2.into(), -1.0, true),
+        };
+        assert!(validate_flow_map(&flows).is_err());
     }
 }

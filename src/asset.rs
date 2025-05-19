@@ -1,6 +1,6 @@
 //! Assets are instances of a process which are owned and invested in by agents.
 use crate::agent::AgentID;
-use crate::commodity::Commodity;
+use crate::commodity::CommodityID;
 use crate::process::{Process, ProcessFlow, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
@@ -114,13 +114,13 @@ impl Asset {
             .flows
             .get(&(self.region_id.clone(), self.commission_year))
             .unwrap()
-            .iter()
+            .values()
     }
 
     /// Iterate over the asset's Primary Activity Commodity flows
     pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.process
-            .iter_pacs(self.region_id.clone(), self.commission_year)
+            .iter_pacs(&self.region_id, self.commission_year)
     }
 }
 
@@ -221,12 +221,12 @@ impl AssetPool {
     pub fn iter_for_region_and_commodity<'a>(
         &'a self,
         region_id: &'a RegionID,
-        commodity: &'a Rc<Commodity>,
+        commodity_id: &'a CommodityID,
     ) -> impl Iterator<Item = &'a Asset> {
         self.iter_for_region(region_id).filter(|asset| {
             asset.process.contains_commodity_flow(
-                commodity,
-                asset.region_id.clone(),
+                commodity_id,
+                &asset.region_id,
                 asset.commission_year,
             )
         })
