@@ -27,7 +27,7 @@ jobs:
       - name: Setup pages
         uses: actions/configure-pages@v5
       - name: Update CLI documentation
-        run: cargo run -- --markdown_help > docs/command_line_help.md
+        run: cargo run -- --markdown-help > docs/command_line_help.md
       - name: Install mdBook
         run: cargo install mdbook
       - name: Build docs with mdBook
