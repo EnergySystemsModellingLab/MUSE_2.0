@@ -1,4 +1,4 @@
-//! Code for handing IDs
+//! Code for handling IDs
 use anyhow::{Context, Result};
 use indexmap::IndexSet;
 use std::collections::HashSet;
