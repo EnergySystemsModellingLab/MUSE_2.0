@@ -6,6 +6,7 @@ use crate::id::{define_id_type, IDCollection};
 use anyhow::{Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
+use serde::Serialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::fmt::Display;
 use std::iter;
@@ -25,6 +26,15 @@ pub struct TimeSliceID {
 impl Display for TimeSliceID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}.{}", self.season, self.time_of_day)
+    }
+}
+
+impl Serialize for TimeSliceID {
+    fn serialize<S>(&self, serialiser: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serialiser.collect_str(self)
     }
 }
 
