@@ -7,7 +7,7 @@ use crate::region::RegionID;
 use crate::simulation::optimisation::Solution;
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use csv;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -27,10 +27,10 @@ const COMMODITY_PRICES_FILE_NAME: &str = "commodity_prices.csv";
 const ASSETS_FILE_NAME: &str = "assets.csv";
 
 /// The output file name for commodity balance duals
-const COMMODITY_BALANCE_DUALS_FILE_NAME: &str = "commodity_balance_duals.csv";
+const COMMODITY_BALANCE_DUALS_FILE_NAME: &str = "debug_commodity_balance_duals.csv";
 
 /// The output file name for capacity duals
-const CAPACITY_DUALS_FILE_NAME: &str = "capacity_duals.csv";
+const CAPACITY_DUALS_FILE_NAME: &str = "debug_capacity_duals.csv";
 
 /// Get the model name from the specified directory path
 pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
@@ -233,16 +233,8 @@ impl DataWriter {
         };
 
         let debug_writer = if save_debug_info {
-            // Save debug files to subdirectory
-            let debug_path = output_path.join("debug");
-            if let Err(e) = fs::create_dir(&debug_path) {
-                if e.kind() != std::io::ErrorKind::AlreadyExists {
-                    bail!(e);
-                }
-            }
-
             // Create debug CSV files
-            Some(DebugDataWriter::create(&debug_path)?)
+            Some(DebugDataWriter::create(output_path)?)
         } else {
             None
         };
