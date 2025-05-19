@@ -1,5 +1,10 @@
 # User Guide
 
+## Running MUSE 2.0
+
+Once you have installed MUSE 2.0, you should be able to run it via the `muse2` command-line program.
+For details of the command-line interface, [see here](./command_line_help.md).
+
 ## Setting the log level
 
 MUSE uses the [`fern`] crate for logging. The default log level is `info`, though this can be
