@@ -201,11 +201,11 @@ fn compute_demand_maps(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::{commodity_ids, region_ids};
+    use crate::fixture::{assert_error, commodity_ids, region_ids};
     use rstest::rstest;
     use std::fs::File;
     use std::io::Write;
-    use std::iter;
+
     use std::path::Path;
     use tempfile::tempdir;
 
@@ -255,9 +255,9 @@ mod tests {
                 demand: 11.0,
             },
         ];
-        assert!(
-            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020])
-                .is_err()
+        assert_error!(
+            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]),
+            "Can only provide demand data for SVD commodities. Found entry for 'commodity2'"
         );
     }
 
@@ -281,9 +281,9 @@ mod tests {
                 demand: 11.0,
             },
         ];
-        assert!(
-            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020])
-                .is_err()
+        assert_error!(
+            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]),
+            "Unknown ID FRA found"
         );
     }
 
@@ -307,9 +307,9 @@ mod tests {
                 demand: 11.0,
             },
         ];
-        assert!(
-            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020])
-                .is_err()
+        assert_error!(
+            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]),
+            "Invalid year 2010"
         );
     }
 
@@ -331,9 +331,9 @@ mod tests {
             commodity_id: "commodity1".to_string(),
             demand: quantity,
         }];
-        assert!(
-            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020],)
-                .is_err()
+        assert_error!(
+            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020],),
+            "Demand must be a valid number greater than zero"
         );
     }
 
@@ -363,9 +363,9 @@ mod tests {
                 demand: 11.0,
             },
         ];
-        assert!(
-            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020])
-                .is_err()
+        assert_error!(
+            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]),
+            "Key (CommodityID(\"commodity1\"), RegionID(\"GBR\"), 2020) already exists in the map"
         );
     }
 
@@ -375,19 +375,35 @@ mod tests {
         region_ids: HashSet<RegionID>,
     ) {
         // Missing entry for a milestone year
-        let demand = Demand {
-            years: "2020".into(),
-            regions: "GBR".to_string(),
-            commodity_id: "commodity1".to_string(),
-            demand: 10.0,
-        };
-        assert!(read_demand_from_iter(
-            iter::once(demand),
-            &commodity_ids,
-            &region_ids,
-            &[2020, 2030]
-        )
-        .is_err());
+        let demand = [
+            Demand {
+                years: "2020".into(),
+                regions: "GBR".to_string(),
+                commodity_id: "commodity1".to_string(),
+                demand: 10.0,
+            },
+            Demand {
+                years: "2020".into(),
+                regions: "USA".to_string(),
+                commodity_id: "commodity1".to_string(),
+                demand: 11.0,
+            },
+            Demand {
+                years: "2030".into(),
+                regions: "USA".to_string(),
+                commodity_id: "commodity1".to_string(),
+                demand: 5.0,
+            },
+        ];
+        assert_error!(
+            read_demand_from_iter(
+                demand.into_iter(),
+                &commodity_ids,
+                &region_ids,
+                &[2020, 2030]
+            ),
+            "Commodity commodity1 is missing demand data for [(RegionID(\"GBR\"), 2030)]"
+        );
     }
 
     /// Create an example demand file in dir_path
