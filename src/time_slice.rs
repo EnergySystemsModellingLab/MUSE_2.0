@@ -6,7 +6,8 @@ use crate::id::{define_id_type, IDCollection};
 use anyhow::{Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
-use serde::Serialize;
+use serde::de::Error;
+use serde::{Deserialize, Serialize};
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::fmt::Display;
 use std::iter;
@@ -26,6 +27,23 @@ pub struct TimeSliceID {
 impl Display for TimeSliceID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}.{}", self.season, self.time_of_day)
+    }
+}
+
+impl<'de> Deserialize<'de> for TimeSliceID {
+    fn deserialize<D>(deserialiser: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: &str = Deserialize::deserialize(deserialiser)?;
+        let (season, time_of_day) = s
+            .split(".")
+            .collect_tuple()
+            .ok_or_else(|| D::Error::custom("Should be in form season.time_of_day"))?;
+        Ok(Self {
+            season: season.into(),
+            time_of_day: time_of_day.into(),
+        })
     }
 }
 
