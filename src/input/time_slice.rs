@@ -1,7 +1,7 @@
 //! Code for reading in time slice info from a CSV file.
 use super::*;
 use crate::id::IDCollection;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::time_slice::{Season, TimeOfDay, TimeSliceID, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use serde::Deserialize;
@@ -12,19 +12,18 @@ const TIME_SLICES_FILE_NAME: &str = "time_slices.csv";
 /// A time slice record retrieved from a CSV file
 #[derive(PartialEq, Debug, Deserialize)]
 struct TimeSliceRaw {
-    season: String,
-    time_of_day: String,
+    season: Season,
+    time_of_day: TimeOfDay,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     fraction: f64,
 }
 
 /// Get the specified `String` from `set` or insert if it doesn't exist
-fn get_or_insert<T: IDLike>(value: String, set: &mut IndexSet<T>) -> T {
+fn get_or_insert<T: IDLike>(id: T, set: &mut IndexSet<T>) -> T {
     // Sadly there's no entry API for HashSets: https://github.com/rust-lang/rfcs/issues/1490
-    match set.get_id_by_str(&value) {
+    match set.get_id(&id) {
         Ok(id) => id.clone(),
         Err(_) => {
-            let id: T = value.into();
             set.insert(id.clone());
             id
         }
