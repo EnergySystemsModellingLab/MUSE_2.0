@@ -186,21 +186,13 @@ impl DataWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::process;
-    use crate::process::Process;
+
+    use crate::fixture::{asset, assets, commodity_id, region_id, time_slice};
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
-    use rstest::{fixture, rstest};
+    use rstest::rstest;
     use std::iter;
     use tempfile::tempdir;
-
-    #[fixture]
-    pub fn asset(process: Process) -> Asset {
-        let region_id: RegionID = "GBR".into();
-        let agent_id = "agent1".into();
-        let commission_year = 2015;
-        Asset::new(agent_id, process.into(), region_id, 2.0, commission_year).unwrap()
-    }
 
     #[rstest]
     fn test_write_assets(asset: Asset) {
@@ -227,15 +219,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_write_flows(asset: Asset) {
+    fn test_write_flows(assets: AssetPool, commodity_id: CommodityID, time_slice: TimeSliceID) {
         let milestone_year = 2020;
-        let commodity_id = "commodity1".into();
-        let time_slice = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "day".into(),
-        };
-        let mut assets = AssetPool::new(vec![asset]);
-        assets.commission_new(2020);
         let flow_item = (
             assets.iter().next().unwrap().id,
             &commodity_id,
@@ -268,14 +253,8 @@ mod tests {
         assert_equal(records, iter::once(expected));
     }
 
-    #[test]
-    fn test_write_prices() {
-        let commodity_id = "commodity1".into();
-        let region_id = "GBR".into();
-        let time_slice = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "day".into(),
-        };
+    #[rstest]
+    fn test_write_prices(commodity_id: CommodityID, region_id: RegionID, time_slice: TimeSliceID) {
         let milestone_year = 2020;
         let price = 42.0;
         let mut prices = CommodityPrices::default();

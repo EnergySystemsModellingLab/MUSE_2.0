@@ -1,9 +1,11 @@
 //! Fixtures for tests
 
 use crate::agent::{
-    Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, AgentMap, AgentObjectiveMap,
+    Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, AgentID, AgentMap, AgentObjectiveMap,
     AgentSearchSpaceMap, DecisionRule,
 };
+use crate::asset::{Asset, AssetPool};
+use crate::commodity::CommodityID;
 use crate::process::{
     Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessMap, ProcessParameter,
     ProcessParameterMap,
@@ -29,8 +31,39 @@ macro_rules! assert_error {
 pub(crate) use assert_error;
 
 #[fixture]
+pub fn region_id() -> RegionID {
+    "GBR".into()
+}
+
+#[fixture]
 pub fn region_ids() -> HashSet<RegionID> {
     ["GBR".into(), "USA".into()].into_iter().collect()
+}
+
+#[fixture]
+pub fn agent_id() -> AgentID {
+    "agent1".into()
+}
+
+#[fixture]
+pub fn commodity_id() -> CommodityID {
+    "commodity1".into()
+}
+
+#[fixture]
+pub fn asset(process: Process) -> Asset {
+    let region_id: RegionID = "GBR".into();
+    let agent_id = "agent1".into();
+    let commission_year = 2015;
+    Asset::new(agent_id, process.into(), region_id, 2.0, commission_year).unwrap()
+}
+
+#[fixture]
+pub fn assets(asset: Asset) -> AssetPool {
+    let year = asset.commission_year;
+    let mut assets = AssetPool::new(iter::once(asset).collect());
+    assets.commission_new(year);
+    assets
 }
 
 #[fixture]
