@@ -17,12 +17,12 @@ fn test_handle_run_command() {
         // Save results to non-existent directory to check that directory creation works
         let tempdir = tempdir().unwrap();
         let output_dir = tempdir.path().join("results");
-        handle_run_command(&get_model_dir(), Some(&output_dir)).unwrap();
+        handle_run_command(&get_model_dir(), Some(&output_dir), false).unwrap();
     }
 
     // Second time will fail because the logging is already initialised
     assert_eq!(
-        handle_run_command(&get_model_dir(), Some(tempdir().unwrap().path()))
+        handle_run_command(&get_model_dir(), Some(tempdir().unwrap().path()), false)
             .unwrap_err()
             .chain()
             .next()
