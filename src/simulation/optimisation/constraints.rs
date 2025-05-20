@@ -23,6 +23,18 @@ pub struct ConstraintKeys {
     pub capacity_keys: CapacityConstraintKeys,
 }
 
+impl ConstraintKeys {
+    /// Start offset for commodity balance constraints
+    pub fn commodity_balance_keys_offset(&self) -> usize {
+        0
+    }
+
+    /// Start offset for capacity constraints
+    pub fn capacity_keys_offset(&self) -> usize {
+        self.commodity_balance_keys.len()
+    }
+}
+
 /// Add asset-level constraints
 ///
 /// Note: the ordering of constraints is important, as the dual values of the constraints must later

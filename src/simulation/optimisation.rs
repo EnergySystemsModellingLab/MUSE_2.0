@@ -78,6 +78,14 @@ impl Solution<'_> {
             })
     }
 
+    /// Returns constraint keys along with their corresponding dual values
+    fn zip_duals<'a, I, T>(&'a self, keys: I, offset: usize) -> impl Iterator<Item = (T, f64)> + 'a
+    where
+        I: Iterator<Item = T> + 'a,
+    {
+        keys.zip(self.solution.dual_rows()[offset..].iter().copied())
+    }
+
     /// Keys and dual values for commodity balance constraints.
     pub fn iter_commodity_balance_duals(
         &self,
@@ -85,28 +93,24 @@ impl Solution<'_> {
         // Each commodity balance constraint applies to a particular time slice
         // selection (depending on time slice level). Where this covers multiple timeslices,
         // we return the same dual for each individual timeslice.
-        self.constraint_keys
-            .commodity_balance_keys
-            .iter()
-            .zip(self.solution.dual_rows())
-            .flat_map(|((commodity_id, region_id, ts_selection), price)| {
-                self.time_slice_info
-                    .iter_selection(ts_selection)
-                    .map(move |(ts, _)| (commodity_id, region_id, ts, *price))
-            })
+        self.zip_duals(
+            self.constraint_keys.commodity_balance_keys.iter(),
+            self.constraint_keys.commodity_balance_keys_offset(),
+        )
+        .flat_map(|((commodity_id, region_id, ts_selection), price)| {
+            self.time_slice_info
+                .iter_selection(ts_selection)
+                .map(move |(ts, _)| (commodity_id, region_id, ts, price))
+        })
     }
 
     /// Keys and dual values for capacity constraints.
     pub fn iter_capacity_duals(&self) -> impl Iterator<Item = (AssetID, &TimeSliceID, f64)> {
-        self.constraint_keys
-            .capacity_keys
-            .iter()
-            .zip(
-                self.solution.dual_rows()[self.constraint_keys.commodity_balance_keys.len()..]
-                    .iter()
-                    .copied(),
-            )
-            .map(|((asset_id, time_slice), dual)| (*asset_id, time_slice, dual))
+        self.zip_duals(
+            self.constraint_keys.capacity_keys.iter(),
+            self.constraint_keys.capacity_keys_offset(),
+        )
+        .map(|((asset_id, time_slice), dual)| (*asset_id, time_slice, dual))
     }
 }
 
