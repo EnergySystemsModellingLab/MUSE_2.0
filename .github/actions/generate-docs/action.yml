@@ -11,6 +11,9 @@ runs:
     - name: Update CLI documentation
       shell: bash
       run: cargo run -- --markdown-help > docs/command_line_help.md
+    - name: Generate input format documentation
+      shell: bash
+      run: python docs/generate_input_format_doc.py > docs/input_format.md
     - name: Build API docs
       shell: bash
       run: |
