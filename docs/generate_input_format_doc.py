@@ -8,7 +8,7 @@ from pathlib import Path
 
 _DOCS_DIR = Path(__file__).parent
 _SCHEMA_DIR = _DOCS_DIR.parent / "schemas" / "input"
-_FILE_ORDER = {"Agents": ["agents"]}  # , "agent_*"]}
+_FILE_ORDER = {"Agents": ["agents", "agent_*"]}
 
 
 def generate_markdown() -> str:
