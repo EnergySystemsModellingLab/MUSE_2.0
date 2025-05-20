@@ -15,12 +15,17 @@ pub type CommodityBalanceConstraintKeys = Vec<(CommodityID, RegionID, TimeSliceS
 /// Indicates the asset ID and time slice covered by each capacity constraint
 pub type CapacityConstraintKeys = Vec<(AssetID, TimeSliceID)>;
 
+/// Indicates the asset ID, commodity ID and time slice for each fixed asset constraint
+pub type FixedAssetConstraintKeys = Vec<(AssetID, CommodityID, TimeSliceID)>;
+
 /// The keys for different constraints
 pub struct ConstraintKeys {
     /// Keys for commodity balance constraints
     pub commodity_balance_keys: CommodityBalanceConstraintKeys,
     /// Keys for capacity constraints
     pub capacity_keys: CapacityConstraintKeys,
+    /// Keys for fixed asset constraints
+    pub fixed_asset_keys: FixedAssetConstraintKeys,
 }
 
 impl ConstraintKeys {
@@ -32,6 +37,11 @@ impl ConstraintKeys {
     /// Start offset for capacity constraints
     pub fn capacity_keys_offset(&self) -> usize {
         self.commodity_balance_keys.len()
+    }
+
+    /// Start offset for capacity constraints
+    pub fn fixed_asset_keys_offset(&self) -> usize {
+        self.capacity_keys_offset() + self.capacity_keys.len()
     }
 }
 
@@ -75,7 +85,7 @@ pub fn add_asset_constraints(
     // need to add different constraints for assets with flexible and non-flexible flows.
     //
     // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
-    add_fixed_asset_constraints(
+    let fixed_asset_keys = add_fixed_asset_constraints(
         problem,
         variables,
         assets,
@@ -88,6 +98,7 @@ pub fn add_asset_constraints(
     ConstraintKeys {
         commodity_balance_keys,
         capacity_keys,
+        fixed_asset_keys,
     }
 }
 
@@ -240,7 +251,7 @@ fn add_fixed_asset_constraints(
     time_slice_info: &TimeSliceInfo,
     commodity_balance_keys: &CommodityBalanceConstraintKeys,
     capacity_keys: &CapacityConstraintKeys,
-) {
+) -> FixedAssetConstraintKeys {
     // Sanity check: we rely on the dual rows corresponding to these constraints being
     // immediately after the commodity balance and capacity constraints in `problem`.
     assert!(
@@ -248,6 +259,7 @@ fn add_fixed_asset_constraints(
         "Fixed asset constraints must be added immediately after commodity constraints."
     );
 
+    let mut keys = FixedAssetConstraintKeys::new();
     for asset in assets.iter() {
         // Get first PAC. unwrap is safe because all processes have at least one PAC.
         let pac1 = asset.iter_pacs().next().unwrap();
@@ -264,7 +276,12 @@ fn add_fixed_asset_constraints(
                 // We are enforcing that (var / flow) - (pac_var / pac_flow) = 0
                 let var = variables.get(asset.id, &flow.commodity.id, time_slice);
                 problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
+
+                // Keep track of the order in which constraints were added
+                keys.push((asset.id, flow.commodity.id.clone(), time_slice.clone()));
             }
         }
     }
+
+    keys
 }
