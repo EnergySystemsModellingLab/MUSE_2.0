@@ -12,7 +12,7 @@ use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 
 mod constraints;
-use constraints::{add_asset_constraints, CapacityConstraintKeys, CommodityBalanceConstraintKeys};
+use constraints::{add_asset_constraints, ConstraintKeys};
 
 /// A decision variable in the optimisation
 ///
@@ -54,8 +54,7 @@ pub struct Solution<'a> {
     solution: highs::Solution,
     variables: VariableMap,
     time_slice_info: &'a TimeSliceInfo,
-    commodity_balance_constraint_keys: CommodityBalanceConstraintKeys,
-    capacity_constraint_keys: CapacityConstraintKeys,
+    constraint_keys: ConstraintKeys,
 }
 
 impl Solution<'_> {
@@ -86,7 +85,8 @@ impl Solution<'_> {
         // Each commodity balance constraint applies to a particular time slice
         // selection (depending on time slice level). Where this covers multiple timeslices,
         // we return the same dual for each individual timeslice.
-        self.commodity_balance_constraint_keys
+        self.constraint_keys
+            .commodity_balance_keys
             .iter()
             .zip(self.solution.dual_rows())
             .flat_map(|((commodity_id, region_id, ts_selection), price)| {
@@ -98,10 +98,11 @@ impl Solution<'_> {
 
     /// Keys and dual values for capacity constraints.
     pub fn iter_capacity_duals(&self) -> impl Iterator<Item = (AssetID, &TimeSliceID, f64)> {
-        self.capacity_constraint_keys
+        self.constraint_keys
+            .capacity_keys
             .iter()
             .zip(
-                self.solution.dual_rows()[self.commodity_balance_constraint_keys.len()..]
+                self.solution.dual_rows()[self.constraint_keys.commodity_balance_keys.len()..]
                     .iter()
                     .copied(),
             )
@@ -134,8 +135,7 @@ pub fn perform_dispatch_optimisation<'a>(
     let variables = add_variables(&mut problem, model, assets, year);
 
     // Add constraints
-    let (commodity_balance_constraint_keys, capacity_constraint_keys) =
-        add_asset_constraints(&mut problem, &variables, model, assets, year);
+    let constraint_keys = add_asset_constraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
     let mut highs_model = problem.optimise(Sense::Minimise);
@@ -155,8 +155,7 @@ pub fn perform_dispatch_optimisation<'a>(
             solution: solution.get_solution(),
             variables,
             time_slice_info: &model.time_slice_info,
-            commodity_balance_constraint_keys,
-            capacity_constraint_keys,
+            constraint_keys,
         }),
         status => Err(anyhow!("Could not solve: {status:?}")),
     }

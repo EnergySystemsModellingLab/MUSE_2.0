@@ -15,6 +15,14 @@ pub type CommodityBalanceConstraintKeys = Vec<(CommodityID, RegionID, TimeSliceS
 /// Indicates the asset ID and time slice covered by each capacity constraint
 pub type CapacityConstraintKeys = Vec<(AssetID, TimeSliceID)>;
 
+/// The keys for different constraints
+pub struct ConstraintKeys {
+    /// Keys for commodity balance constraints
+    pub commodity_balance_keys: CommodityBalanceConstraintKeys,
+    /// Keys for capacity constraints
+    pub capacity_keys: CapacityConstraintKeys,
+}
+
 /// Add asset-level constraints
 ///
 /// Note: the ordering of constraints is important, as the dual values of the constraints must later
@@ -38,16 +46,16 @@ pub fn add_asset_constraints(
     model: &Model,
     assets: &AssetPool,
     year: u32,
-) -> (CommodityBalanceConstraintKeys, CapacityConstraintKeys) {
-    let commodity_balance_constraint_keys =
+) -> ConstraintKeys {
+    let commodity_balance_keys =
         add_commodity_balance_constraints(problem, variables, model, assets, year);
 
-    let capacity_constraint_keys = add_asset_capacity_constraints(
+    let capacity_keys = add_asset_capacity_constraints(
         problem,
         variables,
         assets,
         &model.time_slice_info,
-        &commodity_balance_constraint_keys,
+        &commodity_balance_keys,
     );
 
     // **TODO**: Currently it's safe to assume all process flows are non-flexible, as we enforce
@@ -57,8 +65,11 @@ pub fn add_asset_constraints(
     // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
     add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
 
-    // Return constraint keys which are required to calculate commodity prices
-    (commodity_balance_constraint_keys, capacity_constraint_keys)
+    // Return constraint keys
+    ConstraintKeys {
+        commodity_balance_keys,
+        capacity_keys,
+    }
 }
 
 /// Add asset-level input-output commodity balances.
@@ -159,12 +170,12 @@ fn add_asset_capacity_constraints(
     variables: &VariableMap,
     assets: &AssetPool,
     time_slice_info: &TimeSliceInfo,
-    commodity_balance_constraint_keys: &CommodityBalanceConstraintKeys,
+    commodity_balance_keys: &CommodityBalanceConstraintKeys,
 ) -> CapacityConstraintKeys {
     // Sanity check: we rely on the dual rows corresponding to the capacity constraints being
     // immediately after the commodity balance constraints in `problem`.
     assert!(
-        problem.num_rows() == commodity_balance_constraint_keys.len(),
+        problem.num_rows() == commodity_balance_keys.len(),
         "Capacity constraints must be added immediately after commodity constraints."
     );
 
