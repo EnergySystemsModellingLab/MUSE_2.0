@@ -46,10 +46,12 @@ def fields2table(fields: list[dict[str, str]]) -> str:
         {
             "Field": f"`{f['name']}`",
             "Title": f["title"],
-            "Description": f.get("description", ""),
+            # MarkdownTable can't handle newlines, so replace with HTML equivalent
+            "Description": f.get("description", "").replace("\n", "<br />"),
         }
         for f in fields
     ]
+
     return str(MarkdownTable.from_dicts(data))
 
 
