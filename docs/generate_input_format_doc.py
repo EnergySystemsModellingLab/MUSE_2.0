@@ -24,10 +24,19 @@ def generate_markdown() -> str:
         for pattern in patterns:
             paths = map(str, _SCHEMA_DIR.glob(f"{pattern}.yaml"))
             for path in map(Path, sorted(paths)):
-                out += f"\n### `{path.stem}.csv`\n\n"
-                with path.open() as f:
-                    fields = yaml.load(f, Loader=yaml.Loader)["fields"]
-                out += fields2table(fields)
+                out += process_file(path)
+
+    return out
+
+
+def process_file(path: Path) -> str:
+    out = f"\n### `{path.stem}.csv`\n\n"
+    with path.open() as f:
+        data = yaml.load(f, Loader=yaml.Loader)
+
+    out += f"{data['title']}. {data['description']}.\n\n"
+
+    out += fields2table(data["fields"])
 
     return out
 
