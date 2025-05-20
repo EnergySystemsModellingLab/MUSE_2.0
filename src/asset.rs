@@ -68,6 +68,11 @@ impl Asset {
             })?
             .clone();
 
+        ensure!(
+            capacity.is_normal() && capacity > 0.0,
+            "Capacity must be a number >0"
+        );
+
         Ok(Self {
             id: AssetID::INVALID,
             agent_id,
