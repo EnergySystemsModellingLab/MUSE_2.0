@@ -12,6 +12,7 @@ _FILE_ORDER = {
     "Agents": ["agents", "agent_*"],
     "Assets": ["assets"],
     "Commodities": ["commodities", "commodity_costs", "demand", "demand_slicing"],
+    "Time slices": ["time_slices"],
 }
 
 
