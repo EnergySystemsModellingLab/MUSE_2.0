@@ -34,11 +34,26 @@ def process_file(path: Path) -> str:
     with path.open() as f:
         data = yaml.load(f, Loader=yaml.Loader)
 
-    out += f"{data['title']}. {data['description']}.\n\n"
+    info = data["title"]
+    if desc := data.get("description", ""):
+        info = f"{add_full_stop(info)} {desc}"
+    out += f"{add_full_stop(info)}\n\n"
 
-    out += fields2table(data["fields"])
+    try:
+        out += fields2table(data["fields"])
+    except KeyError:
+        print(f"MISSING VALUE IN {path}")
+        raise
 
     return out
+
+
+def add_full_stop(s: str) -> str:
+    s = s.rstrip()
+    if s == "" or s.endswith("."):
+        return s
+    else:
+        return f"{s}."
 
 
 def fields2table(fields: list[dict[str, str]]) -> str:
@@ -47,7 +62,9 @@ def fields2table(fields: list[dict[str, str]]) -> str:
             "Field": f"`{f['name']}`",
             "Title": f["title"],
             # MarkdownTable can't handle newlines, so replace with HTML equivalent
-            "Description": f.get("description", "").replace("\n", "<br />"),
+            "Description": add_full_stop(f.get("description", ""))
+            .replace("\n\n", "<br /><br />")
+            .replace("\n", " "),
         }
         for f in fields
     ]
