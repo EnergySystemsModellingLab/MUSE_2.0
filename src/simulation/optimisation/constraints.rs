@@ -145,40 +145,6 @@ fn add_commodity_balance_constraints(
     keys
 }
 
-/// Add constraints for non-flexible assets.
-///
-/// Non-flexible assets are those which have a fixed ratio between inputs and outputs.
-///
-/// See description in [the dispatch optimisation documentation][1].
-///
-/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#non-flexible-assets
-fn add_fixed_asset_constraints(
-    problem: &mut Problem,
-    variables: &VariableMap,
-    assets: &AssetPool,
-    time_slice_info: &TimeSliceInfo,
-) {
-    for asset in assets.iter() {
-        // Get first PAC. unwrap is safe because all processes have at least one PAC.
-        let pac1 = asset.iter_pacs().next().unwrap();
-
-        for time_slice in time_slice_info.iter_ids() {
-            let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
-            let pac_term = (pac_var, -1.0 / pac1.flow);
-            for flow in asset.iter_flows() {
-                // Don't add a constraint for the PAC itself
-                if Rc::ptr_eq(&flow.commodity, &pac1.commodity) {
-                    continue;
-                }
-
-                // We are enforcing that (var / flow) - (pac_var / pac_flow) = 0
-                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
-                problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
-            }
-        }
-    }
-}
-
 /// Add asset-level capacity and availability constraints.
 ///
 /// For every asset at every time slice, the sum of the commodity flows for PACs must not exceed the
@@ -228,4 +194,38 @@ fn add_asset_capacity_constraints(
         }
     }
     keys
+}
+
+/// Add constraints for non-flexible assets.
+///
+/// Non-flexible assets are those which have a fixed ratio between inputs and outputs.
+///
+/// See description in [the dispatch optimisation documentation][1].
+///
+/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#non-flexible-assets
+fn add_fixed_asset_constraints(
+    problem: &mut Problem,
+    variables: &VariableMap,
+    assets: &AssetPool,
+    time_slice_info: &TimeSliceInfo,
+) {
+    for asset in assets.iter() {
+        // Get first PAC. unwrap is safe because all processes have at least one PAC.
+        let pac1 = asset.iter_pacs().next().unwrap();
+
+        for time_slice in time_slice_info.iter_ids() {
+            let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
+            let pac_term = (pac_var, -1.0 / pac1.flow);
+            for flow in asset.iter_flows() {
+                // Don't add a constraint for the PAC itself
+                if Rc::ptr_eq(&flow.commodity, &pac1.commodity) {
+                    continue;
+                }
+
+                // We are enforcing that (var / flow) - (pac_var / pac_flow) = 0
+                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
+                problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
+            }
+        }
+    }
 }
