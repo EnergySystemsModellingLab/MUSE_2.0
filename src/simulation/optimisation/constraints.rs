@@ -75,7 +75,14 @@ pub fn add_asset_constraints(
     // need to add different constraints for assets with flexible and non-flexible flows.
     //
     // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
-    add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
+    add_fixed_asset_constraints(
+        problem,
+        variables,
+        assets,
+        &model.time_slice_info,
+        &commodity_balance_keys,
+        &capacity_keys,
+    );
 
     // Return constraint keys
     ConstraintKeys {
@@ -231,7 +238,16 @@ fn add_fixed_asset_constraints(
     variables: &VariableMap,
     assets: &AssetPool,
     time_slice_info: &TimeSliceInfo,
+    commodity_balance_keys: &CommodityBalanceConstraintKeys,
+    capacity_keys: &CapacityConstraintKeys,
 ) {
+    // Sanity check: we rely on the dual rows corresponding to these constraints being
+    // immediately after the commodity balance and capacity constraints in `problem`.
+    assert!(
+        problem.num_rows() == commodity_balance_keys.len() + capacity_keys.len(),
+        "Fixed asset constraints must be added immediately after commodity constraints."
+    );
+
     for asset in assets.iter() {
         // Get first PAC. unwrap is safe because all processes have at least one PAC.
         let pac1 = asset.iter_pacs().next().unwrap();
