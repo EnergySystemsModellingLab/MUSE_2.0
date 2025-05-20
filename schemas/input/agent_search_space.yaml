@@ -1,0 +1,24 @@
+title: Agent search space
+description: |
+  Defines the processes in which an agent will invest for given parameters.
+
+  If entries are missing for any combination of agent, commodity or milestone year, then it is
+  assumed that all processes can be considered in this case.
+
+fields:
+  - name: agent_id
+    type: string
+    title: An agent ID
+  - name: commodity_id
+    type: string
+    title: The commodity to which this entry applies
+  - name: years
+    type: string
+    title: The year(s) to which this entry applies
+    description: One or more milestone years separated by semicolons or `all`
+  - name: search_space
+    type: string
+    title: The processes in which this agent will invest
+    description: |
+      One or more process IDs separated by semicolons. If this field is empty or `all`, all
+      processes will be considered.

@@ -6,10 +6,58 @@
 
 ### `agents.csv`
 
-|            Field            |                   Title                   |                             Description                             |
-|-----------------------------|-------------------------------------------|---------------------------------------------------------------------|
-| `id`                        | A unique identifier for an agent          |                                                                     |
-| `description`               | A human-readable label for the agent      |                                                                     |
-| `regions`                   | The region(s) in which the agent operates | One or more region IDs, separated by semicolons or the string `all` |
-| `decision_rule`             | The decision rule applied to objectives   | Currently the only supported rule is `simple`                       |
-| `decision_lexico_tolerance` | Tolerance for `lexico` decision rule      | Currently unused                                                    |
+Main agents file. Describes agents in the system.
+
+|            Field            |                   Title                   |                             Description                              |
+|-----------------------------|-------------------------------------------|----------------------------------------------------------------------|
+| `id`                        | A unique identifier for an agent          |                                                                      |
+| `description`               | A human-readable label for the agent      |                                                                      |
+| `regions`                   | The region(s) in which the agent operates | One or more region IDs, separated by semicolons or the string `all`. |
+| `decision_rule`             | The decision rule applied to objectives   | Currently the only supported rule is `simple`.                       |
+| `decision_lexico_tolerance` | Tolerance for `lexico` decision rule      | Currently unused.                                                    |
+
+### `agent_commodity_portions.csv`
+
+Commodity demand portions for agents. Portions of commodity demand for which agents are responsible.
+
+If an entry is specified for one agent and commodity, there must be entries covering all milestone
+years. For each agent listed in this file, the total portions for each region/commodity/year
+combination must sum to one. In addition, there must be entries for every SVD and SED commodity
+for all regions and milestone years.
+
+|        Field        |                      Title                       |                                Description                                 |
+|---------------------|--------------------------------------------------|----------------------------------------------------------------------------|
+| `agent_id`          | The agent to apply these values to               |                                                                            |
+| `commodity_id`      | The commodity for which the agent is responsible |                                                                            |
+| `years`             | The year(s) to which this entry applies          | One or more milestone years separated by semicolons or `all`.              |
+| `commodity_portion` | Portion of commodity demand                      | Value must be >0 and <=1. The portion applies only to the specified years. |
+
+### `agent_cost_limits.csv`
+
+Agent cost limits. Limits on expenditure for agents.
+
+If cost limits are provided for an agent, they must be present for all years.
+
+|        Field        |                  Title                  |                                                                   Description                                                                    |
+|---------------------|-----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `agent_id`          | The agent to apply these values to      |                                                                                                                                                  |
+| `years`             | The year(s) to which this entry applies | One or more milestone years separated by semicolons or `all`.                                                                                    |
+| `capex_limit`       | Maximum capital cost the agent will pay | Must be >0. Optional (defaults to infinity).                                                                                                     |
+| `annual_cost_limit` | Maximum annual operating cost           | The maximum annual operating cost (fuel plus variable operating cost etc.) that the agent will pay. Must be >0. Optional (defaults to infinity). |
+
+### `agent_objectives.csv`
+
+Agent objectives. Describes the agents' objectives.
+
+Every agent must have one objective for each milestone year. If the weighted sum decision rule is
+in use, the `decision_weight` value must be provided, otherwise it must be omitted. If the lexico
+decision rule is in use, the `decision_lexico_order` value must be provided, otherwise it must be
+omitted.
+
+|          Field          |                             Title                              |                          Description                          |
+|-------------------------|----------------------------------------------------------------|---------------------------------------------------------------|
+| `agent_id`              | An agent ID                                                    |                                                               |
+| `years`                 | The year(s) to which this entry applies                        | One or more milestone years separated by semicolons or `all`. |
+| `objective_type`        | The type of objective                                          | Currently only `lcox` is supported.                           |
+| `decision_weight`       | Weight for weighted sum decision rule                          | Currently unused.                                             |
+| `decision_lexico_order` | Order in which to consider objectives for lexico decision rule | Currently unused.                                             |
