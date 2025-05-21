@@ -1,5 +1,6 @@
 //! Code for working with years.
 use anyhow::{ensure, Result};
+use itertools::Itertools;
 
 /// Parse a string of years separated by semicolons into a vector of u32 years.
 ///
@@ -13,7 +14,8 @@ pub fn parse_year_str(s: &str, milestone_years: &[u32]) -> Result<Vec<u32>> {
         return Ok(Vec::from_iter(milestone_years.iter().copied()));
     }
 
-    s.split(";")
+    let mut years: Vec<_> = s
+        .split(";")
         .map(|y| {
             let year = y.trim().parse::<u32>()?;
             ensure!(
@@ -22,5 +24,11 @@ pub fn parse_year_str(s: &str, milestone_years: &[u32]) -> Result<Vec<u32>> {
             );
             Ok(year)
         })
-        .collect()
+        .try_collect()?;
+
+    // Sort years and remove duplicates
+    years.sort_unstable();
+    years.dedup();
+
+    Ok(years)
 }
