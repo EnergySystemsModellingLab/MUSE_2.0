@@ -1,6 +1,16 @@
 //! Code for working with years.
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
+
+/// Parse a single year from a string
+fn parse_year(s: &str, milestone_years: &[u32]) -> Option<u32> {
+    let year = s.trim().parse::<u32>().ok()?;
+    if milestone_years.binary_search(&year).is_ok() {
+        Some(year)
+    } else {
+        None
+    }
+}
 
 /// Parse a string of years separated by semicolons into a vector of u32 years.
 ///
@@ -16,14 +26,7 @@ pub fn parse_year_str(s: &str, milestone_years: &[u32]) -> Result<Vec<u32>> {
 
     let mut years: Vec<_> = s
         .split(";")
-        .map(|y| {
-            let year = y.trim().parse::<u32>()?;
-            ensure!(
-                milestone_years.binary_search(&year).is_ok(),
-                "Invalid year {year}"
-            );
-            Ok(year)
-        })
+        .map(|y| parse_year(y, milestone_years).with_context(|| format!("Invalid year: {y}")))
         .try_collect()?;
 
     // Sort years and remove duplicates
@@ -31,4 +34,40 @@ pub fn parse_year_str(s: &str, milestone_years: &[u32]) -> Result<Vec<u32>> {
     years.dedup();
 
     Ok(years)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fixture::assert_error;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case("2020", &[2020, 2021], &[2020])]
+    #[case("all", &[2020, 2021], &[2020,2021])]
+    #[case("ALL", &[2020, 2021], &[2020,2021])]
+    #[case(" ALL ", &[2020, 2021], &[2020,2021])]
+    #[case("2020;2021", &[2020, 2021], &[2020,2021])]
+    #[case("  2020;  2021", &[2020, 2021], &[2020,2021])] // whitespace should be stripped
+    #[case("2021;2020", &[2020, 2021], &[2020,2021])] // out of order
+    #[case("2021;2020;2021", &[2020, 2021], &[2020,2021])] // duplicate
+    fn test_parse_year_str_valid(
+        #[case] input: &str,
+        #[case] milestone_years: &[u32],
+        #[case] expected: &[u32],
+    ) {
+        assert_eq!(parse_year_str(input, milestone_years).unwrap(), expected);
+    }
+
+    #[rstest]
+    #[case("", &[2020], "No years provided")]
+    #[case("2021", &[2020], "Invalid year: 2021")]
+    #[case("a;2020", &[2020], "Invalid year: a")]
+    fn test_parse_year_str_invalid(
+        #[case] input: &str,
+        #[case] milestone_years: &[u32],
+        #[case] error_msg: &str,
+    ) {
+        assert_error!(parse_year_str(input, milestone_years), error_msg);
+    }
 }
