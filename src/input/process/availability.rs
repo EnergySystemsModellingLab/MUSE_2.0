@@ -115,15 +115,15 @@ where
             .with_context(|| format!("Process {id} not found"))?;
 
         // Get regions
-        let process_regions = process.regions.clone();
+        let process_regions = &process.regions;
         let record_regions =
-            parse_region_str(&record.regions, &process_regions).with_context(|| {
+            parse_region_str(&record.regions, process_regions).with_context(|| {
                 format!("Invalid region for process {id}. Valid regions are {process_regions:?}")
             })?;
 
         // Get years
-        let process_years = process.years.clone();
-        let record_years = parse_year_str(&record.years, &process_years).with_context(|| {
+        let process_years = &process.years;
+        let record_years = parse_year_str(&record.years, process_years).with_context(|| {
             format!("Invalid year for process {id}. Valid years are {process_years:?}")
         })?;
 
