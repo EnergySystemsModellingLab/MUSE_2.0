@@ -18,7 +18,9 @@ struct TimeSliceRaw {
     fraction: f64,
 }
 
-/// Get the specified `String` from `set` or insert if it doesn't exist
+/// Get the specified ID from `set` or insert if it doesn't exist.
+///
+/// The purpose of returning an ID is so that we can dedup memory.
 fn get_or_insert<T: IDLike>(id: T, set: &mut IndexSet<T>) -> T {
     // Sadly there's no entry API for HashSets: https://github.com/rust-lang/rfcs/issues/1490
     match set.get_id(&id) {
