@@ -15,9 +15,7 @@ impl<T> IDLike for T where
 
 macro_rules! define_id_type {
     ($name:ident) => {
-        #[derive(
-            Clone, std::hash::Hash, PartialEq, Eq, serde::Deserialize, Debug, serde::Serialize,
-        )]
+        #[derive(Clone, std::hash::Hash, PartialEq, Eq, Debug, serde::Serialize)]
         /// An ID type (e.g. `AgentID`, `CommodityID`, etc.)
         pub struct $name(pub std::rc::Rc<str>);
 
@@ -42,6 +40,32 @@ macro_rules! define_id_type {
         impl From<String> for $name {
             fn from(s: String) -> Self {
                 $name(std::rc::Rc::from(s))
+            }
+        }
+
+        impl<'de> serde::Deserialize<'de> for $name {
+            fn deserialize<D>(deserialiser: D) -> std::result::Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                use serde::de::Error;
+
+                let id: String = serde::Deserialize::deserialize(deserialiser)?;
+                let id = id.trim();
+                if id.is_empty() {
+                    return Err(D::Error::custom("IDs cannot be empty"));
+                }
+
+                const FORBIDDEN_IDS: [&str; 2] = ["all", "annual"];
+                for forbidden in FORBIDDEN_IDS.iter() {
+                    if id.eq_ignore_ascii_case(forbidden) {
+                        return Err(D::Error::custom(format!(
+                            "'{id}' is an invalid value for an ID"
+                        )));
+                    }
+                }
+
+                Ok(id.into())
             }
         }
 
