@@ -11,6 +11,9 @@ const SETTINGS_FILE_NAME: &str = "settings.toml";
 pub struct Settings {
     /// The user's preferred logging level
     pub log_level: Option<String>,
+    /// Whether to write additional information to CSV files
+    #[serde(default)]
+    pub debug_model: bool,
 }
 
 impl Settings {
@@ -61,7 +64,8 @@ mod tests {
         assert_eq!(
             Settings::from_path(dir.path()).unwrap(),
             Settings {
-                log_level: Some("warn".to_string())
+                log_level: Some("warn".to_string()),
+                debug_model: false
             }
         );
     }

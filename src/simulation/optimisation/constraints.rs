@@ -1,4 +1,5 @@
 //! Code for adding constraints to the dispatch optimisation problem.
+use super::VariableMap;
 use crate::asset::{AssetID, AssetPool};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
@@ -7,13 +8,42 @@ use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
 use highs::RowProblem as Problem;
 use std::rc::Rc;
 
-use super::VariableMap;
+/// Corresponding variables for a constraint along with the row offset in the solution
+pub struct KeysWithOffset<T> {
+    offset: usize,
+    keys: Vec<T>,
+}
+
+impl<T> KeysWithOffset<T> {
+    /// Zip the keys with the corresponding dual values in the solution, accounting for the offset
+    pub fn zip_duals<'a>(&'a self, duals: &'a [f64]) -> impl Iterator<Item = (&'a T, f64)> {
+        assert!(
+            self.offset + self.keys.len() <= duals.len(),
+            "Bad constraint keys: dual rows out of range"
+        );
+
+        self.keys.iter().zip(duals[self.offset..].iter().copied())
+    }
+}
 
 /// Indicates the commodity ID and time slice selection covered by each commodity balance constraint
-pub type CommodityBalanceConstraintKeys = Vec<(CommodityID, RegionID, TimeSliceSelection)>;
+pub type CommodityBalanceKeys = KeysWithOffset<(CommodityID, RegionID, TimeSliceSelection)>;
 
 /// Indicates the asset ID and time slice covered by each capacity constraint
-pub type CapacityConstraintKeys = Vec<(AssetID, TimeSliceID)>;
+pub type CapacityKeys = KeysWithOffset<(AssetID, TimeSliceID)>;
+
+/// Indicates the asset ID, commodity ID and time slice for each fixed asset constraint
+pub type FixedAssetKeys = KeysWithOffset<(AssetID, CommodityID, TimeSliceID)>;
+
+/// The keys for different constraints
+pub struct ConstraintKeys {
+    /// Keys for commodity balance constraints
+    pub commodity_balance_keys: CommodityBalanceKeys,
+    /// Keys for capacity constraints
+    pub capacity_keys: CapacityKeys,
+    /// Keys for fixed asset constraints
+    pub fixed_asset_keys: FixedAssetKeys,
+}
 
 /// Add asset-level constraints
 ///
@@ -38,27 +68,27 @@ pub fn add_asset_constraints(
     model: &Model,
     assets: &AssetPool,
     year: u32,
-) -> (CommodityBalanceConstraintKeys, CapacityConstraintKeys) {
-    let commodity_balance_constraint_keys =
+) -> ConstraintKeys {
+    let commodity_balance_keys =
         add_commodity_balance_constraints(problem, variables, model, assets, year);
 
-    let capacity_constraint_keys = add_asset_capacity_constraints(
-        problem,
-        variables,
-        assets,
-        &model.time_slice_info,
-        &commodity_balance_constraint_keys,
-    );
+    let capacity_keys =
+        add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
 
     // **TODO**: Currently it's safe to assume all process flows are non-flexible, as we enforce
     // this when reading data in. Once we've added support for flexible process flows, we will
     // need to add different constraints for assets with flexible and non-flexible flows.
     //
     // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
-    add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
+    let fixed_asset_keys =
+        add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
 
-    // Return constraint keys which are required to calculate commodity prices
-    (commodity_balance_constraint_keys, capacity_constraint_keys)
+    // Return constraint keys
+    ConstraintKeys {
+        commodity_balance_keys,
+        capacity_keys,
+        fixed_asset_keys,
+    }
 }
 
 /// Add asset-level input-output commodity balances.
@@ -74,16 +104,12 @@ fn add_commodity_balance_constraints(
     model: &Model,
     assets: &AssetPool,
     year: u32,
-) -> CommodityBalanceConstraintKeys {
-    // Sanity check: we rely on the first n values of the dual row values corresponding to the
-    // commodity constraints, so these must be the first rows
-    assert!(
-        problem.num_rows() == 0,
-        "Commodity balance constraints must be added before other constraints"
-    );
+) -> CommodityBalanceKeys {
+    // Row offset in problem. This line **must** come before we add more constraints.
+    let offset = problem.num_rows();
 
     let mut terms = Vec::new();
-    let mut keys = CommodityBalanceConstraintKeys::new();
+    let mut keys = Vec::new();
     for commodity in model.commodities.values() {
         if commodity.kind != CommodityType::SupplyEqualsDemand
             && commodity.kind != CommodityType::ServiceDemand
@@ -142,41 +168,7 @@ fn add_commodity_balance_constraints(
         }
     }
 
-    keys
-}
-
-/// Add constraints for non-flexible assets.
-///
-/// Non-flexible assets are those which have a fixed ratio between inputs and outputs.
-///
-/// See description in [the dispatch optimisation documentation][1].
-///
-/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#non-flexible-assets
-fn add_fixed_asset_constraints(
-    problem: &mut Problem,
-    variables: &VariableMap,
-    assets: &AssetPool,
-    time_slice_info: &TimeSliceInfo,
-) {
-    for asset in assets.iter() {
-        // Get first PAC. unwrap is safe because all processes have at least one PAC.
-        let pac1 = asset.iter_pacs().next().unwrap();
-
-        for time_slice in time_slice_info.iter_ids() {
-            let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
-            let pac_term = (pac_var, -1.0 / pac1.flow);
-            for flow in asset.iter_flows() {
-                // Don't add a constraint for the PAC itself
-                if Rc::ptr_eq(&flow.commodity, &pac1.commodity) {
-                    continue;
-                }
-
-                // We are enforcing that (var / flow) - (pac_var / pac_flow) = 0
-                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
-                problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
-            }
-        }
-    }
+    CommodityBalanceKeys { offset, keys }
 }
 
 /// Add asset-level capacity and availability constraints.
@@ -193,17 +185,12 @@ fn add_asset_capacity_constraints(
     variables: &VariableMap,
     assets: &AssetPool,
     time_slice_info: &TimeSliceInfo,
-    commodity_balance_constraint_keys: &CommodityBalanceConstraintKeys,
-) -> CapacityConstraintKeys {
-    // Sanity check: we rely on the dual rows corresponding to the capacity constraints being
-    // immediately after the commodity balance constraints in `problem`.
-    assert!(
-        problem.num_rows() == commodity_balance_constraint_keys.len(),
-        "Capacity constraints must be added immediately after commodity constraints."
-    );
+) -> CapacityKeys {
+    // Row offset in problem. This line **must** come before we add more constraints.
+    let offset = problem.num_rows();
 
     let mut terms = Vec::new();
-    let mut keys = CapacityConstraintKeys::new();
+    let mut keys = Vec::new();
     for asset in assets.iter() {
         for time_slice in time_slice_info.iter_ids() {
             let mut is_input = false; // NB: there will be at least one PAC
@@ -227,5 +214,49 @@ fn add_asset_capacity_constraints(
             keys.push((asset.id, time_slice.clone()));
         }
     }
-    keys
+
+    CapacityKeys { offset, keys }
+}
+
+/// Add constraints for non-flexible assets.
+///
+/// Non-flexible assets are those which have a fixed ratio between inputs and outputs.
+///
+/// See description in [the dispatch optimisation documentation][1].
+///
+/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#non-flexible-assets
+fn add_fixed_asset_constraints(
+    problem: &mut Problem,
+    variables: &VariableMap,
+    assets: &AssetPool,
+    time_slice_info: &TimeSliceInfo,
+) -> FixedAssetKeys {
+    // Row offset in problem. This line **must** come before we add more constraints.
+    let offset = problem.num_rows();
+
+    let mut keys = Vec::new();
+    for asset in assets.iter() {
+        // Get first PAC. unwrap is safe because all processes have at least one PAC.
+        let pac1 = asset.iter_pacs().next().unwrap();
+
+        for time_slice in time_slice_info.iter_ids() {
+            let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
+            let pac_term = (pac_var, -1.0 / pac1.flow);
+            for flow in asset.iter_flows() {
+                // Don't add a constraint for the PAC itself
+                if Rc::ptr_eq(&flow.commodity, &pac1.commodity) {
+                    continue;
+                }
+
+                // We are enforcing that (var / flow) - (pac_var / pac_flow) = 0
+                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
+                problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
+
+                // Keep track of the order in which constraints were added
+                keys.push((asset.id, flow.commodity.id.clone(), time_slice.clone()));
+            }
+        }
+    }
+
+    FixedAssetKeys { offset, keys }
 }

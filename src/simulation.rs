@@ -2,6 +2,7 @@
 use crate::asset::AssetPool;
 use crate::model::Model;
 use crate::output::DataWriter;
+use crate::settings::Settings;
 use anyhow::{bail, Result};
 use log::info;
 use std::path::Path;
@@ -20,8 +21,13 @@ pub use prices::CommodityPrices;
 /// * `model` - The model to run
 /// * `assets` - The asset pool
 /// * `output_path` - The folder to which output files will be written
-pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()> {
-    let mut writer = DataWriter::create(output_path)?;
+pub fn run(
+    model: Model,
+    settings: Settings,
+    mut assets: AssetPool,
+    output_path: &Path,
+) -> Result<()> {
+    let mut writer = DataWriter::create(output_path, settings.debug_model)?;
 
     let mut opt_results = None; // all results of dispatch optimisation
     for year in model.iter_years() {
@@ -52,6 +58,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         let prices = CommodityPrices::from_model_and_solution(&model, &solution, &assets);
 
         // Write result of dispatch optimisation to file
+        writer.write_debug_info(year, &solution, &assets)?;
         writer.write_flows(year, &assets, solution.iter_commodity_flows_for_assets())?;
         writer.write_prices(year, &prices)?;
 

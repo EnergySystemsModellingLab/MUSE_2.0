@@ -35,16 +35,19 @@ fn execute_cli_command(command: Option<Commands>) -> Result<()> {
         Commands::Run {
             model_dir,
             output_dir,
-        } => handle_run_command(&model_dir, output_dir.as_deref())?,
+            debug_model,
+        } => handle_run_command(&model_dir, output_dir.as_deref(), debug_model)?,
         Commands::Example { subcommand } => match subcommand {
             ExampleSubcommands::List => handle_example_list_command(),
             ExampleSubcommands::Extract {
                 name,
                 new_path: dest,
             } => handle_example_extract_command(&name, dest.as_deref())?,
-            ExampleSubcommands::Run { name, output_dir } => {
-                handle_example_run_command(&name, output_dir.as_deref())?
-            }
+            ExampleSubcommands::Run {
+                name,
+                output_dir,
+                debug_model,
+            } => handle_example_run_command(&name, output_dir.as_deref(), debug_model)?,
         },
     }
 
