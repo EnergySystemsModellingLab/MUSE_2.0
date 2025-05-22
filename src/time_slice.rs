@@ -39,7 +39,7 @@ impl<'de> Deserialize<'de> for TimeSliceID {
         let (season, time_of_day) = s
             .split(".")
             .collect_tuple()
-            .ok_or_else(|| D::Error::custom("Should be in form season.time_of_day"))?;
+            .ok_or_else(|| D::Error::custom(format!("Invalid input '{}': Should be in form season.time_of_day", s)))?;
         Ok(Self {
             season: season.into(),
             time_of_day: time_of_day.into(),
