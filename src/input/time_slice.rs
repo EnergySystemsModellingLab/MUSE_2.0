@@ -1,32 +1,33 @@
 //! Code for reading in time slice info from a CSV file.
 use super::*;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::id::IDCollection;
+use crate::time_slice::{Season, TimeOfDay, TimeSliceID, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use serde::Deserialize;
 use std::path::Path;
-use std::rc::Rc;
 
 const TIME_SLICES_FILE_NAME: &str = "time_slices.csv";
 
 /// A time slice record retrieved from a CSV file
 #[derive(PartialEq, Debug, Deserialize)]
 struct TimeSliceRaw {
-    season: String,
-    time_of_day: String,
+    season: Season,
+    time_of_day: TimeOfDay,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     fraction: f64,
 }
 
-/// Get the specified `String` from `set` or insert if it doesn't exist
-fn get_or_insert(value: String, set: &mut IndexSet<Rc<str>>) -> Rc<str> {
+/// Get the specified ID from `set` or insert if it doesn't exist.
+///
+/// The purpose of returning an ID is so that we can dedup memory.
+fn get_or_insert<T: IDLike>(id: T, set: &mut IndexSet<T>) -> T {
     // Sadly there's no entry API for HashSets: https://github.com/rust-lang/rfcs/issues/1490
-    match set.get(value.as_str()) {
-        Some(value) => Rc::clone(value),
-        None => {
-            let value = Rc::from(value);
-            set.insert(Rc::clone(&value));
-            value
+    match set.get_id(&id) {
+        Ok(id) => id.clone(),
+        Err(_) => {
+            set.insert(id.clone());
+            id
         }
     }
 }

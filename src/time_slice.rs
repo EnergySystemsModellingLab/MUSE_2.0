@@ -2,26 +2,59 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
+use crate::id::{define_id_type, IDCollection};
 use anyhow::{Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
+use serde::de::Error;
+use serde::{Deserialize, Serialize};
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::fmt::Display;
 use std::iter;
-use std::rc::Rc;
+
+define_id_type! {Season}
+define_id_type! {TimeOfDay}
 
 /// An ID describing season and time of day
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
 pub struct TimeSliceID {
     /// The name of each season.
-    pub season: Rc<str>,
+    pub season: Season,
     /// The name of each time slice within a day.
-    pub time_of_day: Rc<str>,
+    pub time_of_day: TimeOfDay,
 }
 
 impl Display for TimeSliceID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}.{}", self.season, self.time_of_day)
+    }
+}
+
+impl<'de> Deserialize<'de> for TimeSliceID {
+    fn deserialize<D>(deserialiser: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: &str = Deserialize::deserialize(deserialiser)?;
+        let (season, time_of_day) = s.split(".").collect_tuple().ok_or_else(|| {
+            D::Error::custom(format!(
+                "Invalid input '{}': Should be in form season.time_of_day",
+                s
+            ))
+        })?;
+        Ok(Self {
+            season: season.into(),
+            time_of_day: time_of_day.into(),
+        })
+    }
+}
+
+impl Serialize for TimeSliceID {
+    fn serialize<S>(&self, serialiser: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serialiser.collect_str(self)
     }
 }
 
@@ -31,7 +64,7 @@ pub enum TimeSliceSelection {
     /// All year and all day
     Annual,
     /// Only applies to one season
-    Season(Rc<str>),
+    Season(Season),
     /// Only applies to a single time slice
     Single(TimeSliceID),
 }
@@ -54,9 +87,9 @@ pub enum TimeSliceLevel {
 #[derive(PartialEq, Debug)]
 pub struct TimeSliceInfo {
     /// Names of seasons
-    pub seasons: IndexSet<Rc<str>>,
+    pub seasons: IndexSet<Season>,
     /// Names of times of day (e.g. "evening")
-    pub times_of_day: IndexSet<Rc<str>>,
+    pub times_of_day: IndexSet<TimeOfDay>,
     /// The fraction of the year that this combination of season and time of day occupies
     pub fractions: IndexMap<TimeSliceID, f64>,
 }
@@ -71,8 +104,8 @@ impl Default for TimeSliceInfo {
         let fractions = [(id.clone(), 1.0)].into_iter().collect();
 
         Self {
-            seasons: [id.season].into_iter().collect(),
-            times_of_day: [id.time_of_day].into_iter().collect(),
+            seasons: iter::once(id.season).collect(),
+            times_of_day: iter::once(id.time_of_day).collect(),
             fractions,
         }
     }
@@ -89,18 +122,16 @@ impl TimeSliceInfo {
             .context("Time slice must be in the form season.time_of_day")?;
         let season = self
             .seasons
-            .iter()
-            .find(|item| item.eq_ignore_ascii_case(season))
+            .get_id_by_str(season)
             .with_context(|| format!("{} is not a known season", season))?;
         let time_of_day = self
             .times_of_day
-            .iter()
-            .find(|item| item.eq_ignore_ascii_case(time_of_day))
+            .get_id_by_str(time_of_day)
             .with_context(|| format!("{} is not a known time of day", time_of_day))?;
 
         Ok(TimeSliceID {
-            season: Rc::clone(season),
-            time_of_day: Rc::clone(time_of_day),
+            season: season.clone(),
+            time_of_day: time_of_day.clone(),
         })
     }
 

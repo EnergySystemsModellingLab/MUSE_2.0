@@ -84,7 +84,7 @@ impl AssetRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityFlowRow {
     commodity_id: CommodityID,
-    time_slice: String,
+    time_slice: TimeSliceID,
     flow: f64,
 }
 
@@ -94,7 +94,7 @@ struct CommodityPriceRow {
     milestone_year: u32,
     commodity_id: CommodityID,
     region_id: RegionID,
-    time_slice: String,
+    time_slice: TimeSliceID,
     price: f64,
 }
 
@@ -148,7 +148,7 @@ impl DataWriter {
             let asset_row = AssetRow::new(milestone_year, asset);
             let flow_row = CommodityFlowRow {
                 commodity_id: commodity_id.clone(),
-                time_slice: time_slice.to_string(),
+                time_slice: time_slice.clone(),
                 flow,
             };
             self.flows_writer.serialize((asset_row, flow_row))?;
@@ -164,7 +164,7 @@ impl DataWriter {
                 milestone_year,
                 commodity_id: commodity_id.clone(),
                 region_id: region_id.clone(),
-                time_slice: time_slice.to_string(),
+                time_slice: time_slice.clone(),
                 price,
             };
             self.prices_writer.serialize(row)?;
@@ -256,7 +256,7 @@ mod tests {
         // Read back and compare
         let expected = CommodityFlowRow {
             commodity_id,
-            time_slice: time_slice.to_string(),
+            time_slice,
             flow: 42.0,
         };
         let records: Vec<CommodityFlowRow> =
@@ -295,7 +295,7 @@ mod tests {
             milestone_year,
             commodity_id,
             region_id,
-            time_slice: time_slice.to_string(),
+            time_slice,
             price,
         };
         let records: Vec<CommodityPriceRow> =
