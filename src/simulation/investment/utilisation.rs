@@ -16,9 +16,11 @@ type PotentialUtilisationMap = HashMap<(AssetID, TimeSliceID), f64>;
 ///
 /// The commodity will only be considered if the agent is partly responsible for its demand (i.e.
 /// has a commodity portion).
+#[allow(clippy::too_many_arguments)]
 pub fn calculate_potential_utilisation_svd(
     agent: &Agent,
     commodity: &Commodity,
+    commodity_portion: f64,
     year: u32,
     time_slice_info: &TimeSliceInfo,
     assets: &AssetPool,
@@ -28,12 +30,6 @@ pub fn calculate_potential_utilisation_svd(
     assert!(commodity.kind == CommodityType::ServiceDemand);
 
     let mut potentials = PotentialUtilisationMap::new();
-
-    let Some(&commodity_portion) = agent.commodity_portions.get(&(commodity.id.clone(), year))
-    else {
-        // The agent isn't responsible for any of the demand
-        return potentials;
-    };
 
     for (time_slice, region_id) in iproduct!(time_slice_info.iter_ids(), agent.regions.iter()) {
         let marginal_costs = get_marginal_costs_sorted(

@@ -35,9 +35,17 @@ pub fn perform_agent_investment(
         }
 
         for agent in model.agents.values() {
+            let Some(&commodity_portion) =
+                agent.commodity_portions.get(&(commodity.id.clone(), year))
+            else {
+                // The agent isn't responsible for any of the demand
+                continue;
+            };
+
             let _potentials = calculate_potential_utilisation_svd(
                 agent,
                 commodity,
+                commodity_portion,
                 year,
                 &model.time_slice_info,
                 assets,
