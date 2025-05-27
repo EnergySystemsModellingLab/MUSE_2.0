@@ -1,39 +1,31 @@
 //! Code for calculating potential utilisation for assets
 use super::super::optimisation::UtilisationMap;
-use super::CommodityPrices;
+use super::MarginalCosts;
 use crate::agent::Agent;
-use crate::asset::{Asset, AssetID, AssetPool};
-use crate::commodity::{Commodity, CommodityID};
+use crate::asset::AssetID;
+use crate::commodity::Commodity;
 use crate::region::RegionID;
-use crate::simulation::marginal_cost::marginal_cost_for_asset;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use itertools::{iproduct, Itertools};
+use itertools::iproduct;
 use std::collections::HashMap;
 
 /// Calculate the potential utilisation for a single agent
-#[allow(clippy::too_many_arguments)]
 pub fn calculate_potential_utilisation<'a, F>(
     agent: &'a Agent,
     commodity: &'a Commodity,
-    year: u32,
     time_slice_info: &'a TimeSliceInfo,
-    assets: &'a AssetPool,
-    prices: &'a CommodityPrices,
     utilisations: &'a UtilisationMap,
+    marginal_costs: &'a MarginalCosts,
     get_demand: F,
-) -> impl Iterator<Item = (&'a Asset, &'a RegionID, &'a TimeSliceID, f64)>
+) -> impl Iterator<Item = (AssetID, &'a RegionID, &'a TimeSliceID, f64)>
 where
     F: Fn(&RegionID, &TimeSliceID) -> f64,
 {
     iproduct!(time_slice_info.iter_ids(), agent.regions.iter()).flat_map(
         move |(time_slice, region_id)| {
-            let marginal_costs = get_marginal_costs_sorted(
-                assets.iter_for_region_and_agent(region_id, &agent.id),
-                prices,
-                &commodity.id,
-                year,
-                time_slice,
-            );
+            let marginal_costs = marginal_costs
+                .get(&(region_id.clone(), time_slice.clone()))
+                .unwrap();
 
             // Calculate share of demand for this agent
             let demand = get_demand(region_id, time_slice);
@@ -45,64 +37,31 @@ where
             marginal_costs
                 .clone()
                 .into_iter()
-                .map(move |(asset, marginal_cost)| {
+                .map(move |(asset_id, marginal_cost)| {
                     let utilisation = calculate_potential_utilisation_for_asset(
                         demand,
                         marginal_cost,
-                        &marginal_costs,
+                        marginal_costs,
                         utilisations,
                     );
 
-                    (asset, region_id, time_slice, utilisation)
+                    (asset_id, region_id, time_slice, utilisation)
                 })
         },
     )
-}
-
-/// Get marginal costs for the specified assets and sort.
-///
-/// Assets which do not produce `commodity_of_interest` are not included.
-fn get_marginal_costs_sorted<'a, I>(
-    assets: I,
-    prices: &CommodityPrices,
-    commodity_of_interest: &CommodityID,
-    year: u32,
-    time_slice: &TimeSliceID,
-) -> Vec<(&'a Asset, f64)>
-where
-    I: Iterator<Item = &'a Asset>,
-{
-    let mut costs = assets
-        .filter(|asset| {
-            // Ignore commodities which don't produce commodity_of_interest
-            if let Some(flow) = asset.get_flow(commodity_of_interest) {
-                flow.flow > 0.0
-            } else {
-                false
-            }
-        })
-        .map(|asset| {
-            (
-                asset,
-                marginal_cost_for_asset(asset, commodity_of_interest, year, time_slice, prices),
-            )
-        })
-        .collect_vec();
-    costs.sort_by(|(_, cost1), (_, cost2)| cost1.partial_cmp(cost2).unwrap());
-    costs
 }
 
 /// Calculate potential utilisation for a single asset
 fn calculate_potential_utilisation_for_asset(
     demand: f64,
     marginal_cost: f64,
-    marginal_costs: &[(&Asset, f64)],
+    marginal_costs: &[(AssetID, f64)],
     utilisations: &HashMap<AssetID, f64>,
 ) -> f64 {
     let cheaper_assets = marginal_costs
         .iter()
         .take_while(|(_, cost)| *cost <= marginal_cost)
-        .map(|(asset, _)| &asset.id);
+        .map(|(id, _)| id);
     let cheaper_demand = cheaper_assets
         .map(|id| utilisations.get(id).unwrap())
         .sum::<f64>();
