@@ -2,7 +2,7 @@
 use super::super::*;
 use crate::commodity::CommodityID;
 use crate::id::IDCollection;
-use crate::region::{parse_region_str, RegionID};
+use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
@@ -15,7 +15,7 @@ const DEMAND_SLICING_FILE_NAME: &str = "demand_slicing.csv";
 #[derive(Clone, Deserialize)]
 struct DemandSlice {
     commodity_id: String,
-    regions: String,
+    region_id: String,
     time_slice: String,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     fraction: f64,
@@ -71,7 +71,7 @@ where
                     slice.commodity_id
                 )
             })?;
-        let regions = parse_region_str(&slice.regions, region_ids)?;
+        let region_id = region_ids.get_id_by_str(&slice.region_id)?;
 
         // We need to know how many time slices are covered by the current demand slice entry and
         // how long they are relative to one another so that we can divide up the demand for this
@@ -80,13 +80,10 @@ where
         for (ts, demand_fraction) in time_slice_info.calculate_share(&ts_selection, slice.fraction)
         {
             // Share demand between the time slices in proportion to duration
-            for region_id in regions.iter() {
-                let key = (commodity_id.clone(), region_id.clone(), ts.clone());
-                ensure!(demand_slices.insert(key, demand_fraction).is_none(),
+            ensure!(demand_slices.insert((commodity_id.clone(), region_id.clone(), ts.clone()), demand_fraction).is_none(),
                 "Duplicate demand slicing entry (or same time slice covered by more than one entry) \
                 (commodity: {commodity_id}, region: {region_id}, time slice: {ts})"
             );
-            }
         }
     }
 
@@ -159,7 +156,7 @@ mod tests {
         // Valid
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
-            regions: "GBR".into(),
+            region_id: "GBR".into(),
             time_slice: "winter".into(),
             fraction: 1.0,
         };
@@ -225,13 +222,13 @@ mod tests {
         let demand_slices = [
             DemandSlice {
                 commodity_id: "commodity1".into(),
-                regions: "GBR".into(),
+                region_id: "GBR".into(),
                 time_slice: "winter".into(),
                 fraction: 0.5,
             },
             DemandSlice {
                 commodity_id: "commodity1".into(),
-                regions: "GBR".into(),
+                region_id: "GBR".into(),
                 time_slice: "summer".into(),
                 fraction: 0.5,
             },
@@ -321,7 +318,7 @@ mod tests {
         // Bad commodity
         let demand_slice = DemandSlice {
             commodity_id: "commodity2".into(),
-            regions: "GBR".into(),
+            region_id: "GBR".into(),
             time_slice: "winter.day".into(),
             fraction: 1.0,
         };
@@ -345,7 +342,7 @@ mod tests {
         // Bad region
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
-            regions: "FRA".into(),
+            region_id: "FRA".into(),
             time_slice: "winter.day".into(),
             fraction: 1.0,
         };
@@ -369,7 +366,7 @@ mod tests {
         // Bad time slice selection
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
-            regions: "GBR".into(),
+            region_id: "GBR".into(),
             time_slice: "summer".into(),
             fraction: 1.0,
         };
@@ -414,7 +411,7 @@ mod tests {
         };
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
-            regions: "GBR".into(),
+            region_id: "GBR".into(),
             time_slice: "winter".into(),
             fraction: 1.0,
         };
@@ -438,7 +435,7 @@ mod tests {
         // Same time slice twice
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
-            regions: "GBR".into(),
+            region_id: "GBR".into(),
             time_slice: "winter.day".into(),
             fraction: 0.5,
         };
@@ -463,13 +460,13 @@ mod tests {
         // Whole season and single time slice conflicting
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
-            regions: "GBR".into(),
+            region_id: "GBR".into(),
             time_slice: "winter.day".into(),
             fraction: 0.5,
         };
         let demand_slice_season = DemandSlice {
             commodity_id: "commodity1".into(),
-            regions: "GBR".into(),
+            region_id: "GBR".into(),
             time_slice: "winter".into(),
             fraction: 0.5,
         };
@@ -494,7 +491,7 @@ mod tests {
         // Fractions don't sum to one
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
-            regions: "GBR".into(),
+            region_id: "GBR".into(),
             time_slice: "winter".into(),
             fraction: 0.5,
         };

@@ -4,7 +4,7 @@ use super::super::*;
 use super::demand_slicing::{read_demand_slices, DemandSliceMap};
 use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
 use crate::id::IDCollection;
-use crate::region::{parse_region_str, RegionID};
+use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Result};
@@ -19,8 +19,8 @@ const DEMAND_FILE_NAME: &str = "demand.csv";
 struct Demand {
     /// The commodity this demand entry refers to
     commodity_id: String,
-    /// The region(s) of the demand entry
-    regions: String,
+    /// The region of the demand entry
+    region_id: String,
     /// The year(s) of the demand entry
     years: String,
     /// Annual demand quantity
@@ -118,21 +118,19 @@ where
                     demand.commodity_id
                 )
             })?;
+        let region_id = region_ids.get_id_by_str(&demand.region_id)?;
 
         ensure!(
             demand.demand.is_normal() && demand.demand > 0.0,
             "Demand must be a valid number greater than zero"
         );
 
-        let years = parse_year_str(&demand.years, milestone_years)?;
-        for region_id in parse_region_str(&demand.regions, region_ids)? {
-            for &year in years.iter() {
-                try_insert(
-                    &mut map,
-                    (commodity_id.clone(), region_id.clone(), year),
-                    demand.demand,
-                )?;
-            }
+        for year in parse_year_str(&demand.years, milestone_years)? {
+            try_insert(
+                &mut map,
+                (commodity_id.clone(), region_id.clone(), year),
+                demand.demand,
+            )?;
         }
     }
 
@@ -217,13 +215,13 @@ mod tests {
         let demand = [
             Demand {
                 years: "2020".into(),
-                regions: "GBR".to_string(),
+                region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
                 years: "2020".into(),
-                regions: "USA".to_string(),
+                region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 11.0,
             },
@@ -244,13 +242,13 @@ mod tests {
         let demand = [
             Demand {
                 years: "2020".into(),
-                regions: "GBR".to_string(),
+                region_id: "GBR".to_string(),
                 commodity_id: "commodity2".to_string(),
                 demand: 10.0,
             },
             Demand {
                 years: "2020".into(),
-                regions: "USA".to_string(),
+                region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 11.0,
             },
@@ -270,13 +268,13 @@ mod tests {
         let demand = [
             Demand {
                 years: "2020".into(),
-                regions: "FRA".to_string(),
+                region_id: "FRA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
                 years: "2020".into(),
-                regions: "USA".to_string(),
+                region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 11.0,
             },
@@ -296,13 +294,13 @@ mod tests {
         let demand = [
             Demand {
                 years: "2010".into(),
-                regions: "GBR".to_string(),
+                region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
                 years: "2020".into(),
-                regions: "USA".to_string(),
+                region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 11.0,
             },
@@ -327,7 +325,7 @@ mod tests {
         // Bad demand quantity
         let demand = [Demand {
             years: "2020".into(),
-            regions: "GBR".to_string(),
+            region_id: "GBR".to_string(),
             commodity_id: "commodity1".to_string(),
             demand: quantity,
         }];
@@ -346,19 +344,19 @@ mod tests {
         let demand = [
             Demand {
                 years: "2020".into(),
-                regions: "GBR".to_string(),
+                region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
                 years: "2020".into(),
-                regions: "GBR".to_string(),
+                region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
                 years: "2020".into(),
-                regions: "USA".to_string(),
+                region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 11.0,
             },
@@ -378,21 +376,21 @@ mod tests {
         let demand = [
             Demand {
                 years: "2020".into(),
-                regions: "GBR".to_string(),
+                region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
                 years: "2020".into(),
-                regions: "USA".to_string(),
+                region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 11.0,
             },
             Demand {
                 years: "2030".into(),
-                regions: "USA".to_string(),
+                region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: 5.0,
+                demand: 10.0,
             },
         ];
         assert_error!(
@@ -402,7 +400,7 @@ mod tests {
                 &region_ids,
                 &[2020, 2030]
             ),
-            "Commodity commodity1 is missing demand data for [(RegionID(\"GBR\"), 2030)]"
+            "Commodity commodity1 is missing demand data for [(RegionID(\"USA\"), 2030)]"
         );
     }
 
@@ -412,7 +410,7 @@ mod tests {
         let mut file = File::create(file_path).unwrap();
         writeln!(
             file,
-            "commodity_id,regions,years,demand\n\
+            "commodity_id,region_id,years,demand\n\
             commodity1,GBR,2020,10\n\
             commodity1,USA,all,11\n"
         )
