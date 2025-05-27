@@ -9,8 +9,8 @@ use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use itertools::iproduct;
 use std::collections::HashMap;
 
-/// Calculate the potential utilisation for a single agent
-pub fn calculate_potential_utilisation<'a, F>(
+/// Calculate the potential utilisation for assets for a single agent
+pub fn calculate_potential_utilisation_for_assets<'a, F>(
     agent: &'a Agent,
     commodity: &'a Commodity,
     time_slice_info: &'a TimeSliceInfo,
@@ -20,6 +20,32 @@ pub fn calculate_potential_utilisation<'a, F>(
 ) -> impl Iterator<Item = (AssetID, &'a RegionID, &'a TimeSliceID, f64)>
 where
     F: Fn(&RegionID, &TimeSliceID) -> f64,
+{
+    calculate_potential_utilisation(
+        agent,
+        commodity,
+        time_slice_info,
+        utilisations,
+        marginal_costs,
+        get_demand,
+        costs_to_utilisation_for_assets,
+    )
+}
+
+/// Calculate the potential utilisation for a single agent
+fn calculate_potential_utilisation<'a, F, G, I, T>(
+    agent: &'a Agent,
+    commodity: &'a Commodity,
+    time_slice_info: &'a TimeSliceInfo,
+    utilisations: &'a UtilisationMap,
+    marginal_costs: &'a MarginalCosts,
+    get_demand: F,
+    costs_to_utilisations: G,
+) -> impl Iterator<Item = (T, &'a RegionID, &'a TimeSliceID, f64)>
+where
+    F: Fn(&RegionID, &TimeSliceID) -> f64,
+    G: Fn(f64, &'a [(AssetID, f64)], &'a HashMap<AssetID, f64>) -> I,
+    I: Iterator<Item = (T, f64)>,
 {
     iproduct!(time_slice_info.iter_ids(), agent.regions.iter()).flat_map(
         move |(time_slice, region_id)| {
@@ -34,8 +60,8 @@ where
                 .get(&(commodity.id.clone(), time_slice.clone()))
                 .unwrap();
 
-            map_utilisations_for_assets(demand, marginal_costs, utilisations)
-                .map(move |(asset_id, utilisation)| (asset_id, region_id, time_slice, utilisation))
+            costs_to_utilisations(demand, marginal_costs, utilisations)
+                .map(move |(ret, utilisation)| (ret, region_id, time_slice, utilisation))
         },
     )
 }
@@ -60,7 +86,7 @@ fn utilisation_for_asset(
     remaining_demand
 }
 
-fn map_utilisations_for_assets<'a>(
+fn costs_to_utilisation_for_assets<'a>(
     demand: f64,
     marginal_costs: &'a [(AssetID, f64)],
     utilisations: &'a HashMap<AssetID, f64>,

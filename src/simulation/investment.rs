@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 pub mod utilisation;
-use utilisation::calculate_potential_utilisation;
+use utilisation::calculate_potential_utilisation_for_assets;
 
 /// Marginal costs for the specified region + time slice for a given agent
 pub type MarginalCosts = HashMap<(RegionID, TimeSliceID), Vec<(AssetID, f64)>>;
@@ -67,14 +67,16 @@ pub fn perform_agent_investment(
                         .unwrap()
             };
 
-            for (asset_id, region_id, time_slice, utilisation) in calculate_potential_utilisation(
-                agent,
-                commodity,
-                &model.time_slice_info,
-                &utilisations,
-                &marginal_costs,
-                get_demand,
-            ) {
+            for (asset_id, region_id, time_slice, utilisation) in
+                calculate_potential_utilisation_for_assets(
+                    agent,
+                    commodity,
+                    &model.time_slice_info,
+                    &utilisations,
+                    &marginal_costs,
+                    get_demand,
+                )
+            {
                 // **TODO:** Do something with these values (e.g. store them)
 
                 // The asset is constrained on how much demand it can serve by capacity and
