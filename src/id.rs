@@ -150,3 +150,39 @@ impl<ID: IDLike> IDCollection<ID> for HashSet<ID> {
 impl<ID: IDLike> IDCollection<ID> for IndexSet<ID> {
     define_id_methods!();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    use serde::Deserialize;
+
+    #[derive(Debug, Deserialize)]
+    struct Record {
+        id: GenericID,
+    }
+
+    fn deserialise_id(id: &str) -> Result<Record> {
+        Ok(toml::from_str(&format!("id = \"{id}\""))?)
+    }
+
+    #[rstest]
+    #[case("commodity1")]
+    #[case("some commodity")]
+    #[case("PROCESS")]
+    #[case("café")] // unicode supported
+    fn test_deserialise_id_valid(#[case] id: &str) {
+        assert_eq!(deserialise_id(id).unwrap().id.to_string(), id);
+    }
+
+    #[rstest]
+    #[case("")]
+    #[case("all")]
+    #[case("annual")]
+    #[case("ALL")]
+    #[case(" ALL ")]
+    fn test_deserialise_id_invalid(#[case] id: &str) {
+        assert!(deserialise_id(id).is_err());
+    }
+}
