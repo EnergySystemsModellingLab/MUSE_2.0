@@ -6,7 +6,6 @@ use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
 use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
-use crate::year::parse_year_str;
 use anyhow::{ensure, Result};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -21,8 +20,8 @@ struct Demand {
     commodity_id: String,
     /// The region of the demand entry
     region_id: String,
-    /// The year(s) of the demand entry
-    years: String,
+    /// The year of the demand entry
+    year: u32,
     /// Annual demand quantity
     demand: f64,
 }
@@ -121,17 +120,28 @@ where
         let region_id = region_ids.get_id_by_str(&demand.region_id)?;
 
         ensure!(
+            milestone_years.binary_search(&demand.year).is_ok(),
+            "Year {} is not a milestone year. \
+            Input of non-milestone years is currently not supported.",
+            demand.year
+        );
+
+        ensure!(
             demand.demand.is_normal() && demand.demand > 0.0,
             "Demand must be a valid number greater than zero"
         );
 
-        for year in parse_year_str(&demand.years, milestone_years)? {
-            try_insert(
-                &mut map,
-                (commodity_id.clone(), region_id.clone(), year),
-                demand.demand,
-            )?;
-        }
+        ensure!(
+            map.insert(
+                (commodity_id.clone(), region_id.clone(), demand.year),
+                demand.demand
+            )
+            .is_none(),
+            "Duplicate demand entries (commodity: {}, region: {}, year: {})",
+            commodity_id,
+            region_id,
+            demand.year
+        );
     }
 
     // Check that demand data is specified for all combinations of commodity, region and year
@@ -214,13 +224,13 @@ mod tests {
     ) {
         let demand = [
             Demand {
-                years: "2020".into(),
+                year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
-                years: "2020".into(),
+                year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 11.0,
@@ -241,13 +251,13 @@ mod tests {
         // Bad commodity ID
         let demand = [
             Demand {
-                years: "2020".into(),
+                year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity2".to_string(),
                 demand: 10.0,
             },
             Demand {
-                years: "2020".into(),
+                year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 11.0,
@@ -267,13 +277,13 @@ mod tests {
         // Bad region ID
         let demand = [
             Demand {
-                years: "2020".into(),
+                year: 2020,
                 region_id: "FRA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
-                years: "2020".into(),
+                year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 11.0,
@@ -293,13 +303,13 @@ mod tests {
         // Bad year
         let demand = [
             Demand {
-                years: "2010".into(),
+                year: 2010,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
-                years: "2020".into(),
+                year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 11.0,
@@ -307,7 +317,8 @@ mod tests {
         ];
         assert_error!(
             read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]),
-            "Invalid year 2010"
+            "Year 2010 is not a milestone year. \
+            Input of non-milestone years is currently not supported."
         );
     }
 
@@ -324,7 +335,7 @@ mod tests {
     ) {
         // Bad demand quantity
         let demand = [Demand {
-            years: "2020".into(),
+            year: 2020,
             region_id: "GBR".to_string(),
             commodity_id: "commodity1".to_string(),
             demand: quantity,
@@ -343,19 +354,19 @@ mod tests {
         // Multiple entries for same commodity and region
         let demand = [
             Demand {
-                years: "2020".into(),
+                year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
-                years: "2020".into(),
+                year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 10.0,
             },
             Demand {
-                years: "2020".into(),
+                year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
                 demand: 11.0,
@@ -363,7 +374,7 @@ mod tests {
         ];
         assert_error!(
             read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]),
-            "Key (CommodityID(\"commodity1\"), RegionID(\"GBR\"), 2020) already exists in the map"
+            "Duplicate demand entries (commodity: commodity1, region: GBR, year: 2020)"
         );
     }
 
@@ -373,35 +384,19 @@ mod tests {
         region_ids: HashSet<RegionID>,
     ) {
         // Missing entry for a milestone year
-        let demand = [
-            Demand {
-                years: "2020".into(),
-                region_id: "GBR".to_string(),
-                commodity_id: "commodity1".to_string(),
-                demand: 10.0,
-            },
-            Demand {
-                years: "2020".into(),
-                region_id: "USA".to_string(),
-                commodity_id: "commodity1".to_string(),
-                demand: 11.0,
-            },
-            Demand {
-                years: "2030".into(),
-                region_id: "GBR".to_string(),
-                commodity_id: "commodity1".to_string(),
-                demand: 10.0,
-            },
-        ];
-        assert_error!(
-            read_demand_from_iter(
-                demand.into_iter(),
-                &commodity_ids,
-                &region_ids,
-                &[2020, 2030]
-            ),
-            "Commodity commodity1 is missing demand data for [(RegionID(\"USA\"), 2030)]"
-        );
+        let demand = Demand {
+            year: 2020,
+            region_id: "GBR".to_string(),
+            commodity_id: "commodity1".to_string(),
+            demand: 10.0,
+        };
+        assert!(read_demand_from_iter(
+            std::iter::once(demand),
+            &commodity_ids,
+            &region_ids,
+            &[2020, 2030]
+        )
+        .is_err());
     }
 
     /// Create an example demand file in dir_path
@@ -410,9 +405,9 @@ mod tests {
         let mut file = File::create(file_path).unwrap();
         writeln!(
             file,
-            "commodity_id,region_id,years,demand\n\
+            "commodity_id,region_id,year,demand\n\
             commodity1,GBR,2020,10\n\
-            commodity1,USA,all,11\n"
+            commodity1,USA,2020,11\n"
         )
         .unwrap();
     }
