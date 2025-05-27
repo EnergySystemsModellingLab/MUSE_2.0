@@ -42,7 +42,7 @@ pub fn perform_agent_investment(
                 continue;
             };
 
-            for (_asset_id, _time_slice, _potential) in calculate_potential_utilisation_svd(
+            for (asset, region_id, time_slice, utilisation) in calculate_potential_utilisation_svd(
                 agent,
                 commodity,
                 commodity_portion,
@@ -53,6 +53,17 @@ pub fn perform_agent_investment(
                 &utilisations,
             ) {
                 // **TODO:** Do something with these values (e.g. store them)
+
+                // The asset is constrained on how much demand it can serve by capacity and availability
+                let max_utilisation = asset.capacity
+                    * asset
+                        .process
+                        .energy_limits
+                        .get(&(region_id.clone(), year, time_slice.clone()))
+                        .unwrap()
+                        .end();
+
+                let _utilisation = max_utilisation.min(utilisation);
             }
         }
 

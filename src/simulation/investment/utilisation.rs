@@ -4,6 +4,7 @@ use super::CommodityPrices;
 use crate::agent::Agent;
 use crate::asset::{Asset, AssetID, AssetPool};
 use crate::commodity::{Commodity, CommodityID, CommodityType};
+use crate::region::RegionID;
 use crate::simulation::marginal_cost::marginal_cost_for_asset;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use itertools::{iproduct, Itertools};
@@ -23,7 +24,7 @@ pub fn calculate_potential_utilisation_svd<'a>(
     assets: &'a AssetPool,
     prices: &'a CommodityPrices,
     utilisations: &'a UtilisationMap,
-) -> impl Iterator<Item = (AssetID, TimeSliceID, f64)> + 'a {
+) -> impl Iterator<Item = (&'a Asset, &'a RegionID, &'a TimeSliceID, f64)> {
     assert!(commodity.kind == CommodityType::ServiceDemand);
 
     iproduct!(time_slice_info.iter_ids(), agent.regions.iter()).flat_map(
@@ -51,24 +52,14 @@ pub fn calculate_potential_utilisation_svd<'a>(
                 .clone()
                 .into_iter()
                 .map(move |(asset, marginal_cost)| {
-                    // The asset is constrained on how much demand it can serve by capacity and availability
-                    let max_utilisation = asset.capacity
-                        * asset
-                            .process
-                            .energy_limits
-                            .get(&(region_id.clone(), year, time_slice.clone()))
-                            .unwrap()
-                            .end();
+                    let utilisation = calculate_potential_utilisation_for_asset(
+                        demand,
+                        marginal_cost,
+                        &marginal_costs,
+                        utilisations,
+                    );
 
-                    let utilisation =
-                        max_utilisation.min(calculate_potential_utilisation_for_asset(
-                            demand,
-                            marginal_cost,
-                            &marginal_costs,
-                            utilisations,
-                        ));
-
-                    (asset.id, time_slice.clone(), utilisation)
+                    (asset, region_id, time_slice, utilisation)
                 })
         },
     )
