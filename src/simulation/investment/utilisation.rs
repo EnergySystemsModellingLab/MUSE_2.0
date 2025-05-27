@@ -34,25 +34,14 @@ where
                 .get(&(commodity.id.clone(), time_slice.clone()))
                 .unwrap();
 
-            marginal_costs
-                .clone()
-                .into_iter()
-                .map(move |(asset_id, marginal_cost)| {
-                    let utilisation = calculate_potential_utilisation_for_asset(
-                        demand,
-                        marginal_cost,
-                        marginal_costs,
-                        utilisations,
-                    );
-
-                    (asset_id, region_id, time_slice, utilisation)
-                })
+            map_utilisations_for_assets(demand, marginal_costs, utilisations)
+                .map(move |(asset_id, utilisation)| (asset_id, region_id, time_slice, utilisation))
         },
     )
 }
 
-/// Calculate potential utilisation for a single asset
-fn calculate_potential_utilisation_for_asset(
+/// Calculate potential utilisation for a single asset/process
+fn utilisation_for_asset(
     demand: f64,
     marginal_cost: f64,
     marginal_costs: &[(AssetID, f64)],
@@ -69,4 +58,20 @@ fn calculate_potential_utilisation_for_asset(
     assert!(remaining_demand >= 0.0);
 
     remaining_demand
+}
+
+fn map_utilisations_for_assets<'a>(
+    demand: f64,
+    marginal_costs: &'a [(AssetID, f64)],
+    utilisations: &'a HashMap<AssetID, f64>,
+) -> impl Iterator<Item = (AssetID, f64)> + 'a {
+    marginal_costs
+        .iter()
+        .copied()
+        .map(move |(asset_id, marginal_cost)| {
+            let utilisation =
+                utilisation_for_asset(demand, marginal_cost, marginal_costs, utilisations);
+
+            (asset_id, utilisation)
+        })
 }
