@@ -3,30 +3,28 @@ use super::super::optimisation::UtilisationMap;
 use super::CommodityPrices;
 use crate::agent::Agent;
 use crate::asset::{Asset, AssetID, AssetPool};
-use crate::commodity::{Commodity, CommodityID, CommodityType};
+use crate::commodity::{Commodity, CommodityID};
 use crate::region::RegionID;
 use crate::simulation::marginal_cost::marginal_cost_for_asset;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use itertools::{iproduct, Itertools};
 use std::collections::HashMap;
 
-/// Calculate the potential utilisation for a single agent for an SVD commodity.
-///
-/// The commodity will only be considered if the agent is partly responsible for its demand (i.e.
-/// has a commodity portion).
+/// Calculate the potential utilisation for a single agent
 #[allow(clippy::too_many_arguments)]
-pub fn calculate_potential_utilisation_svd<'a>(
+pub fn calculate_potential_utilisation<'a, F>(
     agent: &'a Agent,
     commodity: &'a Commodity,
-    commodity_portion: f64,
     year: u32,
     time_slice_info: &'a TimeSliceInfo,
     assets: &'a AssetPool,
     prices: &'a CommodityPrices,
     utilisations: &'a UtilisationMap,
-) -> impl Iterator<Item = (&'a Asset, &'a RegionID, &'a TimeSliceID, f64)> {
-    assert!(commodity.kind == CommodityType::ServiceDemand);
-
+    get_demand: F,
+) -> impl Iterator<Item = (&'a Asset, &'a RegionID, &'a TimeSliceID, f64)>
+where
+    F: Fn(&RegionID, &TimeSliceID) -> f64,
+{
     iproduct!(time_slice_info.iter_ids(), agent.regions.iter()).flat_map(
         move |(time_slice, region_id)| {
             let marginal_costs = get_marginal_costs_sorted(
@@ -38,11 +36,7 @@ pub fn calculate_potential_utilisation_svd<'a>(
             );
 
             // Calculate share of demand for this agent
-            let demand = commodity_portion
-                * commodity
-                    .demand
-                    .get(&(region_id.clone(), year, time_slice.clone()))
-                    .unwrap();
+            let demand = get_demand(region_id, time_slice);
 
             let utilisations = utilisations
                 .get(&(commodity.id.clone(), time_slice.clone()))

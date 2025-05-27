@@ -4,10 +4,12 @@ use super::CommodityPrices;
 use crate::asset::AssetPool;
 use crate::commodity::CommodityType;
 use crate::model::Model;
+use crate::region::RegionID;
+use crate::time_slice::TimeSliceID;
 use log::info;
 
 pub mod utilisation;
-use utilisation::calculate_potential_utilisation_svd;
+use utilisation::calculate_potential_utilisation;
 
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
@@ -42,15 +44,23 @@ pub fn perform_agent_investment(
                 continue;
             };
 
-            for (asset, region_id, time_slice, utilisation) in calculate_potential_utilisation_svd(
+            let get_demand = |region_id: &RegionID, time_slice: &TimeSliceID| {
+                commodity_portion
+                    * commodity
+                        .demand
+                        .get(&(region_id.clone(), year, time_slice.clone()))
+                        .unwrap()
+            };
+
+            for (asset, region_id, time_slice, utilisation) in calculate_potential_utilisation(
                 agent,
                 commodity,
-                commodity_portion,
                 year,
                 &model.time_slice_info,
                 assets,
                 prices,
                 &utilisations,
+                get_demand,
             ) {
                 // **TODO:** Do something with these values (e.g. store them)
 
