@@ -42,7 +42,7 @@ pub fn perform_agent_investment(
                 continue;
             };
 
-            let _potentials = calculate_potential_utilisation_svd(
+            for (_asset_id, _time_slice, _potential) in calculate_potential_utilisation_svd(
                 agent,
                 commodity,
                 commodity_portion,
@@ -51,7 +51,9 @@ pub fn perform_agent_investment(
                 assets,
                 prices,
                 &utilisations,
-            );
+            ) {
+                // **TODO:** Do something with these values (e.g. store them)
+            }
         }
 
         // **TODO:** Implement rest of agent investment

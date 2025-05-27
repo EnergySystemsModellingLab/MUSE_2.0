@@ -9,70 +9,69 @@ use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use itertools::{iproduct, Itertools};
 use std::collections::HashMap;
 
-/// Potential utilisation
-type PotentialUtilisationMap = HashMap<(AssetID, TimeSliceID), f64>;
-
 /// Calculate the potential utilisation for a single agent for an SVD commodity.
 ///
 /// The commodity will only be considered if the agent is partly responsible for its demand (i.e.
 /// has a commodity portion).
 #[allow(clippy::too_many_arguments)]
-pub fn calculate_potential_utilisation_svd(
-    agent: &Agent,
-    commodity: &Commodity,
+pub fn calculate_potential_utilisation_svd<'a>(
+    agent: &'a Agent,
+    commodity: &'a Commodity,
     commodity_portion: f64,
     year: u32,
-    time_slice_info: &TimeSliceInfo,
-    assets: &AssetPool,
-    prices: &CommodityPrices,
-    utilisations: &UtilisationMap,
-) -> PotentialUtilisationMap {
+    time_slice_info: &'a TimeSliceInfo,
+    assets: &'a AssetPool,
+    prices: &'a CommodityPrices,
+    utilisations: &'a UtilisationMap,
+) -> impl Iterator<Item = (AssetID, TimeSliceID, f64)> + 'a {
     assert!(commodity.kind == CommodityType::ServiceDemand);
 
-    let mut potentials = PotentialUtilisationMap::new();
+    iproduct!(time_slice_info.iter_ids(), agent.regions.iter()).flat_map(
+        move |(time_slice, region_id)| {
+            let marginal_costs = get_marginal_costs_sorted(
+                assets.iter_for_region_and_agent(region_id, &agent.id),
+                prices,
+                &commodity.id,
+                year,
+                time_slice,
+            );
 
-    for (time_slice, region_id) in iproduct!(time_slice_info.iter_ids(), agent.regions.iter()) {
-        let marginal_costs = get_marginal_costs_sorted(
-            assets.iter_for_region_and_agent(region_id, &agent.id),
-            prices,
-            &commodity.id,
-            year,
-            time_slice,
-        );
+            // Calculate share of demand for this agent
+            let demand = commodity_portion
+                * commodity
+                    .demand
+                    .get(&(region_id.clone(), year, time_slice.clone()))
+                    .unwrap();
 
-        // Calculate share of demand for this agent
-        let demand = commodity_portion
-            * commodity
-                .demand
-                .get(&(region_id.clone(), year, time_slice.clone()))
+            let utilisations = utilisations
+                .get(&(commodity.id.clone(), time_slice.clone()))
                 .unwrap();
 
-        let utilisations = utilisations
-            .get(&(commodity.id.clone(), time_slice.clone()))
-            .unwrap();
+            marginal_costs
+                .clone()
+                .into_iter()
+                .map(move |(asset, marginal_cost)| {
+                    // The asset is constrained on how much demand it can serve by capacity and availability
+                    let max_utilisation = asset.capacity
+                        * asset
+                            .process
+                            .energy_limits
+                            .get(&(region_id.clone(), year, time_slice.clone()))
+                            .unwrap()
+                            .end();
 
-        for &(asset, marginal_cost) in marginal_costs.iter() {
-            // The asset is constrained on how much demand it can serve by capacity and availability
-            let max_utilisation = asset.capacity
-                * asset
-                    .process
-                    .energy_limits
-                    .get(&(region_id.clone(), year, time_slice.clone()))
-                    .unwrap()
-                    .end();
+                    let utilisation =
+                        max_utilisation.min(calculate_potential_utilisation_for_asset(
+                            demand,
+                            marginal_cost,
+                            &marginal_costs,
+                            utilisations,
+                        ));
 
-            let value = max_utilisation.min(calculate_potential_utilisation_for_asset(
-                demand,
-                marginal_cost,
-                &marginal_costs,
-                utilisations,
-            ));
-
-            potentials.insert((asset.id, time_slice.clone()), value);
-        }
-    }
-
-    potentials
+                    (asset.id, time_slice.clone(), utilisation)
+                })
+        },
+    )
 }
 
 /// Get marginal costs for the specified assets and sort.
