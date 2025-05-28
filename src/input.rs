@@ -138,6 +138,15 @@ where
     Ok(())
 }
 
+/// Check whether an iterator contains values that are sorted and unique
+pub fn is_sorted_and_unique<T, I>(iter: I) -> bool
+where
+    T: PartialOrd + Clone,
+    I: IntoIterator<Item = T>,
+{
+    iter.into_iter().tuple_windows().all(|(a, b)| a < b)
+}
+
 /// Inserts a key-value pair into a HashMap if the key does not already exist.
 ///
 /// If the key already exists, it returns an error with a message indicating the key's existence.
@@ -200,9 +209,9 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
 
 #[cfg(test)]
 mod tests {
-    use crate::id::GenericID;
-
     use super::*;
+    use crate::id::GenericID;
+    use rstest::rstest;
     use serde::de::value::{Error as ValueError, F64Deserializer};
     use serde::de::IntoDeserializer;
     use serde::Deserialize;
@@ -323,5 +332,15 @@ mod tests {
         // Edge cases
         assert!(check_fractions_sum_to_one([f64::INFINITY].into_iter()).is_err());
         assert!(check_fractions_sum_to_one([f64::NAN].into_iter()).is_err());
+    }
+
+    #[rstest]
+    #[case(&[], true)]
+    #[case(&[1], true)]
+    #[case(&[1,2], true)]
+    #[case(&[2,1],false)]
+    #[case(&[1,1],false)]
+    fn test_is_sorted_and_unique(#[case] values: &[u32], #[case] expected: bool) {
+        assert_eq!(is_sorted_and_unique(values), expected)
     }
 }

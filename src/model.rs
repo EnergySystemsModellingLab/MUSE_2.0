@@ -1,7 +1,7 @@
 //! The model represents the static input data provided by the user.
 use crate::agent::AgentMap;
 use crate::commodity::CommodityMap;
-use crate::input::{input_err_msg, read_toml};
+use crate::input::{input_err_msg, is_sorted_and_unique, read_toml};
 use crate::process::ProcessMap;
 use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
@@ -54,10 +54,7 @@ fn check_milestone_years(years: &[u32]) -> Result<()> {
     ensure!(!years.is_empty(), "`milestone_years` is empty");
 
     ensure!(
-        years[..years.len() - 1]
-            .iter()
-            .zip(years[1..].iter())
-            .all(|(y1, y2)| y1 < y2),
+        is_sorted_and_unique(years),
         "`milestone_years` must be composed of unique values in order"
     );
 
