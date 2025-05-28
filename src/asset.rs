@@ -142,7 +142,7 @@ impl Asset {
 /// A pool of [`Asset`]s
 pub struct AssetPool {
     /// The pool of active assets
-    active: Vec<Asset>,
+    active: Vec<Rc<Asset>>,
     /// Assets that have not yet been commissioned, sorted by commission year
     future: Vec<Asset>,
     /// Next available asset ID number
@@ -177,7 +177,7 @@ impl AssetPool {
 
         asset.id = AssetID(self.next_id);
         self.next_id += 1;
-        self.active.push(asset);
+        self.active.push(asset.into());
     }
 
     /// Commission new assets for the specified milestone year from the input data
@@ -193,7 +193,7 @@ impl AssetPool {
         for mut asset in self.future.drain(0..count) {
             asset.id = AssetID(self.next_id);
             self.next_id += 1;
-            self.active.push(asset);
+            self.active.push(asset.into());
         }
     }
 
@@ -208,7 +208,7 @@ impl AssetPool {
     ///
     /// Reference to an [`Asset`] if found, else `None`. The asset may not be found if it has
     /// already been decommissioned.
-    pub fn get(&self, id: AssetID) -> Option<&Asset> {
+    pub fn get(&self, id: AssetID) -> Option<&Rc<Asset>> {
         // The assets in `active` are in order of ID
         let idx = self
             .active
@@ -219,7 +219,7 @@ impl AssetPool {
     }
 
     /// Iterate over active assets
-    pub fn iter(&self) -> impl Iterator<Item = &Asset> {
+    pub fn iter(&self) -> impl Iterator<Item = &Rc<Asset>> {
         self.active.iter()
     }
 
@@ -227,7 +227,7 @@ impl AssetPool {
     pub fn iter_for_region<'a>(
         &'a self,
         region_id: &'a RegionID,
-    ) -> impl Iterator<Item = &'a Asset> {
+    ) -> impl Iterator<Item = &'a Rc<Asset>> {
         self.iter().filter(|asset| asset.region_id == *region_id)
     }
 
@@ -237,7 +237,7 @@ impl AssetPool {
         &'a self,
         region_id: &'a RegionID,
         commodity_id: &'a CommodityID,
-    ) -> impl Iterator<Item = &'a Asset> {
+    ) -> impl Iterator<Item = &'a Rc<Asset>> {
         self.iter_for_region(region_id).filter(|asset| {
             asset.process.contains_commodity_flow(
                 commodity_id,
@@ -449,7 +449,7 @@ mod tests {
             Asset::new("agent2".into(), process.into(), "USA".into(), 100.0, 2015).unwrap();
         asset_pool.commission(asset.clone());
         asset.id = AssetID(0);
-        assert_equal(asset_pool.iter(), iter::once(&asset));
+        assert_equal(asset_pool.iter(), iter::once(&asset.into()));
     }
 
     #[rstest]

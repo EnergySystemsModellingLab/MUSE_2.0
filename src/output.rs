@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 /// The root folder in which model-specific output folders will be created
 const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
@@ -269,7 +270,7 @@ impl DataWriter {
     /// Write assets to a CSV file
     pub fn write_assets<'a, I>(&mut self, milestone_year: u32, assets: I) -> Result<()>
     where
-        I: Iterator<Item = &'a Asset>,
+        I: Iterator<Item = &'a Rc<Asset>>,
     {
         for asset in assets {
             let row = AssetRow::new(milestone_year, asset);
@@ -358,6 +359,7 @@ mod tests {
 
     #[rstest]
     fn test_write_assets(asset: Asset) {
+        let asset = asset.into();
         let milestone_year = 2020;
         let dir = tempdir().unwrap();
 
