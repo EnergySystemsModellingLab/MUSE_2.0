@@ -32,9 +32,7 @@ pub fn parse_region_str(s: &str, region_ids: &HashSet<RegionID>) -> Result<HashS
         return Ok(region_ids.clone());
     }
 
-    s.split(";")
-        .map(|y| region_ids.get_id_by_str(y.trim()))
-        .collect()
+    s.split(";").map(|y| region_ids.get_id(y.trim())).collect()
 }
 
 #[cfg(test)]

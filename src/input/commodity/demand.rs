@@ -110,14 +110,14 @@ where
     let mut map = AnnualDemandMap::new();
     for demand in iter {
         let commodity_id = svd_commodity_ids
-            .get_id_by_str(&demand.commodity_id)
+            .get_id(&demand.commodity_id)
             .with_context(|| {
                 format!(
                     "Can only provide demand data for SVD commodities. Found entry for '{}'",
                     demand.commodity_id
                 )
             })?;
-        let region_id = region_ids.get_id_by_str(&demand.region_id)?;
+        let region_id = region_ids.get_id(&demand.region_id)?;
 
         ensure!(
             milestone_years.binary_search(&demand.year).is_ok(),

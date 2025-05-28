@@ -109,7 +109,7 @@ where
         record.validate()?;
 
         // Get process
-        let id = process_ids.get_id_by_str(&record.process_id)?;
+        let id = process_ids.get_id(&record.process_id)?;
         let process = processes
             .get(&id)
             .with_context(|| format!("Process {id} not found"))?;

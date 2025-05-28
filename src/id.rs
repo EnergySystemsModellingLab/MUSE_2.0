@@ -75,39 +75,21 @@ pub(crate) use define_id_getter;
 
 /// A data structure containing a set of IDs
 pub trait IDCollection<ID: IDLike> {
-    /// Get the ID from the collection by its string representation.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The string representation of the ID
-    ///
-    /// # Returns
-    ///
-    /// A copy of the ID in `self`, or an error if not found.
-    fn get_id_by_str(&self, id: &str) -> Result<ID>;
-
     /// Check if the ID is in the collection, returning a copy of it if found.
     ///
     /// # Arguments
     ///
-    /// * `id` - The ID to check
+    /// * `id` - The ID to check (can be string or ID type)
     ///
     /// # Returns
     ///
     /// A copy of the ID in `self`, or an error if not found.
-    fn get_id(&self, id: &ID) -> Result<ID>;
+    fn get_id<T: Borrow<str> + Display + ?Sized>(&self, id: &T) -> Result<ID>;
 }
 
 macro_rules! define_id_methods {
     () => {
-        fn get_id_by_str(&self, id: &str) -> Result<ID> {
-            let found = self
-                .get(id)
-                .with_context(|| format!("Unknown ID {id} found"))?;
-            Ok(found.clone())
-        }
-
-        fn get_id(&self, id: &ID) -> Result<ID> {
+        fn get_id<T: Borrow<str> + Display + ?Sized>(&self, id: &T) -> Result<ID> {
             let found = self
                 .get(id.borrow())
                 .with_context(|| format!("Unknown ID {id} found"))?;
