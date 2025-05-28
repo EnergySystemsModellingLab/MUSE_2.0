@@ -4,7 +4,6 @@ use super::CommodityPrices;
 use crate::asset::AssetPool;
 use crate::model::Model;
 use log::info;
-use std::collections::HashSet;
 
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
@@ -22,18 +21,17 @@ pub fn perform_agent_investment(
 ) {
     info!("Performing agent investment...");
 
-    let mut assets_to_keep = HashSet::new();
+    let mut new_pool = Vec::new();
     for (asset_id, _commodity_id, _time_slice, _flow) in solution.iter_commodity_flows_for_assets()
     {
-        if assets.get(asset_id).is_none() {
+        let Some(asset) = assets.get(asset_id) else {
             // Asset has been decommissioned
             continue;
-        }
+        };
 
         // **TODO**: Implement agent investment. For now, just keep all assets.
-        assets_to_keep.insert(asset_id);
+        new_pool.push(asset.clone());
     }
 
-    // Decommission non-selected assets
-    assets.retain(&assets_to_keep);
+    assets.replace_active_pool(new_pool);
 }
