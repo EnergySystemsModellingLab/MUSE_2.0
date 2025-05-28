@@ -1,17 +1,14 @@
 //! Code for handling IDs
 use anyhow::{Context, Result};
 use indexmap::IndexSet;
+use std::borrow::Borrow;
 use std::collections::HashSet;
+use std::fmt::Display;
+use std::hash::Hash;
 
 /// A trait alias for ID types
-pub trait IDLike:
-    Eq + std::hash::Hash + std::borrow::Borrow<str> + Clone + std::fmt::Display + From<String>
-{
-}
-impl<T> IDLike for T where
-    T: Eq + std::hash::Hash + std::borrow::Borrow<str> + Clone + std::fmt::Display + From<String>
-{
-}
+pub trait IDLike: Eq + Hash + Borrow<str> + Clone + Display + From<String> {}
+impl<T> IDLike for T where T: Eq + Hash + Borrow<str> + Clone + Display + From<String> {}
 
 macro_rules! define_id_type {
     ($name:ident) => {
