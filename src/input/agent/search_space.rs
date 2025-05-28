@@ -57,9 +57,7 @@ impl AgentSearchSpaceRaw {
         // Check that the year is a valid milestone year
         let year = parse_year_str(&self.years, milestone_years)?;
 
-        let (agent_id, _) = agents
-            .get_key_value(self.agent_id.as_str())
-            .context("Invalid agent ID")?;
+        let agent_id = agents.get_id(&self.agent_id)?;
 
         Ok(AgentSearchSpace {
             agent_id: agent_id.clone(),

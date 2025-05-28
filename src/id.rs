@@ -1,6 +1,6 @@
 //! Code for handling IDs
 use anyhow::{Context, Result};
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use std::borrow::Borrow;
 use std::collections::HashSet;
 use std::fmt::Display;
@@ -104,4 +104,13 @@ impl<ID: IDLike> IDCollection<ID> for HashSet<ID> {
 
 impl<ID: IDLike> IDCollection<ID> for IndexSet<ID> {
     define_id_methods!();
+}
+
+impl<ID: IDLike, V> IDCollection<ID> for IndexMap<ID, V> {
+    fn get_id<T: Borrow<str> + Display + ?Sized>(&self, id: &T) -> Result<&ID> {
+        let (found, _) = self
+            .get_key_value(id.borrow())
+            .with_context(|| format!("Unknown ID {id} found"))?;
+        Ok(found)
+    }
 }
