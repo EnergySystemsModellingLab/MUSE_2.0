@@ -1,4 +1,5 @@
 //! Code for working with years.
+use crate::input::is_sorted_and_unique;
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 
@@ -17,6 +18,9 @@ fn parse_year(s: &str, milestone_years: &[u32]) -> Option<u32> {
 /// The string can be either "all" (case-insensitive), a single year, or a semicolon-separated list
 /// of years (e.g. "2020;2021;2022" or "2020; 2021; 2022")
 pub fn parse_year_str(s: &str, milestone_years: &[u32]) -> Result<Vec<u32>> {
+    // We depend on this in `parse_year`
+    assert!(is_sorted_and_unique(milestone_years));
+
     let s = s.trim();
     ensure!(!s.is_empty(), "No years provided");
 
@@ -24,14 +28,15 @@ pub fn parse_year_str(s: &str, milestone_years: &[u32]) -> Result<Vec<u32>> {
         return Ok(Vec::from_iter(milestone_years.iter().copied()));
     }
 
-    let mut years: Vec<_> = s
+    let years: Vec<_> = s
         .split(";")
         .map(|y| parse_year(y, milestone_years).with_context(|| format!("Invalid year: {y}")))
         .try_collect()?;
 
-    // Sort years and remove duplicates
-    years.sort_unstable();
-    years.dedup();
+    ensure!(
+        is_sorted_and_unique(&years),
+        "Years must be in order and unique"
+    );
 
     Ok(years)
 }
@@ -49,8 +54,6 @@ mod tests {
     #[case(" ALL ", &[2020, 2021], &[2020,2021])]
     #[case("2020;2021", &[2020, 2021], &[2020,2021])]
     #[case("  2020;  2021", &[2020, 2021], &[2020,2021])] // whitespace should be stripped
-    #[case("2021;2020", &[2020, 2021], &[2020,2021])] // out of order
-    #[case("2021;2020;2021", &[2020, 2021], &[2020,2021])] // duplicate
     fn test_parse_year_str_valid(
         #[case] input: &str,
         #[case] milestone_years: &[u32],
@@ -63,6 +66,8 @@ mod tests {
     #[case("", &[2020], "No years provided")]
     #[case("2021", &[2020], "Invalid year: 2021")]
     #[case("a;2020", &[2020], "Invalid year: a")]
+    #[case("2021;2020", &[2020, 2021],"Years must be in order and unique")] // out of order
+    #[case("2021;2020;2021", &[2020, 2021],"Years must be in order and unique")] // duplicate
     fn test_parse_year_str_invalid(
         #[case] input: &str,
         #[case] milestone_years: &[u32],
