@@ -63,7 +63,7 @@ impl AgentSearchSpaceRaw {
 
         Ok(AgentSearchSpace {
             agent_id: agent_id.clone(),
-            commodity_id,
+            commodity_id: commodity_id.clone(),
             years: year,
             search_space,
         })
@@ -86,7 +86,7 @@ fn parse_search_space_str(
     } else {
         search_space
             .split(';')
-            .map(|id| process_ids.get_id(id.trim()))
+            .map(|id| Ok(process_ids.get_id(id.trim())?.clone()))
             .try_collect()
     }
 }

@@ -76,9 +76,9 @@ where
         let region_id = region_ids.get_id(&asset.region_id)?;
 
         Asset::new(
-            agent_id,
+            agent_id.clone(),
             Rc::clone(process),
-            region_id,
+            region_id.clone(),
             asset.capacity,
             asset.commission_year,
         )

@@ -84,16 +84,16 @@ pub trait IDCollection<ID: IDLike> {
     /// # Returns
     ///
     /// A copy of the ID in `self`, or an error if not found.
-    fn get_id<T: Borrow<str> + Display + ?Sized>(&self, id: &T) -> Result<ID>;
+    fn get_id<T: Borrow<str> + Display + ?Sized>(&self, id: &T) -> Result<&ID>;
 }
 
 macro_rules! define_id_methods {
     () => {
-        fn get_id<T: Borrow<str> + Display + ?Sized>(&self, id: &T) -> Result<ID> {
+        fn get_id<T: Borrow<str> + Display + ?Sized>(&self, id: &T) -> Result<&ID> {
             let found = self
                 .get(id.borrow())
                 .with_context(|| format!("Unknown ID {id} found"))?;
-            Ok(found.clone())
+            Ok(found)
         }
     };
 }

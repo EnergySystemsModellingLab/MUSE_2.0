@@ -111,7 +111,7 @@ where
         // Get process
         let id = process_ids.get_id(&record.process_id)?;
         let process = processes
-            .get(&id)
+            .get(id)
             .with_context(|| format!("Process {id} not found"))?;
 
         // Get regions
@@ -131,7 +131,9 @@ where
         let ts_selection = time_slice_info.get_selection(&record.time_slice)?;
 
         // Insert the energy limit into the map
-        let entry = map.entry(id).or_insert_with(ProcessEnergyLimitsMap::new);
+        let entry = map
+            .entry(id.clone())
+            .or_insert_with(ProcessEnergyLimitsMap::new);
         for (time_slice, ts_length) in time_slice_info.iter_selection(&ts_selection) {
             let bounds = record.to_bounds(ts_length);
 

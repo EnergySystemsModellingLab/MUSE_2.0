@@ -119,7 +119,7 @@ where
         // Get process
         let id = process_ids.get_id(&param_raw.process_id)?;
         let process = processes
-            .get(&id)
+            .get(id)
             .with_context(|| format!("Process {id} not found"))?;
 
         // Get years
