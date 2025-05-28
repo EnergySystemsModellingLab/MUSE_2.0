@@ -52,7 +52,7 @@ impl AgentSearchSpaceRaw {
         let search_space = Rc::new(parse_search_space_str(&self.search_space, process_ids)?);
 
         // Get commodity
-        let commodity_id = commodity_ids.get_id_by_str(&self.commodity_id)?;
+        let commodity_id = commodity_ids.get_id(&self.commodity_id)?;
 
         // Check that the year is a valid milestone year
         let year = parse_year_str(&self.years, milestone_years)?;
@@ -86,7 +86,7 @@ fn parse_search_space_str(
     } else {
         search_space
             .split(';')
-            .map(|id| process_ids.get_id_by_str(id.trim()))
+            .map(|id| process_ids.get_id(id.trim()))
             .try_collect()
     }
 }

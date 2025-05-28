@@ -64,14 +64,14 @@ where
 
     for slice in iter {
         let commodity_id = svd_commodity_ids
-            .get_id_by_str(&slice.commodity_id)
+            .get_id(&slice.commodity_id)
             .with_context(|| {
                 format!(
                     "Can only provide demand slice data for SVD commodities. Found entry for '{}'",
                     slice.commodity_id
                 )
             })?;
-        let region_id = region_ids.get_id_by_str(&slice.region_id)?;
+        let region_id = region_ids.get_id(&slice.region_id)?;
 
         // We need to know how many time slices are covered by the current demand slice entry and
         // how long they are relative to one another so that we can divide up the demand for this
