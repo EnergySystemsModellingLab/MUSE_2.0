@@ -2,7 +2,7 @@
 //! assets.
 use crate::commodity::CommodityID;
 use crate::id::{define_id_getter, define_id_type};
-use crate::process::ProcessID;
+use crate::process::Process;
 use crate::region::RegionID;
 use indexmap::IndexMap;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -22,7 +22,7 @@ pub type AgentCostLimitsMap = HashMap<u32, AgentCostLimits>;
 pub type AgentCommodityPortionsMap = HashMap<(CommodityID, u32), f64>;
 
 /// A map for the agent's search space, keyed by commodity and year
-pub type AgentSearchSpaceMap = HashMap<(CommodityID, u32), Rc<Vec<ProcessID>>>;
+pub type AgentSearchSpaceMap = HashMap<(CommodityID, u32), Rc<Vec<Rc<Process>>>>;
 
 /// A map of objectives for an agent, keyed by commodity and year.
 ///
