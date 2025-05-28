@@ -2,7 +2,7 @@
 use super::marginal_cost::marginal_cost_for_asset;
 use super::optimisation::Solution;
 use super::CommodityPrices;
-use crate::asset::{Asset, AssetID, AssetPool};
+use crate::asset::{Asset, AssetPool};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
@@ -16,7 +16,7 @@ pub mod utilisation;
 use utilisation::calculate_potential_utilisation_for_assets;
 
 /// Marginal costs for the specified region + time slice for a given agent
-pub type MarginalCosts = HashMap<(RegionID, TimeSliceID), Vec<(AssetID, f64)>>;
+pub type MarginalCosts = HashMap<(RegionID, TimeSliceID), Vec<(Rc<Asset>, f64)>>;
 
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
@@ -53,7 +53,7 @@ pub fn perform_agent_investment(
 
             let marginal_costs = get_marginal_costs(
                 &model.time_slice_info,
-                assets.iter_for_agent(&agent.id),
+                assets.iter_for_agent(&agent.id).cloned(),
                 prices,
                 &commodity.id,
                 year,
@@ -67,7 +67,7 @@ pub fn perform_agent_investment(
                         .unwrap()
             };
 
-            for (asset_id, region_id, time_slice, utilisation) in
+            for (asset, region_id, time_slice, utilisation) in
                 calculate_potential_utilisation_for_assets(
                     agent,
                     commodity,
@@ -81,7 +81,6 @@ pub fn perform_agent_investment(
 
                 // The asset is constrained on how much demand it can serve by capacity and
                 // availability
-                let asset = assets.get(asset_id).unwrap();
                 let max_utilisation = asset.capacity
                     * asset
                         .process
@@ -116,7 +115,7 @@ pub fn perform_agent_investment(
 /// Get marginal costs for the specified assets and sort.
 ///
 /// Assets which do not produce `commodity_of_interest` are not included.
-fn get_marginal_costs<'a, I>(
+fn get_marginal_costs<I>(
     time_slice_info: &TimeSliceInfo,
     assets: I,
     prices: &CommodityPrices,
@@ -124,11 +123,12 @@ fn get_marginal_costs<'a, I>(
     year: u32,
 ) -> MarginalCosts
 where
-    I: Iterator<Item = &'a Rc<Asset>>,
+    I: IntoIterator<Item = Rc<Asset>>,
 {
     let mut costs = assets
+        .into_iter()
         .filter(|asset| {
-            // Ignore commodities which don't produce commodity_of_interest
+            // Ignore assets which don't produce commodity_of_interest
             if let Some(flow) = asset.get_flow(commodity_of_interest) {
                 flow.flow > 0.0
             } else {
@@ -138,10 +138,16 @@ where
         .flat_map(|asset| {
             time_slice_info.iter_ids().map(move |time_slice| {
                 let key = (asset.region_id.clone(), time_slice.clone());
-                let value = (
-                    asset.id,
-                    marginal_cost_for_asset(asset, commodity_of_interest, year, time_slice, prices),
+                let cost = marginal_cost_for_asset(
+                    &asset,
+                    commodity_of_interest,
+                    year,
+                    time_slice,
+                    prices,
                 );
+
+                // Not sure why, but compiler is insisting on a clone here
+                let value = (Rc::clone(&asset), cost);
 
                 (key, value)
             })

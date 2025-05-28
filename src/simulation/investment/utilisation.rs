@@ -2,12 +2,13 @@
 use super::super::optimisation::UtilisationMap;
 use super::MarginalCosts;
 use crate::agent::Agent;
-use crate::asset::AssetID;
+use crate::asset::{Asset, AssetID};
 use crate::commodity::Commodity;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use itertools::iproduct;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 /// Calculate the potential utilisation for assets for a single agent
 pub fn calculate_potential_utilisation_for_assets<'a, F>(
@@ -17,7 +18,7 @@ pub fn calculate_potential_utilisation_for_assets<'a, F>(
     utilisations: &'a UtilisationMap,
     marginal_costs: &'a MarginalCosts,
     get_demand: F,
-) -> impl Iterator<Item = (AssetID, &'a RegionID, &'a TimeSliceID, f64)>
+) -> impl Iterator<Item = (&'a Rc<Asset>, &'a RegionID, &'a TimeSliceID, f64)>
 where
     F: Fn(&RegionID, &TimeSliceID) -> f64,
 {
@@ -44,7 +45,7 @@ fn calculate_potential_utilisation<'a, F, G, I, T>(
 ) -> impl Iterator<Item = (T, &'a RegionID, &'a TimeSliceID, f64)>
 where
     F: Fn(&RegionID, &TimeSliceID) -> f64,
-    G: Fn(f64, &'a [(AssetID, f64)], &'a HashMap<AssetID, f64>) -> I,
+    G: Fn(f64, &'a [(Rc<Asset>, f64)], &'a HashMap<AssetID, f64>) -> I,
     I: Iterator<Item = (T, f64)>,
 {
     iproduct!(time_slice_info.iter_ids(), agent.regions.iter()).flat_map(
@@ -70,15 +71,15 @@ where
 fn utilisation_for_asset(
     demand: f64,
     marginal_cost: f64,
-    marginal_costs: &[(AssetID, f64)],
+    marginal_costs: &[(Rc<Asset>, f64)],
     utilisations: &HashMap<AssetID, f64>,
 ) -> f64 {
     let cheaper_assets = marginal_costs
         .iter()
         .take_while(|(_, cost)| *cost <= marginal_cost)
-        .map(|(id, _)| id);
+        .map(|(asset, _)| asset);
     let cheaper_demand = cheaper_assets
-        .map(|id| utilisations.get(id).unwrap())
+        .map(|asset| utilisations.get(&asset.id).unwrap())
         .sum::<f64>();
     let remaining_demand = demand - cheaper_demand;
     assert!(remaining_demand >= 0.0);
@@ -88,16 +89,13 @@ fn utilisation_for_asset(
 
 fn costs_to_utilisation_for_assets<'a>(
     demand: f64,
-    marginal_costs: &'a [(AssetID, f64)],
+    marginal_costs: &'a [(Rc<Asset>, f64)],
     utilisations: &'a HashMap<AssetID, f64>,
-) -> impl Iterator<Item = (AssetID, f64)> + 'a {
-    marginal_costs
-        .iter()
-        .copied()
-        .map(move |(asset_id, marginal_cost)| {
-            let utilisation =
-                utilisation_for_asset(demand, marginal_cost, marginal_costs, utilisations);
+) -> impl Iterator<Item = (&'a Rc<Asset>, f64)> {
+    marginal_costs.iter().map(move |(asset, marginal_cost)| {
+        let utilisation =
+            utilisation_for_asset(demand, *marginal_cost, marginal_costs, utilisations);
 
-            (asset_id, utilisation)
-        })
+        (asset, utilisation)
+    })
 }
