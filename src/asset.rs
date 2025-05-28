@@ -262,6 +262,28 @@ impl AssetPool {
         self.active
             .retain(|asset| assets_to_keep.contains(&asset.id));
     }
+
+    /// Replace the active pool with new and/or already commissioned assets
+    pub fn replace_active_pool<I>(&mut self, assets: I)
+    where
+        I: IntoIterator<Item = Rc<Asset>>,
+    {
+        let new_pool = assets.into_iter().map(|asset| {
+            if asset.id != AssetID::INVALID {
+                // Already commissioned
+                asset
+            } else {
+                // Newly created from process. We need to assign an ID.
+                let mut asset = asset.as_ref().clone();
+                asset.id = AssetID(self.next_id);
+                self.next_id += 1;
+                asset.into()
+            }
+        });
+
+        self.active.clear();
+        self.active.extend(new_pool);
+    }
 }
 
 #[cfg(test)]
@@ -495,5 +517,33 @@ mod tests {
         asset_pool.retain(&iter::once(AssetID(1)).collect());
         assert_eq!(asset_pool.active.len(), 1);
         assert_eq!(asset_pool.active[0].id, AssetID(1));
+    }
+
+    #[rstest]
+    fn test_asset_pool_replace_active_pool_existing(mut asset_pool: AssetPool) {
+        asset_pool.commission_new(2020);
+        assert_eq!(asset_pool.active.len(), 2);
+        asset_pool.replace_active_pool(iter::once(asset_pool.active[1].clone()));
+        assert_eq!(asset_pool.active.len(), 1);
+        assert_eq!(asset_pool.active[0].id, AssetID(1));
+    }
+
+    #[rstest]
+    fn test_asset_pool_replace_active_pool_new_asset(mut asset_pool: AssetPool, process: Process) {
+        let asset = Asset::new(
+            "some_other_agent".into(),
+            process.into(),
+            "GBR".into(),
+            2.0,
+            2010,
+        )
+        .unwrap();
+
+        asset_pool.commission_new(2020);
+        assert_eq!(asset_pool.active.len(), 2);
+        asset_pool.replace_active_pool(iter::once(asset.into()));
+        assert_eq!(asset_pool.active.len(), 1);
+        assert_eq!(asset_pool.active[0].id, AssetID(2));
+        assert_eq!(asset_pool.active[0].agent_id, "some_other_agent".into());
     }
 }
