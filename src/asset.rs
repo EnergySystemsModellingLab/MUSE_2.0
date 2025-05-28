@@ -247,6 +247,28 @@ impl AssetPool {
         self.active
             .retain(|asset| assets_to_keep.contains(&asset.id));
     }
+
+    /// Replace the active pool with new and/or already commissioned assets
+    pub fn replace_active_pool<I>(&mut self, assets: I)
+    where
+        I: IntoIterator<Item = Rc<Asset>>,
+    {
+        let new_pool = assets.into_iter().map(|asset| {
+            if asset.id != AssetID::INVALID {
+                // Already commissioned
+                asset
+            } else {
+                // Newly created from process. We need to assign an ID.
+                let mut asset = asset.as_ref().clone();
+                asset.id = AssetID(self.next_id);
+                self.next_id += 1;
+                asset.into()
+            }
+        });
+
+        self.active.clear();
+        self.active.extend(new_pool);
+    }
 }
 
 #[cfg(test)]
