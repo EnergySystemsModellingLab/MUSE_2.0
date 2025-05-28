@@ -3,10 +3,10 @@ use crate::input::is_sorted_and_unique;
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 
-/// Parse a single year from a string
-fn parse_year(s: &str, milestone_years: &[u32]) -> Option<u32> {
+/// Parse a single year from a string and check it is in `valid_years`
+fn parse_and_validate_year(s: &str, valid_years: &[u32]) -> Option<u32> {
     let year = s.trim().parse::<u32>().ok()?;
-    if milestone_years.binary_search(&year).is_ok() {
+    if valid_years.binary_search(&year).is_ok() {
         Some(year)
     } else {
         None
@@ -17,20 +17,38 @@ fn parse_year(s: &str, milestone_years: &[u32]) -> Option<u32> {
 ///
 /// The string can be either "all" (case-insensitive), a single year, or a semicolon-separated list
 /// of years (e.g. "2020;2021;2022" or "2020; 2021; 2022")
-pub fn parse_year_str(s: &str, milestone_years: &[u32]) -> Result<Vec<u32>> {
-    // We depend on this in `parse_year`
-    assert!(is_sorted_and_unique(milestone_years));
+///
+/// # Arguments
+///
+/// - `s` - Input string to parse
+/// - `valid_years` - The possible years which can be referenced in `s` (must be sorted and unique)
+///
+/// # Returns
+///
+/// A [`Vec`] of years or an error.
+///
+/// # Panics
+///
+/// If `valid_years` is unsorted or non-unique.
+pub fn parse_year_str(s: &str, valid_years: &[u32]) -> Result<Vec<u32>> {
+    // We depend on this in `parse_and_validate_year`
+    assert!(
+        is_sorted_and_unique(valid_years),
+        "`valid_years` must be sorted and unique"
+    );
 
     let s = s.trim();
     ensure!(!s.is_empty(), "No years provided");
 
     if s.eq_ignore_ascii_case("all") {
-        return Ok(Vec::from_iter(milestone_years.iter().copied()));
+        return Ok(Vec::from_iter(valid_years.iter().copied()));
     }
 
     let years: Vec<_> = s
         .split(";")
-        .map(|y| parse_year(y, milestone_years).with_context(|| format!("Invalid year: {y}")))
+        .map(|y| {
+            parse_and_validate_year(y, valid_years).with_context(|| format!("Invalid year: {y}"))
+        })
         .try_collect()?;
 
     ensure!(
