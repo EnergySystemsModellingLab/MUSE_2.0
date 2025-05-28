@@ -2,12 +2,13 @@
 use super::marginal_cost::marginal_cost_for_asset;
 use super::optimisation::Solution;
 use super::CommodityPrices;
+use crate::agent::Agent;
 use crate::asset::{Asset, AssetPool};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use itertools::Itertools;
+use itertools::{iproduct, Itertools};
 use log::info;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -51,7 +52,7 @@ pub fn perform_agent_investment(
                 continue;
             };
 
-            let marginal_costs = get_marginal_costs(
+            let marginal_costs = get_marginal_costs_for_assets(
                 &model.time_slice_info,
                 assets.iter_for_agent(&agent.id).cloned(),
                 prices,
@@ -91,6 +92,14 @@ pub fn perform_agent_investment(
 
                 let _utilisation = max_utilisation.min(utilisation);
             }
+
+            let _marginal_costs_processes = get_marginal_costs_for_search_space(
+                &model.time_slice_info,
+                prices,
+                agent,
+                &commodity.id,
+                year,
+            );
         }
 
         // **TODO:** Implement rest of agent investment
@@ -115,7 +124,7 @@ pub fn perform_agent_investment(
 /// Get marginal costs for the specified assets and sort.
 ///
 /// Assets which do not produce `commodity_of_interest` are not included.
-fn get_marginal_costs<I>(
+fn get_marginal_costs_for_assets<I>(
     time_slice_info: &TimeSliceInfo,
     assets: I,
     prices: &CommodityPrices,
@@ -159,4 +168,31 @@ where
     }
 
     costs
+}
+
+fn get_marginal_costs_for_search_space(
+    time_slice_info: &TimeSliceInfo,
+    prices: &CommodityPrices,
+    agent: &Agent,
+    commodity_of_interest: &CommodityID,
+    year: u32,
+) -> MarginalCosts {
+    let search_space = agent
+        .search_space
+        .get(&(commodity_of_interest.clone(), year))
+        .unwrap();
+    let assets =
+        iproduct!(agent.regions.iter(), search_space.iter()).map(|(region_id, process)| {
+            Asset::new(
+                agent.id.clone(),
+                Rc::clone(process),
+                region_id.clone(),
+                0.0,
+                year,
+            )
+            .unwrap()
+            .into()
+        });
+
+    get_marginal_costs_for_assets(time_slice_info, assets, prices, commodity_of_interest, year)
 }
