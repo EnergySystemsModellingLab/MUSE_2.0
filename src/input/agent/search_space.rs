@@ -3,10 +3,9 @@ use super::super::*;
 use crate::agent::{AgentID, AgentMap, AgentSearchSpaceMap};
 use crate::commodity::CommodityID;
 use crate::id::IDCollection;
-use crate::process::ProcessID;
+use crate::process::{Process, ProcessMap};
 use crate::year::parse_year_str;
 use anyhow::{Context, Result};
-use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -37,19 +36,19 @@ struct AgentSearchSpace {
     /// The year(s) the objective is relevant for
     years: Vec<u32>,
     /// The agent's search space
-    search_space: Rc<Vec<ProcessID>>,
+    search_space: Rc<Vec<Rc<Process>>>,
 }
 
 impl AgentSearchSpaceRaw {
     fn into_agent_search_space(
         self,
         agents: &AgentMap,
-        process_ids: &IndexSet<ProcessID>,
+        processes: &ProcessMap,
         commodity_ids: &HashSet<CommodityID>,
         milestone_years: &[u32],
     ) -> Result<AgentSearchSpace> {
         // Parse search_space string
-        let search_space = Rc::new(parse_search_space_str(&self.search_space, process_ids)?);
+        let search_space = Rc::new(parse_search_space_str(&self.search_space, processes)?);
 
         // Get commodity
         let commodity_id = commodity_ids.get_id(&self.commodity_id)?;
@@ -74,17 +73,19 @@ impl AgentSearchSpaceRaw {
 ///  * Empty, meaning all processes
 ///  * "all", meaning the same
 ///  * A list of process IDs separated by semicolons
-fn parse_search_space_str(
-    search_space: &str,
-    process_ids: &IndexSet<ProcessID>,
-) -> Result<Vec<ProcessID>> {
+fn parse_search_space_str(search_space: &str, processes: &ProcessMap) -> Result<Vec<Rc<Process>>> {
     let search_space = search_space.trim();
     if search_space.is_empty() || search_space.eq_ignore_ascii_case("all") {
-        Ok(process_ids.iter().cloned().collect())
+        Ok(processes.values().cloned().collect())
     } else {
         search_space
             .split(';')
-            .map(|id| Ok(process_ids.get_id(id.trim())?.clone()))
+            .map(|id| {
+                let process = processes
+                    .get(id.trim())
+                    .with_context(|| format!("Invalid process '{id}'"))?;
+                Ok(process.clone())
+            })
             .try_collect()
     }
 }
@@ -94,6 +95,10 @@ fn parse_search_space_str(
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
+/// * `agents` - Map of agents
+/// * `processes` - Map of processes
+/// * `commodity_ids` - All possible valid commodity IDs
+/// * `milestone_years` - The milestone years of the simulation
 ///
 /// # Returns
 ///
@@ -101,20 +106,20 @@ fn parse_search_space_str(
 pub fn read_agent_search_space(
     model_dir: &Path,
     agents: &AgentMap,
-    process_ids: &IndexSet<ProcessID>,
+    processes: &ProcessMap,
     commodity_ids: &HashSet<CommodityID>,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, AgentSearchSpaceMap>> {
     let file_path = model_dir.join(AGENT_SEARCH_SPACE_FILE_NAME);
     let iter = read_csv_optional::<AgentSearchSpaceRaw>(&file_path)?;
-    read_agent_search_space_from_iter(iter, agents, process_ids, commodity_ids, milestone_years)
+    read_agent_search_space_from_iter(iter, agents, processes, commodity_ids, milestone_years)
         .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_agent_search_space_from_iter<I>(
     iter: I,
     agents: &AgentMap,
-    process_ids: &IndexSet<ProcessID>,
+    processes: &ProcessMap,
     commodity_ids: &HashSet<CommodityID>,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, AgentSearchSpaceMap>>
@@ -125,7 +130,7 @@ where
     for search_space_raw in iter {
         let search_space = search_space_raw.into_agent_search_space(
             agents,
-            process_ids,
+            processes,
             commodity_ids,
             milestone_years,
         )?;
@@ -151,13 +156,33 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::{agents, assert_error};
+    use crate::fixture::{agents, assert_error, process_parameter_map, region_ids};
+    use crate::process::{ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessID, ProcessParameterMap};
+    use crate::region::RegionID;
     use rstest::{fixture, rstest};
     use std::iter;
 
     #[fixture]
-    fn process_ids() -> IndexSet<ProcessID> {
-        ["A".into(), "B".into(), "C".into()].into_iter().collect()
+    pub fn processes(
+        region_ids: HashSet<RegionID>,
+        process_parameter_map: ProcessParameterMap,
+    ) -> ProcessMap {
+        ["A", "B", "C"]
+            .map(|id| {
+                let id: ProcessID = id.into();
+                let process = Process {
+                    id: id.clone(),
+                    description: "Description".into(),
+                    years: vec![2010, 2020],
+                    energy_limits: ProcessEnergyLimitsMap::new(),
+                    flows: ProcessFlowsMap::new(),
+                    parameters: process_parameter_map.clone(),
+                    regions: region_ids.clone(),
+                };
+                (id, process.into())
+            })
+            .into_iter()
+            .collect()
     }
 
     #[fixture]
@@ -168,7 +193,7 @@ mod tests {
     #[rstest]
     fn test_search_space_raw_into_search_space_valid(
         agents: AgentMap,
-        process_ids: IndexSet<ProcessID>,
+        processes: ProcessMap,
         commodity_ids: HashSet<CommodityID>,
     ) {
         // Valid search space
@@ -179,14 +204,14 @@ mod tests {
             search_space: "A;B".into(),
         };
         assert!(raw
-            .into_agent_search_space(&agents, &process_ids, &commodity_ids, &[2020])
+            .into_agent_search_space(&agents, &processes, &commodity_ids, &[2020])
             .is_ok());
     }
 
     #[rstest]
     fn test_search_space_raw_into_search_space_invalid_commodity_id(
         agents: AgentMap,
-        process_ids: IndexSet<ProcessID>,
+        processes: ProcessMap,
         commodity_ids: HashSet<CommodityID>,
     ) {
         // Invalid commodity ID
@@ -197,7 +222,7 @@ mod tests {
             search_space: "A;B".into(),
         };
         assert_error!(
-            raw.into_agent_search_space(&agents, &process_ids, &commodity_ids, &[2020]),
+            raw.into_agent_search_space(&agents, &processes, &commodity_ids, &[2020]),
             "Unknown ID invalid_commodity found"
         );
     }
@@ -205,7 +230,7 @@ mod tests {
     #[rstest]
     fn test_search_space_raw_into_search_space_invalid_process_id(
         agents: AgentMap,
-        process_ids: IndexSet<ProcessID>,
+        processes: ProcessMap,
         commodity_ids: HashSet<CommodityID>,
     ) {
         // Invalid process ID
@@ -216,8 +241,8 @@ mod tests {
             search_space: "A;D".into(),
         };
         assert_error!(
-            raw.into_agent_search_space(&agents, &process_ids, &commodity_ids, &[2020]),
-            "Unknown ID D found"
+            raw.into_agent_search_space(&agents, &processes, &commodity_ids, &[2020]),
+            "Invalid process 'D'"
         );
     }
 }
