@@ -36,6 +36,9 @@ pub enum Commands {
         /// Directory for output files
         #[arg(short, long)]
         output_dir: Option<PathBuf>,
+        /// Whether to write additional information to CSV files
+        #[arg(long)]
+        debug_model: bool,
     },
     /// Manage example models.
     Example {
@@ -64,13 +67,25 @@ pub enum ExampleSubcommands {
         /// Directory for output files
         #[arg(short, long)]
         output_dir: Option<PathBuf>,
+        /// Whether to write additional information to CSV files
+        #[arg(long)]
+        debug_model: bool,
     },
 }
 
 /// Handle the `run` command.
-pub fn handle_run_command(model_path: &Path, output_path: Option<&Path>) -> Result<()> {
+pub fn handle_run_command(
+    model_path: &Path,
+    output_path: Option<&Path>,
+    debug_model: bool,
+) -> Result<()> {
     // Load program settings
-    let settings = Settings::from_path(model_path).context("Failed to load settings.")?;
+    let mut settings = Settings::from_path(model_path).context("Failed to load settings.")?;
+
+    // This setting can be overridden by command-line argument
+    if debug_model {
+        settings.debug_model = true;
+    }
 
     // Create output folder
     let output_path = match output_path {
@@ -90,7 +105,7 @@ pub fn handle_run_command(model_path: &Path, output_path: Option<&Path>) -> Resu
         info!("Output data will be written to {}", output_path.display());
 
         // Run the simulation
-        crate::simulation::run(model, assets, &output_path)
+        crate::simulation::run(model, assets, &output_path, settings.debug_model)
     };
 
     // Once the logger is initialised, we can write fatal errors to log
@@ -142,9 +157,13 @@ fn extract_example(name: &str, new_path: &Path) -> Result<()> {
 }
 
 /// Handle the `example run` command.
-pub fn handle_example_run_command(name: &str, output_path: Option<&Path>) -> Result<()> {
+pub fn handle_example_run_command(
+    name: &str,
+    output_path: Option<&Path>,
+    debug_model: bool,
+) -> Result<()> {
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
     let model_path = temp_dir.path().join(name);
     extract_example(name, &model_path)?;
-    handle_run_command(&model_path, output_path)
+    handle_run_command(&model_path, output_path, debug_model)
 }

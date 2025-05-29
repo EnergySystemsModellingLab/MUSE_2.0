@@ -4,6 +4,7 @@ use crate::asset::{Asset, AssetID, AssetPool};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
 use crate::region::RegionID;
+use crate::simulation::optimisation::Solution;
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
 use anyhow::{Context, Result};
@@ -24,6 +25,15 @@ const COMMODITY_PRICES_FILE_NAME: &str = "commodity_prices.csv";
 
 /// The output file name for assets
 const ASSETS_FILE_NAME: &str = "assets.csv";
+
+/// The output file name for commodity balance duals
+const COMMODITY_BALANCE_DUALS_FILE_NAME: &str = "debug_commodity_balance_duals.csv";
+
+/// The output file name for capacity duals
+const CAPACITY_DUALS_FILE_NAME: &str = "debug_capacity_duals.csv";
+
+/// The output file name for fixed asset duals
+const FIXED_ASSET_DUALS_FILE_NAME: &str = "debug_fixed_asset_duals.csv";
 
 /// Get the model name from the specified directory path
 pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
@@ -56,7 +66,10 @@ pub fn create_output_directory(output_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Represents a row in the assets output CSV file
+/// Used to represent assets in assets output CSV file and other output files.
+///
+/// NB: It may be better to represent assets in these other files with IDs instead, see
+/// [#581](https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/581).
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct AssetRow {
     milestone_year: u32,
@@ -67,6 +80,7 @@ struct AssetRow {
 }
 
 impl AssetRow {
+    /// Create a new [`AssetRow`]
     fn new(milestone_year: u32, asset: &Asset) -> Self {
         Self {
             milestone_year,
@@ -98,25 +112,194 @@ struct CommodityPriceRow {
     price: f64,
 }
 
-/// An object for writing commodity prices to file
-pub struct DataWriter {
-    assets_writer: csv::Writer<File>,
-    flows_writer: csv::Writer<File>,
-    prices_writer: csv::Writer<File>,
+/// Represents the capacity duals data in a row of the capacity duals CSV file.
+///
+/// This will be written along with an [`AssetRow`] containing asset-related info.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct CapacityDualsRow {
+    time_slice: TimeSliceID,
+    value: f64,
 }
 
-impl DataWriter {
-    /// Create a new CSV files to write output data to
-    pub fn create(output_path: &Path) -> Result<Self> {
+/// Represents the commodity balance duals data in a row of the commodity balance duals CSV file
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct CommodityBalanceDualsRow {
+    milestone_year: u32,
+    commodity_id: CommodityID,
+    region_id: RegionID,
+    time_slice: TimeSliceID,
+    value: f64,
+}
+
+/// Represents the fixed asset duals data in a row of the fixed asset duals CSV file
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct FixedAssetDualsRow {
+    pac: CommodityID,
+    pac_flow: f64,
+    commodity_id: CommodityID,
+    commodity_flow: f64,
+    time_slice: TimeSliceID,
+    value: f64,
+}
+
+/// For writing extra debug information about the model
+struct DebugDataWriter {
+    commodity_balance_duals_writer: csv::Writer<File>,
+    capacity_duals_writer: csv::Writer<File>,
+    fixed_asset_duals_writer: csv::Writer<File>,
+}
+
+impl DebugDataWriter {
+    /// Open CSV files to write debug info to
+    ///
+    /// # Arguments
+    ///
+    /// * `output_path` - Folder where files will be saved
+    fn create(output_path: &Path) -> Result<Self> {
         let new_writer = |file_name| {
             let file_path = output_path.join(file_name);
             csv::Writer::from_path(file_path)
         };
 
         Ok(Self {
+            commodity_balance_duals_writer: new_writer(COMMODITY_BALANCE_DUALS_FILE_NAME)?,
+            capacity_duals_writer: new_writer(CAPACITY_DUALS_FILE_NAME)?,
+            fixed_asset_duals_writer: new_writer(FIXED_ASSET_DUALS_FILE_NAME)?,
+        })
+    }
+
+    /// Write all debug info to output files
+    fn write_debug_info(
+        &mut self,
+        milestone_year: u32,
+        solution: &Solution,
+        assets: &AssetPool,
+    ) -> Result<()> {
+        self.write_capacity_duals(milestone_year, solution.iter_capacity_duals(), assets)?;
+        self.write_commodity_balance_duals(
+            milestone_year,
+            solution.iter_commodity_balance_duals(),
+        )?;
+        self.write_fixed_asset_duals(milestone_year, solution.iter_fixed_asset_duals(), assets)?;
+        Ok(())
+    }
+
+    /// Write capacity duals to file
+    fn write_capacity_duals<'a, I>(
+        &mut self,
+        milestone_year: u32,
+        iter: I,
+        assets: &AssetPool,
+    ) -> Result<()>
+    where
+        I: Iterator<Item = (AssetID, &'a TimeSliceID, f64)>,
+    {
+        for (asset_id, time_slice, value) in iter {
+            let asset = assets.get(asset_id).unwrap();
+            let asset_row = AssetRow::new(milestone_year, asset);
+            let dual_row = CapacityDualsRow {
+                time_slice: time_slice.clone(),
+                value,
+            };
+            self.capacity_duals_writer
+                .serialize((asset_row, dual_row))?;
+        }
+
+        Ok(())
+    }
+
+    /// Write commodity balance duals to file
+    fn write_commodity_balance_duals<'a, I>(&mut self, milestone_year: u32, iter: I) -> Result<()>
+    where
+        I: Iterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, f64)>,
+    {
+        for (commodity_id, region_id, time_slice, value) in iter {
+            let row = CommodityBalanceDualsRow {
+                milestone_year,
+                commodity_id: commodity_id.clone(),
+                region_id: region_id.clone(),
+                time_slice: time_slice.clone(),
+                value,
+            };
+            self.commodity_balance_duals_writer.serialize(row)?;
+        }
+
+        Ok(())
+    }
+
+    /// Write fixed asset duals to file
+    fn write_fixed_asset_duals<'a, I>(
+        &mut self,
+        milestone_year: u32,
+        iter: I,
+        assets: &AssetPool,
+    ) -> Result<()>
+    where
+        I: Iterator<Item = (AssetID, &'a CommodityID, &'a TimeSliceID, f64)>,
+    {
+        for (asset_id, commodity_id, time_slice, value) in iter {
+            let asset = assets.get(asset_id).unwrap();
+            let asset_row = AssetRow::new(milestone_year, asset);
+            let pac1 = asset.iter_pacs().next().unwrap();
+            let commodity_flow = asset.get_flow(commodity_id).unwrap().flow;
+            let dual_row = FixedAssetDualsRow {
+                pac: pac1.commodity.id.clone(),
+                pac_flow: pac1.flow,
+                commodity_id: commodity_id.clone(),
+                commodity_flow,
+                time_slice: time_slice.clone(),
+                value,
+            };
+            self.fixed_asset_duals_writer
+                .serialize((asset_row, dual_row))?;
+        }
+
+        Ok(())
+    }
+
+    /// Flush the underlying streams
+    fn flush(&mut self) -> Result<()> {
+        self.commodity_balance_duals_writer.flush()?;
+        self.capacity_duals_writer.flush()?;
+        self.fixed_asset_duals_writer.flush()?;
+
+        Ok(())
+    }
+}
+
+/// An object for writing commodity prices to file
+pub struct DataWriter {
+    assets_writer: csv::Writer<File>,
+    flows_writer: csv::Writer<File>,
+    prices_writer: csv::Writer<File>,
+    debug_writer: Option<DebugDataWriter>,
+}
+
+impl DataWriter {
+    /// Open CSV files to write output data to
+    ///
+    /// # Arguments
+    ///
+    /// * `output_path` - Folder where files will be saved
+    /// * `save_debug_info` - Whether to include extra CSV files for debugging model
+    pub fn create(output_path: &Path, save_debug_info: bool) -> Result<Self> {
+        let new_writer = |file_name| {
+            let file_path = output_path.join(file_name);
+            csv::Writer::from_path(file_path)
+        };
+
+        let debug_writer = if save_debug_info {
+            // Create debug CSV files
+            Some(DebugDataWriter::create(output_path)?)
+        } else {
+            None
+        };
+
+        Ok(Self {
             assets_writer: new_writer(ASSETS_FILE_NAME)?,
             flows_writer: new_writer(COMMODITY_FLOWS_FILE_NAME)?,
             prices_writer: new_writer(COMMODITY_PRICES_FILE_NAME)?,
+            debug_writer,
         })
     }
 
@@ -173,11 +356,28 @@ impl DataWriter {
         Ok(())
     }
 
+    /// Write debug information to CSV files
+    pub fn write_debug_info(
+        &mut self,
+        milestone_year: u32,
+        solution: &Solution,
+        assets: &AssetPool,
+    ) -> Result<()> {
+        if let Some(ref mut wtr) = &mut self.debug_writer {
+            wtr.write_debug_info(milestone_year, solution, assets)?;
+        }
+
+        Ok(())
+    }
+
     /// Flush the underlying streams
     pub fn flush(&mut self) -> Result<()> {
         self.assets_writer.flush()?;
         self.flows_writer.flush()?;
         self.prices_writer.flush()?;
+        if let Some(ref mut wtr) = &mut self.debug_writer {
+            wtr.flush()?;
+        }
 
         Ok(())
     }
@@ -186,21 +386,21 @@ impl DataWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::process;
-    use crate::process::Process;
-    use crate::time_slice::TimeSliceID;
+    use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
+    use crate::fixture::{
+        asset, assets, commodity_id, process_parameter_map, region_id, region_ids, time_slice,
+    };
+    use crate::process::{
+        FlowType, Process, ProcessEnergyLimitsMap, ProcessFlow, ProcessParameterMap,
+    };
+    use crate::time_slice::{TimeSliceID, TimeSliceLevel};
+    use indexmap::indexmap;
     use itertools::{assert_equal, Itertools};
-    use rstest::{fixture, rstest};
+    use rstest::rstest;
+    use std::collections::HashSet;
     use std::iter;
+    use std::rc::Rc;
     use tempfile::tempdir;
-
-    #[fixture]
-    pub fn asset(process: Process) -> Asset {
-        let region_id: RegionID = "GBR".into();
-        let agent_id = "agent1".into();
-        let commission_year = 2015;
-        Asset::new(agent_id, process.into(), region_id, 2.0, commission_year).unwrap()
-    }
 
     #[rstest]
     fn test_write_assets(asset: Asset) {
@@ -209,7 +409,7 @@ mod tests {
 
         // Write an asset
         {
-            let mut writer = DataWriter::create(dir.path()).unwrap();
+            let mut writer = DataWriter::create(dir.path(), false).unwrap();
             writer
                 .write_assets(milestone_year, iter::once(&asset))
                 .unwrap();
@@ -227,15 +427,8 @@ mod tests {
     }
 
     #[rstest]
-    fn test_write_flows(asset: Asset) {
+    fn test_write_flows(assets: AssetPool, commodity_id: CommodityID, time_slice: TimeSliceID) {
         let milestone_year = 2020;
-        let commodity_id = "commodity1".into();
-        let time_slice = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "day".into(),
-        };
-        let mut assets = AssetPool::new(vec![asset]);
-        assets.commission_new(2020);
         let flow_item = (
             assets.iter().next().unwrap().id,
             &commodity_id,
@@ -246,7 +439,7 @@ mod tests {
         // Write a flow
         let dir = tempdir().unwrap();
         {
-            let mut writer = DataWriter::create(dir.path()).unwrap();
+            let mut writer = DataWriter::create(dir.path(), false).unwrap();
             writer
                 .write_flows(milestone_year, &assets, iter::once(flow_item))
                 .unwrap();
@@ -268,14 +461,8 @@ mod tests {
         assert_equal(records, iter::once(expected));
     }
 
-    #[test]
-    fn test_write_prices() {
-        let commodity_id = "commodity1".into();
-        let region_id = "GBR".into();
-        let time_slice = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "day".into(),
-        };
+    #[rstest]
+    fn test_write_prices(commodity_id: CommodityID, region_id: RegionID, time_slice: TimeSliceID) {
         let milestone_year = 2020;
         let price = 42.0;
         let mut prices = CommodityPrices::default();
@@ -285,7 +472,7 @@ mod tests {
 
         // Write a price
         {
-            let mut writer = DataWriter::create(dir.path()).unwrap();
+            let mut writer = DataWriter::create(dir.path(), false).unwrap();
             writer.write_prices(milestone_year, &prices).unwrap();
             writer.flush().unwrap();
         }
@@ -300,6 +487,168 @@ mod tests {
         };
         let records: Vec<CommodityPriceRow> =
             csv::Reader::from_path(dir.path().join(COMMODITY_PRICES_FILE_NAME))
+                .unwrap()
+                .into_deserialize()
+                .try_collect()
+                .unwrap();
+        assert_equal(records, iter::once(expected));
+    }
+
+    #[rstest]
+    fn test_write_commodity_balance_duals(
+        commodity_id: CommodityID,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        let milestone_year = 2020;
+        let value = 0.5;
+        let dir = tempdir().unwrap();
+
+        // Write commodity balance dual
+        {
+            let mut writer = DebugDataWriter::create(dir.path()).unwrap();
+            writer
+                .write_commodity_balance_duals(
+                    milestone_year,
+                    iter::once((&commodity_id, &region_id, &time_slice, value)),
+                )
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        // Read back and compare
+        let expected = CommodityBalanceDualsRow {
+            milestone_year,
+            commodity_id,
+            region_id,
+            time_slice,
+            value,
+        };
+        let records: Vec<CommodityBalanceDualsRow> =
+            csv::Reader::from_path(dir.path().join(COMMODITY_BALANCE_DUALS_FILE_NAME))
+                .unwrap()
+                .into_deserialize()
+                .try_collect()
+                .unwrap();
+        assert_equal(records, iter::once(expected));
+    }
+
+    #[rstest]
+    fn test_write_capacity_duals(assets: AssetPool, time_slice: TimeSliceID) {
+        let milestone_year = 2020;
+        let value = 0.5;
+        let dir = tempdir().unwrap();
+
+        // Write capacity dual
+        {
+            let mut writer = DebugDataWriter::create(dir.path()).unwrap();
+            writer
+                .write_capacity_duals(
+                    milestone_year,
+                    iter::once((assets.iter().next().unwrap().id, &time_slice, value)),
+                    &assets,
+                )
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        // Read back and compare
+        let expected = CapacityDualsRow { time_slice, value };
+        let records: Vec<CapacityDualsRow> =
+            csv::Reader::from_path(dir.path().join(CAPACITY_DUALS_FILE_NAME))
+                .unwrap()
+                .into_deserialize()
+                .try_collect()
+                .unwrap();
+        assert_equal(records, iter::once(expected));
+    }
+
+    fn create_process_flow(commodity: Rc<Commodity>, flow: f64, is_pac: bool) -> ProcessFlow {
+        ProcessFlow {
+            commodity,
+            flow,
+            flow_type: FlowType::Fixed,
+            flow_cost: 0.0,
+            is_pac,
+        }
+    }
+
+    #[rstest]
+    fn test_write_fixed_asset_duals(
+        process_parameter_map: ProcessParameterMap,
+        region_id: RegionID,
+        region_ids: HashSet<RegionID>,
+        time_slice: TimeSliceID,
+    ) {
+        let commodity1 = Rc::new(Commodity {
+            id: "commodity1".into(),
+            description: "A commodity".into(),
+            kind: CommodityType::ServiceDemand,
+            demand: DemandMap::default(),
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::default(),
+        });
+        let commodity2 = Rc::new(Commodity {
+            id: "commodity2".into(),
+            description: "Another commodity".into(),
+            kind: CommodityType::ServiceDemand,
+            demand: DemandMap::default(),
+            time_slice_level: TimeSliceLevel::Annual,
+            costs: CommodityCostMap::default(),
+        });
+        let flows = indexmap! {
+            commodity1.id.clone() => create_process_flow(commodity1.clone(), 1.0, true),
+            commodity2.id.clone() => create_process_flow(commodity2.clone(), 1.0, false),
+        };
+        let process = Process {
+            id: "process1".into(),
+            description: "Description".into(),
+            years: vec![2010, 2020],
+            energy_limits: ProcessEnergyLimitsMap::new(),
+            flows: iter::once(((region_id.clone(), 2015), flows)).collect(),
+            parameters: process_parameter_map,
+            regions: region_ids,
+        };
+        let agent_id = "agent1".into();
+        let commission_year = 2015;
+        let asset = Asset::new(agent_id, process.into(), region_id, 2.0, commission_year).unwrap();
+        let year = asset.commission_year;
+        let mut assets = AssetPool::new(iter::once(asset).collect());
+        assets.commission_new(year);
+
+        let milestone_year = 2020;
+        let value = 0.5;
+        let dir = tempdir().unwrap();
+
+        // Write fixed asset dual
+        {
+            let mut writer = DebugDataWriter::create(dir.path()).unwrap();
+            writer
+                .write_fixed_asset_duals(
+                    milestone_year,
+                    iter::once((
+                        assets.iter().next().unwrap().id,
+                        &commodity2.id,
+                        &time_slice,
+                        value,
+                    )),
+                    &assets,
+                )
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        // Read back and compare
+        let expected = FixedAssetDualsRow {
+            pac: commodity1.id.clone(),
+            pac_flow: 1.0,
+            commodity_id: commodity2.id.clone(),
+            commodity_flow: 1.0,
+            time_slice,
+            value,
+        };
+        let records: Vec<FixedAssetDualsRow> =
+            csv::Reader::from_path(dir.path().join(FIXED_ASSET_DUALS_FILE_NAME))
                 .unwrap()
                 .into_deserialize()
                 .try_collect()

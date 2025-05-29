@@ -20,8 +20,14 @@ pub use prices::CommodityPrices;
 /// * `model` - The model to run
 /// * `assets` - The asset pool
 /// * `output_path` - The folder to which output files will be written
-pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()> {
-    let mut writer = DataWriter::create(output_path)?;
+/// * `debug_model` - Whether to write additional information (e.g. duals) to output files
+pub fn run(
+    model: Model,
+    mut assets: AssetPool,
+    output_path: &Path,
+    debug_model: bool,
+) -> Result<()> {
+    let mut writer = DataWriter::create(output_path, debug_model)?;
 
     let mut opt_results = None; // all results of dispatch optimisation
     for year in model.iter_years() {
@@ -52,6 +58,7 @@ pub fn run(model: Model, mut assets: AssetPool, output_path: &Path) -> Result<()
         let prices = CommodityPrices::from_model_and_solution(&model, &solution, &assets);
 
         // Write result of dispatch optimisation to file
+        writer.write_debug_info(year, &solution, &assets)?;
         writer.write_flows(year, &assets, solution.iter_commodity_flows_for_assets())?;
         writer.write_prices(year, &prices)?;
 
