@@ -68,8 +68,8 @@ pub fn create_output_directory(output_dir: &Path) -> Result<()> {
 
 /// Used to represent assets in assets output CSV file and other output files.
 ///
-/// NB: It may be better to represent assets in these other files with IDs instead, see:
-///     https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/581
+/// NB: It may be better to represent assets in these other files with IDs instead, see
+/// [#581](https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/581).
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct AssetRow {
     milestone_year: u32,
