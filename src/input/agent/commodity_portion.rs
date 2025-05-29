@@ -2,6 +2,7 @@
 use super::super::*;
 use crate::agent::{AgentCommodityPortionsMap, AgentID, AgentMap};
 use crate::commodity::{CommodityID, CommodityMap, CommodityType};
+use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
@@ -66,9 +67,7 @@ where
     for agent_commodity_portion_raw in iter {
         // Get agent ID
         let agent_id_raw = agent_commodity_portion_raw.agent_id.as_str();
-        let (id, _agent) = agents
-            .get_key_value(agent_id_raw)
-            .with_context(|| format!("Invalid agent ID {agent_id_raw}"))?;
+        let id = agents.get_id(agent_id_raw)?;
 
         // Get/create entry for agent
         let entry = agent_commodity_portions
@@ -77,9 +76,7 @@ where
 
         // Insert portion for the commodity/year(s)
         let commodity_id_raw = agent_commodity_portion_raw.commodity_id.as_str();
-        let (commodity_id, _commodity) = commodities
-            .get_key_value(commodity_id_raw)
-            .with_context(|| format!("Invalid commodity ID {commodity_id_raw}"))?;
+        let commodity_id = commodities.get_id(commodity_id_raw)?;
         let years = parse_year_str(&agent_commodity_portion_raw.years, milestone_years)?;
         for year in years {
             try_insert(
