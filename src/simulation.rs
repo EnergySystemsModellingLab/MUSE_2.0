@@ -12,6 +12,7 @@ pub mod investment;
 use investment::perform_agent_investment;
 pub mod prices;
 pub use prices::CommodityPrices;
+pub mod marginal_cost;
 
 /// Run the simulation.
 ///
@@ -38,7 +39,7 @@ pub fn run(
 
         // NB: Agent investment is not carried out in first milestone year
         if let Some((solution, prices)) = opt_results {
-            perform_agent_investment(&model, &solution, &prices, &mut assets);
+            perform_agent_investment(&model, &solution, &prices, &mut assets, year);
 
             // **TODO:** Remove this when we implement at least some of the agent investment code
             //   See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/304
