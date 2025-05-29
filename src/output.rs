@@ -66,7 +66,10 @@ pub fn create_output_directory(output_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Represents a row in the assets output CSV file
+/// Used to represent assets in assets output CSV file and other output files.
+///
+/// NB: It may be better to represent assets in these other files with IDs instead, see:
+///     https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/581
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct AssetRow {
     milestone_year: u32,
@@ -77,6 +80,7 @@ struct AssetRow {
 }
 
 impl AssetRow {
+    /// Create a new [`AssetRow`]
     fn new(milestone_year: u32, asset: &Asset) -> Self {
         Self {
             milestone_year,
@@ -117,6 +121,7 @@ struct CapacityDualsRow {
     value: f64,
 }
 
+/// Represents the commodity balance duals data in a row of the commodity balance duals CSV file
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityBalanceDualsRow {
     milestone_year: u32,
@@ -126,6 +131,7 @@ struct CommodityBalanceDualsRow {
     value: f64,
 }
 
+/// Represents the fixed asset duals data in a row of the fixed asset duals CSV file
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct FixedAssetDualsRow {
     pac: CommodityID,
@@ -162,6 +168,7 @@ impl DebugDataWriter {
         })
     }
 
+    /// Write all debug info to output files
     fn write_debug_info(
         &mut self,
         milestone_year: u32,
@@ -177,6 +184,7 @@ impl DebugDataWriter {
         Ok(())
     }
 
+    /// Write capacity duals to file
     fn write_capacity_duals<'a, I>(
         &mut self,
         milestone_year: u32,
@@ -200,6 +208,7 @@ impl DebugDataWriter {
         Ok(())
     }
 
+    /// Write commodity balance duals to file
     fn write_commodity_balance_duals<'a, I>(&mut self, milestone_year: u32, iter: I) -> Result<()>
     where
         I: Iterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, f64)>,
@@ -218,6 +227,7 @@ impl DebugDataWriter {
         Ok(())
     }
 
+    /// Write fixed asset duals to file
     fn write_fixed_asset_duals<'a, I>(
         &mut self,
         milestone_year: u32,
