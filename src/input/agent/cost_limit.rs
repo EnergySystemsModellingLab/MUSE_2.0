@@ -61,7 +61,7 @@ where
         let years = parse_year_str(&agent_cost_limits_raw.years, milestone_years)?;
 
         // Get agent ID
-        let agent_id = agent_ids.get_id_by_str(&agent_cost_limits_raw.agent_id)?;
+        let agent_id = agent_ids.get_id(&agent_cost_limits_raw.agent_id)?;
 
         // Get or create entry in the map
         let entry = map.entry(agent_id.clone()).or_default();

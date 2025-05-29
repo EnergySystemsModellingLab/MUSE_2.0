@@ -11,7 +11,7 @@ use crate::process::{
     ProcessParameterMap,
 };
 use crate::region::RegionID;
-use crate::time_slice::TimeSliceID;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use indexmap::indexmap;
 use itertools::Itertools;
 use rstest::fixture;
@@ -33,6 +33,11 @@ pub(crate) use assert_error;
 #[fixture]
 pub fn region_id() -> RegionID {
     "GBR".into()
+}
+
+#[fixture]
+pub fn commodity_ids() -> HashSet<CommodityID> {
+    iter::once("commodity1".into()).collect()
 }
 
 #[fixture]
@@ -128,5 +133,22 @@ pub fn time_slice() -> TimeSliceID {
     TimeSliceID {
         season: "winter".into(),
         time_of_day: "day".into(),
+    }
+}
+
+#[fixture]
+pub fn time_slice_info() -> TimeSliceInfo {
+    TimeSliceInfo {
+        seasons: iter::once("winter".into()).collect(),
+        times_of_day: iter::once("day".into()).collect(),
+        fractions: [(
+            TimeSliceID {
+                season: "winter".into(),
+                time_of_day: "day".into(),
+            },
+            1.0,
+        )]
+        .into_iter()
+        .collect(),
     }
 }
