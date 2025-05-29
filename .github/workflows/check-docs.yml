@@ -1,4 +1,4 @@
-name: Check links in Markdown files
+name: Check documentation + hyperlinks
 on:
   push:
     branches: [main]
@@ -7,11 +7,12 @@ on:
     - cron: "0 0 * * 1" # midnight every Monday
 
 jobs:
-  check-links:
+  check-docs:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/generate-docs
 
       - name: Link Checker
         id: lychee
