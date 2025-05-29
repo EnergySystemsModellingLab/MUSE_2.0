@@ -1,0 +1,18 @@
+name: Generate documentation
+description: Automatically generate documentation (before mdbook is run)
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+    - name: Update CLI documentation
+      shell: bash
+      run: cargo run -- --markdown-help > docs/command_line_help.md
+    - name: Build API docs
+      shell: bash
+      run: |
+        export RUSTDOCFLAGS="-D warnings"
+        cargo doc --no-deps --document-private-items

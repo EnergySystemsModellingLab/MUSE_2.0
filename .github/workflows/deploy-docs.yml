@@ -14,32 +14,22 @@ jobs:
     name: Build docs
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      # Make warnings fatal
-      RUSTDOCFLAGS: -D warnings
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-      - name: Setup pages
-        uses: actions/configure-pages@v5
-      - name: Update CLI documentation
-        run: cargo run -- --markdown-help > docs/command_line_help.md
+      - uses: ./.github/actions/generate-docs
       - name: Install mdBook
         run: cargo install mdbook
       - name: Build docs with mdBook
         run: |
           mdbook build
-      - name: Build API docs
-        run: |
-          cargo doc --no-deps --document-private-items
 
           # Put API documentation in with book
           rm -r book/api/*
           mv target/doc/* book/api
+
+      - name: Setup pages
+        uses: actions/configure-pages@v5
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
