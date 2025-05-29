@@ -338,8 +338,10 @@ mod tests {
     #[case(&[], true)]
     #[case(&[1], true)]
     #[case(&[1,2], true)]
+    #[case(&[1,2,3,4], true)]
     #[case(&[2,1],false)]
     #[case(&[1,1],false)]
+    #[case(&[1,3,2,4], false)]
     fn test_is_sorted_and_unique(#[case] values: &[u32], #[case] expected: bool) {
         assert_eq!(is_sorted_and_unique(values), expected)
     }
