@@ -122,11 +122,11 @@ impl TimeSliceInfo {
             .context("Time slice must be in the form season.time_of_day")?;
         let season = self
             .seasons
-            .get_id_by_str(season)
+            .get_id(season)
             .with_context(|| format!("{} is not a known season", season))?;
         let time_of_day = self
             .times_of_day
-            .get_id_by_str(time_of_day)
+            .get_id(time_of_day)
             .with_context(|| format!("{} is not a known time of day", time_of_day))?;
 
         Ok(TimeSliceID {

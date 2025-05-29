@@ -69,16 +69,16 @@ where
     I: Iterator<Item = AssetRaw>,
 {
     iter.map(|asset| -> Result<_> {
-        let agent_id = agent_ids.get_id_by_str(&asset.agent_id)?;
+        let agent_id = agent_ids.get_id(&asset.agent_id)?;
         let process = processes
             .get(asset.process_id.as_str())
             .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
-        let region_id = region_ids.get_id_by_str(&asset.region_id)?;
+        let region_id = region_ids.get_id(&asset.region_id)?;
 
         Asset::new(
-            agent_id,
+            agent_id.clone(),
             Rc::clone(process),
-            region_id,
+            region_id.clone(),
             asset.capacity,
             asset.commission_year,
         )

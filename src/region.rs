@@ -33,7 +33,7 @@ pub fn parse_region_str(s: &str, region_ids: &HashSet<RegionID>) -> Result<HashS
     }
 
     s.split(";")
-        .map(|y| region_ids.get_id_by_str(y.trim()))
+        .map(|y| Ok(region_ids.get_id(y.trim())?.clone()))
         .collect()
 }
 

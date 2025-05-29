@@ -109,21 +109,21 @@ where
         record.validate()?;
 
         // Get process
-        let id = process_ids.get_id_by_str(&record.process_id)?;
+        let id = process_ids.get_id(&record.process_id)?;
         let process = processes
-            .get(&id)
+            .get(id)
             .with_context(|| format!("Process {id} not found"))?;
 
         // Get regions
-        let process_regions = process.regions.clone();
+        let process_regions = &process.regions;
         let record_regions =
-            parse_region_str(&record.regions, &process_regions).with_context(|| {
+            parse_region_str(&record.regions, process_regions).with_context(|| {
                 format!("Invalid region for process {id}. Valid regions are {process_regions:?}")
             })?;
 
         // Get years
-        let process_years = process.years.clone();
-        let record_years = parse_year_str(&record.years, &process_years).with_context(|| {
+        let process_years = &process.years;
+        let record_years = parse_year_str(&record.years, process_years).with_context(|| {
             format!("Invalid year for process {id}. Valid years are {process_years:?}")
         })?;
 
@@ -131,7 +131,9 @@ where
         let ts_selection = time_slice_info.get_selection(&record.time_slice)?;
 
         // Insert the energy limit into the map
-        let entry = map.entry(id).or_insert_with(ProcessEnergyLimitsMap::new);
+        let entry = map
+            .entry(id.clone())
+            .or_insert_with(ProcessEnergyLimitsMap::new);
         for (time_slice, ts_length) in time_slice_info.iter_selection(&ts_selection) {
             let bounds = record.to_bounds(ts_length);
 

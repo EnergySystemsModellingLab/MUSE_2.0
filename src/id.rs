@@ -1,17 +1,14 @@
 //! Code for handling IDs
 use anyhow::{Context, Result};
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
+use std::borrow::Borrow;
 use std::collections::HashSet;
+use std::fmt::Display;
+use std::hash::Hash;
 
 /// A trait alias for ID types
-pub trait IDLike:
-    Eq + std::hash::Hash + std::borrow::Borrow<str> + Clone + std::fmt::Display + From<String>
-{
-}
-impl<T> IDLike for T where
-    T: Eq + std::hash::Hash + std::borrow::Borrow<str> + Clone + std::fmt::Display + From<String>
-{
-}
+pub trait IDLike: Eq + Hash + Borrow<str> + Clone + Display + From<String> {}
+impl<T> IDLike for T where T: Eq + Hash + Borrow<str> + Clone + Display + From<String> {}
 
 macro_rules! define_id_type {
     ($name:ident) => {
@@ -102,43 +99,25 @@ pub(crate) use define_id_getter;
 
 /// A data structure containing a set of IDs
 pub trait IDCollection<ID: IDLike> {
-    /// Get the ID from the collection by its string representation.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The string representation of the ID
-    ///
-    /// # Returns
-    ///
-    /// A copy of the ID in `self`, or an error if not found.
-    fn get_id_by_str(&self, id: &str) -> Result<ID>;
-
     /// Check if the ID is in the collection, returning a copy of it if found.
     ///
     /// # Arguments
     ///
-    /// * `id` - The ID to check
+    /// * `id` - The ID to check (can be string or ID type)
     ///
     /// # Returns
     ///
     /// A copy of the ID in `self`, or an error if not found.
-    fn get_id(&self, id: &ID) -> Result<ID>;
+    fn get_id<T: Borrow<str> + Display + ?Sized>(&self, id: &T) -> Result<&ID>;
 }
 
 macro_rules! define_id_methods {
     () => {
-        fn get_id_by_str(&self, id: &str) -> Result<ID> {
-            let found = self
-                .get(id)
-                .with_context(|| format!("Unknown ID {id} found"))?;
-            Ok(found.clone())
-        }
-
-        fn get_id(&self, id: &ID) -> Result<ID> {
+        fn get_id<T: Borrow<str> + Display + ?Sized>(&self, id: &T) -> Result<&ID> {
             let found = self
                 .get(id.borrow())
                 .with_context(|| format!("Unknown ID {id} found"))?;
-            Ok(found.clone())
+            Ok(found)
         }
     };
 }
@@ -149,6 +128,15 @@ impl<ID: IDLike> IDCollection<ID> for HashSet<ID> {
 
 impl<ID: IDLike> IDCollection<ID> for IndexSet<ID> {
     define_id_methods!();
+}
+
+impl<ID: IDLike, V> IDCollection<ID> for IndexMap<ID, V> {
+    fn get_id<T: Borrow<str> + Display + ?Sized>(&self, id: &T) -> Result<&ID> {
+        let (found, _) = self
+            .get_key_value(id.borrow())
+            .with_context(|| format!("Unknown ID {id} found"))?;
+        Ok(found)
+    }
 }
 
 #[cfg(test)]
