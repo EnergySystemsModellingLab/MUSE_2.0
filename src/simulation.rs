@@ -2,7 +2,6 @@
 use crate::asset::AssetPool;
 use crate::model::Model;
 use crate::output::DataWriter;
-use crate::settings::Settings;
 use anyhow::{bail, Result};
 use log::info;
 use std::path::Path;
@@ -21,13 +20,14 @@ pub use prices::CommodityPrices;
 /// * `model` - The model to run
 /// * `assets` - The asset pool
 /// * `output_path` - The folder to which output files will be written
+/// * `debug_model` - Whether to write additional information (e.g. duals) to output files
 pub fn run(
     model: Model,
-    settings: Settings,
     mut assets: AssetPool,
     output_path: &Path,
+    debug_model: bool,
 ) -> Result<()> {
-    let mut writer = DataWriter::create(output_path, settings.debug_model)?;
+    let mut writer = DataWriter::create(output_path, debug_model)?;
 
     let mut opt_results = None; // all results of dispatch optimisation
     for year in model.iter_years() {

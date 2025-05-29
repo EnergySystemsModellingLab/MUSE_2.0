@@ -105,7 +105,7 @@ pub fn handle_run_command(
         info!("Output data will be written to {}", output_path.display());
 
         // Run the simulation
-        crate::simulation::run(model, settings, assets, &output_path)
+        crate::simulation::run(model, assets, &output_path, settings.debug_model)
     };
 
     // Once the logger is initialised, we can write fatal errors to log
