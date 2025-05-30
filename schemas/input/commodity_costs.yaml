@@ -1,0 +1,34 @@
+title: Commodity costs
+description: |
+  Defines levies for commodities (or, if `value` is negative, incentives).
+
+  If an entry is included for a given combination of commodity and region, entries must be provided
+  covering all milestone years and time slices.
+
+fields:
+  - name: commodity_id
+    type: string
+    title: The commodity to which this entry applies
+  - name: regions
+    type: string
+    title: The region(s) to which this entry applies
+    description: One or more region IDs, separated by semicolons or the string `all`
+  - name: years
+    type: string
+    title: The year(s) to which this entry applies
+    description: One or more milestone years separated by semicolons or `all`
+  - name: time_slice
+    type: string
+    title: The time slices(s) to which this entry applies
+    description: |
+      Can be a single time slice (e.g. `winter.day`), a whole season (e.g. `winter`) or `annual`,
+      representing the whole year
+  - name: balance_type
+    type: string
+    title: The type of balance to which this is applied
+    description: |
+      Can be `cons` (applies to consumption only), `prod` (applies to production only) or
+      `net` (applies to consumption and production)
+  - name: value
+    type: number
+    title: The value of the commodity cost
