@@ -11,6 +11,7 @@ _SCHEMA_DIR = _DOCS_DIR.parent / "schemas" / "input"
 _FILE_ORDER = {
     "Time slices": ["time_slices"],
     "Regions": ["regions"],
+    "Agents": ["agents", "agent_*"],
 }
 
 

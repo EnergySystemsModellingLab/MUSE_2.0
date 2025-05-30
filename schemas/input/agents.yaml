@@ -1,0 +1,21 @@
+title: Main agents file
+description: Describes agents in the system
+fields:
+  - name: id
+    type: string
+    title: A unique identifier for an agent
+  - name: description
+    type: string
+    title: A human-readable label for the agent
+  - name: regions
+    type: string
+    title: The region(s) in which the agent operates
+    description: One or more region IDs, separated by semicolons or the string `all`
+  - name: decision_rule
+    type: string
+    title: The decision rule applied to objectives
+    description: Currently the only supported rule is `simple`
+  - name: decision_lexico_tolerance
+    type: number
+    title: Tolerance for `lexico` decision rule
+    description: Currently unused
