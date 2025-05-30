@@ -1,0 +1,9 @@
+title: Regions
+
+fields:
+  - name: id
+    type: string
+    title: A unique identifier for a region
+  - name: description
+    type: string
+    title: A human-readable label for the region
