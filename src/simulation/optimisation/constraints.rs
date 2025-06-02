@@ -1,7 +1,7 @@
 //! Code for adding constraints to the dispatch optimisation problem.
 use super::VariableMap;
 use crate::asset::{AssetID, AssetPool};
-use crate::commodity::{CommodityID, CommodityType};
+use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
@@ -85,73 +85,18 @@ pub fn add_asset_constraints(
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#commodity-balance-constraints
 fn add_commodity_balance_constraints(
     problem: &mut Problem,
-    variables: &VariableMap,
-    model: &Model,
-    assets: &AssetPool,
-    year: u32,
+    _variables: &VariableMap,
+    _model: &Model,
+    _assets: &AssetPool,
+    _year: u32,
 ) -> CommodityBalanceKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
-    let mut terms = Vec::new();
-    let mut keys = Vec::new();
-    for commodity in model.commodities.values() {
-        if commodity.kind != CommodityType::SupplyEqualsDemand
-            && commodity.kind != CommodityType::ServiceDemand
-        {
-            continue;
-        }
+    let keys = Vec::new();
 
-        for region_id in model.iter_regions() {
-            for ts_selection in model
-                .time_slice_info
-                .iter_selections_for_level(commodity.time_slice_level)
-            {
-                // Note about performance: this loop **may** prove to be a bottleneck as
-                // `time_slice_info.iter_selection` returns a `Box` and so requires a heap
-                // allocation each time. For commodities with a `TimeSliceLevel` of `TimeSlice` (the
-                // worst case), this means the number of additional heap allocations will equal the
-                // number of time slices, which for this function could be in the
-                // hundreds/thousands.
-                for (time_slice, _) in model.time_slice_info.iter_selection(&ts_selection) {
-                    // Add terms for this asset + commodity at this time slice. The coefficient for
-                    // each variable is one.
-                    terms.extend(
-                        assets
-                            .iter_for_region_and_commodity(region_id, &commodity.id)
-                            .map(|asset| (variables.get(asset.id, &commodity.id, time_slice), 1.0)),
-                    );
-                }
-
-                // Get the RHS of the equation for a commodity balance constraint. For SED
-                // commodities, the RHS will be zero and for SVD commodities it will be equal to the
-                // demand for the given time slice selection.
-                let rhs = match commodity.kind {
-                    CommodityType::SupplyEqualsDemand => 0.0,
-                    CommodityType::ServiceDemand => {
-                        match ts_selection {
-                            TimeSliceSelection::Single(ref ts) => *commodity
-                                .demand
-                                .get(&(region_id.clone(), year, ts.clone()))
-                                .unwrap(),
-                            // We currently only support specifying demand at the time slice level:
-                            //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/391
-                            _ => panic!(
-                            "Currently SVD commodities must have a time slice level of time slice"
-                        ),
-                        }
-                    }
-                    _ => unreachable!(),
-                };
-
-                // Add constraint (sum of terms must equal rhs)
-                problem.add_row(rhs..=rhs, terms.drain(0..));
-
-                // Keep track of the order in which constraints were added
-                keys.push((commodity.id.clone(), region_id.clone(), ts_selection));
-            }
-        }
-    }
+    // **TODO:** Add commodity balance constraints:
+    //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/577
 
     CommodityBalanceKeys { offset, keys }
 }
