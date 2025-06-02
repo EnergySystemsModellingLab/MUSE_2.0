@@ -16,7 +16,7 @@ define_id_type! {Season}
 define_id_type! {TimeOfDay}
 
 /// An ID describing season and time of day
-#[derive(Hash, Eq, PartialEq, Clone, Debug)]
+#[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
 pub struct TimeSliceID {
     /// The name of each season.
     pub season: Season,
