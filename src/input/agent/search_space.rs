@@ -156,17 +156,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::{agents, assert_error, process_parameter_map, region_ids};
+    use crate::fixture::{agents, assert_error, region_ids};
     use crate::process::{ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessID, ProcessParameterMap};
     use crate::region::RegionID;
     use rstest::{fixture, rstest};
     use std::iter;
 
     #[fixture]
-    pub fn processes(
-        region_ids: HashSet<RegionID>,
-        process_parameter_map: ProcessParameterMap,
-    ) -> ProcessMap {
+    pub fn processes(region_ids: HashSet<RegionID>) -> ProcessMap {
         ["A", "B", "C"]
             .map(|id| {
                 let id: ProcessID = id.into();
@@ -176,7 +173,7 @@ mod tests {
                     years: vec![2010, 2020],
                     energy_limits: ProcessEnergyLimitsMap::new(),
                     flows: ProcessFlowsMap::new(),
-                    parameters: process_parameter_map.clone(),
+                    parameters: ProcessParameterMap::new(),
                     regions: region_ids.clone(),
                 };
                 (id, process.into())
