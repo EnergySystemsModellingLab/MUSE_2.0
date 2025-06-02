@@ -7,7 +7,7 @@ use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use indexmap::IndexMap;
 use log::warn;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
 #[derive(Default)]
@@ -52,45 +52,13 @@ impl CommodityPrices {
     /// The set of commodities for which prices were added.
     fn add_from_solution(
         &mut self,
-        solution: &Solution,
-        assets: &AssetPool,
+        _solution: &Solution,
+        _assets: &AssetPool,
     ) -> HashSet<(CommodityID, RegionID)> {
-        let mut commodity_regions_updated = HashSet::new();
+        // **TODO:** Calculate commodity prices here:
+        //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/589
 
-        // Calculate highest capacity dual for each commodity/region/timeslice
-        let mut highest_duals = HashMap::new();
-        for (asset_id, time_slice, dual) in solution.iter_capacity_duals() {
-            let asset = assets.get(asset_id).unwrap();
-            let region_id = asset.region_id.clone();
-
-            // Iterate over asset pacs
-            for pac in asset.iter_pacs() {
-                let commodity = &pac.commodity;
-
-                // If the commodity flow is positive (produced PAC)
-                if pac.flow > 0.0 {
-                    // Update the highest dual for this commodity/timeslice
-                    highest_duals
-                        .entry((commodity.id.clone(), region_id.clone(), time_slice.clone()))
-                        .and_modify(|current_dual| {
-                            if dual > *current_dual {
-                                *current_dual = dual;
-                            }
-                        })
-                        .or_insert(dual);
-                }
-            }
-        }
-
-        // Add the highest capacity dual for each commodity/timeslice to each commodity balance dual
-        for (commodity_id, region_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
-            let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
-            let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
-            self.insert(commodity_id, region_id, time_slice, price);
-            commodity_regions_updated.insert((commodity_id.clone(), region_id.clone()));
-        }
-
-        commodity_regions_updated
+        HashSet::new()
     }
 
     /// Add prices for any commodity not updated by the dispatch step.
