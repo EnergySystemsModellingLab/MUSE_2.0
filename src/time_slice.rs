@@ -69,6 +69,17 @@ pub enum TimeSliceSelection {
     Single(TimeSliceID),
 }
 
+impl TimeSliceSelection {
+    /// The [`TimeSliceLevel`] to which this [`TimeSliceSelection`] corresponds
+    pub fn level(&self) -> TimeSliceLevel {
+        match self {
+            TimeSliceSelection::Annual => TimeSliceLevel::Annual,
+            TimeSliceSelection::Season(_) => TimeSliceLevel::Season,
+            TimeSliceSelection::Single(_) => TimeSliceLevel::DayNight,
+        }
+    }
+}
+
 /// The time granularity for a particular operation
 #[derive(PartialEq, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
 pub enum TimeSliceLevel {
