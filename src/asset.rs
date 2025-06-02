@@ -69,8 +69,8 @@ impl Asset {
             .clone();
 
         ensure!(
-            capacity.is_normal() && capacity > 0.0,
-            "Capacity must be a number >0"
+            capacity.is_finite() && capacity > 0.0,
+            "Capacity must be a finite, positive number"
         );
 
         Ok(Self {
@@ -300,7 +300,7 @@ mod tests {
         let region_id = RegionID("GBR".into());
         assert_error!(
             Asset::new(agent_id, process.into(), region_id, capacity, 2015),
-            "Capacity must be a number >0"
+            "Capacity must be a finite, positive number"
         );
     }
 
