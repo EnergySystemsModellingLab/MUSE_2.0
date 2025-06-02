@@ -40,7 +40,7 @@ def generate_markdown() -> str:
 def process_file(path: Path) -> str:
     out = f"\n### `{path.stem}.csv`\n\n"
     with path.open() as f:
-        data = yaml.load(f, Loader=yaml.Loader)
+        data = yaml.safe_load(f)
 
     info = data["title"]
     if desc := data.get("description", ""):
