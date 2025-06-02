@@ -23,4 +23,4 @@ fields:
   - name: end_year
     type: integer
     title: The last year when this process is available to agents
-    description: Must be <= to `start_year`
+    description: Must be >= to `start_year`
