@@ -112,38 +112,17 @@ fn add_commodity_balance_constraints(
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#asset-level-capacity-and-availability-constraints
 fn add_asset_capacity_constraints(
     problem: &mut Problem,
-    variables: &VariableMap,
-    assets: &AssetPool,
-    time_slice_info: &TimeSliceInfo,
+    _variables: &VariableMap,
+    _assets: &AssetPool,
+    _time_slice_info: &TimeSliceInfo,
 ) -> CapacityKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
-    let mut terms = Vec::new();
-    let mut keys = Vec::new();
-    for asset in assets.iter() {
-        for time_slice in time_slice_info.iter_ids() {
-            let mut is_input = false; // NB: there will be at least one PAC
-            for flow in asset.iter_pacs() {
-                is_input = flow.flow < 0.0; // NB: PACs will be all inputs or all outputs
+    let keys = Vec::new();
 
-                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
-                terms.push((var, 1.0));
-            }
-
-            let mut limits = asset.get_energy_limits(time_slice);
-
-            // If it's an input flow, the q's will be negative, so we need to invert the limits
-            if is_input {
-                limits = -limits.end()..=-limits.start();
-            }
-
-            problem.add_row(limits, terms.drain(0..));
-
-            // Keep track of the order in which constraints were added
-            keys.push((asset.id, time_slice.clone()));
-        }
-    }
+    // **TODO:** Add capacity/availability constraints:
+    //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/579
 
     CapacityKeys { offset, keys }
 }

@@ -34,6 +34,8 @@ pub struct VariableMap(IndexMap<(AssetID, CommodityID, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
+    // **TODO:** Remove line below when we add some constraints
+    #[allow(dead_code)]
     fn get(
         &self,
         asset_id: AssetID,
