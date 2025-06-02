@@ -57,7 +57,6 @@ pub fn read_agents(
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<AgentMap> {
-    let process_ids = processes.keys().cloned().collect();
     let mut agents = read_agents_file(model_dir, region_ids)?;
     let agent_ids = agents.keys().cloned().collect();
 
@@ -66,7 +65,7 @@ pub fn read_agents(
     let mut search_spaces = read_agent_search_space(
         model_dir,
         &agents,
-        &process_ids,
+        processes,
         &commodity_ids,
         milestone_years,
     )?;
