@@ -81,17 +81,17 @@ impl TimeSliceSelection {
 }
 
 /// The time granularity for a particular operation
-#[derive(PartialEq, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
+#[derive(PartialEq, PartialOrd, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
 pub enum TimeSliceLevel {
-    /// The whole year
-    #[string = "annual"]
-    Annual,
-    /// Whole seasons
-    #[string = "season"]
-    Season,
     /// Treat individual time slices separately
     #[string = "daynight"]
     DayNight,
+    /// Whole seasons
+    #[string = "season"]
+    Season,
+    /// The whole year
+    #[string = "annual"]
+    Annual,
 }
 
 /// Information about the time slices in the simulation, including names and fractions
