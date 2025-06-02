@@ -102,18 +102,6 @@ impl Solution<'_> {
             .zip_duals(self.solution.dual_rows())
             .map(|((asset_id, time_slice), dual)| (*asset_id, time_slice, dual))
     }
-
-    /// Keys and dual values for fixed asset constraints.
-    pub fn iter_fixed_asset_duals(
-        &self,
-    ) -> impl Iterator<Item = (AssetID, &CommodityID, &TimeSliceID, f64)> {
-        self.constraint_keys
-            .fixed_asset_keys
-            .zip_duals(self.solution.dual_rows())
-            .map(|((asset_id, commodity_id, time_slice), dual)| {
-                (*asset_id, commodity_id, time_slice, dual)
-            })
-    }
 }
 
 /// Perform the dispatch optimisation.
