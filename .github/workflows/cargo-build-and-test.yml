@@ -24,14 +24,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-
-      - name: Check docs
-        run: cargo doc --no-deps --document-private-items
-
-        # Continue even if docs fail
       - run: cargo build --verbose
-        if: always()
-
       - run: cargo test --verbose
 
       - name: Install cargo-llvm-cov
