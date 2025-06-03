@@ -184,7 +184,9 @@ mod tests {
     ) {
         // Valid, multiple time slices
         let time_slice_info = TimeSliceInfo {
-            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
+                .into_iter()
+                .collect(),
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
             time_slices: [
                 (
@@ -388,7 +390,9 @@ mod tests {
     ) {
         // Some time slices uncovered
         let time_slice_info = TimeSliceInfo {
-            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
+                .into_iter()
+                .collect(),
             times_of_day: iter::once("day".into()).collect(),
             time_slices: [
                 (

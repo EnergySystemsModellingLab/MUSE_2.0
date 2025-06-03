@@ -219,7 +219,7 @@ mod tests {
             time_of_day: "night".into(),
         };
         let time_slice_info = TimeSliceInfo {
-            seasons: ["winter".into()].into(),
+            seasons: [("winter".into(), 1.0)].into(),
             times_of_day: ["day".into(), "night".into()].into(),
             time_slices: [(time_slice.clone(), 0.5), (time_slice.clone(), 0.5)].into(),
         };
