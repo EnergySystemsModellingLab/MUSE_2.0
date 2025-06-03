@@ -183,8 +183,6 @@ fn add_variables(
     for asset in assets.iter() {
         for time_slice in model.time_slice_info.iter_ids() {
             let coeff = calculate_cost_coefficient(asset, year, time_slice);
-
-            // Question: Might activity be negative? If so, the bounds will need to be inverted
             let var = problem.add_column(coeff, 0.0..);
             let key = (asset.id, time_slice.clone());
             let existing = variables.0.insert(key, var).is_some();
