@@ -1,6 +1,6 @@
 //! The module responsible for writing output data to disk.
 use crate::agent::AgentID;
-use crate::asset::{Asset, AssetID, AssetPool};
+use crate::asset::{Asset, AssetID, AssetPool, AssetRef};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
 use crate::region::RegionID;
@@ -281,17 +281,11 @@ impl DataWriter {
     }
 
     /// Write commodity flows to a CSV file
-    pub fn write_flows<'a, I>(
-        &mut self,
-        milestone_year: u32,
-        assets: &AssetPool,
-        flows: I,
-    ) -> Result<()>
+    pub fn write_flows<'a, I>(&mut self, milestone_year: u32, flows: I) -> Result<()>
     where
-        I: Iterator<Item = (AssetID, &'a CommodityID, &'a TimeSliceID, f64)>,
+        I: Iterator<Item = (&'a AssetRef, &'a CommodityID, &'a TimeSliceID, f64)>,
     {
-        for (asset_id, commodity_id, time_slice, flow) in flows {
-            let asset = assets.get(asset_id).unwrap();
+        for (asset, commodity_id, time_slice, flow) in flows {
             let asset_row = AssetRow::new(milestone_year, asset);
             let flow_row = CommodityFlowRow {
                 commodity_id: commodity_id.clone(),
@@ -385,19 +379,15 @@ mod tests {
     #[rstest]
     fn test_write_flows(assets: AssetPool, commodity_id: CommodityID, time_slice: TimeSliceID) {
         let milestone_year = 2020;
-        let flow_item = (
-            assets.iter().next().unwrap().id,
-            &commodity_id,
-            &time_slice,
-            42.0,
-        );
+        let asset = assets.iter().next().unwrap().into();
+        let flow_item = (&asset, &commodity_id, &time_slice, 42.0);
 
         // Write a flow
         let dir = tempdir().unwrap();
         {
             let mut writer = DataWriter::create(dir.path(), false).unwrap();
             writer
-                .write_flows(milestone_year, &assets, iter::once(flow_item))
+                .write_flows(milestone_year, iter::once(flow_item))
                 .unwrap();
             writer.flush().unwrap();
         }

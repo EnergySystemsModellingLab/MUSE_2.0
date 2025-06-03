@@ -64,7 +64,7 @@ impl Solution<'_> {
     /// An iterator of tuples containing an asset ID, commodity, time slice and flow.
     pub fn iter_commodity_flows_for_assets(
         &self,
-    ) -> impl Iterator<Item = (AssetID, &CommodityID, &TimeSliceID, f64)> {
+    ) -> impl Iterator<Item = (&AssetRef, &CommodityID, &TimeSliceID, f64)> {
         // **TODO:** Need to calculate flows by multiplying coeffs by asset activity:
         //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/593
         std::iter::empty()
