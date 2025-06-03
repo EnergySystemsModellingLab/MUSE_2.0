@@ -291,7 +291,7 @@ impl TimeSliceInfo {
     /// # Returns
     ///
     /// An iterator of time slices along with the fraction of the total selection.
-    pub fn iterate_selection_share<'a>(
+    pub fn iter_selection_share<'a>(
         &'a self,
         selection: &'a TimeSliceSelection,
     ) -> impl Iterator<Item = (&'a TimeSliceID, f64)> {
@@ -325,7 +325,7 @@ impl TimeSliceInfo {
         selection: &'a TimeSliceSelection,
         value: f64,
     ) -> impl Iterator<Item = (&'a TimeSliceID, f64)> {
-        self.iterate_selection_share(selection)
+        self.iter_selection_share(selection)
             .map(move |(ts, share)| (ts, value * share))
     }
 }
