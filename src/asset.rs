@@ -14,16 +14,11 @@ use std::rc::Rc;
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetID(u32);
 
-impl AssetID {
-    /// Sentinel value assigned to [`Asset`]s when they are added to the pool
-    pub const INVALID: AssetID = AssetID(u32::MAX);
-}
-
 /// An asset controlled by an agent.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Asset {
     /// A unique identifier for the asset
-    id: AssetID,
+    id: Option<AssetID>,
     /// A unique identifier for the agent
     pub agent_id: AgentID,
     /// The [`Process`] that this asset corresponds to
@@ -41,8 +36,8 @@ pub struct Asset {
 impl Asset {
     /// Create a new [`Asset`].
     ///
-    /// The `id` field is initially set to [`AssetID::INVALID`], but is changed to a unique value
-    /// when the asset is stored in an [`AssetPool`].
+    /// The `id` field is initially set to `None`, but is changed to a unique value when the asset
+    /// is stored in an [`AssetPool`].
     pub fn new(
         agent_id: AgentID,
         process: Rc<Process>,
@@ -74,7 +69,7 @@ impl Asset {
         );
 
         Ok(Self {
-            id: AssetID::INVALID,
+            id: None,
             agent_id,
             process,
             process_parameter,
@@ -148,7 +143,7 @@ pub struct AssetRef(Rc<Asset>);
 
 impl From<Rc<Asset>> for AssetRef {
     fn from(value: Rc<Asset>) -> Self {
-        assert!(value.id != AssetID::INVALID);
+        assert!(value.id.is_some());
         Self(value)
     }
 }
@@ -192,7 +187,7 @@ impl Hash for AssetRef {
     ///
     /// Panics if the asset has not been commissioned (and therefore has no ID).
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.id.hash(state);
+        self.0.id.unwrap().hash(state);
     }
 }
 
@@ -230,7 +225,7 @@ impl AssetPool {
 
         // Move assets from future to active
         for mut asset in self.future.drain(0..count) {
-            asset.id = AssetID(self.next_id);
+            asset.id = Some(AssetID(self.next_id));
             self.next_id += 1;
             self.active.push(asset.into());
         }
@@ -251,7 +246,7 @@ impl AssetPool {
         // The assets in `active` are in order of ID
         let idx = self
             .active
-            .binary_search_by(|asset| asset.id.cmp(&id))
+            .binary_search_by(|asset| asset.id.unwrap().cmp(&id))
             .ok()?;
 
         Some(&self.active[idx])
@@ -292,13 +287,13 @@ impl AssetPool {
         I: IntoIterator<Item = Rc<Asset>>,
     {
         let new_pool = assets.into_iter().map(|asset| {
-            if asset.id != AssetID::INVALID {
+            if asset.id.is_some() {
                 // Already commissioned
                 asset.into()
             } else {
                 // Newly created from process. We need to assign an ID.
                 let mut asset = asset.as_ref().clone();
-                asset.id = AssetID(self.next_id);
+                asset.id = Some(AssetID(self.next_id));
                 self.next_id += 1;
                 asset.into()
             }
@@ -331,7 +326,7 @@ mod tests {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("GBR".into());
         let asset = Asset::new(agent_id, process.into(), region_id, capacity, 2015).unwrap();
-        assert!(asset.id == AssetID::INVALID);
+        assert!(asset.id.is_none());
     }
 
     #[rstest]
@@ -516,7 +511,7 @@ mod tests {
         assert_eq!(asset_pool.active.len(), 2);
         asset_pool.replace_active_pool(iter::once(asset_pool.active[1].clone().into()));
         assert_eq!(asset_pool.active.len(), 1);
-        assert_eq!(asset_pool.active[0].id, AssetID(1));
+        assert_eq!(asset_pool.active[0].id, Some(AssetID(1)));
     }
 
     #[rstest]
@@ -534,7 +529,7 @@ mod tests {
         assert_eq!(asset_pool.active.len(), 2);
         asset_pool.replace_active_pool(iter::once(asset.into()));
         assert_eq!(asset_pool.active.len(), 1);
-        assert_eq!(asset_pool.active[0].id, AssetID(2));
+        assert_eq!(asset_pool.active[0].id, Some(AssetID(2)));
         assert_eq!(asset_pool.active[0].agent_id, "some_other_agent".into());
     }
 }
