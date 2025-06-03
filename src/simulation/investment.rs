@@ -15,20 +15,14 @@ use log::info;
 /// * `assets` - The asset pool
 pub fn perform_agent_investment(
     _model: &Model,
-    solution: &Solution,
+    _solution: &Solution,
     _prices: &CommodityPrices,
     assets: &mut AssetPool,
 ) {
     info!("Performing agent investment...");
 
     let mut new_pool = Vec::new();
-    for (asset_id, _commodity_id, _time_slice, _flow) in solution.iter_commodity_flows_for_assets()
-    {
-        let Some(asset) = assets.get(asset_id) else {
-            // Asset has been decommissioned
-            continue;
-        };
-
+    for asset in assets.iter() {
         // **TODO**: Implement agent investment. For now, just keep all assets.
         new_pool.push(asset.clone());
     }

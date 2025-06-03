@@ -1,7 +1,7 @@
 //! Code for performing dispatch optimisation.
 //!
 //! This is used to calculate commodity flows and prices.
-use crate::asset::{Asset, AssetID, AssetPool};
+use crate::asset::{Asset, AssetID, AssetPool, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
@@ -29,14 +29,14 @@ type Variable = highs::Col;
 /// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
 ///    are reading the results of the optimisation.
 #[derive(Default)]
-pub struct VariableMap(IndexMap<(AssetID, TimeSliceID), Variable>);
+pub struct VariableMap(IndexMap<(AssetRef, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
     // **TODO:** Remove line below when we're using this
     #[allow(dead_code)]
-    fn get(&self, asset_id: AssetID, time_slice: &TimeSliceID) -> Variable {
-        let key = (asset_id, time_slice.clone());
+    fn get(&self, asset: AssetRef, time_slice: TimeSliceID) -> Variable {
+        let key = (asset, time_slice);
 
         *self
             .0
@@ -184,7 +184,7 @@ fn add_variables(
         for time_slice in model.time_slice_info.iter_ids() {
             let coeff = calculate_cost_coefficient(asset, year, time_slice);
             let var = problem.add_column(coeff, 0.0..);
-            let key = (asset.id, time_slice.clone());
+            let key = (asset.into(), time_slice.clone());
             let existing = variables.0.insert(key, var).is_some();
             assert!(!existing, "Duplicate entry for var");
         }
