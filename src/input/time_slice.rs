@@ -61,7 +61,7 @@ where
     Ok(TimeSliceInfo {
         seasons,
         times_of_day,
-        fractions,
+        time_slices: fractions,
     })
 }
 
@@ -133,7 +133,7 @@ autumn,evening,0.25"
                 ]
                 .into_iter()
                 .collect(),
-                fractions: [
+                time_slices: [
                     (
                         TimeSliceID {
                             season: "winter".into(),

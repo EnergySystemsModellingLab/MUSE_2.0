@@ -141,7 +141,7 @@ pub fn time_slice_info() -> TimeSliceInfo {
     TimeSliceInfo {
         seasons: iter::once("winter".into()).collect(),
         times_of_day: iter::once("day".into()).collect(),
-        fractions: [(
+        time_slices: [(
             TimeSliceID {
                 season: "winter".into(),
                 time_of_day: "day".into(),

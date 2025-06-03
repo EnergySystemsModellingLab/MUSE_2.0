@@ -186,7 +186,7 @@ mod tests {
         let time_slice_info = TimeSliceInfo {
             seasons: ["winter".into(), "summer".into()].into_iter().collect(),
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            fractions: [
+            time_slices: [
                 (
                     TimeSliceID {
                         season: "summer".into(),
@@ -390,7 +390,7 @@ mod tests {
         let time_slice_info = TimeSliceInfo {
             seasons: ["winter".into(), "summer".into()].into_iter().collect(),
             times_of_day: iter::once("day".into()).collect(),
-            fractions: [
+            time_slices: [
                 (
                     TimeSliceID {
                         season: "winter".into(),
