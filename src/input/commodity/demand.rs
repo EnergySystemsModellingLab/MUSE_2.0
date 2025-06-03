@@ -5,8 +5,9 @@ use super::demand_slicing::{read_demand_slices, DemandSliceMap};
 use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
 use crate::id::IDCollection;
 use crate::region::RegionID;
-use crate::time_slice::TimeSliceInfo;
+use crate::time_slice::{TimeSliceInfo, TimeSliceLevel};
 use anyhow::{ensure, Result};
+use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -27,7 +28,10 @@ struct Demand {
 }
 
 /// A map relating commodity, region and year to annual demand
-pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), f64>;
+pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), (TimeSliceLevel, f64)>;
+
+/// A map containing a references to commodities
+pub type BorrowedCommodityMap<'a> = HashMap<CommodityID, &'a Commodity>;
 
 /// Reads demand data from CSV files.
 ///
@@ -49,17 +53,17 @@ pub fn read_demand(
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<HashMap<CommodityID, DemandMap>> {
-    // Get set of SVD commodity IDs
-    let svd_commodity_ids: HashSet<CommodityID> = commodities
+    // Demand only applies to SVD commodities
+    let svd_commodities = commodities
         .iter()
         .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
-        .map(|(id, _)| id.clone())
+        .map(|(id, commodity)| (id.clone(), commodity))
         .collect();
 
-    let demand = read_demand_file(model_dir, &svd_commodity_ids, region_ids, milestone_years)?;
-    let slices = read_demand_slices(model_dir, &svd_commodity_ids, region_ids, time_slice_info)?;
+    let demand = read_demand_file(model_dir, &svd_commodities, region_ids, milestone_years)?;
+    let slices = read_demand_slices(model_dir, &svd_commodities, region_ids, time_slice_info)?;
 
-    Ok(compute_demand_maps(&demand, &slices, time_slice_info))
+    Ok(compute_demand_maps(time_slice_info, &demand, &slices))
 }
 
 /// Read the demand.csv file.
@@ -67,7 +71,7 @@ pub fn read_demand(
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
-/// * `commodity_ids` - All possible IDs of commodities
+/// * `svd_commodities` - Map of service demand commodities
 /// * `region_ids` - All possible IDs for regions
 /// * `milestone_years` - All milestone years
 ///
@@ -76,13 +80,13 @@ pub fn read_demand(
 /// Annual demand data, grouped by commodity, region and milestone year.
 fn read_demand_file(
     model_dir: &Path,
-    svd_commodity_ids: &HashSet<CommodityID>,
+    svd_commodities: &BorrowedCommodityMap,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<AnnualDemandMap> {
     let file_path = model_dir.join(DEMAND_FILE_NAME);
     let iter = read_csv(&file_path)?;
-    read_demand_from_iter(iter, svd_commodity_ids, region_ids, milestone_years)
+    read_demand_from_iter(iter, svd_commodities, region_ids, milestone_years)
 }
 
 /// Read the demand data from an iterator.
@@ -90,7 +94,7 @@ fn read_demand_file(
 /// # Arguments
 ///
 /// * `iter` - An iterator of [`Demand`]s
-/// * `commodity_ids` - All possible IDs of commodities
+/// * `svd_commodities` - Map of service demand commodities
 /// * `region_ids` - All possible IDs for regions
 /// * `milestone_years` - All milestone years
 ///
@@ -100,7 +104,7 @@ fn read_demand_file(
 /// commodity + region pairs included in the file.
 fn read_demand_from_iter<I>(
     iter: I,
-    svd_commodity_ids: &HashSet<CommodityID>,
+    svd_commodities: &BorrowedCommodityMap,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<AnnualDemandMap>
@@ -109,8 +113,8 @@ where
 {
     let mut map = AnnualDemandMap::new();
     for demand in iter {
-        let commodity_id = svd_commodity_ids
-            .get_id(&demand.commodity_id)
+        let commodity = svd_commodities
+            .get(demand.commodity_id.as_str())
             .with_context(|| {
                 format!(
                     "Can only provide demand data for SVD commodities. Found entry for '{}'",
@@ -133,25 +137,23 @@ where
 
         ensure!(
             map.insert(
-                (commodity_id.clone(), region_id.clone(), demand.year),
-                demand.demand
+                (commodity.id.clone(), region_id.clone(), demand.year),
+                (commodity.time_slice_level, demand.demand)
             )
             .is_none(),
             "Duplicate demand entries (commodity: {}, region: {}, year: {})",
-            commodity_id,
+            commodity.id,
             region_id,
             demand.year
         );
     }
 
     // Check that demand data is specified for all combinations of commodity, region and year
-    for commodity_id in svd_commodity_ids {
+    for commodity_id in svd_commodities.keys() {
         let mut missing_keys = Vec::new();
-        for region_id in region_ids {
-            for year in milestone_years {
-                if !map.contains_key(&(commodity_id.clone(), region_id.clone(), *year)) {
-                    missing_keys.push((region_id.clone(), *year));
-                }
+        for (region_id, year) in iproduct!(region_ids, milestone_years) {
+            if !map.contains_key(&(commodity_id.clone(), region_id.clone(), *year)) {
+                missing_keys.push((region_id.clone(), *year));
             }
         }
         ensure!(
@@ -169,23 +171,27 @@ where
 ///
 /// # Arguments
 ///
+/// * `time_slice_info` - Information about time slices
 /// * `demand` - Total annual demand for combinations of commodity, region and year
 /// * `slices` - How annual demand is shared between time slices
-/// * `time_slice_info` - Information about time slices
 ///
 /// # Returns
 ///
 /// [`DemandMap`]s for combinations of region, year and time slice, grouped by the commodity to
 /// which the demand applies.
 fn compute_demand_maps(
+    time_slice_info: &TimeSliceInfo,
     demand: &AnnualDemandMap,
     slices: &DemandSliceMap,
-    time_slice_info: &TimeSliceInfo,
 ) -> HashMap<CommodityID, DemandMap> {
     let mut map = HashMap::new();
-    for ((commodity_id, region_id, year), annual_demand) in demand.iter() {
-        for time_slice in time_slice_info.iter_ids() {
-            let slice_key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
+    for ((commodity_id, region_id, year), (level, annual_demand)) in demand.iter() {
+        for ts_selection in time_slice_info.iter_selections_for_level(*level) {
+            let slice_key = (
+                commodity_id.clone(),
+                region_id.clone(),
+                ts_selection.clone(),
+            );
 
             // NB: This has already been checked, so shouldn't fail
             let demand_fraction = slices.get(&slice_key).unwrap();
@@ -197,7 +203,7 @@ fn compute_demand_maps(
 
             // Add a new demand entry
             map.insert(
-                (region_id.clone(), *year, time_slice.clone()),
+                (region_id.clone(), *year, ts_selection.clone()),
                 annual_demand * demand_fraction,
             );
         }
@@ -209,19 +215,16 @@ fn compute_demand_maps(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::{assert_error, commodity_ids, region_ids};
+    use crate::fixture::{assert_error, get_svd_map, region_ids, svd_commodity};
     use rstest::rstest;
     use std::fs::File;
     use std::io::Write;
-
     use std::path::Path;
     use tempfile::tempdir;
 
     #[rstest]
-    fn test_read_demand_from_iter(
-        commodity_ids: HashSet<CommodityID>,
-        region_ids: HashSet<RegionID>,
-    ) {
+    fn test_read_demand_from_iter(svd_commodity: Commodity, region_ids: HashSet<RegionID>) {
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand = [
             Demand {
                 year: 2020,
@@ -239,16 +242,18 @@ mod tests {
 
         // Valid
         assert!(
-            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]).is_ok()
+            read_demand_from_iter(demand.into_iter(), &svd_commodities, &region_ids, &[2020])
+                .is_ok()
         );
     }
 
     #[rstest]
     fn test_read_demand_from_iter_bad_commodity_id(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
     ) {
         // Bad commodity ID
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand = [
             Demand {
                 year: 2020,
@@ -264,17 +269,18 @@ mod tests {
             },
         ];
         assert_error!(
-            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]),
+            read_demand_from_iter(demand.into_iter(), &svd_commodities, &region_ids, &[2020]),
             "Can only provide demand data for SVD commodities. Found entry for 'commodity2'"
         );
     }
 
     #[rstest]
     fn test_read_demand_from_iter_bad_region_id(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
     ) {
         // Bad region ID
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand = [
             Demand {
                 year: 2020,
@@ -290,17 +296,18 @@ mod tests {
             },
         ];
         assert_error!(
-            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]),
+            read_demand_from_iter(demand.into_iter(), &svd_commodities, &region_ids, &[2020]),
             "Unknown ID FRA found"
         );
     }
 
     #[rstest]
     fn test_read_demand_from_iter_bad_year(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
     ) {
         // Bad year
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand = [
             Demand {
                 year: 2010,
@@ -316,7 +323,7 @@ mod tests {
             },
         ];
         assert_error!(
-            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]),
+            read_demand_from_iter(demand.into_iter(), &svd_commodities, &region_ids, &[2020]),
             "Year 2010 is not a milestone year. \
             Input of non-milestone years is currently not supported."
         );
@@ -329,11 +336,12 @@ mod tests {
     #[case(f64::NEG_INFINITY)]
     #[case(f64::INFINITY)]
     fn test_read_demand_from_iter_bad_demand(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
         #[case] quantity: f64,
     ) {
         // Bad demand quantity
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand = [Demand {
             year: 2020,
             region_id: "GBR".to_string(),
@@ -341,17 +349,18 @@ mod tests {
             demand: quantity,
         }];
         assert_error!(
-            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020],),
+            read_demand_from_iter(demand.into_iter(), &svd_commodities, &region_ids, &[2020],),
             "Demand must be a valid number greater than zero"
         );
     }
 
     #[rstest]
     fn test_read_demand_from_iter_multiple_entries(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
     ) {
         // Multiple entries for same commodity and region
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand = [
             Demand {
                 year: 2020,
@@ -373,17 +382,18 @@ mod tests {
             },
         ];
         assert_error!(
-            read_demand_from_iter(demand.into_iter(), &commodity_ids, &region_ids, &[2020]),
+            read_demand_from_iter(demand.into_iter(), &svd_commodities, &region_ids, &[2020]),
             "Duplicate demand entries (commodity: commodity1, region: GBR, year: 2020)"
         );
     }
 
     #[rstest]
     fn test_read_demand_from_iter_missing_year(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
     ) {
         // Missing entry for a milestone year
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand = Demand {
             year: 2020,
             region_id: "GBR".to_string(),
@@ -392,7 +402,7 @@ mod tests {
         };
         assert!(read_demand_from_iter(
             std::iter::once(demand),
-            &commodity_ids,
+            &svd_commodities,
             &region_ids,
             &[2020, 2030]
         )
@@ -413,16 +423,23 @@ mod tests {
     }
 
     #[rstest]
-    fn test_read_demand_file(commodity_ids: HashSet<CommodityID>, region_ids: HashSet<RegionID>) {
+    fn test_read_demand_file(svd_commodity: Commodity, region_ids: HashSet<RegionID>) {
+        let svd_commodities = get_svd_map(&svd_commodity);
         let dir = tempdir().unwrap();
         create_demand_file(dir.path());
         let milestone_years = [2020];
         let expected = AnnualDemandMap::from_iter([
-            (("commodity1".into(), "GBR".into(), 2020), 10.0),
-            (("commodity1".into(), "USA".into(), 2020), 11.0),
+            (
+                ("commodity1".into(), "GBR".into(), 2020),
+                (TimeSliceLevel::DayNight, 10.0),
+            ),
+            (
+                ("commodity1".into(), "USA".into(), 2020),
+                (TimeSliceLevel::DayNight, 11.0),
+            ),
         ]);
         let demand =
-            read_demand_file(dir.path(), &commodity_ids, &region_ids, &milestone_years).unwrap();
+            read_demand_file(dir.path(), &svd_commodities, &region_ids, &milestone_years).unwrap();
         assert_eq!(demand, expected);
     }
 }
