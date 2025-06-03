@@ -3,7 +3,7 @@
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
 use crate::id::{define_id_type, IDCollection};
-use anyhow::{Context, Result};
+use anyhow::{ensure, Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 use serde::de::Error;
@@ -77,6 +77,59 @@ impl TimeSliceSelection {
             TimeSliceSelection::Season(_) => TimeSliceLevel::Season,
             TimeSliceSelection::Single(_) => TimeSliceLevel::DayNight,
         }
+    }
+
+    /// Iterate over this selection at the specified temporal granularity
+    pub fn for_each_at_level<F>(
+        &self,
+        time_slice_info: &TimeSliceInfo,
+        level: TimeSliceLevel,
+        mut f: F,
+    ) -> Result<()>
+    where
+        F: FnMut(TimeSliceSelection, f64),
+    {
+        ensure!(
+            level > self.level(),
+            "Cannot iterate over time slice selection {:?} at time slice level {:?}",
+            self,
+            level
+        );
+
+        match self {
+            Self::Annual => match level {
+                TimeSliceLevel::Annual => f(Self::Annual, 1.0),
+                TimeSliceLevel::Season => {
+                    for (season, fraction) in time_slice_info.seasons.iter() {
+                        f(Self::Season(season.clone()), *fraction);
+                    }
+                }
+                TimeSliceLevel::DayNight => {
+                    for (time_slice, fraction) in time_slice_info.time_slices.iter() {
+                        f(Self::Single(time_slice.clone()), *fraction);
+                    }
+                }
+            },
+            Self::Season(season) => match level {
+                TimeSliceLevel::Season => {
+                    f(self.clone(), *time_slice_info.seasons.get(season).unwrap())
+                }
+                TimeSliceLevel::DayNight => {
+                    for (time_slice, fraction) in time_slice_info.time_slices.iter() {
+                        if &time_slice.season == season {
+                            f(Self::Single(time_slice.clone()), *fraction);
+                        }
+                    }
+                }
+                _ => unreachable!(),
+            },
+            TimeSliceSelection::Single(time_slice) => f(
+                self.clone(),
+                *time_slice_info.time_slices.get(time_slice).unwrap(),
+            ),
+        }
+
+        Ok(())
     }
 }
 
