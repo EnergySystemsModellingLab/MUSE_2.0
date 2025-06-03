@@ -6,7 +6,8 @@ use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
-use std::ops::RangeInclusive;
+use std::hash::{Hash, Hasher};
+use std::ops::{Deref, RangeInclusive};
 use std::rc::Rc;
 
 /// A unique identifier for an asset
@@ -135,6 +136,63 @@ impl Asset {
     pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.process
             .iter_pacs(&self.region_id, self.commission_year)
+    }
+}
+
+/// A wrapper around [`Asset`] for storing references in maps.
+///
+/// An [`AssetRef`] is guaranteed to have been commissioned at some point, though it may
+/// subsequently have been decommissioned.
+#[derive(Clone)]
+pub struct AssetRef(Rc<Asset>);
+
+impl From<Rc<Asset>> for AssetRef {
+    fn from(value: Rc<Asset>) -> Self {
+        assert!(value.id != AssetID::INVALID);
+        Self(value)
+    }
+}
+
+impl From<&Rc<Asset>> for AssetRef {
+    fn from(value: &Rc<Asset>) -> Self {
+        Self::from(Rc::clone(value))
+    }
+}
+
+impl From<Asset> for AssetRef {
+    fn from(value: Asset) -> Self {
+        Self::from(Rc::new(value))
+    }
+}
+
+impl From<AssetRef> for Rc<Asset> {
+    fn from(value: AssetRef) -> Self {
+        value.0
+    }
+}
+
+impl Deref for AssetRef {
+    type Target = Asset;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl PartialEq for AssetRef {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.id == other.0.id
+    }
+}
+
+impl Eq for AssetRef {}
+
+impl Hash for AssetRef {
+    /// Hash asset based purely on its ID.
+    ///
+    /// Panics if the asset has not been commissioned (and therefore has no ID).
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.id.hash(state);
     }
 }
 
