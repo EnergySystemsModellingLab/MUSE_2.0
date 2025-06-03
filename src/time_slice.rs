@@ -59,7 +59,7 @@ impl Serialize for TimeSliceID {
 }
 
 /// Represents a time slice read from an input file, which can be all
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum TimeSliceSelection {
     /// All year and all day
     Annual,
