@@ -161,24 +161,6 @@ impl AssetPool {
         }
     }
 
-    /// Add an asset to the active pool (i.e. commission it immediately).
-    ///
-    /// The asset's commission year is ignored by this function.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the asset has already been commissioned.
-    pub fn commission(&mut self, mut asset: Asset) {
-        assert!(
-            asset.id == AssetID::INVALID,
-            "Asset has already been commissioned"
-        );
-
-        asset.id = AssetID(self.next_id);
-        self.next_id += 1;
-        self.active.push(asset.into());
-    }
-
     /// Commission new assets for the specified milestone year from the input data
     pub fn commission_new(&mut self, year: u32) {
         // Count the number of assets to move
@@ -447,15 +429,6 @@ mod tests {
         // Nothing to commission for this year
         asset_pool.commission_new(2000);
         assert!(asset_pool.iter().next().is_none()); // no active assets
-    }
-
-    #[rstest]
-    fn test_asset_pool_commission(mut asset_pool: AssetPool, process: Process) {
-        let mut asset =
-            Asset::new("agent2".into(), process.into(), "USA".into(), 100.0, 2015).unwrap();
-        asset_pool.commission(asset.clone());
-        asset.id = AssetID(0);
-        assert_equal(asset_pool.iter(), iter::once(&asset.into()));
     }
 
     #[rstest]
