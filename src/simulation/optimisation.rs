@@ -2,9 +2,8 @@
 //!
 //! This is used to calculate commodity flows and prices.
 use crate::asset::{Asset, AssetID, AssetPool};
-use crate::commodity::{BalanceType, CommodityID};
+use crate::commodity::CommodityID;
 use crate::model::Model;
-use crate::process::ProcessFlow;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{anyhow, Result};
@@ -30,17 +29,14 @@ type Variable = highs::Col;
 /// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
 ///    are reading the results of the optimisation.
 #[derive(Default)]
-pub struct VariableMap(IndexMap<(AssetID, CommodityID, TimeSliceID), Variable>);
+pub struct VariableMap(IndexMap<(AssetID, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
-    fn get(
-        &self,
-        asset_id: AssetID,
-        commodity_id: &CommodityID,
-        time_slice: &TimeSliceID,
-    ) -> Variable {
-        let key = (asset_id, commodity_id.clone(), time_slice.clone());
+    // **TODO:** Remove line below when we're using this
+    #[allow(dead_code)]
+    fn get(&self, asset_id: AssetID, time_slice: &TimeSliceID) -> Variable {
+        let key = (asset_id, time_slice.clone());
 
         *self
             .0
@@ -52,7 +48,7 @@ impl VariableMap {
 /// The solution to the dispatch optimisation problem
 pub struct Solution<'a> {
     solution: highs::Solution,
-    variables: VariableMap,
+    _variables: VariableMap,
     time_slice_info: &'a TimeSliceInfo,
     constraint_keys: ConstraintKeys,
 }
@@ -69,13 +65,9 @@ impl Solution<'_> {
     pub fn iter_commodity_flows_for_assets(
         &self,
     ) -> impl Iterator<Item = (AssetID, &CommodityID, &TimeSliceID, f64)> {
-        self.variables
-            .0
-            .keys()
-            .zip(self.solution.columns().iter().copied())
-            .map(|((asset_id, commodity_id, time_slice), flow)| {
-                (*asset_id, commodity_id, time_slice, flow)
-            })
+        // **TODO:** Need to calculate flows by multiplying coeffs by asset activity:
+        //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/593
+        std::iter::empty()
     }
 
     /// Keys and dual values for commodity balance constraints.
@@ -101,18 +93,6 @@ impl Solution<'_> {
             .capacity_keys
             .zip_duals(self.solution.dual_rows())
             .map(|((asset_id, time_slice), dual)| (*asset_id, time_slice, dual))
-    }
-
-    /// Keys and dual values for fixed asset constraints.
-    pub fn iter_fixed_asset_duals(
-        &self,
-    ) -> impl Iterator<Item = (AssetID, &CommodityID, &TimeSliceID, f64)> {
-        self.constraint_keys
-            .fixed_asset_keys
-            .zip_duals(self.solution.dual_rows())
-            .map(|((asset_id, commodity_id, time_slice), dual)| {
-                (*asset_id, commodity_id, time_slice, dual)
-            })
     }
 }
 
@@ -159,7 +139,7 @@ pub fn perform_dispatch_optimisation<'a>(
     match solution.status() {
         HighsModelStatus::Optimal => Ok(Solution {
             solution: solution.get_solution(),
-            variables,
+            _variables: variables,
             time_slice_info: &model.time_slice_info,
             constraint_keys,
         }),
@@ -201,21 +181,12 @@ fn add_variables(
     let mut variables = VariableMap::default();
 
     for asset in assets.iter() {
-        for flow in asset.iter_flows() {
-            for time_slice in model.time_slice_info.iter_ids() {
-                let coeff = calculate_cost_coefficient(asset, flow, year, time_slice);
-
-                // var's value must be <= 0 for inputs and >= 0 for outputs
-                let var = if flow.flow < 0.0 {
-                    problem.add_column(coeff, ..=0.0)
-                } else {
-                    problem.add_column(coeff, 0.0..)
-                };
-
-                let key = (asset.id, flow.commodity.id.clone(), time_slice.clone());
-                let existing = variables.0.insert(key, var).is_some();
-                assert!(!existing, "Duplicate entry for var");
-            }
+        for time_slice in model.time_slice_info.iter_ids() {
+            let coeff = calculate_cost_coefficient(asset, year, time_slice);
+            let var = problem.add_column(coeff, 0.0..);
+            let key = (asset.id, time_slice.clone());
+            let existing = variables.0.insert(key, var).is_some();
+            assert!(!existing, "Duplicate entry for var");
         }
     }
 
@@ -223,181 +194,8 @@ fn add_variables(
 }
 
 /// Calculate the cost coefficient for a decision variable
-fn calculate_cost_coefficient(
-    asset: &Asset,
-    flow: &ProcessFlow,
-    year: u32,
-    time_slice: &TimeSliceID,
-) -> f64 {
-    // Cost per unit flow
-    let mut coeff = flow.flow_cost;
-
-    // Only applies if commodity is PAC
-    if flow.is_pac {
-        coeff += asset
-            .process
-            .parameters
-            .get(&(asset.region_id.clone(), asset.commission_year))
-            .unwrap()
-            .variable_operating_cost
-    }
-
-    // If there is a user-provided cost for this commodity, include it
-    if !flow.commodity.costs.is_empty() {
-        let cost = flow
-            .commodity
-            .costs
-            .get(&(asset.region_id.clone(), year, time_slice.clone()))
-            .unwrap();
-        let apply_cost = match cost.balance_type {
-            BalanceType::Net => true,
-            BalanceType::Consumption => flow.flow < 0.0,
-            BalanceType::Production => flow.flow > 0.0,
-        };
-
-        if apply_cost {
-            coeff += cost.value;
-        }
-    }
-
-    // If flow is negative (representing an input), we multiply by -1 to ensure impact of
-    // coefficient on objective function is a positive cost
-    if flow.flow > 0.0 {
-        coeff
-    } else {
-        -coeff
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::commodity::{Commodity, CommodityCost, CommodityCostMap, CommodityType, DemandMap};
-    use crate::process::{
-        FlowType, Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessParameter,
-        ProcessParameterMap,
-    };
-    use crate::time_slice::TimeSliceLevel;
-    use float_cmp::assert_approx_eq;
-    use std::collections::HashSet;
-    use std::rc::Rc;
-
-    fn get_cost_coeff_args(
-        flow: f64,
-        is_pac: bool,
-        costs: CommodityCostMap,
-    ) -> (Asset, ProcessFlow) {
-        let process_param = Rc::new(ProcessParameter {
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
-            lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 1.0,
-        });
-        let mut process_parameter_map = ProcessParameterMap::new();
-        process_parameter_map.insert(("GBR".into(), 2010), process_param.clone());
-        process_parameter_map.insert(("GBR".into(), 2020), process_param.clone());
-        let commodity = Rc::new(Commodity {
-            id: "commodity1".into(),
-            description: "Some description".into(),
-            kind: CommodityType::InputCommodity,
-            time_slice_level: TimeSliceLevel::Annual,
-            costs,
-            demand: DemandMap::new(),
-        });
-        let flow = ProcessFlow {
-            commodity: Rc::clone(&commodity),
-            flow,
-            flow_type: FlowType::Fixed,
-            flow_cost: 1.0,
-            is_pac,
-        };
-        let process = Rc::new(Process {
-            id: "process1".into(),
-            description: "Description".into(),
-            years: vec![2010, 2020],
-            energy_limits: ProcessEnergyLimitsMap::new(),
-            flows: ProcessFlowsMap::new(),
-            parameters: process_parameter_map,
-            regions: HashSet::from([RegionID("GBR".into())]),
-        });
-        let asset = Asset::new(
-            "agent1".into(),
-            Rc::clone(&process),
-            "GBR".into(),
-            1.0,
-            2010,
-        )
-        .unwrap();
-
-        (asset, flow)
-    }
-
-    #[test]
-    fn test_calculate_cost_coefficient() {
-        let time_slice = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "day".into(),
-        };
-
-        macro_rules! check_coeff {
-            ($flow:expr, $is_pac:expr, $costs:expr, $expected:expr) => {
-                let (asset, flow) = get_cost_coeff_args($flow, $is_pac, $costs);
-                assert_approx_eq!(
-                    f64,
-                    calculate_cost_coefficient(&asset, &flow, 2010, &time_slice),
-                    $expected
-                );
-            };
-        }
-
-        // not PAC, no commodity cost
-        check_coeff!(1.0, false, CommodityCostMap::new(), 1.0);
-        check_coeff!(-1.0, false, CommodityCostMap::new(), -1.0);
-
-        // PAC, no commodity cost
-        check_coeff!(1.0, true, CommodityCostMap::new(), 2.0);
-        check_coeff!(-1.0, true, CommodityCostMap::new(), -2.0);
-
-        // not PAC, commodity cost for output
-        let cost = CommodityCost {
-            balance_type: BalanceType::Production,
-            value: 2.0,
-        };
-        let mut costs = CommodityCostMap::new();
-        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
-        check_coeff!(1.0, false, costs.clone(), 3.0);
-        check_coeff!(-1.0, false, costs, -1.0);
-
-        // not PAC, commodity cost for output and input
-        let cost = CommodityCost {
-            balance_type: BalanceType::Net,
-            value: 2.0,
-        };
-        let mut costs = CommodityCostMap::new();
-        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
-        check_coeff!(1.0, false, costs.clone(), 3.0);
-        check_coeff!(-1.0, false, costs, -3.0);
-
-        // not PAC, commodity cost for input
-        let cost = CommodityCost {
-            balance_type: BalanceType::Consumption,
-            value: 2.0,
-        };
-        let mut costs = CommodityCostMap::new();
-        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
-        check_coeff!(1.0, false, costs.clone(), 1.0);
-        check_coeff!(-1.0, false, costs, -3.0);
-
-        // PAC, commodity cost for output
-        let cost = CommodityCost {
-            balance_type: BalanceType::Production,
-            value: 2.0,
-        };
-        let mut costs = CommodityCostMap::new();
-        costs.insert(("GBR".into(), 2010, time_slice.clone()), cost);
-        check_coeff!(1.0, true, costs.clone(), 4.0);
-        check_coeff!(-1.0, true, costs, -2.0);
-    }
+fn calculate_cost_coefficient(_asset: &Asset, _year: u32, _time_slice: &TimeSliceID) -> f64 {
+    // **TODO:** Calculate cost coefficient here:
+    //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/590
+    1.0
 }

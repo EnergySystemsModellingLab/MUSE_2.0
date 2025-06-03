@@ -1,12 +1,11 @@
 //! Code for adding constraints to the dispatch optimisation problem.
 use super::VariableMap;
 use crate::asset::{AssetID, AssetPool};
-use crate::commodity::{CommodityID, CommodityType};
+use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
 use highs::RowProblem as Problem;
-use std::rc::Rc;
 
 /// Corresponding variables for a constraint along with the row offset in the solution
 pub struct KeysWithOffset<T> {
@@ -32,17 +31,12 @@ pub type CommodityBalanceKeys = KeysWithOffset<(CommodityID, RegionID, TimeSlice
 /// Indicates the asset ID and time slice covered by each capacity constraint
 pub type CapacityKeys = KeysWithOffset<(AssetID, TimeSliceID)>;
 
-/// Indicates the asset ID, commodity ID and time slice for each fixed asset constraint
-pub type FixedAssetKeys = KeysWithOffset<(AssetID, CommodityID, TimeSliceID)>;
-
 /// The keys for different constraints
 pub struct ConstraintKeys {
     /// Keys for commodity balance constraints
     pub commodity_balance_keys: CommodityBalanceKeys,
     /// Keys for capacity constraints
     pub capacity_keys: CapacityKeys,
-    /// Keys for fixed asset constraints
-    pub fixed_asset_keys: FixedAssetKeys,
 }
 
 /// Add asset-level constraints
@@ -75,19 +69,10 @@ pub fn add_asset_constraints(
     let capacity_keys =
         add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
 
-    // **TODO**: Currently it's safe to assume all process flows are non-flexible, as we enforce
-    // this when reading data in. Once we've added support for flexible process flows, we will
-    // need to add different constraints for assets with flexible and non-flexible flows.
-    //
-    // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/360
-    let fixed_asset_keys =
-        add_fixed_asset_constraints(problem, variables, assets, &model.time_slice_info);
-
     // Return constraint keys
     ConstraintKeys {
         commodity_balance_keys,
         capacity_keys,
-        fixed_asset_keys,
     }
 }
 
@@ -100,73 +85,18 @@ pub fn add_asset_constraints(
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#commodity-balance-constraints
 fn add_commodity_balance_constraints(
     problem: &mut Problem,
-    variables: &VariableMap,
-    model: &Model,
-    assets: &AssetPool,
-    year: u32,
+    _variables: &VariableMap,
+    _model: &Model,
+    _assets: &AssetPool,
+    _year: u32,
 ) -> CommodityBalanceKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
-    let mut terms = Vec::new();
-    let mut keys = Vec::new();
-    for commodity in model.commodities.values() {
-        if commodity.kind != CommodityType::SupplyEqualsDemand
-            && commodity.kind != CommodityType::ServiceDemand
-        {
-            continue;
-        }
+    let keys = Vec::new();
 
-        for region_id in model.iter_regions() {
-            for ts_selection in model
-                .time_slice_info
-                .iter_selections_for_level(commodity.time_slice_level)
-            {
-                // Note about performance: this loop **may** prove to be a bottleneck as
-                // `time_slice_info.iter_selection` returns a `Box` and so requires a heap
-                // allocation each time. For commodities with a `TimeSliceLevel` of `TimeSlice` (the
-                // worst case), this means the number of additional heap allocations will equal the
-                // number of time slices, which for this function could be in the
-                // hundreds/thousands.
-                for (time_slice, _) in model.time_slice_info.iter_selection(&ts_selection) {
-                    // Add terms for this asset + commodity at this time slice. The coefficient for
-                    // each variable is one.
-                    terms.extend(
-                        assets
-                            .iter_for_region_and_commodity(region_id, &commodity.id)
-                            .map(|asset| (variables.get(asset.id, &commodity.id, time_slice), 1.0)),
-                    );
-                }
-
-                // Get the RHS of the equation for a commodity balance constraint. For SED
-                // commodities, the RHS will be zero and for SVD commodities it will be equal to the
-                // demand for the given time slice selection.
-                let rhs = match commodity.kind {
-                    CommodityType::SupplyEqualsDemand => 0.0,
-                    CommodityType::ServiceDemand => {
-                        match ts_selection {
-                            TimeSliceSelection::Single(ref ts) => *commodity
-                                .demand
-                                .get(&(region_id.clone(), year, ts.clone()))
-                                .unwrap(),
-                            // We currently only support specifying demand at the time slice level:
-                            //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/391
-                            _ => panic!(
-                            "Currently SVD commodities must have a time slice level of time slice"
-                        ),
-                        }
-                    }
-                    _ => unreachable!(),
-                };
-
-                // Add constraint (sum of terms must equal rhs)
-                problem.add_row(rhs..=rhs, terms.drain(0..));
-
-                // Keep track of the order in which constraints were added
-                keys.push((commodity.id.clone(), region_id.clone(), ts_selection));
-            }
-        }
-    }
+    // **TODO:** Add commodity balance constraints:
+    //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/577
 
     CommodityBalanceKeys { offset, keys }
 }
@@ -182,81 +112,17 @@ fn add_commodity_balance_constraints(
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#asset-level-capacity-and-availability-constraints
 fn add_asset_capacity_constraints(
     problem: &mut Problem,
-    variables: &VariableMap,
-    assets: &AssetPool,
-    time_slice_info: &TimeSliceInfo,
+    _variables: &VariableMap,
+    _assets: &AssetPool,
+    _time_slice_info: &TimeSliceInfo,
 ) -> CapacityKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
-    let mut terms = Vec::new();
-    let mut keys = Vec::new();
-    for asset in assets.iter() {
-        for time_slice in time_slice_info.iter_ids() {
-            let mut is_input = false; // NB: there will be at least one PAC
-            for flow in asset.iter_pacs() {
-                is_input = flow.flow < 0.0; // NB: PACs will be all inputs or all outputs
+    let keys = Vec::new();
 
-                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
-                terms.push((var, 1.0));
-            }
-
-            let mut limits = asset.get_energy_limits(time_slice);
-
-            // If it's an input flow, the q's will be negative, so we need to invert the limits
-            if is_input {
-                limits = -limits.end()..=-limits.start();
-            }
-
-            problem.add_row(limits, terms.drain(0..));
-
-            // Keep track of the order in which constraints were added
-            keys.push((asset.id, time_slice.clone()));
-        }
-    }
+    // **TODO:** Add capacity/availability constraints:
+    //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/579
 
     CapacityKeys { offset, keys }
-}
-
-/// Add constraints for non-flexible assets.
-///
-/// Non-flexible assets are those which have a fixed ratio between inputs and outputs.
-///
-/// See description in [the dispatch optimisation documentation][1].
-///
-/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#non-flexible-assets
-fn add_fixed_asset_constraints(
-    problem: &mut Problem,
-    variables: &VariableMap,
-    assets: &AssetPool,
-    time_slice_info: &TimeSliceInfo,
-) -> FixedAssetKeys {
-    // Row offset in problem. This line **must** come before we add more constraints.
-    let offset = problem.num_rows();
-
-    let mut keys = Vec::new();
-    for asset in assets.iter() {
-        // Get first PAC. unwrap is safe because all processes have at least one PAC.
-        let pac1 = asset.iter_pacs().next().unwrap();
-
-        for time_slice in time_slice_info.iter_ids() {
-            let pac_var = variables.get(asset.id, &pac1.commodity.id, time_slice);
-            let pac_term = (pac_var, -1.0 / pac1.flow);
-            for flow in asset.iter_flows() {
-                // Don't add a constraint for the PAC itself
-                if Rc::ptr_eq(&flow.commodity, &pac1.commodity) {
-                    continue;
-                }
-
-                // We are enforcing that (var / flow) - (pac_var / pac_flow) = 0
-                let var = variables.get(asset.id, &flow.commodity.id, time_slice);
-                problem.add_row(0.0..=0.0, [(var, 1.0 / flow.flow), pac_term]);
-
-                // Keep track of the order in which constraints were added
-                keys.push((asset.id, flow.commodity.id.clone(), time_slice.clone()));
-            }
-        }
-    }
-
-    FixedAssetKeys { offset, keys }
 }
