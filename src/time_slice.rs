@@ -257,10 +257,11 @@ mod tests {
     use super::*;
     use float_cmp::assert_approx_eq;
     use itertools::assert_equal;
+    use rstest::{fixture, rstest};
 
-    #[test]
-    fn test_iter_selection() {
-        let slices = [
+    #[fixture]
+    fn time_slices1() -> [TimeSliceID; 2] {
+        [
             TimeSliceID {
                 season: "winter".into(),
                 time_of_day: "day".into(),
@@ -269,39 +270,54 @@ mod tests {
                 season: "summer".into(),
                 time_of_day: "night".into(),
             },
-        ];
-        let ts_info = TimeSliceInfo {
+        ]
+    }
+
+    #[fixture]
+    fn time_slice_info1(time_slices1: [TimeSliceID; 2]) -> TimeSliceInfo {
+        TimeSliceInfo {
             seasons: ["winter".into(), "summer".into()].into_iter().collect(),
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            time_slices: [(slices[0].clone(), 0.5), (slices[1].clone(), 0.5)]
-                .into_iter()
-                .collect(),
-        };
+            time_slices: time_slices1.map(|ts| (ts, 0.5)).into_iter().collect(),
+        }
+    }
 
+    #[rstest]
+    fn test_iter_selection_annual(time_slice_info1: TimeSliceInfo, time_slices1: [TimeSliceID; 2]) {
         assert_equal(
-            ts_info
+            time_slice_info1
                 .iter_selection(&TimeSliceSelection::Annual)
                 .map(|(ts, _)| ts),
-            slices.iter(),
-        );
-        assert_equal(
-            ts_info
-                .iter_selection(&TimeSliceSelection::Season("winter".into()))
-                .map(|(ts, _)| ts),
-            iter::once(&slices[0]),
-        );
-        let ts = ts_info.get_time_slice_id_from_str("summer.night").unwrap();
-        assert_equal(
-            ts_info
-                .iter_selection(&TimeSliceSelection::Single(ts))
-                .map(|(ts, _)| ts),
-            iter::once(&slices[1]),
+            time_slices1.iter(),
         );
     }
 
-    #[test]
-    fn test_calculate_share() {
-        let slices = [
+    #[rstest]
+    fn test_iter_selection_season(time_slice_info1: TimeSliceInfo, time_slices1: [TimeSliceID; 2]) {
+        assert_equal(
+            time_slice_info1
+                .iter_selection(&TimeSliceSelection::Season("winter".into()))
+                .map(|(ts, _)| ts),
+            iter::once(&time_slices1[0]),
+        );
+    }
+
+    #[rstest]
+    fn test_iter_selection_single(time_slice_info1: TimeSliceInfo, time_slices1: [TimeSliceID; 2]) {
+        let ts = time_slice_info1
+            .get_time_slice_id_from_str("summer.night")
+            .unwrap();
+        assert_equal(
+            time_slice_info1
+                .iter_selection(&TimeSliceSelection::Single(ts))
+                .map(|(ts, _)| ts),
+            iter::once(&time_slices1[1]),
+        );
+    }
+
+    #[fixture]
+    fn time_slices2() -> [TimeSliceID; 4] {
+        [
             TimeSliceID {
                 season: "winter".into(),
                 time_of_day: "day".into(),
@@ -318,44 +334,59 @@ mod tests {
                 season: "summer".into(),
                 time_of_day: "night".into(),
             },
-        ];
-        let ts_info = TimeSliceInfo {
-            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+        ]
+    }
+
+    #[fixture]
+    fn time_slice_info2(time_slices2: [TimeSliceID; 4]) -> TimeSliceInfo {
+        TimeSliceInfo {
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            time_slices: slices.iter().map(|ts| (ts.clone(), 0.25)).collect(),
-        };
-
-        macro_rules! check_share {
-            ($selection:expr, $expected:expr) => {
-                let expected = $expected;
-                let actual: IndexMap<_, _> = IndexMap::from_iter(
-                    ts_info
-                        .calculate_share(&$selection, 8.0)
-                        .map(|(ts, share)| (ts.clone(), share)),
-                );
-                assert!(actual.len() == expected.len());
-                for (k, v) in actual {
-                    assert_approx_eq!(f64, v, *expected.get(&k).unwrap());
-                }
-            };
+            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            time_slices: time_slices2.iter().map(|ts| (ts.clone(), 0.25)).collect(),
         }
+    }
 
+    macro_rules! check_share {
+        ($selection:expr, $expected:expr) => {
+            let expected = $expected;
+            let actual: IndexMap<_, _> = IndexMap::from_iter(
+                time_slice_info2(time_slices2())
+                    .calculate_share(&$selection, 8.0)
+                    .map(|(ts, share)| (ts.clone(), share)),
+            );
+            assert!(actual.len() == expected.len());
+            for (k, v) in actual {
+                assert_approx_eq!(f64, v, *expected.get(&k).unwrap());
+            }
+        };
+    }
+
+    #[rstest]
+    fn test_calculate_share_annual(time_slices2: [TimeSliceID; 4]) {
         // Whole year
         let expected: IndexMap<_, _> =
-            IndexMap::from_iter(slices.iter().map(|ts| (ts.clone(), 2.0)));
+            IndexMap::from_iter(time_slices2.iter().map(|ts| (ts.clone(), 2.0)));
         check_share!(TimeSliceSelection::Annual, expected);
+    }
 
+    #[rstest]
+    fn test_calculate_share_season(time_slice_info2: TimeSliceInfo) {
         // One season
         let selection = TimeSliceSelection::Season("winter".into());
         let expected: IndexMap<_, _> = IndexMap::from_iter(
-            ts_info
+            time_slice_info2
                 .iter_selection(&selection)
                 .map(|(ts, _)| (ts.clone(), 4.0)),
         );
         check_share!(selection, expected);
+    }
 
+    #[rstest]
+    fn test_calculate_share_single(time_slice_info2: TimeSliceInfo) {
         // Single time slice
-        let time_slice = ts_info.get_time_slice_id_from_str("winter.day").unwrap();
+        let time_slice = time_slice_info2
+            .get_time_slice_id_from_str("winter.day")
+            .unwrap();
         let selection = TimeSliceSelection::Single(time_slice.clone());
         let expected: IndexMap<_, _> = IndexMap::from_iter(iter::once((time_slice, 8.0)));
         check_share!(selection, expected);
