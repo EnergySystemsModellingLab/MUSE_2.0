@@ -154,26 +154,17 @@ impl TimeSliceInfo {
         }
     }
 
-    /// Iterate over all [`TimeSliceID`]s.
-    ///
-    /// The order will be consistent each time this is called, but not every time the program is
-    /// run.
+    /// Iterate over all [`TimeSliceID`]s
     pub fn iter_ids(&self) -> impl Iterator<Item = &TimeSliceID> {
         self.fractions.keys()
     }
 
-    /// Iterate over all time slices.
-    ///
-    /// The order will be consistent each time this is called, but not every time the program is
-    /// run.
+    /// Iterate over all time slices
     pub fn iter(&self) -> impl Iterator<Item = (&TimeSliceID, f64)> {
         self.fractions.iter().map(|(ts, fraction)| (ts, *fraction))
     }
 
-    /// Iterate over the subset of time slices indicated by `selection`.
-    ///
-    /// The order will be consistent each time this is called, but not every time the program is
-    /// run.
+    /// Iterate over the subset of time slices indicated by `selection`
     pub fn iter_selection<'a>(
         &'a self,
         selection: &'a TimeSliceSelection,
