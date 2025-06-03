@@ -80,6 +80,18 @@ impl TimeSliceSelection {
     }
 }
 
+impl From<TimeSliceID> for TimeSliceSelection {
+    fn from(value: TimeSliceID) -> Self {
+        Self::Single(value)
+    }
+}
+
+impl From<Season> for TimeSliceSelection {
+    fn from(value: Season) -> Self {
+        Self::Season(value)
+    }
+}
+
 /// The time granularity for a particular operation
 #[derive(PartialEq, PartialOrd, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
 pub enum TimeSliceLevel {
