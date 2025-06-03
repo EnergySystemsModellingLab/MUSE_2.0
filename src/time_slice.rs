@@ -205,6 +205,61 @@ impl TimeSliceInfo {
         }
     }
 
+    /// Iterate over the given [`TimeSliceSelection`] at the specified level.
+    ///
+    /// For example, this allows you to iterate over a [`TimeSliceSelection::Season`] at the level
+    /// of either seasons (in which case, the iterator will just contain the season) or time slices
+    /// (in which case it will contain all time slices for that season).
+    ///
+    /// Note that you cannot iterate over a [`TimeSliceSelection`] with coarser temporal granularity
+    /// than the [`TimeSliceSelection`] itself (for example, you cannot iterate over a
+    /// [`TimeSliceSelection::Season`] at the [`TimeSliceLevel::Annual`] level). In this case, the
+    /// function will return `None`.
+    pub fn iter_selection_at_level<'a>(
+        &'a self,
+        selection: &'a TimeSliceSelection,
+        level: TimeSliceLevel,
+    ) -> Option<Box<dyn Iterator<Item = (TimeSliceSelection, f64)> + 'a>> {
+        if level > selection.level() {
+            return None;
+        }
+
+        let iter: Box<dyn Iterator<Item = _>> = match selection {
+            TimeSliceSelection::Annual => match level {
+                TimeSliceLevel::Annual => Box::new(iter::once((TimeSliceSelection::Annual, 1.0))),
+                TimeSliceLevel::Season => Box::new(
+                    self.seasons
+                        .iter()
+                        .map(|(season, fraction)| (season.clone().into(), *fraction)),
+                ),
+                TimeSliceLevel::DayNight => Box::new(
+                    self.time_slices
+                        .iter()
+                        .map(|(ts, fraction)| (ts.clone().into(), *fraction)),
+                ),
+            },
+            TimeSliceSelection::Season(season) => match level {
+                TimeSliceLevel::Season => Box::new(iter::once((
+                    selection.clone(),
+                    *self.seasons.get(season).unwrap(),
+                ))),
+                TimeSliceLevel::DayNight => Box::new(
+                    self.time_slices
+                        .iter()
+                        .filter(move |(ts, _)| &ts.season == season)
+                        .map(|(ts, fraction)| (ts.clone().into(), *fraction)),
+                ),
+                _ => unreachable!(),
+            },
+            TimeSliceSelection::Single(time_slice) => Box::new(iter::once((
+                time_slice.clone().into(),
+                *self.time_slices.get(time_slice).unwrap(),
+            ))),
+        };
+
+        Some(iter)
+    }
+
     /// Iterate over the different time slice selections for a given time slice level.
     ///
     /// For example, if [`TimeSliceLevel::Season`] is specified, this function will return an
