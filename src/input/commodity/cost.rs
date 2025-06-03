@@ -159,7 +159,7 @@ mod tests {
         let ts_info = TimeSliceInfo {
             seasons: ["winter".into()].into(),
             times_of_day: ["day".into()].into(),
-            fractions: [(slice.clone(), 1.0)].into(),
+            time_slices: [(slice.clone(), 1.0)].into(),
         };
 
         let regions = HashSet::from(["UK".into()]);
@@ -189,7 +189,7 @@ mod tests {
         let ts_info2 = TimeSliceInfo {
             seasons: ["winter".into()].into(),
             times_of_day: ["day".into(), "night".into()].into(),
-            fractions: [(slice.clone(), 0.5), (slice2.clone(), 0.5)].into(),
+            time_slices: [(slice.clone(), 0.5), (slice2.clone(), 0.5)].into(),
         };
         assert!(validate_commodity_cost_map(&map, &regions, &milestone_years, &ts_info2).is_err());
     }

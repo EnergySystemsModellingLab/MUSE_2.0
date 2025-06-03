@@ -91,7 +91,7 @@ pub struct TimeSliceInfo {
     /// Names of times of day (e.g. "evening")
     pub times_of_day: IndexSet<TimeOfDay>,
     /// The fraction of the year that this combination of season and time of day occupies
-    pub fractions: IndexMap<TimeSliceID, f64>,
+    pub time_slices: IndexMap<TimeSliceID, f64>,
 }
 
 impl Default for TimeSliceInfo {
@@ -106,7 +106,7 @@ impl Default for TimeSliceInfo {
         Self {
             seasons: iter::once(id.season).collect(),
             times_of_day: iter::once(id.time_of_day).collect(),
-            fractions,
+            time_slices: fractions,
         }
     }
 }
@@ -156,12 +156,14 @@ impl TimeSliceInfo {
 
     /// Iterate over all [`TimeSliceID`]s
     pub fn iter_ids(&self) -> impl Iterator<Item = &TimeSliceID> {
-        self.fractions.keys()
+        self.time_slices.keys()
     }
 
     /// Iterate over all time slices
     pub fn iter(&self) -> impl Iterator<Item = (&TimeSliceID, f64)> {
-        self.fractions.iter().map(|(ts, fraction)| (ts, *fraction))
+        self.time_slices
+            .iter()
+            .map(|(ts, fraction)| (ts, *fraction))
     }
 
     /// Iterate over the subset of time slices indicated by `selection`
@@ -175,7 +177,7 @@ impl TimeSliceInfo {
                 Box::new(self.iter().filter(move |(ts, _)| ts.season == *season))
             }
             TimeSliceSelection::Single(ts) => {
-                Box::new(iter::once((ts, *self.fractions.get(ts).unwrap())))
+                Box::new(iter::once((ts, *self.time_slices.get(ts).unwrap())))
             }
         }
     }
@@ -271,7 +273,7 @@ mod tests {
         let ts_info = TimeSliceInfo {
             seasons: ["winter".into(), "summer".into()].into_iter().collect(),
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            fractions: [(slices[0].clone(), 0.5), (slices[1].clone(), 0.5)]
+            time_slices: [(slices[0].clone(), 0.5), (slices[1].clone(), 0.5)]
                 .into_iter()
                 .collect(),
         };
@@ -320,7 +322,7 @@ mod tests {
         let ts_info = TimeSliceInfo {
             seasons: ["winter".into(), "summer".into()].into_iter().collect(),
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            fractions: slices.iter().map(|ts| (ts.clone(), 0.25)).collect(),
+            time_slices: slices.iter().map(|ts| (ts.clone(), 0.25)).collect(),
         };
 
         macro_rules! check_share {
