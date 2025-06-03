@@ -455,12 +455,12 @@ mod tests {
     #[rstest]
     fn test_asset_pool_decommission_old(mut asset_pool: AssetPool) {
         asset_pool.commission_new(2020);
-        assert!(asset_pool.active.len() == 2);
+        assert_eq!(asset_pool.active.len(), 2);
         asset_pool.decommission_old(2020); // should decommission first asset (lifetime == 5)
-        assert!(asset_pool.active.len() == 1);
+        assert_eq!(asset_pool.active.len(), 1);
         assert_eq!(asset_pool.active[0].commission_year, 2020);
         asset_pool.decommission_old(2022); // nothing to decommission
-        assert!(asset_pool.active.len() == 1);
+        assert_eq!(asset_pool.active.len(), 1);
         assert_eq!(asset_pool.active[0].commission_year, 2020);
         asset_pool.decommission_old(2025); // should decommission second asset
         assert!(asset_pool.active.is_empty());
