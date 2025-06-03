@@ -243,52 +243,31 @@ mod tests {
                 fraction: 0.5,
             },
         ];
+
+        fn demand_slice_entry(
+            season: &str,
+            time_of_day: &str,
+            demand: f64,
+        ) -> ((CommodityID, RegionID, TimeSliceID), f64) {
+            (
+                (
+                    "commodity1".into(),
+                    "GBR".into(),
+                    TimeSliceID {
+                        season: season.into(),
+                        time_of_day: time_of_day.into(),
+                    },
+                ),
+                demand,
+            )
+        }
         let expected = DemandSliceMap::from_iter([
-            (
-                (
-                    "commodity1".into(),
-                    "GBR".into(),
-                    TimeSliceID {
-                        season: "summer".into(),
-                        time_of_day: "day".into(),
-                    },
-                ),
-                3.0 / 16.0,
-            ),
-            (
-                (
-                    "commodity1".into(),
-                    "GBR".into(),
-                    TimeSliceID {
-                        season: "summer".into(),
-                        time_of_day: "night".into(),
-                    },
-                ),
-                5.0 / 16.0,
-            ),
-            (
-                (
-                    "commodity1".into(),
-                    "GBR".into(),
-                    TimeSliceID {
-                        season: "winter".into(),
-                        time_of_day: "day".into(),
-                    },
-                ),
-                3.0 / 16.0,
-            ),
-            (
-                (
-                    "commodity1".into(),
-                    "GBR".into(),
-                    TimeSliceID {
-                        season: "winter".into(),
-                        time_of_day: "night".into(),
-                    },
-                ),
-                5.0 / 16.0,
-            ),
+            demand_slice_entry("summer", "day", 3.0 / 16.0),
+            demand_slice_entry("summer", "night", 5.0 / 16.0),
+            demand_slice_entry("winter", "day", 3.0 / 16.0),
+            demand_slice_entry("winter", "night", 5.0 / 16.0),
         ]);
+
         assert_eq!(
             read_demand_slices_from_iter(
                 demand_slices.into_iter(),
