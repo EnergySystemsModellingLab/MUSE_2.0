@@ -242,14 +242,17 @@ fn validate_svd_commodity(
     // This includes checking if flow > 0 and if availability > 0.
     for (process_id, flows) in flows.iter() {
         let flows = flows.get(&(region_id.clone(), *year)).unwrap();
-        let availability = availabilities
-            .get(process_id)
-            .unwrap()
-            .get(&(region_id.clone(), *year, time_slice.clone()))
-            .unwrap();
-
         if let Some(flow) = flows.get(&commodity.id) {
-            if flow.flow > 0.0 && *availability.end() > 0.0 {
+            if flow.flow <= 0.0 {
+                continue;
+            }
+
+            let availability = availabilities
+                .get(process_id)
+                .unwrap()
+                .get(&(region_id.clone(), *year, time_slice.clone()))
+                .unwrap();
+            if *availability.end() > 0.0 {
                 return Ok(());
             }
         }
