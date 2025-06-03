@@ -92,6 +92,16 @@ impl From<Season> for TimeSliceSelection {
     }
 }
 
+impl Display for TimeSliceSelection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Annual => write!(f, "annual"),
+            Self::Season(season) => write!(f, "{season}"),
+            Self::Single(ts) => write!(f, "{ts}"),
+        }
+    }
+}
+
 /// The time granularity for a particular operation
 #[derive(PartialEq, PartialOrd, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
 pub enum TimeSliceLevel {
