@@ -23,7 +23,7 @@ impl AssetID {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Asset {
     /// A unique identifier for the asset
-    pub id: AssetID,
+    id: AssetID,
     /// A unique identifier for the agent
     pub agent_id: AgentID,
     /// The [`Process`] that this asset corresponds to
