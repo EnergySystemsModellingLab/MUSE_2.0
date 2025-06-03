@@ -78,6 +78,21 @@ impl TimeSliceSelection {
             TimeSliceSelection::Single(_) => TimeSliceLevel::DayNight,
         }
     }
+
+    /// Iterate over the subset of time slices in this selection
+    pub fn iter<'a>(
+        &'a self,
+        time_slice_info: &'a TimeSliceInfo,
+    ) -> Box<dyn Iterator<Item = (&'a TimeSliceID, f64)> + 'a> {
+        let ts_info = time_slice_info;
+        match self {
+            Self::Annual => Box::new(ts_info.iter()),
+            Self::Season(season) => {
+                Box::new(ts_info.iter().filter(move |(ts, _)| ts.season == *season))
+            }
+            Self::Single(ts) => Box::new(iter::once((ts, *ts_info.time_slices.get(ts).unwrap()))),
+        }
+    }
 }
 
 impl From<TimeSliceID> for TimeSliceSelection {
@@ -197,22 +212,6 @@ impl TimeSliceInfo {
         self.time_slices
             .iter()
             .map(|(ts, fraction)| (ts, *fraction))
-    }
-
-    /// Iterate over the subset of time slices indicated by `selection`
-    pub fn iter_selection<'a>(
-        &'a self,
-        selection: &'a TimeSliceSelection,
-    ) -> Box<dyn Iterator<Item = (&'a TimeSliceID, f64)> + 'a> {
-        match selection {
-            TimeSliceSelection::Annual => Box::new(self.iter()),
-            TimeSliceSelection::Season(season) => {
-                Box::new(self.iter().filter(move |(ts, _)| ts.season == *season))
-            }
-            TimeSliceSelection::Single(ts) => {
-                Box::new(iter::once((ts, *self.time_slices.get(ts).unwrap())))
-            }
-        }
     }
 
     /// Iterate over the given [`TimeSliceSelection`] at the specified level.
@@ -380,35 +379,38 @@ mod tests {
     }
 
     #[rstest]
-    fn test_iter_selection_annual(time_slice_info1: TimeSliceInfo, time_slices1: [TimeSliceID; 2]) {
+    fn test_ts_selection_iter_annual(
+        time_slice_info1: TimeSliceInfo,
+        time_slices1: [TimeSliceID; 2],
+    ) {
         assert_equal(
-            time_slice_info1
-                .iter_selection(&TimeSliceSelection::Annual)
-                .map(|(ts, _)| ts),
-            time_slices1.iter(),
+            TimeSliceSelection::Annual.iter(&time_slice_info1),
+            time_slices1.iter().map(|ts| (ts, 0.5)),
         );
     }
 
     #[rstest]
-    fn test_iter_selection_season(time_slice_info1: TimeSliceInfo, time_slices1: [TimeSliceID; 2]) {
+    fn test_ts_selection_iter_season(
+        time_slice_info1: TimeSliceInfo,
+        time_slices1: [TimeSliceID; 2],
+    ) {
         assert_equal(
-            time_slice_info1
-                .iter_selection(&TimeSliceSelection::Season("winter".into()))
-                .map(|(ts, _)| ts),
-            iter::once(&time_slices1[0]),
+            TimeSliceSelection::Season("winter".into()).iter(&time_slice_info1),
+            iter::once((&time_slices1[0], 0.5)),
         );
     }
 
     #[rstest]
-    fn test_iter_selection_single(time_slice_info1: TimeSliceInfo, time_slices1: [TimeSliceID; 2]) {
+    fn test_ts_selection_iter_single(
+        time_slice_info1: TimeSliceInfo,
+        time_slices1: [TimeSliceID; 2],
+    ) {
         let ts = time_slice_info1
             .get_time_slice_id_from_str("summer.night")
             .unwrap();
         assert_equal(
-            time_slice_info1
-                .iter_selection(&TimeSliceSelection::Single(ts))
-                .map(|(ts, _)| ts),
-            iter::once(&time_slices1[1]),
+            TimeSliceSelection::Single(ts).iter(&time_slice_info1),
+            iter::once((&time_slices1[1], 0.5)),
         );
     }
 
@@ -476,8 +478,8 @@ mod tests {
         // One season
         let selection = TimeSliceSelection::Season("winter".into());
         let expected: IndexMap<_, _> = IndexMap::from_iter(
-            time_slice_info2
-                .iter_selection(&selection)
+            selection
+                .iter(&time_slice_info2)
                 .map(|(ts, _)| (ts.clone(), 4.0)),
         );
         check_share!(selection, expected);

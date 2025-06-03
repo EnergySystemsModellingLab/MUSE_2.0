@@ -101,7 +101,7 @@ where
                 .or_default()
                 .insert(region.clone());
             for year in years.iter() {
-                for (time_slice, _) in time_slice_info.iter_selection(&ts_selection) {
+                for (time_slice, _) in ts_selection.iter(time_slice_info) {
                     try_insert(
                         map,
                         (region.clone(), *year, time_slice.clone()),

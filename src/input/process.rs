@@ -257,7 +257,7 @@ fn validate_svd_commodity(
 
         // If the process has availability >0 in any time slice for this selection, we accept it
         let availabilities = availabilities.get(process_id).unwrap();
-        for (ts, _) in time_slice_info.iter_selection(ts_selection) {
+        for (ts, _) in ts_selection.iter(time_slice_info) {
             let availability = availabilities
                 .get(&(region_id.clone(), *year, ts.clone()))
                 .unwrap();

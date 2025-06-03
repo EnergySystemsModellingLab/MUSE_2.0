@@ -81,8 +81,8 @@ impl Solution<'_> {
             .commodity_balance_keys
             .zip_duals(self.solution.dual_rows())
             .flat_map(|((commodity_id, region_id, ts_selection), price)| {
-                self.time_slice_info
-                    .iter_selection(ts_selection)
+                ts_selection
+                    .iter(self.time_slice_info)
                     .map(move |(ts, _)| (commodity_id, region_id, ts, price))
             })
     }
