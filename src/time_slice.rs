@@ -294,17 +294,21 @@ impl TimeSliceInfo {
     pub fn iter_selection_share<'a>(
         &'a self,
         selection: &'a TimeSliceSelection,
-    ) -> impl Iterator<Item = (&'a TimeSliceID, f64)> {
-        // Store time slices as we have to iterate over selection twice
-        let time_slices = self.iter_selection(selection).collect_vec();
+        level: TimeSliceLevel,
+    ) -> Option<impl Iterator<Item = (TimeSliceSelection, f64)>> {
+        // Store selections as we have to iterate twice
+        let selections = self
+            .iter_selection_at_level(selection, level)?
+            .collect_vec();
 
         // Total fraction of year covered by selection
-        let time_total: f64 = time_slices.iter().map(|(_, fraction)| *fraction).sum();
+        let time_total: f64 = selections.iter().map(|(_, fraction)| *fraction).sum();
 
         // Calculate share
-        time_slices
+        let iter = selections
             .into_iter()
-            .map(move |(ts, time_fraction)| (ts, time_fraction / time_total))
+            .map(move |(selection, time_fraction)| (selection, time_fraction / time_total));
+        Some(iter)
     }
 
     /// Share a value between a subset of time slices in proportion to their lengths.
@@ -323,10 +327,13 @@ impl TimeSliceInfo {
     pub fn calculate_share<'a>(
         &'a self,
         selection: &'a TimeSliceSelection,
+        level: TimeSliceLevel,
         value: f64,
-    ) -> impl Iterator<Item = (&'a TimeSliceID, f64)> {
-        self.iter_selection_share(selection)
-            .map(move |(ts, share)| (ts, value * share))
+    ) -> Option<impl Iterator<Item = (TimeSliceSelection, f64)>> {
+        let iter = self
+            .iter_selection_share(selection, level)?
+            .map(move |(selection, share)| (selection, value * share));
+        Some(iter)
     }
 }
 
@@ -433,12 +440,15 @@ mod tests {
             let expected = $expected;
             let actual: IndexMap<_, _> = IndexMap::from_iter(
                 time_slice_info2(time_slices2())
-                    .calculate_share(&$selection, 8.0)
-                    .map(|(ts, share)| (ts.clone(), share)),
+                    .calculate_share(&$selection, TimeSliceLevel::DayNight, 8.0)
+                    .unwrap(),
             );
             assert!(actual.len() == expected.len());
             for (k, v) in actual {
-                assert_approx_eq!(f64, v, *expected.get(&k).unwrap());
+                let TimeSliceSelection::Single(ts) = k else {
+                    panic!();
+                };
+                assert_approx_eq!(f64, v, *expected.get(&ts).unwrap());
             }
         };
     }

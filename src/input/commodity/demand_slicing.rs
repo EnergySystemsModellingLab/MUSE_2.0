@@ -3,7 +3,7 @@ use super::super::*;
 use crate::commodity::CommodityID;
 use crate::id::IDCollection;
 use crate::region::RegionID;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
 use anyhow::{ensure, Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
@@ -77,8 +77,16 @@ where
         // how long they are relative to one another so that we can divide up the demand for this
         // entry appropriately
         let ts_selection = time_slice_info.get_selection(&slice.time_slice)?;
-        for (ts, demand_fraction) in time_slice_info.calculate_share(&ts_selection, slice.fraction)
+
+        // TODO: Fix for other time slice levels
+        for (ts_selection, demand_fraction) in time_slice_info
+            .calculate_share(&ts_selection, TimeSliceLevel::DayNight, slice.fraction)
+            .unwrap()
         {
+            let TimeSliceSelection::Single(ts) = ts_selection else {
+                unreachable!()
+            };
+
             // Share demand between the time slices in proportion to duration
             ensure!(demand_slices.insert((commodity_id.clone(), region_id.clone(), ts.clone()), demand_fraction).is_none(),
                 "Duplicate demand slicing entry (or same time slice covered by more than one entry) \
