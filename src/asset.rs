@@ -6,7 +6,6 @@ use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
-use std::collections::HashSet;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -247,22 +246,6 @@ impl AssetPool {
         })
     }
 
-    /// Retain all assets whose IDs are in `assets_to_keep`.
-    ///
-    /// Other assets will be decommissioned. Assets which have not yet been commissioned will not be
-    /// affected.
-    pub fn retain(&mut self, assets_to_keep: &HashSet<AssetID>) {
-        // Sanity check: all IDs should be valid. As this check is slow, only do it for debug
-        // builds.
-        debug_assert!(
-            assets_to_keep.iter().all(|id| self.get(*id).is_some()),
-            "One or more asset IDs were invalid"
-        );
-
-        self.active
-            .retain(|asset| assets_to_keep.contains(&asset.id));
-    }
-
     /// Replace the active pool with new and/or already commissioned assets
     pub fn replace_active_pool<I>(&mut self, assets: I)
     where
@@ -295,6 +278,7 @@ mod tests {
     };
     use itertools::{assert_equal, Itertools};
     use rstest::{fixture, rstest};
+    use std::collections::HashSet;
     use std::iter;
     use std::ops::RangeInclusive;
 
@@ -493,30 +477,6 @@ mod tests {
         asset_pool.commission_new(2020);
         assert_eq!(asset_pool.get(AssetID(0)), Some(&asset_pool.active[0]));
         assert_eq!(asset_pool.get(AssetID(1)), Some(&asset_pool.active[1]));
-    }
-
-    #[rstest]
-    fn test_asset_pool_retain1(mut asset_pool: AssetPool) {
-        // Even though we are retaining no assets, none have been commissioned so the asset pool
-        // should not be changed
-        asset_pool.retain(&HashSet::new());
-        assert!(asset_pool.active.is_empty());
-
-        // Decommission all active assets
-        asset_pool.commission_new(2010); // Commission first asset
-        assert_eq!(asset_pool.active.len(), 1);
-        asset_pool.retain(&HashSet::new());
-        assert!(asset_pool.active.is_empty());
-    }
-
-    #[rstest]
-    fn test_asset_pool_retain2(mut asset_pool: AssetPool) {
-        // Decommission single asset
-        asset_pool.commission_new(2020); // Commission all assets
-        assert_eq!(asset_pool.active.len(), 2);
-        asset_pool.retain(&iter::once(AssetID(1)).collect());
-        assert_eq!(asset_pool.active.len(), 1);
-        assert_eq!(asset_pool.active[0].id, AssetID(1));
     }
 
     #[rstest]
