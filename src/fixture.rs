@@ -139,8 +139,8 @@ pub fn time_slice() -> TimeSliceID {
 #[fixture]
 pub fn time_slice_info() -> TimeSliceInfo {
     TimeSliceInfo {
-        seasons: iter::once("winter".into()).collect(),
         times_of_day: iter::once("day".into()).collect(),
+        seasons: iter::once(("winter".into(), 1.0)).collect(),
         time_slices: [(
             TimeSliceID {
                 season: "winter".into(),

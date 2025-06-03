@@ -37,12 +37,22 @@ fn read_time_slice_info_from_iter<I>(iter: I) -> Result<TimeSliceInfo>
 where
     I: Iterator<Item = TimeSliceRaw>,
 {
-    let mut seasons = IndexSet::new();
     let mut times_of_day = IndexSet::new();
+    let mut seasons = IndexMap::new();
     let mut fractions = IndexMap::new();
     for time_slice in iter {
-        let season = get_or_insert(time_slice.season, &mut seasons);
         let time_of_day = get_or_insert(time_slice.time_of_day, &mut times_of_day);
+        let season = match seasons.entry(time_slice.season) {
+            indexmap::map::Entry::Occupied(mut entry) => {
+                *entry.get_mut() += time_slice.fraction;
+                entry.key().clone()
+            }
+            indexmap::map::Entry::Vacant(entry) => {
+                let key = entry.key().clone();
+                entry.insert(time_slice.fraction);
+                key
+            }
+        };
         let id = TimeSliceID {
             season,
             time_of_day,
@@ -59,8 +69,8 @@ where
         .context("Invalid time slice fractions")?;
 
     Ok(TimeSliceInfo {
-        seasons,
         times_of_day,
+        seasons,
         time_slices: fractions,
     })
 }
@@ -118,10 +128,10 @@ autumn,evening,0.25"
             info,
             TimeSliceInfo {
                 seasons: [
-                    "winter".into(),
-                    "peak".into(),
-                    "summer".into(),
-                    "autumn".into()
+                    ("winter".into(), 0.25),
+                    ("peak".into(), 0.25),
+                    ("summer".into(), 0.25),
+                    ("autumn".into(), 0.25)
                 ]
                 .into_iter()
                 .collect(),

@@ -86,10 +86,10 @@ pub enum TimeSliceLevel {
 /// Information about the time slices in the simulation, including names and fractions
 #[derive(PartialEq, Debug)]
 pub struct TimeSliceInfo {
-    /// Names of seasons
-    pub seasons: IndexSet<Season>,
     /// Names of times of day (e.g. "evening")
     pub times_of_day: IndexSet<TimeOfDay>,
+    /// Names and fraction of year occupied by each season
+    pub seasons: IndexMap<Season, f64>,
     /// The fraction of the year that this combination of season and time of day occupies
     pub time_slices: IndexMap<TimeSliceID, f64>,
 }
@@ -104,7 +104,7 @@ impl Default for TimeSliceInfo {
         let fractions = [(id.clone(), 1.0)].into_iter().collect();
 
         Self {
-            seasons: iter::once(id.season).collect(),
+            seasons: iter::once((id.season, 1.0)).collect(),
             times_of_day: iter::once(id.time_of_day).collect(),
             time_slices: fractions,
         }
@@ -147,7 +147,7 @@ impl TimeSliceInfo {
         } else {
             let season = self
                 .seasons
-                .get(time_slice)
+                .get_id(time_slice)
                 .with_context(|| format!("'{time_slice}' is not a valid season"))?
                 .clone();
             Ok(TimeSliceSelection::Season(season))
@@ -193,7 +193,7 @@ impl TimeSliceInfo {
         match level {
             TimeSliceLevel::Annual => Box::new(iter::once(TimeSliceSelection::Annual)),
             TimeSliceLevel::Season => {
-                Box::new(self.seasons.iter().cloned().map(TimeSliceSelection::Season))
+                Box::new(self.seasons.keys().cloned().map(TimeSliceSelection::Season))
             }
             TimeSliceLevel::DayNight => {
                 Box::new(self.iter_ids().cloned().map(TimeSliceSelection::Single))
@@ -276,7 +276,9 @@ mod tests {
     #[fixture]
     fn time_slice_info1(time_slices1: [TimeSliceID; 2]) -> TimeSliceInfo {
         TimeSliceInfo {
-            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
+                .into_iter()
+                .collect(),
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
             time_slices: time_slices1.map(|ts| (ts, 0.5)).into_iter().collect(),
         }
@@ -341,7 +343,9 @@ mod tests {
     fn time_slice_info2(time_slices2: [TimeSliceID; 4]) -> TimeSliceInfo {
         TimeSliceInfo {
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
+                .into_iter()
+                .collect(),
             time_slices: time_slices2.iter().map(|ts| (ts.clone(), 0.25)).collect(),
         }
     }
