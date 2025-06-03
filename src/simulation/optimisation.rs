@@ -184,7 +184,7 @@ fn add_variables(
         for time_slice in model.time_slice_info.iter_ids() {
             let coeff = calculate_cost_coefficient(asset, year, time_slice);
             let var = problem.add_column(coeff, 0.0..);
-            let key = (asset.into(), time_slice.clone());
+            let key = (asset.clone(), time_slice.clone());
             let existing = variables.0.insert(key, var).is_some();
             assert!(!existing, "Duplicate entry for var");
         }

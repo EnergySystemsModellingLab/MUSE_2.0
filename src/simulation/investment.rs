@@ -24,7 +24,7 @@ pub fn perform_agent_investment(
     let mut new_pool = Vec::new();
     for asset in assets.iter() {
         // **TODO**: Implement agent investment. For now, just keep all assets.
-        new_pool.push(asset.clone());
+        new_pool.push(asset.clone().into());
     }
 
     assets.replace_active_pool(new_pool);

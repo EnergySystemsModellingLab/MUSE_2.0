@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
 /// The root folder in which model-specific output folders will be created
 const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
@@ -259,7 +258,7 @@ impl DataWriter {
     /// Write assets to a CSV file
     pub fn write_assets<'a, I>(&mut self, milestone_year: u32, assets: I) -> Result<()>
     where
-        I: Iterator<Item = &'a Rc<Asset>>,
+        I: Iterator<Item = &'a AssetRef>,
     {
         for asset in assets {
             let row = AssetRow::new(milestone_year, asset);
@@ -329,7 +328,7 @@ impl DataWriter {
 mod tests {
     use super::*;
     use crate::asset::AssetPool;
-    use crate::fixture::{asset, assets, commodity_id, region_id, time_slice};
+    use crate::fixture::{assets, commodity_id, region_id, time_slice};
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
     use rstest::rstest;
@@ -337,22 +336,20 @@ mod tests {
     use tempfile::tempdir;
 
     #[rstest]
-    fn test_write_assets(asset: Asset) {
-        let asset = asset.into();
+    fn test_write_assets(assets: AssetPool) {
         let milestone_year = 2020;
         let dir = tempdir().unwrap();
 
         // Write an asset
         {
             let mut writer = DataWriter::create(dir.path(), false).unwrap();
-            writer
-                .write_assets(milestone_year, iter::once(&asset))
-                .unwrap();
+            writer.write_assets(milestone_year, assets.iter()).unwrap();
             writer.flush().unwrap();
         }
 
         // Read back and compare
-        let expected = AssetRow::new(milestone_year, &asset);
+        let asset = assets.iter().next().unwrap();
+        let expected = AssetRow::new(milestone_year, asset);
         let records: Vec<AssetRow> = csv::Reader::from_path(dir.path().join(ASSETS_FILE_NAME))
             .unwrap()
             .into_deserialize()
@@ -364,8 +361,8 @@ mod tests {
     #[rstest]
     fn test_write_flows(assets: AssetPool, commodity_id: CommodityID, time_slice: TimeSliceID) {
         let milestone_year = 2020;
-        let asset = assets.iter().next().unwrap().into();
-        let flow_item = (&asset, &commodity_id, &time_slice, 42.0);
+        let asset = assets.iter().next().unwrap();
+        let flow_item = (asset, &commodity_id, &time_slice, 42.0);
 
         // Write a flow
         let dir = tempdir().unwrap();
@@ -469,13 +466,13 @@ mod tests {
         let milestone_year = 2020;
         let value = 0.5;
         let dir = tempdir().unwrap();
-        let asset = assets.iter().next().unwrap().into();
+        let asset = assets.iter().next().unwrap();
 
         // Write capacity dual
         {
             let mut writer = DebugDataWriter::create(dir.path()).unwrap();
             writer
-                .write_capacity_duals(milestone_year, iter::once((&asset, &time_slice, value)))
+                .write_capacity_duals(milestone_year, iter::once((asset, &time_slice, value)))
                 .unwrap();
             writer.flush().unwrap();
         }

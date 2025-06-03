@@ -143,7 +143,7 @@ impl Asset {
 ///
 /// An [`AssetRef`] is guaranteed to have been commissioned at some point, though it may
 /// subsequently have been decommissioned.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AssetRef(Rc<Asset>);
 
 impl From<Rc<Asset>> for AssetRef {
@@ -199,7 +199,7 @@ impl Hash for AssetRef {
 /// A pool of [`Asset`]s
 pub struct AssetPool {
     /// The pool of active assets
-    active: Vec<Rc<Asset>>,
+    active: Vec<AssetRef>,
     /// Assets that have not yet been commissioned, sorted by commission year
     future: Vec<Asset>,
     /// Next available asset ID number
@@ -245,9 +245,9 @@ impl AssetPool {
     ///
     /// # Returns
     ///
-    /// Reference to an [`Asset`] if found, else `None`. The asset may not be found if it has
-    /// already been decommissioned.
-    pub fn get(&self, id: AssetID) -> Option<&Rc<Asset>> {
+    /// An [`AssetRef`] if found, else `None`. The asset may not be found if it has already been
+    /// decommissioned.
+    pub fn get(&self, id: AssetID) -> Option<&AssetRef> {
         // The assets in `active` are in order of ID
         let idx = self
             .active
@@ -258,7 +258,7 @@ impl AssetPool {
     }
 
     /// Iterate over active assets
-    pub fn iter(&self) -> impl Iterator<Item = &Rc<Asset>> {
+    pub fn iter(&self) -> impl Iterator<Item = &AssetRef> {
         self.active.iter()
     }
 
@@ -266,7 +266,7 @@ impl AssetPool {
     pub fn iter_for_region<'a>(
         &'a self,
         region_id: &'a RegionID,
-    ) -> impl Iterator<Item = &'a Rc<Asset>> {
+    ) -> impl Iterator<Item = &'a AssetRef> {
         self.iter().filter(|asset| asset.region_id == *region_id)
     }
 
@@ -276,7 +276,7 @@ impl AssetPool {
         &'a self,
         region_id: &'a RegionID,
         commodity_id: &'a CommodityID,
-    ) -> impl Iterator<Item = &'a Rc<Asset>> {
+    ) -> impl Iterator<Item = &'a AssetRef> {
         self.iter_for_region(region_id).filter(|asset| {
             asset.process.contains_commodity_flow(
                 commodity_id,
@@ -294,7 +294,7 @@ impl AssetPool {
         let new_pool = assets.into_iter().map(|asset| {
             if asset.id != AssetID::INVALID {
                 // Already commissioned
-                asset
+                asset.into()
             } else {
                 // Newly created from process. We need to assign an ID.
                 let mut asset = asset.as_ref().clone();
@@ -514,7 +514,7 @@ mod tests {
     fn test_asset_pool_replace_active_pool_existing(mut asset_pool: AssetPool) {
         asset_pool.commission_new(2020);
         assert_eq!(asset_pool.active.len(), 2);
-        asset_pool.replace_active_pool(iter::once(asset_pool.active[1].clone()));
+        asset_pool.replace_active_pool(iter::once(asset_pool.active[1].clone().into()));
         assert_eq!(asset_pool.active.len(), 1);
         assert_eq!(asset_pool.active[0].id, AssetID(1));
     }
