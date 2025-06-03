@@ -58,7 +58,7 @@ pub fn run(
         let prices = CommodityPrices::from_model_and_solution(&model, &solution, &assets);
 
         // Write result of dispatch optimisation to file
-        writer.write_debug_info(year, &solution, &assets)?;
+        writer.write_debug_info(year, &solution)?;
         writer.write_flows(year, solution.iter_commodity_flows_for_assets())?;
         writer.write_prices(year, &prices)?;
 

@@ -1,6 +1,6 @@
 //! The module responsible for writing output data to disk.
 use crate::agent::AgentID;
-use crate::asset::{Asset, AssetID, AssetPool, AssetRef};
+use crate::asset::{Asset, AssetRef};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
 use crate::region::RegionID;
@@ -165,13 +165,8 @@ impl DebugDataWriter {
     }
 
     /// Write all debug info to output files
-    fn write_debug_info(
-        &mut self,
-        milestone_year: u32,
-        solution: &Solution,
-        assets: &AssetPool,
-    ) -> Result<()> {
-        self.write_capacity_duals(milestone_year, solution.iter_capacity_duals(), assets)?;
+    fn write_debug_info(&mut self, milestone_year: u32, solution: &Solution) -> Result<()> {
+        self.write_capacity_duals(milestone_year, solution.iter_capacity_duals())?;
         self.write_commodity_balance_duals(
             milestone_year,
             solution.iter_commodity_balance_duals(),
@@ -180,17 +175,11 @@ impl DebugDataWriter {
     }
 
     /// Write capacity duals to file
-    fn write_capacity_duals<'a, I>(
-        &mut self,
-        milestone_year: u32,
-        iter: I,
-        assets: &AssetPool,
-    ) -> Result<()>
+    fn write_capacity_duals<'a, I>(&mut self, milestone_year: u32, iter: I) -> Result<()>
     where
-        I: Iterator<Item = (AssetID, &'a TimeSliceID, f64)>,
+        I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, f64)>,
     {
-        for (asset_id, time_slice, value) in iter {
-            let asset = assets.get(asset_id).unwrap();
+        for (asset, time_slice, value) in iter {
             let asset_row = AssetRow::new(milestone_year, asset);
             let dual_row = CapacityDualsRow {
                 time_slice: time_slice.clone(),
@@ -315,14 +304,9 @@ impl DataWriter {
     }
 
     /// Write debug information to CSV files
-    pub fn write_debug_info(
-        &mut self,
-        milestone_year: u32,
-        solution: &Solution,
-        assets: &AssetPool,
-    ) -> Result<()> {
+    pub fn write_debug_info(&mut self, milestone_year: u32, solution: &Solution) -> Result<()> {
         if let Some(ref mut wtr) = &mut self.debug_writer {
-            wtr.write_debug_info(milestone_year, solution, assets)?;
+            wtr.write_debug_info(milestone_year, solution)?;
         }
 
         Ok(())
@@ -344,6 +328,7 @@ impl DataWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::asset::AssetPool;
     use crate::fixture::{asset, assets, commodity_id, region_id, time_slice};
     use crate::time_slice::TimeSliceID;
     use itertools::{assert_equal, Itertools};
@@ -484,16 +469,13 @@ mod tests {
         let milestone_year = 2020;
         let value = 0.5;
         let dir = tempdir().unwrap();
+        let asset = assets.iter().next().unwrap().into();
 
         // Write capacity dual
         {
             let mut writer = DebugDataWriter::create(dir.path()).unwrap();
             writer
-                .write_capacity_duals(
-                    milestone_year,
-                    iter::once((assets.iter().next().unwrap().id, &time_slice, value)),
-                    &assets,
-                )
+                .write_capacity_duals(milestone_year, iter::once((&asset, &time_slice, value)))
                 .unwrap();
             writer.flush().unwrap();
         }

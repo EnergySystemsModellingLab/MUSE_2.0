@@ -1,7 +1,7 @@
 //! Code for performing dispatch optimisation.
 //!
 //! This is used to calculate commodity flows and prices.
-use crate::asset::{Asset, AssetID, AssetPool, AssetRef};
+use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
@@ -88,11 +88,11 @@ impl Solution<'_> {
     }
 
     /// Keys and dual values for capacity constraints.
-    pub fn iter_capacity_duals(&self) -> impl Iterator<Item = (AssetID, &TimeSliceID, f64)> {
+    pub fn iter_capacity_duals(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, f64)> {
         self.constraint_keys
             .capacity_keys
             .zip_duals(self.solution.dual_rows())
-            .map(|((asset_id, time_slice), dual)| (*asset_id, time_slice, dual))
+            .map(|((asset, time_slice), dual)| (asset, time_slice, dual))
     }
 }
 
