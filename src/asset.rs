@@ -148,12 +148,6 @@ impl From<Rc<Asset>> for AssetRef {
     }
 }
 
-impl From<&Rc<Asset>> for AssetRef {
-    fn from(value: &Rc<Asset>) -> Self {
-        Self::from(Rc::clone(value))
-    }
-}
-
 impl From<Asset> for AssetRef {
     fn from(value: Asset) -> Self {
         Self::from(Rc::new(value))
