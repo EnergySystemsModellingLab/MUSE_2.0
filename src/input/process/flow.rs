@@ -20,7 +20,7 @@ struct ProcessFlowRaw {
     commodity_id: String,
     years: String,
     regions: String,
-    flow: f64,
+    coeff: f64,
     #[serde(default)]
     flow_type: FlowType,
     flow_cost: Option<f64>,
@@ -31,9 +31,9 @@ impl ProcessFlowRaw {
     fn validate(&self) -> Result<()> {
         // Check that flow is not infinity, nan, 0 etc.
         ensure!(
-            self.flow.is_normal(),
-            "Invalid value for flow ({})",
-            self.flow
+            self.coeff.is_normal(),
+            "Invalid value for coeff ({})",
+            self.coeff
         );
 
         // **TODO**: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/300
@@ -108,7 +108,7 @@ where
         // Create ProcessFlow object
         let process_flow = ProcessFlow {
             commodity: Rc::clone(commodity),
-            flow: record.flow,
+            coeff: record.coeff,
             flow_type: record.flow_type,
             flow_cost: record.flow_cost.unwrap_or(0.0),
             is_pac: record.is_pac,
@@ -177,7 +177,7 @@ fn validate_flow_map(flow_map: &IndexMap<CommodityID, ProcessFlow>) -> Result<()
     let mut flow_sign: Option<bool> = None; // False for inputs, true for outputs
     for flow in flow_map.values().filter(|flow| flow.is_pac) {
         // Check that flow sign is consistent
-        let current_flow_sign = flow.flow > 0.0;
+        let current_flow_sign = flow.coeff > 0.0;
         if let Some(flow_sign) = flow_sign {
             ensure!(
                 current_flow_sign == flow_sign,
@@ -202,7 +202,7 @@ mod tests {
     use rstest::{fixture, rstest};
 
     fn create_process_flow_raw(
-        flow: f64,
+        coeff: f64,
         flow_type: FlowType,
         flow_cost: Option<f64>,
         is_pac: bool,
@@ -212,7 +212,7 @@ mod tests {
             commodity_id: "commodity".into(),
             years: "2020".into(),
             regions: "region".into(),
-            flow,
+            coeff,
             flow_type,
             flow_cost,
             is_pac,
@@ -244,10 +244,10 @@ mod tests {
         assert!(invalid.validate().is_err());
     }
 
-    fn create_process_flow(commodity: Rc<Commodity>, flow: f64, is_pac: bool) -> ProcessFlow {
+    fn create_process_flow(commodity: Rc<Commodity>, coeff: f64, is_pac: bool) -> ProcessFlow {
         ProcessFlow {
             commodity,
-            flow,
+            coeff,
             flow_type: FlowType::Fixed,
             flow_cost: 0.0,
             is_pac,
