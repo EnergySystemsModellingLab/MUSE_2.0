@@ -28,6 +28,9 @@ fn main() {
         } else {
             eprintln!("Error: {err:?}");
         }
+
+        // Terminate program, signalling an error
+        std::process::exit(1);
     }
 }
 
