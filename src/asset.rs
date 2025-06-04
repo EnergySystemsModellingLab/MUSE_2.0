@@ -138,6 +138,9 @@ impl Asset {
 ///
 /// An [`AssetRef`] is guaranteed to have been commissioned at some point, though it may
 /// subsequently have been decommissioned.
+///
+/// [`AssetRef`]s must be created from `Rc<Asset>`s. If the asset has not been commissioned, this
+/// will panic.
 #[derive(Clone, Debug)]
 pub struct AssetRef(Rc<Asset>);
 
@@ -177,9 +180,7 @@ impl PartialEq for AssetRef {
 impl Eq for AssetRef {}
 
 impl Hash for AssetRef {
-    /// Hash asset based purely on its ID.
-    ///
-    /// Panics if the asset has not been commissioned (and therefore has no ID).
+    /// Hash asset based purely on its ID
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.id.unwrap().hash(state);
     }
