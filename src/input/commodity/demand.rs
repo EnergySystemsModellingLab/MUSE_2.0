@@ -87,6 +87,7 @@ fn read_demand_file(
     let file_path = model_dir.join(DEMAND_FILE_NAME);
     let iter = read_csv(&file_path)?;
     read_demand_from_iter(iter, svd_commodities, region_ids, milestone_years)
+        .with_context(|| input_err_msg(file_path))
 }
 
 /// Read the demand data from an iterator.
