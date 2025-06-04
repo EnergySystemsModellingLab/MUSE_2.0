@@ -1,9 +1,9 @@
 process_id,regions,years,time_slice,limit_type,value
-GASDRV,all,all,,up,0.9
-GASPRC,all,all,,up,0.9
-GASCGT,all,all,,up,0.9
-RGASBR,all,all,,up,1.0
-RELCHP,all,all,,up,1.0
+GASDRV,all,all,annual,up,0.9
+GASPRC,all,all,annual,up,0.9
+GASCGT,all,all,annual,up,0.9
+RGASBR,all,all,annual,up,1.0
+RELCHP,all,all,annual,up,1.0
 WNDFRM,all,all,winter.night,up,0.486418015
 WNDFRM,all,all,winter.day,up,0.543166784
 WNDFRM,all,all,winter.peak,up,0.504433498
