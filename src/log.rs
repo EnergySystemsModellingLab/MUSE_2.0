@@ -116,7 +116,7 @@ pub fn init(log_level_from_settings: Option<&str>, output_path: &Path) -> Result
         );
 
     // Apply the logger configuration
-    dispatch.apply()?;
+    dispatch.apply().expect("Logger already initialised");
 
     Ok(())
 }
