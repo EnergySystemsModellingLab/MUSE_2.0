@@ -77,7 +77,7 @@ impl Process {
     }
 }
 
-/// Represents a maximum annual commodity flow for a given process
+/// Represents a maximum annual commodity coeff for a given process
 #[derive(PartialEq, Debug, Clone)]
 pub struct ProcessFlow {
     /// The commodity produced or consumed by this flow
@@ -85,7 +85,7 @@ pub struct ProcessFlow {
     /// Maximum annual commodity flow quantity relative to other commodity flows.
     ///
     /// Positive value indicates flow out and negative value indicates flow in.
-    pub flow: f64,
+    pub coeff: f64,
     /// Identifies if a flow is fixed or flexible.
     pub flow_type: FlowType,
     /// Cost per unit flow.
