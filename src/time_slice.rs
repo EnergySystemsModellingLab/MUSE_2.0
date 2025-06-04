@@ -261,7 +261,7 @@ impl TimeSliceInfo {
     ///
     /// If the string is empty, the default value is `TimeSliceSelection::Annual`.
     pub fn get_selection(&self, time_slice: &str) -> Result<TimeSliceSelection> {
-        if time_slice.is_empty() || time_slice.eq_ignore_ascii_case("annual") {
+        if time_slice.eq_ignore_ascii_case("annual") {
             Ok(TimeSliceSelection::Annual)
         } else if time_slice.contains('.') {
             let time_slice = self.get_time_slice_id_from_str(time_slice)?;
