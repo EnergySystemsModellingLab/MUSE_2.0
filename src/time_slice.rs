@@ -366,7 +366,6 @@ impl TimeSliceInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use float_cmp::assert_approx_eq;
     use itertools::assert_equal;
     use rstest::{fixture, rstest};
 
@@ -396,8 +395,8 @@ mod tests {
     }
 
     #[fixture]
-    fn time_slices2() -> [TimeSliceID; 4] {
-        [
+    fn time_slice_info2() -> TimeSliceInfo {
+        let time_slices = [
             TimeSliceID {
                 season: "winter".into(),
                 time_of_day: "day".into(),
@@ -414,17 +413,13 @@ mod tests {
                 season: "summer".into(),
                 time_of_day: "night".into(),
             },
-        ]
-    }
-
-    #[fixture]
-    fn time_slice_info2(time_slices2: [TimeSliceID; 4]) -> TimeSliceInfo {
+        ];
         TimeSliceInfo {
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
             seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
                 .into_iter()
                 .collect(),
-            time_slices: time_slices2.iter().map(|ts| (ts.clone(), 0.25)).collect(),
+            time_slices: time_slices.iter().map(|ts| (ts.clone(), 0.25)).collect(),
         }
     }
 
@@ -473,7 +468,7 @@ mod tests {
             return;
         };
 
-        let ts_info = time_slice_info2(time_slices2());
+        let ts_info = time_slice_info2();
         let expected = expected
             .unwrap()
             .into_iter()
@@ -503,52 +498,25 @@ mod tests {
         assert_selection_equal(actual, expected);
     }
 
-    macro_rules! check_share {
-        ($selection:expr, $expected:expr) => {
-            let expected = $expected;
-            let actual: IndexMap<_, _> = IndexMap::from_iter(
-                time_slice_info2(time_slices2())
-                    .calculate_share(&$selection, TimeSliceLevel::DayNight, 8.0)
-                    .unwrap(),
-            );
-            assert!(actual.len() == expected.len());
-            for (k, v) in actual {
-                let TimeSliceSelection::Single(ts) = k else {
-                    panic!();
-                };
-                assert_approx_eq!(f64, v, *expected.get(&ts).unwrap());
-            }
-        };
-    }
-
     #[rstest]
-    fn test_calculate_share_annual(time_slices2: [TimeSliceID; 4]) {
-        // Whole year
-        let expected: IndexMap<_, _> =
-            IndexMap::from_iter(time_slices2.iter().map(|ts| (ts.clone(), 2.0)));
-        check_share!(TimeSliceSelection::Annual, expected);
-    }
-
-    #[rstest]
-    fn test_calculate_share_season(time_slice_info2: TimeSliceInfo) {
-        // One season
-        let selection = TimeSliceSelection::Season("winter".into());
-        let expected: IndexMap<_, _> = IndexMap::from_iter(
-            selection
-                .iter(&time_slice_info2)
-                .map(|(ts, _)| (ts.clone(), 4.0)),
-        );
-        check_share!(selection, expected);
-    }
-
-    #[rstest]
-    fn test_calculate_share_single(time_slice_info2: TimeSliceInfo) {
-        // Single time slice
-        let time_slice = time_slice_info2
-            .get_time_slice_id_from_str("winter.day")
-            .unwrap();
-        let selection = TimeSliceSelection::Single(time_slice.clone());
-        let expected: IndexMap<_, _> = IndexMap::from_iter(iter::once((time_slice, 8.0)));
-        check_share!(selection, expected);
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Annual, Some(vec![("annual", 8.0)]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Season, Some(vec![("winter", 4.0), ("summer", 4.0)]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::DayNight,
+           Some(vec![("winter.day", 2.0), ("winter.night", 2.0), ("summer.day", 2.0), ("summer.night", 2.0)]))]
+    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Annual, None)]
+    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Season, Some(vec![("winter", 8.0)]))]
+    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::DayNight,
+           Some(vec![("winter.day", 4.0), ("winter.night", 4.0)]))]
+    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Annual, None)]
+    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Season, None)]
+    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::DayNight, Some(vec![("winter.day", 8.0)]))]
+    fn test_calculate_share(
+        time_slice_info2: TimeSliceInfo,
+        #[case] selection: TimeSliceSelection,
+        #[case] level: TimeSliceLevel,
+        #[case] expected: Option<Vec<(&str, f64)>>,
+    ) {
+        let actual = time_slice_info2.calculate_share(&selection, level, 8.0);
+        assert_selection_equal(actual, expected);
     }
 }
