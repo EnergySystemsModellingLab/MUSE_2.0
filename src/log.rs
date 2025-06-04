@@ -12,6 +12,10 @@ use std::env;
 use std::fmt::{Arguments, Display};
 use std::io::IsTerminal;
 use std::path::Path;
+use std::sync::OnceLock;
+
+/// A flag indicating whether the logger has been initialised
+static LOGGER_INIT: OnceLock<()> = OnceLock::new();
 
 /// The default log level for the program.
 ///
@@ -24,6 +28,11 @@ const LOG_INFO_FILE_NAME: &str = "muse2_info.log";
 
 /// The file name for the log file containing warnings and error messages
 const LOG_ERROR_FILE_NAME: &str = "muse2_error.log";
+
+/// Whether the program logger has been initialised
+pub fn is_logger_initialised() -> bool {
+    LOGGER_INIT.get().is_some()
+}
 
 /// Initialise the program logger using the `fern` logging library with colourised output.
 ///
@@ -117,6 +126,9 @@ pub fn init(log_level_from_settings: Option<&str>, output_path: &Path) -> Result
 
     // Apply the logger configuration
     dispatch.apply().expect("Logger already initialised");
+
+    // Set a flag to indicate that the logger has been initialised
+    LOGGER_INIT.set(()).unwrap();
 
     Ok(())
 }
