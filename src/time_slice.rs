@@ -24,6 +24,21 @@ pub struct TimeSliceID {
     pub time_of_day: TimeOfDay,
 }
 
+/// Only implement for tests as this is a bit of a footgun
+#[cfg(test)]
+impl From<&str> for TimeSliceID {
+    fn from(value: &str) -> Self {
+        let (season, time_of_day) = value
+            .split(".")
+            .collect_tuple()
+            .expect("Time slice not in form season.time_of_day");
+        TimeSliceID {
+            season: season.into(),
+            time_of_day: time_of_day.into(),
+        }
+    }
+}
+
 impl Display for TimeSliceID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}.{}", self.season, self.time_of_day)
@@ -380,6 +395,39 @@ mod tests {
         }
     }
 
+    #[fixture]
+    fn time_slices2() -> [TimeSliceID; 4] {
+        [
+            TimeSliceID {
+                season: "winter".into(),
+                time_of_day: "day".into(),
+            },
+            TimeSliceID {
+                season: "winter".into(),
+                time_of_day: "night".into(),
+            },
+            TimeSliceID {
+                season: "summer".into(),
+                time_of_day: "day".into(),
+            },
+            TimeSliceID {
+                season: "summer".into(),
+                time_of_day: "night".into(),
+            },
+        ]
+    }
+
+    #[fixture]
+    fn time_slice_info2(time_slices2: [TimeSliceID; 4]) -> TimeSliceInfo {
+        TimeSliceInfo {
+            times_of_day: ["day".into(), "night".into()].into_iter().collect(),
+            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
+                .into_iter()
+                .collect(),
+            time_slices: time_slices2.iter().map(|ts| (ts.clone(), 0.25)).collect(),
+        }
+    }
+
     #[rstest]
     fn test_ts_selection_iter_annual(
         time_slice_info1: TimeSliceInfo,
@@ -416,37 +464,43 @@ mod tests {
         );
     }
 
-    #[fixture]
-    fn time_slices2() -> [TimeSliceID; 4] {
-        [
-            TimeSliceID {
-                season: "winter".into(),
-                time_of_day: "day".into(),
-            },
-            TimeSliceID {
-                season: "winter".into(),
-                time_of_day: "night".into(),
-            },
-            TimeSliceID {
-                season: "summer".into(),
-                time_of_day: "day".into(),
-            },
-            TimeSliceID {
-                season: "summer".into(),
-                time_of_day: "night".into(),
-            },
-        ]
+    fn assert_selection_equal<I>(actual: Option<I>, expected: Option<Vec<(&str, f64)>>)
+    where
+        I: Iterator<Item = (TimeSliceSelection, f64)>,
+    {
+        let Some(actual) = actual else {
+            assert!(expected.is_none());
+            return;
+        };
+
+        let ts_info = time_slice_info2(time_slices2());
+        let expected = expected
+            .unwrap()
+            .into_iter()
+            .map(move |(sel, frac)| (ts_info.get_selection(sel).unwrap(), frac));
+        assert_equal(actual, expected);
     }
 
-    #[fixture]
-    fn time_slice_info2(time_slices2: [TimeSliceID; 4]) -> TimeSliceInfo {
-        TimeSliceInfo {
-            times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
-                .into_iter()
-                .collect(),
-            time_slices: time_slices2.iter().map(|ts| (ts.clone(), 0.25)).collect(),
-        }
+    #[rstest]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Annual, Some(vec![("annual", 1.0)]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Season, Some(vec![("winter", 0.5), ("summer", 0.5)]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::DayNight,
+           Some(vec![("winter.day", 0.25), ("winter.night", 0.25), ("summer.day", 0.25), ("summer.night", 0.25)]))]
+    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Annual, None)]
+    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Season, Some(vec![("winter", 0.5)]))]
+    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::DayNight,
+           Some(vec![("winter.day", 0.25), ("winter.night", 0.25)]))]
+    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Annual, None)]
+    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Season, None)]
+    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::DayNight, Some(vec![("winter.day", 0.25)]))]
+    fn test_ts_selection_iter_at_level(
+        time_slice_info2: TimeSliceInfo,
+        #[case] selection: TimeSliceSelection,
+        #[case] level: TimeSliceLevel,
+        #[case] expected: Option<Vec<(&str, f64)>>,
+    ) {
+        let actual = selection.iter_at_level(&time_slice_info2, level);
+        assert_selection_equal(actual, expected);
     }
 
     macro_rules! check_share {
