@@ -32,6 +32,9 @@ const COMMODITY_BALANCE_DUALS_FILE_NAME: &str = "debug_commodity_balance_duals.c
 /// The output file name for capacity duals
 const CAPACITY_DUALS_FILE_NAME: &str = "debug_capacity_duals.csv";
 
+/// The output file name for demand duals
+const DEMAND_DUALS_FILE_NAME: &str = "debug_demand_duals.csv";
+
 /// Get the model name from the specified directory path
 pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
     // Get the model name from the dir path. This ends up being convoluted because we need to check
@@ -139,9 +142,33 @@ struct FixedAssetDualsRow {
     value: f64,
 }
 
+/// Write commodity balance duals to file
+fn write_commodity_balance_duals<'a, I>(
+    writer: &mut csv::Writer<File>,
+    milestone_year: u32,
+    iter: I,
+) -> Result<()>
+where
+    I: Iterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, f64)>,
+{
+    for (commodity_id, region_id, time_slice, value) in iter {
+        let row = CommodityBalanceDualsRow {
+            milestone_year,
+            commodity_id: commodity_id.clone(),
+            region_id: region_id.clone(),
+            time_slice: time_slice.clone(),
+            value,
+        };
+        writer.serialize(row)?;
+    }
+
+    Ok(())
+}
+
 /// For writing extra debug information about the model
 struct DebugDataWriter {
     commodity_balance_duals_writer: csv::Writer<File>,
+    demand_duals_writer: csv::Writer<File>,
     capacity_duals_writer: csv::Writer<File>,
 }
 
@@ -159,6 +186,7 @@ impl DebugDataWriter {
 
         Ok(Self {
             commodity_balance_duals_writer: new_writer(COMMODITY_BALANCE_DUALS_FILE_NAME)?,
+            demand_duals_writer: new_writer(DEMAND_DUALS_FILE_NAME)?,
             capacity_duals_writer: new_writer(CAPACITY_DUALS_FILE_NAME)?,
         })
     }
@@ -166,9 +194,15 @@ impl DebugDataWriter {
     /// Write all debug info to output files
     fn write_debug_info(&mut self, milestone_year: u32, solution: &Solution) -> Result<()> {
         self.write_capacity_duals(milestone_year, solution.iter_capacity_duals())?;
-        self.write_commodity_balance_duals(
+        write_commodity_balance_duals(
+            &mut self.commodity_balance_duals_writer,
             milestone_year,
             solution.iter_commodity_balance_duals(),
+        )?;
+        write_commodity_balance_duals(
+            &mut self.demand_duals_writer,
+            milestone_year,
+            solution.iter_demand_duals(),
         )?;
         Ok(())
     }
@@ -191,28 +225,10 @@ impl DebugDataWriter {
         Ok(())
     }
 
-    /// Write commodity balance duals to file
-    fn write_commodity_balance_duals<'a, I>(&mut self, milestone_year: u32, iter: I) -> Result<()>
-    where
-        I: Iterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, f64)>,
-    {
-        for (commodity_id, region_id, time_slice, value) in iter {
-            let row = CommodityBalanceDualsRow {
-                milestone_year,
-                commodity_id: commodity_id.clone(),
-                region_id: region_id.clone(),
-                time_slice: time_slice.clone(),
-                value,
-            };
-            self.commodity_balance_duals_writer.serialize(row)?;
-        }
-
-        Ok(())
-    }
-
     /// Flush the underlying streams
     fn flush(&mut self) -> Result<()> {
         self.commodity_balance_duals_writer.flush()?;
+        self.demand_duals_writer.flush()?;
         self.capacity_duals_writer.flush()?;
 
         Ok(())
@@ -429,16 +445,18 @@ mod tests {
         let milestone_year = 2020;
         let value = 0.5;
         let dir = tempdir().unwrap();
+        let file_path = dir.path().join("file.csv");
 
         // Write commodity balance dual
         {
-            let mut writer = DebugDataWriter::create(dir.path()).unwrap();
-            writer
-                .write_commodity_balance_duals(
-                    milestone_year,
-                    iter::once((&commodity_id, &region_id, &time_slice, value)),
-                )
-                .unwrap();
+            let mut writer = csv::Writer::from_path(&file_path).unwrap();
+
+            write_commodity_balance_duals(
+                &mut writer,
+                milestone_year,
+                iter::once((&commodity_id, &region_id, &time_slice, value)),
+            )
+            .unwrap();
             writer.flush().unwrap();
         }
 
@@ -450,12 +468,11 @@ mod tests {
             time_slice,
             value,
         };
-        let records: Vec<CommodityBalanceDualsRow> =
-            csv::Reader::from_path(dir.path().join(COMMODITY_BALANCE_DUALS_FILE_NAME))
-                .unwrap()
-                .into_deserialize()
-                .try_collect()
-                .unwrap();
+        let records: Vec<CommodityBalanceDualsRow> = csv::Reader::from_path(&file_path)
+            .unwrap()
+            .into_deserialize()
+            .try_collect()
+            .unwrap();
         assert_equal(records, iter::once(expected));
     }
 
