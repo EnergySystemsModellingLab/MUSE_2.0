@@ -1,7 +1,7 @@
 //! Code for adding constraints to the dispatch optimisation problem.
 use super::VariableMap;
 use crate::asset::{AssetPool, AssetRef};
-use crate::commodity::CommodityID;
+use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
@@ -50,7 +50,6 @@ pub struct ConstraintKeys {
 /// * `variables` - The variables in the problem
 /// * `model` - The model
 /// * `assets` - The asset pool
-/// * `year` - Current milestone year
 ///
 /// # Returns:
 ///
@@ -61,10 +60,9 @@ pub fn add_asset_constraints(
     variables: &VariableMap,
     model: &Model,
     assets: &AssetPool,
-    year: u32,
 ) -> ConstraintKeys {
     let commodity_balance_keys =
-        add_commodity_balance_constraints(problem, variables, model, assets, year);
+        add_commodity_balance_constraints(problem, variables, model, assets);
 
     let capacity_keys =
         add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
@@ -85,18 +83,44 @@ pub fn add_asset_constraints(
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#commodity-balance-constraints
 fn add_commodity_balance_constraints(
     problem: &mut Problem,
-    _variables: &VariableMap,
-    _model: &Model,
-    _assets: &AssetPool,
-    _year: u32,
+    variables: &VariableMap,
+    model: &Model,
+    assets: &AssetPool,
 ) -> CommodityBalanceKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
-    let keys = Vec::new();
+    let mut keys = Vec::new();
+    let mut terms = Vec::new();
+    for (commodity_id, commodity) in model.commodities.iter() {
+        if commodity.kind != CommodityType::SupplyEqualsDemand {
+            continue;
+        }
 
-    // **TODO:** Add commodity balance constraints:
-    //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/577
+        for region_id in model.iter_regions() {
+            for ts_selection in model
+                .time_slice_info
+                .iter_selections_at_level(commodity.time_slice_level)
+            {
+                for (asset, flow) in assets.iter_for_region_and_commodity(region_id, commodity_id) {
+                    // If the commodity has a time slice level of season/annual, the constraint will
+                    // cover multiple time slices
+                    for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
+                        let var = variables.get(asset, time_slice);
+                        terms.push((var, flow.coeff));
+                    }
+                }
+
+                // Add constraint
+                problem.add_row(0.0..=0.0, terms.drain(..));
+                keys.push((
+                    commodity_id.clone(),
+                    region_id.clone(),
+                    ts_selection.clone(),
+                ))
+            }
+        }
+    }
 
     CommodityBalanceKeys { offset, keys }
 }
