@@ -1,6 +1,6 @@
 //! Processes are used for converting between different commodities. The data structures in this
 //! module are used to represent these conversions along with the associated costs.
-use crate::commodity::{Commodity, CommodityID};
+use crate::commodity::{BalanceType, Commodity, CommodityID};
 use crate::id::define_id_type;
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
@@ -96,6 +96,41 @@ pub struct ProcessFlow {
     pub cost: f64,
     /// Whether this flow represents a Primary Activity Commodity
     pub is_pac: bool,
+}
+
+impl ProcessFlow {
+    /// Get the cost for this flow with the given parameters.
+    ///
+    /// This includes cost per unit flow and levies/incentives, if any.
+    pub fn get_total_cost(&self, region_id: &RegionID, year: u32, time_slice: &TimeSliceID) -> f64 {
+        let cost_per_unit = self.cost + self.get_levy(region_id, year, time_slice);
+
+        self.coeff.abs() * cost_per_unit
+    }
+
+    /// Get the levy/incentive for this process flow with the given parameters, if any
+    fn get_levy(&self, region_id: &RegionID, year: u32, time_slice: &TimeSliceID) -> f64 {
+        if self.commodity.levies.is_empty() {
+            return 0.0;
+        }
+
+        let levy = self
+            .commodity
+            .levies
+            .get(&(region_id.clone(), year, time_slice.clone()))
+            .unwrap();
+        let apply_levy = match levy.balance_type {
+            BalanceType::Net => true,
+            BalanceType::Consumption => self.coeff < 0.0,
+            BalanceType::Production => self.coeff > 0.0,
+        };
+
+        if apply_levy {
+            levy.value
+        } else {
+            0.0
+        }
+    }
 }
 
 /// Type of commodity flow (see [`ProcessFlow`])
