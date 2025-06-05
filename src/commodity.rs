@@ -13,8 +13,8 @@ define_id_type! {CommodityID}
 /// A map of [`Commodity`]s, keyed by commodity ID
 pub type CommodityMap = IndexMap<CommodityID, Rc<Commodity>>;
 
-/// A map of [`CommodityCost`]s, keyed by region ID, year and time slice ID
-pub type CommodityCostMap = HashMap<(RegionID, u32, TimeSliceID), CommodityCost>;
+/// A map of [`CommodityLevy`]s, keyed by region ID, year and time slice ID
+pub type CommodityLevyMap = HashMap<(RegionID, u32, TimeSliceID), CommodityLevy>;
 
 /// A map of demand values, keyed by region ID, year and time slice selection
 pub type DemandMap = HashMap<(RegionID, u32, TimeSliceSelection), f64>;
@@ -40,7 +40,7 @@ pub struct Commodity {
     /// every combination of parameters. Note that these values can be negative, indicating an
     /// incentive.
     #[serde(skip)]
-    pub costs: CommodityCostMap,
+    pub levies: CommodityLevyMap,
     /// Demand as defined in input files. Will be empty for non-service-demand commodities.
     ///
     /// The [`TimeSliceSelection`] part of the key is always at the same [`TimeSliceLevel`] as the
@@ -67,9 +67,10 @@ pub enum BalanceType {
 
 /// Represents a tax or other external cost on a commodity, as specified in input data.
 ///
-/// For example, a CO2 price could be specified in input data to be applied to net CO2.
+/// For example, a CO2 price could be specified in input data to be applied to net CO2. Note that
+/// the value can also be negative, indicating an incentive.
 #[derive(PartialEq, Clone, Debug)]
-pub struct CommodityCost {
+pub struct CommodityLevy {
     /// Type of balance for application of cost
     pub balance_type: BalanceType,
     /// Cost per unit commodity
@@ -115,16 +116,16 @@ mod tests {
     }
 
     #[test]
-    fn test_commodity_cost_map() {
+    fn test_commodity_levy_map() {
         let ts = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
         };
-        let value = CommodityCost {
+        let value = CommodityLevy {
             balance_type: BalanceType::Consumption,
             value: 0.5,
         };
-        let mut map = CommodityCostMap::new();
+        let mut map = CommodityLevyMap::new();
         assert!(map
             .insert(("GBR".into(), 2010, ts.clone()), value.clone())
             .is_none());

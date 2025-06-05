@@ -280,7 +280,7 @@ fn validate_svd_commodity(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{CommodityCostMap, DemandMap};
+    use crate::commodity::{CommodityLevyMap, DemandMap};
     use crate::fixture::{time_slice, time_slice_info};
     use crate::process::{FlowType, ProcessFlow};
     use crate::time_slice::{TimeSliceID, TimeSliceLevel};
@@ -294,7 +294,7 @@ mod tests {
             description: "SED commodity".into(),
             kind: CommodityType::SupplyEqualsDemand,
             time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::new(),
+            levies: CommodityLevyMap::new(),
             demand: DemandMap::new(),
         }
     }
@@ -367,7 +367,7 @@ mod tests {
             description: "SVD commodity".into(),
             kind: CommodityType::ServiceDemand,
             time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::new(),
+            levies: CommodityLevyMap::new(),
             demand,
         }
     }

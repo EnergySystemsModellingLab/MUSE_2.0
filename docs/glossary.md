@@ -41,8 +41,8 @@ capacity can produce 31.536 PJ energy output in a year.
 produced and/or consumed by *Process*es* in the model. A *Service Demand* is a type of commodity
 that is defined at the end point of the system.
 
-**Commodity Cost:** Represents a tax, levy or other external cost on a commodity. Commodity costs
-can be applied to all commodity production (sum of output of all processes for that commodity), net
+**Commodity Levy:** Represents a tax, levy or other external cost on a commodity. Levies can be
+applied to all commodity production (sum of output of all processes for that commodity), net
 production (sum of output and input for all processes), or all consumption (sum of input for all
 processes). It can also be negative, indicating an incentive on commodity
 production/consumption/net.

@@ -1,4 +1,4 @@
-title: Commodity costs
+title: Commodity levies
 description: |
   Defines levies for commodities (or, if `value` is negative, incentives).
 
@@ -31,4 +31,4 @@ fields:
       `net` (applies to consumption and production)
   - name: value
     type: number
-    title: The value of the commodity cost
+    title: The value of the levy/incentive
