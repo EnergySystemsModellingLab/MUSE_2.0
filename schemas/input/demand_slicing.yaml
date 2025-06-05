@@ -1,0 +1,25 @@
+title: Annual distribution of demand
+description: |
+  Specifies how demand is distributed throughout the year (i.e. for different milestones).
+
+  The user must provide entries covering every combination of service demand commodity, region and
+  time slice. For each combination, the sum of the fractions must equal one.
+
+fields:
+  - name: commodity_id
+    type: string
+    title: The service demand commodity to which this entry applies
+  - name: region_id
+    type: string
+    title: The region to which this entry applies
+    description: A region ID
+  - name: time_slice
+    type: string
+    title: The time slices(s) to which this entry applies
+    description: |
+      Can be a single time slice (e.g. `winter.day`), a whole season (e.g. `winter`) or `annual`,
+      representing the whole year
+  - name: fraction
+    type: number
+    title: The fraction of annual demand for this entry
+    description: Must be >0 and <=1
