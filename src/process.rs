@@ -87,7 +87,7 @@ pub struct ProcessFlow {
     /// Positive value indicates flow out and negative value indicates flow in.
     pub coeff: f64,
     /// Identifies if a flow is fixed or flexible.
-    pub flow_type: FlowType,
+    pub kind: FlowType,
     /// Cost per unit flow.
     ///
     /// For example, cost per unit of natural gas produced. The user can apply it to any specified

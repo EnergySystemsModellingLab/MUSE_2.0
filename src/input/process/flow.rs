@@ -22,7 +22,8 @@ struct ProcessFlowRaw {
     regions: String,
     coeff: f64,
     #[serde(default)]
-    flow_type: FlowType,
+    #[serde(rename = "type")]
+    kind: FlowType,
     flow_cost: Option<f64>,
     is_pac: bool,
 }
@@ -38,7 +39,7 @@ impl ProcessFlowRaw {
 
         // **TODO**: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/300
         ensure!(
-            self.flow_type == FlowType::Fixed,
+            self.kind == FlowType::Fixed,
             "Commodity flexible assets are not currently supported"
         );
 
@@ -109,7 +110,7 @@ where
         let process_flow = ProcessFlow {
             commodity: Rc::clone(commodity),
             coeff: record.coeff,
-            flow_type: record.flow_type,
+            kind: record.kind,
             flow_cost: record.flow_cost.unwrap_or(0.0),
             is_pac: record.is_pac,
         };
@@ -203,7 +204,7 @@ mod tests {
 
     fn create_process_flow_raw(
         coeff: f64,
-        flow_type: FlowType,
+        kind: FlowType,
         flow_cost: Option<f64>,
         is_pac: bool,
     ) -> ProcessFlowRaw {
@@ -213,7 +214,7 @@ mod tests {
             years: "2020".into(),
             regions: "region".into(),
             coeff,
-            flow_type,
+            kind,
             flow_cost,
             is_pac,
         }
@@ -248,7 +249,7 @@ mod tests {
         ProcessFlow {
             commodity,
             coeff,
-            flow_type: FlowType::Fixed,
+            kind: FlowType::Fixed,
             flow_cost: 0.0,
             is_pac,
         }

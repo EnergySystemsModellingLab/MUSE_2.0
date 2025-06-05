@@ -306,7 +306,7 @@ mod tests {
             indexmap! { commodity_sed.id.clone() => ProcessFlow {
                 commodity: commodity_sed.into(),
                 coeff: -10.0,
-                flow_type: FlowType::Fixed,
+                kind: FlowType::Fixed,
                 flow_cost: 1.0,
                 is_pac: false,
             }},
@@ -320,7 +320,7 @@ mod tests {
             indexmap! {commodity_sed.id.clone()=>ProcessFlow {
                 commodity: commodity_sed.into(),
                 coeff: 10.0,
-                flow_type: FlowType::Fixed,
+                kind: FlowType::Fixed,
                 flow_cost: 1.0,
                 is_pac: false,
             }},
@@ -381,7 +381,7 @@ mod tests {
                 indexmap! { commodity_svd.id.clone() => ProcessFlow {
                     commodity: commodity_svd.into(),
                     coeff: 10.0,
-                    flow_type: FlowType::Fixed,
+                    kind: FlowType::Fixed,
                     flow_cost: 1.0,
                     is_pac: false,
                 }},
