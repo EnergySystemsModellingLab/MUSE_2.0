@@ -2,8 +2,8 @@
 use crate::asset::AssetPool;
 use crate::model::Model;
 use crate::output::DataWriter;
-use anyhow::{bail, Result};
-use log::info;
+use anyhow::Result;
+use log::{error, info};
 use std::path::Path;
 
 pub mod optimisation;
@@ -42,7 +42,8 @@ pub fn run(
 
             // **TODO:** Remove this when we implement at least some of the agent investment code
             //   See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/304
-            bail!("Agent investment is not yet implemented. Exiting...");
+            error!("Agent investment is not yet implemented. Exiting...");
+            return Ok(());
         }
 
         // Newly commissioned assets will be included in optimisation for at least one milestone
