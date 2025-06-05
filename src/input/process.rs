@@ -307,7 +307,7 @@ mod tests {
                 commodity: commodity_sed.into(),
                 coeff: -10.0,
                 kind: FlowType::Fixed,
-                flow_cost: 1.0,
+                cost: 1.0,
                 is_pac: false,
             }},
         )])
@@ -321,7 +321,7 @@ mod tests {
                 commodity: commodity_sed.into(),
                 coeff: 10.0,
                 kind: FlowType::Fixed,
-                flow_cost: 1.0,
+                cost: 1.0,
                 is_pac: false,
             }},
         )])
@@ -382,7 +382,7 @@ mod tests {
                     commodity: commodity_svd.into(),
                     coeff: 10.0,
                     kind: FlowType::Fixed,
-                    flow_cost: 1.0,
+                    cost: 1.0,
                     is_pac: false,
                 }},
             )]),

@@ -32,7 +32,7 @@ fields:
     type: string
     title: The type of commodity flow
     description: Currently this value must be `fixed`
-  - name: flow_cost
+  - name: cost
     type: number
     title: The cost per unit flow
     description: Optional. If present, must be >0.
