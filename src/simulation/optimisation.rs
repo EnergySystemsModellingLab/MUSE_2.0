@@ -48,7 +48,7 @@ impl VariableMap {
 /// The solution to the dispatch optimisation problem
 pub struct Solution<'a> {
     solution: highs::Solution,
-    _variables: VariableMap,
+    variables: VariableMap,
     time_slice_info: &'a TimeSliceInfo,
     constraint_keys: ConstraintKeys,
 }
@@ -61,13 +61,21 @@ impl Solution<'_> {
     ///
     /// # Returns
     ///
-    /// An iterator of tuples containing an asset ID, commodity, time slice and flow.
+    /// An iterator of tuples containing an asset, commodity, time slice and flow.
     pub fn iter_commodity_flows_for_assets(
         &self,
     ) -> impl Iterator<Item = (&AssetRef, &CommodityID, &TimeSliceID, f64)> {
-        // **TODO:** Need to calculate flows by multiplying coeffs by asset activity:
-        //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/593
-        std::iter::empty()
+        // The decision variables represent assets' activity levels, not commodity flows. We
+        // multiply this value by the flow coeffs to get commodity flows.
+        self.variables
+            .0
+            .keys()
+            .zip(self.solution.columns())
+            .flat_map(|((asset, time_slice), activity)| {
+                asset
+                    .iter_flows()
+                    .map(move |flow| (asset, &flow.commodity.id, time_slice, activity * flow.coeff))
+            })
     }
 
     /// Keys and dual values for commodity balance constraints.
@@ -139,7 +147,7 @@ pub fn perform_dispatch_optimisation<'a>(
     match solution.status() {
         HighsModelStatus::Optimal => Ok(Solution {
             solution: solution.get_solution(),
-            _variables: variables,
+            variables,
             time_slice_info: &model.time_slice_info,
             constraint_keys,
         }),
