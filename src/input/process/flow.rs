@@ -24,7 +24,7 @@ struct ProcessFlowRaw {
     #[serde(default)]
     #[serde(rename = "type")]
     kind: FlowType,
-    flow_cost: Option<f64>,
+    cost: Option<f64>,
     is_pac: bool,
 }
 
@@ -44,10 +44,10 @@ impl ProcessFlowRaw {
         );
 
         // Check that flow cost is non-negative
-        if let Some(flow_cost) = self.flow_cost {
+        if let Some(cost) = self.cost {
             ensure!(
-                (0.0..f64::INFINITY).contains(&flow_cost),
-                "Invalid value for flow cost ({flow_cost}). Must be >=0."
+                (0.0..f64::INFINITY).contains(&cost),
+                "Invalid value for flow cost ({cost}). Must be >=0."
             )
         }
 
@@ -111,7 +111,7 @@ where
             commodity: Rc::clone(commodity),
             coeff: record.coeff,
             kind: record.kind,
-            flow_cost: record.flow_cost.unwrap_or(0.0),
+            cost: record.cost.unwrap_or(0.0),
             is_pac: record.is_pac,
         };
 
@@ -205,7 +205,7 @@ mod tests {
     fn create_process_flow_raw(
         coeff: f64,
         kind: FlowType,
-        flow_cost: Option<f64>,
+        cost: Option<f64>,
         is_pac: bool,
     ) -> ProcessFlowRaw {
         ProcessFlowRaw {
@@ -215,7 +215,7 @@ mod tests {
             regions: "region".into(),
             coeff,
             kind,
-            flow_cost,
+            cost,
             is_pac,
         }
     }
@@ -250,7 +250,7 @@ mod tests {
             commodity,
             coeff,
             kind: FlowType::Fixed,
-            flow_cost: 0.0,
+            cost: 0.0,
             is_pac,
         }
     }

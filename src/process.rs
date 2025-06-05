@@ -93,7 +93,7 @@ pub struct ProcessFlow {
     /// For example, cost per unit of natural gas produced. The user can apply it to any specified
     /// flow, in contrast to [`ProcessParameter::variable_operating_cost`], which applies only to
     /// PAC flows.
-    pub flow_cost: f64,
+    pub cost: f64,
     /// Whether this flow represents a Primary Activity Commodity
     pub is_pac: bool,
 }
