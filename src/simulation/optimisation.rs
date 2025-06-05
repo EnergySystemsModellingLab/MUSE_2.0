@@ -11,7 +11,7 @@ use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 
 mod constraints;
-use constraints::{add_asset_constraints, ConstraintKeys};
+use constraints::{add_asset_constraints, CommodityBalanceKeys, ConstraintKeys};
 
 /// A map of commodity flows calculated during the optimisation
 pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), f64>;
@@ -36,8 +36,6 @@ pub struct VariableMap(IndexMap<(AssetRef, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
-    // **TODO:** Remove line below when we're using this
-    #[allow(dead_code)]
     fn get(&self, asset: &AssetRef, time_slice: &TimeSliceID) -> Variable {
         let key = (asset.clone(), time_slice.clone());
 
@@ -77,21 +75,35 @@ impl Solution<'_> {
         flows
     }
 
+    /// Helper function for iterating over commodity balance or demand duals
+    fn iter_balance_duals<'a>(
+        &'a self,
+        keys: &'a CommodityBalanceKeys,
+    ) -> impl Iterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, f64)> {
+        // Each constraint applies to a particular time slice selection, depending on time slice
+        // level. Where this covers multiple timeslices, we return the same dual for each
+        // individual timeslice.
+        keys.zip_duals(self.solution.dual_rows()).flat_map(
+            |((commodity_id, region_id, ts_selection), price)| {
+                ts_selection
+                    .iter(self.time_slice_info)
+                    .map(move |(ts, _)| (commodity_id, region_id, ts, price))
+            },
+        )
+    }
+
     /// Keys and dual values for commodity balance constraints.
     pub fn iter_commodity_balance_duals(
         &self,
     ) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, f64)> {
-        // Each commodity balance constraint applies to a particular time slice
-        // selection (depending on time slice level). Where this covers multiple timeslices,
-        // we return the same dual for each individual timeslice.
-        self.constraint_keys
-            .commodity_balance_keys
-            .zip_duals(self.solution.dual_rows())
-            .flat_map(|((commodity_id, region_id, ts_selection), price)| {
-                ts_selection
-                    .iter(self.time_slice_info)
-                    .map(move |(ts, _)| (commodity_id, region_id, ts, price))
-            })
+        self.iter_balance_duals(&self.constraint_keys.commodity_balance_keys)
+    }
+
+    /// Keys and dual values for demand satisfaction constraints
+    pub fn iter_demand_duals(
+        &self,
+    ) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, f64)> {
+        self.iter_balance_duals(&self.constraint_keys.demand_keys)
     }
 
     /// Keys and dual values for capacity constraints.

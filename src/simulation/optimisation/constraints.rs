@@ -1,7 +1,7 @@
 //! Code for adding constraints to the dispatch optimisation problem.
 use super::VariableMap;
 use crate::asset::{AssetPool, AssetRef};
-use crate::commodity::CommodityID;
+use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
@@ -25,16 +25,18 @@ impl<T> KeysWithOffset<T> {
     }
 }
 
-/// Indicates the commodity ID and time slice selection covered by each commodity balance constraint
+/// Indicates the commodity ID, region and time slice selection covered by the constraint
 pub type CommodityBalanceKeys = KeysWithOffset<(CommodityID, RegionID, TimeSliceSelection)>;
 
-/// Indicates the asset ID and time slice covered by each capacity constraint
+/// Indicates the asset and time slice covered by each capacity constraint
 pub type CapacityKeys = KeysWithOffset<(AssetRef, TimeSliceID)>;
 
 /// The keys for different constraints
 pub struct ConstraintKeys {
     /// Keys for commodity balance constraints
     pub commodity_balance_keys: CommodityBalanceKeys,
+    /// Keys for demand satisfaction constraints
+    pub demand_keys: CommodityBalanceKeys,
     /// Keys for capacity constraints
     pub capacity_keys: CapacityKeys,
 }
@@ -66,6 +68,8 @@ pub fn add_asset_constraints(
     let commodity_balance_keys =
         add_commodity_balance_constraints(problem, variables, model, assets, year);
 
+    let demand_keys = add_demand_constraints(problem, variables, model, assets, year);
+
     let capacity_keys =
         add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
 
@@ -73,6 +77,7 @@ pub fn add_asset_constraints(
     ConstraintKeys {
         commodity_balance_keys,
         capacity_keys,
+        demand_keys,
     }
 }
 
@@ -97,6 +102,67 @@ fn add_commodity_balance_constraints(
 
     // **TODO:** Add commodity balance constraints:
     //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/577
+
+    CommodityBalanceKeys { offset, keys }
+}
+
+/// Add asset-level balance constraints for service demand commodities.
+///
+/// These constraints ensure that exogenous demand requirements are satisfied.
+fn add_demand_constraints(
+    problem: &mut Problem,
+    variables: &VariableMap,
+    model: &Model,
+    assets: &AssetPool,
+    year: u32,
+) -> CommodityBalanceKeys {
+    // Row offset in problem. This line **must** come before we add more constraints.
+    let offset = problem.num_rows();
+
+    let mut keys = Vec::new();
+    let mut terms = Vec::new();
+    for (commodity_id, commodity) in model.commodities.iter() {
+        if commodity.kind != CommodityType::ServiceDemand {
+            continue;
+        }
+
+        for region_id in model.iter_regions() {
+            for ts_selection in model
+                .time_slice_info
+                .iter_selections_at_level(commodity.time_slice_level)
+            {
+                for asset in assets.iter_for_region(region_id) {
+                    let Some(flow) = asset.get_flow(commodity_id) else {
+                        // Asset doesn't produce or consume commodity
+                        continue;
+                    };
+                    if flow.coeff < 0.0 {
+                        // Asset consumes commodity; we're interested in producers
+                        continue;
+                    }
+
+                    // If the commodity has a time slice level of season/annual, the constraint will
+                    // cover multiple time slices
+                    for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
+                        let var = variables.get(asset, time_slice);
+                        terms.push((var, flow.coeff));
+                    }
+                }
+
+                // Add constraint
+                let demand = *commodity
+                    .demand
+                    .get(&(region_id.clone(), year, ts_selection.clone()))
+                    .unwrap();
+                problem.add_row(demand..=demand, terms.drain(..));
+                keys.push((
+                    commodity_id.clone(),
+                    region_id.clone(),
+                    ts_selection.clone(),
+                ))
+            }
+        }
+    }
 
     CommodityBalanceKeys { offset, keys }
 }
