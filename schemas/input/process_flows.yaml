@@ -28,7 +28,7 @@ fields:
     title: The flow for this commodity
     description: |
       Can be <0, indicating an input flow, or >0, indicating an output flow. Cannot be zero.
-  - name: flow_type
+  - name: type
     type: string
     title: The type of commodity flow
     description: Currently this value must be `fixed`
