@@ -5,17 +5,17 @@ use crate::agent::{
     AgentSearchSpaceMap, DecisionRule,
 };
 use crate::asset::{Asset, AssetPool};
-use crate::commodity::CommodityID;
+use crate::commodity::{Commodity, CommodityCostMap, CommodityID, CommodityType, DemandMap};
 use crate::process::{
     Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessMap, ProcessParameter,
     ProcessParameterMap,
 };
 use crate::region::RegionID;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use indexmap::indexmap;
 use itertools::Itertools;
 use rstest::fixture;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::iter;
 use std::rc::Rc;
 
@@ -53,6 +53,22 @@ pub fn agent_id() -> AgentID {
 #[fixture]
 pub fn commodity_id() -> CommodityID {
     "commodity1".into()
+}
+
+#[fixture]
+pub fn svd_commodity() -> Commodity {
+    Commodity {
+        id: "commodity1".into(),
+        description: "".into(),
+        kind: CommodityType::ServiceDemand,
+        time_slice_level: TimeSliceLevel::DayNight,
+        costs: CommodityCostMap::new(),
+        demand: DemandMap::new(),
+    }
+}
+
+pub fn get_svd_map(commodity: &Commodity) -> HashMap<CommodityID, &Commodity> {
+    iter::once((commodity.id.clone(), commodity)).collect()
 }
 
 #[fixture]
@@ -139,9 +155,9 @@ pub fn time_slice() -> TimeSliceID {
 #[fixture]
 pub fn time_slice_info() -> TimeSliceInfo {
     TimeSliceInfo {
-        seasons: iter::once("winter".into()).collect(),
         times_of_day: iter::once("day".into()).collect(),
-        fractions: [(
+        seasons: iter::once(("winter".into(), 1.0)).collect(),
+        time_slices: [(
             TimeSliceID {
                 season: "winter".into(),
                 time_of_day: "day".into(),

@@ -1,7 +1,7 @@
 //! Commodities are substances or forms of energy that can be produced and consumed by processes.
 use crate::id::{define_id_getter, define_id_type};
 use crate::region::RegionID;
-use crate::time_slice::{TimeSliceID, TimeSliceLevel};
+use crate::time_slice::{TimeSliceID, TimeSliceLevel, TimeSliceSelection};
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -16,8 +16,8 @@ pub type CommodityMap = IndexMap<CommodityID, Rc<Commodity>>;
 /// A map of [`CommodityCost`]s, keyed by region ID, year and time slice ID
 pub type CommodityCostMap = HashMap<(RegionID, u32, TimeSliceID), CommodityCost>;
 
-/// A map of demand values, keyed by region ID, year and time slice ID
-pub type DemandMap = HashMap<(RegionID, u32, TimeSliceID), f64>;
+/// A map of demand values, keyed by region ID, year and time slice selection
+pub type DemandMap = HashMap<(RegionID, u32, TimeSliceSelection), f64>;
 
 /// A commodity within the simulation.
 ///
@@ -42,6 +42,10 @@ pub struct Commodity {
     #[serde(skip)]
     pub costs: CommodityCostMap,
     /// Demand as defined in input files. Will be empty for non-service-demand commodities.
+    ///
+    /// The [`TimeSliceSelection`] part of the key is always at the same [`TimeSliceLevel`] as the
+    /// `time_slice_level` field. E.g. if the `time_slice_level` is seasonal, then there will be
+    /// keys representing each season (and not e.g. individual time slices).
     #[serde(skip)]
     pub demand: DemandMap,
 }
@@ -92,19 +96,20 @@ pub enum CommodityType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::time_slice::TimeSliceSelection;
 
     #[test]
     fn test_demand_map() {
-        let time_slice = TimeSliceID {
+        let ts_selection = TimeSliceSelection::Single(TimeSliceID {
             season: "all-year".into(),
             time_of_day: "all-day".into(),
-        };
+        });
         let value = 0.25;
         let mut map = DemandMap::new();
-        map.insert(("North".into(), 2020, time_slice.clone()), value);
+        map.insert(("North".into(), 2020, ts_selection.clone()), value);
 
         assert_eq!(
-            map.get(&("North".into(), 2020, time_slice)).unwrap(),
+            map.get(&("North".into(), 2020, ts_selection)).unwrap(),
             &value
         )
     }

@@ -2,10 +2,11 @@
 use super::super::*;
 use crate::commodity::CommodityID;
 use crate::id::IDCollection;
+use crate::input::commodity::demand::BorrowedCommodityMap;
 use crate::region::RegionID;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use anyhow::{ensure, Context, Result};
-use itertools::Itertools;
+use itertools::{iproduct, Itertools};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -21,21 +22,21 @@ struct DemandSlice {
     fraction: f64,
 }
 
-/// A map relating commodity, region and time slice to the fraction of annual demand
-pub type DemandSliceMap = HashMap<(CommodityID, RegionID, TimeSliceID), f64>;
+/// A map relating commodity, region and time slice selection to the fraction of annual demand
+pub type DemandSliceMap = HashMap<(CommodityID, RegionID, TimeSliceSelection), f64>;
 
 /// Read demand slices from specified model directory.
 ///
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
-/// * `commodity_ids` - All possible IDs of commodities
+/// * `svd_commodities` - Map of service demand commodities
 /// * `region_ids` - All possible IDs for regions
 /// * `commodity_regions` - Pairs of commodities + regions listed in demand CSV file
 /// * `time_slice_info` - Information about seasons and times of day
 pub fn read_demand_slices(
     model_dir: &Path,
-    svd_commodity_ids: &HashSet<CommodityID>,
+    svd_commodities: &BorrowedCommodityMap,
     region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap> {
@@ -43,7 +44,7 @@ pub fn read_demand_slices(
     let demand_slices_csv = read_csv(&file_path)?;
     read_demand_slices_from_iter(
         demand_slices_csv,
-        svd_commodity_ids,
+        svd_commodities,
         region_ids,
         time_slice_info,
     )
@@ -53,7 +54,7 @@ pub fn read_demand_slices(
 /// Read demand slices from an iterator
 fn read_demand_slices_from_iter<I>(
     iter: I,
-    svd_commodity_ids: &HashSet<CommodityID>,
+    svd_commodities: &BorrowedCommodityMap,
     region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap>
@@ -63,8 +64,8 @@ where
     let mut demand_slices = DemandSliceMap::new();
 
     for slice in iter {
-        let commodity_id = svd_commodity_ids
-            .get_id(&slice.commodity_id)
+        let commodity = svd_commodities
+            .get(slice.commodity_id.as_str())
             .with_context(|| {
                 format!(
                     "Can only provide demand slice data for SVD commodities. Found entry for '{}'",
@@ -77,22 +78,37 @@ where
         // how long they are relative to one another so that we can divide up the demand for this
         // entry appropriately
         let ts_selection = time_slice_info.get_selection(&slice.time_slice)?;
-        for (ts, demand_fraction) in time_slice_info.calculate_share(&ts_selection, slice.fraction)
-        {
-            // Share demand between the time slices in proportion to duration
-            ensure!(demand_slices.insert((commodity_id.clone(), region_id.clone(), ts.clone()), demand_fraction).is_none(),
+
+        // Share demand between the time slice selections in proportion to duration
+        let iter = time_slice_info
+            .calculate_share(&ts_selection, commodity.time_slice_level, slice.fraction)
+            .with_context(|| {
+                format!(
+                    "Cannot provide demand at {:?} level when commodity time slice level is {:?}",
+                    ts_selection.level(),
+                    commodity.time_slice_level
+                )
+            })?;
+        for (ts_selection, demand_fraction) in iter {
+            let existing = demand_slices
+                .insert(
+                    (
+                        commodity.id.clone(),
+                        region_id.clone(),
+                        ts_selection.clone(),
+                    ),
+                    demand_fraction,
+                )
+                .is_some();
+            ensure!(!existing,
                 "Duplicate demand slicing entry (or same time slice covered by more than one entry) \
-                (commodity: {commodity_id}, region: {region_id}, time slice: {ts})"
+                (commodity: {}, region: {}, time slice(s): {})"
+                ,commodity.id,region_id,ts_selection
             );
         }
     }
 
-    validate_demand_slices(
-        svd_commodity_ids,
-        region_ids,
-        &demand_slices,
-        time_slice_info,
-    )?;
+    validate_demand_slices(svd_commodities, region_ids, &demand_slices, time_slice_info)?;
 
     Ok(demand_slices)
 }
@@ -105,25 +121,25 @@ where
 /// * For every commodity + region pair, there must be entries covering every time slice
 /// * The demand fractions for all entries related to a commodity + region pair sum to one
 fn validate_demand_slices(
-    svd_commodity_ids: &HashSet<CommodityID>,
+    svd_commodities: &BorrowedCommodityMap,
     region_ids: &HashSet<RegionID>,
     demand_slices: &DemandSliceMap,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
-    let commodity_regions = svd_commodity_ids
-        .iter()
-        .cartesian_product(region_ids.iter())
-        .collect::<HashSet<_>>();
-    for (commodity_id, region_id) in commodity_regions {
+    for (commodity, region_id) in iproduct!(svd_commodities.values(), region_ids) {
         time_slice_info
-            .iter_ids()
-            .map(|time_slice| {
+            .iter_selections_for_level(commodity.time_slice_level)
+            .map(|ts_selection| {
                 demand_slices
-                    .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+                    .get(&(
+                        commodity.id.clone(),
+                        region_id.clone(),
+                        ts_selection.clone(),
+                    ))
                     .with_context(|| {
                         format!(
-                            "Demand slice missing for time slice {} (commodity: {}, region {})",
-                            time_slice, commodity_id, region_id
+                            "Demand slice missing for time slice(s) '{}' (commodity: {}, region {})",
+                            ts_selection, commodity.id, region_id
                         )
                     })
             })
@@ -138,7 +154,9 @@ fn validate_demand_slices(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::{assert_error, commodity_ids, time_slice_info};
+    use crate::commodity::Commodity;
+    use crate::fixture::{assert_error, get_svd_map, svd_commodity, time_slice_info};
+    use crate::time_slice::TimeSliceID;
     use rstest::{fixture, rstest};
     use std::iter;
 
@@ -149,11 +167,12 @@ mod tests {
 
     #[rstest]
     fn test_read_demand_slices_from_iter_valid(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Valid
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
@@ -163,12 +182,12 @@ mod tests {
         let time_slice = time_slice_info
             .get_time_slice_id_from_str("winter.day")
             .unwrap();
-        let key = ("commodity1".into(), "GBR".into(), time_slice);
+        let key = ("commodity1".into(), "GBR".into(), time_slice.into());
         let expected = DemandSliceMap::from_iter(iter::once((key, 1.0)));
         assert_eq!(
             read_demand_slices_from_iter(
                 iter::once(demand_slice.clone()),
-                &commodity_ids,
+                &svd_commodities,
                 &region_ids,
                 &time_slice_info,
             )
@@ -179,14 +198,17 @@ mod tests {
 
     #[rstest]
     fn test_read_demand_slices_from_iter_valid_multiple_time_slices(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
     ) {
         // Valid, multiple time slices
+        let svd_commodities = get_svd_map(&svd_commodity);
         let time_slice_info = TimeSliceInfo {
-            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
+                .into_iter()
+                .collect(),
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            fractions: [
+            time_slices: [
                 (
                     TimeSliceID {
                         season: "summer".into(),
@@ -233,56 +255,36 @@ mod tests {
                 fraction: 0.5,
             },
         ];
+
+        fn demand_slice_entry(
+            season: &str,
+            time_of_day: &str,
+            demand: f64,
+        ) -> ((CommodityID, RegionID, TimeSliceSelection), f64) {
+            (
+                (
+                    "commodity1".into(),
+                    "GBR".into(),
+                    TimeSliceID {
+                        season: season.into(),
+                        time_of_day: time_of_day.into(),
+                    }
+                    .into(),
+                ),
+                demand,
+            )
+        }
         let expected = DemandSliceMap::from_iter([
-            (
-                (
-                    "commodity1".into(),
-                    "GBR".into(),
-                    TimeSliceID {
-                        season: "summer".into(),
-                        time_of_day: "day".into(),
-                    },
-                ),
-                3.0 / 16.0,
-            ),
-            (
-                (
-                    "commodity1".into(),
-                    "GBR".into(),
-                    TimeSliceID {
-                        season: "summer".into(),
-                        time_of_day: "night".into(),
-                    },
-                ),
-                5.0 / 16.0,
-            ),
-            (
-                (
-                    "commodity1".into(),
-                    "GBR".into(),
-                    TimeSliceID {
-                        season: "winter".into(),
-                        time_of_day: "day".into(),
-                    },
-                ),
-                3.0 / 16.0,
-            ),
-            (
-                (
-                    "commodity1".into(),
-                    "GBR".into(),
-                    TimeSliceID {
-                        season: "winter".into(),
-                        time_of_day: "night".into(),
-                    },
-                ),
-                5.0 / 16.0,
-            ),
+            demand_slice_entry("summer", "day", 3.0 / 16.0),
+            demand_slice_entry("summer", "night", 5.0 / 16.0),
+            demand_slice_entry("winter", "day", 3.0 / 16.0),
+            demand_slice_entry("winter", "night", 5.0 / 16.0),
         ]);
+
         assert_eq!(
             read_demand_slices_from_iter(
                 demand_slices.into_iter(),
-                &commodity_ids,
+                &svd_commodities,
                 &region_ids,
                 &time_slice_info,
             )
@@ -293,29 +295,31 @@ mod tests {
 
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_empty_file(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Empty CSV file
+        let svd_commodities = get_svd_map(&svd_commodity);
         assert_error!(
             read_demand_slices_from_iter(
                 iter::empty(),
-                &commodity_ids,
+                &svd_commodities,
                 &region_ids,
                 &time_slice_info,
             ),
-            "Demand slice missing for time slice winter.day (commodity: commodity1, region GBR)"
+            "Demand slice missing for time slice(s) 'winter.day' (commodity: commodity1, region GBR)"
         );
     }
 
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_bad_commodity(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Bad commodity
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand_slice = DemandSlice {
             commodity_id: "commodity2".into(),
             region_id: "GBR".into(),
@@ -325,7 +329,7 @@ mod tests {
         assert_error!(
             read_demand_slices_from_iter(
                 iter::once(demand_slice.clone()),
-                &commodity_ids,
+                &svd_commodities,
                 &region_ids,
                 &time_slice_info,
             ),
@@ -335,11 +339,12 @@ mod tests {
 
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_bad_region(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Bad region
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
             region_id: "FRA".into(),
@@ -349,7 +354,7 @@ mod tests {
         assert_error!(
             read_demand_slices_from_iter(
                 iter::once(demand_slice.clone()),
-                &commodity_ids,
+                &svd_commodities,
                 &region_ids,
                 &time_slice_info,
             ),
@@ -359,11 +364,12 @@ mod tests {
 
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_bad_time_slice(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Bad time slice selection
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
@@ -373,7 +379,7 @@ mod tests {
         assert_error!(
             read_demand_slices_from_iter(
                 iter::once(demand_slice.clone()),
-                &commodity_ids,
+                &svd_commodities,
                 &region_ids,
                 &time_slice_info,
             ),
@@ -383,14 +389,17 @@ mod tests {
 
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_missing_time_slices(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
     ) {
         // Some time slices uncovered
+        let svd_commodities = get_svd_map(&svd_commodity);
         let time_slice_info = TimeSliceInfo {
-            seasons: ["winter".into(), "summer".into()].into_iter().collect(),
+            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
+                .into_iter()
+                .collect(),
             times_of_day: iter::once("day".into()).collect(),
-            fractions: [
+            time_slices: [
                 (
                     TimeSliceID {
                         season: "winter".into(),
@@ -418,21 +427,22 @@ mod tests {
         assert_error!(
             read_demand_slices_from_iter(
                 iter::once(demand_slice.clone()),
-                &commodity_ids,
+                &svd_commodities,
                 &region_ids,
                 &time_slice_info,
             ),
-            "Demand slice missing for time slice summer.day (commodity: commodity1, region GBR)"
+            "Demand slice missing for time slice(s) 'summer.day' (commodity: commodity1, region GBR)"
         );
     }
 
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_duplicate_time_slice(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Same time slice twice
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
@@ -442,22 +452,23 @@ mod tests {
         assert_error!(
             read_demand_slices_from_iter(
                 iter::repeat_n(demand_slice.clone(), 2),
-                &commodity_ids,
+                &svd_commodities,
                 &region_ids,
                 &time_slice_info,
             ),
             "Duplicate demand slicing entry (or same time slice covered by more than one entry) \
-            (commodity: commodity1, region: GBR, time slice: winter.day)"
+                (commodity: commodity1, region: GBR, time slice(s): winter.day)"
         );
     }
 
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_season_time_slice_conflict(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Whole season and single time slice conflicting
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
@@ -473,22 +484,23 @@ mod tests {
         assert_error!(
             read_demand_slices_from_iter(
                 [demand_slice, demand_slice_season].into_iter(),
-                &commodity_ids,
+                &svd_commodities,
                 &region_ids,
                 &time_slice_info,
             ),
             "Duplicate demand slicing entry (or same time slice covered by more than one entry) \
-            (commodity: commodity1, region: GBR, time slice: winter.day)"
+                (commodity: commodity1, region: GBR, time slice(s): winter.day)"
         );
     }
 
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_bad_fractions(
-        commodity_ids: HashSet<CommodityID>,
+        svd_commodity: Commodity,
         region_ids: HashSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Fractions don't sum to one
+        let svd_commodities = get_svd_map(&svd_commodity);
         let demand_slice = DemandSlice {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
@@ -498,7 +510,7 @@ mod tests {
         assert_error!(
             read_demand_slices_from_iter(
                 iter::once(demand_slice),
-                &commodity_ids,
+                &svd_commodities,
                 &region_ids,
                 &time_slice_info,
             ),
