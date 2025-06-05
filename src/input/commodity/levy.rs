@@ -1,6 +1,6 @@
-//! Code for reading in the commodity cost CSV file.
+//! Code for reading in the commodity levies CSV file.
 use super::super::*;
-use crate::commodity::{BalanceType, CommodityCost, CommodityCostMap, CommodityID};
+use crate::commodity::{BalanceType, CommodityID, CommodityLevy, CommodityLevyMap};
 use crate::id::IDCollection;
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::TimeSliceInfo;
@@ -10,14 +10,14 @@ use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-const COMMODITY_COSTS_FILE_NAME: &str = "commodity_costs.csv";
+const COMMODITY_LEVIES_FILE_NAME: &str = "commodity_levies.csv";
 
 /// Cost parameters for each commodity
 #[derive(PartialEq, Debug, Deserialize, Clone)]
-struct CommodityCostRaw {
+struct CommodityLevyRaw {
     /// Unique identifier for the commodity (e.g. "ELC")
     commodity_id: String,
-    /// The region(s) to which the commodity cost applies.
+    /// The region(s) to which the levy applies.
     regions: String,
     /// Type of balance for application of cost.
     balance_type: BalanceType,
@@ -25,11 +25,11 @@ struct CommodityCostRaw {
     years: String,
     /// The time slice to which the cost applies.
     time_slice: String,
-    /// Cost per unit commodity. For example, if a CO2 price is specified in input data, it can be applied to net CO2 via this value.
+    /// Cost per unit commodity
     value: f64,
 }
 
-/// Read costs associated with each commodity from commodity costs CSV file.
+/// Read costs associated with each commodity from levies CSV file.
 ///
 /// # Arguments
 ///
@@ -41,18 +41,18 @@ struct CommodityCostRaw {
 ///
 /// # Returns
 ///
-/// A map containing commodity costs, grouped by commodity ID.
-pub fn read_commodity_costs(
+/// A map containing levies, grouped by commodity ID.
+pub fn read_commodity_levies(
     model_dir: &Path,
     commodity_ids: &HashSet<CommodityID>,
     region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> Result<HashMap<CommodityID, CommodityCostMap>> {
-    let file_path = model_dir.join(COMMODITY_COSTS_FILE_NAME);
-    let commodity_costs_csv = read_csv::<CommodityCostRaw>(&file_path)?;
-    read_commodity_costs_iter(
-        commodity_costs_csv,
+) -> Result<HashMap<CommodityID, CommodityLevyMap>> {
+    let file_path = model_dir.join(COMMODITY_LEVIES_FILE_NAME);
+    let commodity_levies_csv = read_csv::<CommodityLevyRaw>(&file_path)?;
+    read_commodity_levies_iter(
+        commodity_levies_csv,
         commodity_ids,
         region_ids,
         time_slice_info,
@@ -61,15 +61,15 @@ pub fn read_commodity_costs(
     .with_context(|| input_err_msg(&file_path))
 }
 
-fn read_commodity_costs_iter<I>(
+fn read_commodity_levies_iter<I>(
     iter: I,
     commodity_ids: &HashSet<CommodityID>,
     region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> Result<HashMap<CommodityID, CommodityCostMap>>
+) -> Result<HashMap<CommodityID, CommodityLevyMap>>
 where
-    I: Iterator<Item = CommodityCostRaw>,
+    I: Iterator<Item = CommodityLevyRaw>,
 {
     let mut map = HashMap::new();
 
@@ -83,13 +83,13 @@ where
         let years = parse_year_str(&cost.years, milestone_years)?;
         let ts_selection = time_slice_info.get_selection(&cost.time_slice)?;
 
-        // Get or create CommodityCostMap for this commodity
+        // Get or create CommodityLevyMap for this commodity
         let map = map
             .entry(commodity_id.clone())
-            .or_insert_with(CommodityCostMap::new);
+            .or_insert_with(CommodityLevyMap::new);
 
-        // Create CommodityCost
-        let cost = CommodityCost {
+        // Create CommodityLevy
+        let cost = CommodityLevy {
             balance_type: cost.balance_type,
             value: cost.value,
         };
@@ -115,14 +115,14 @@ where
     // Validate map
     for (commodity_id, regions) in commodity_regions.iter() {
         let map = map.get(commodity_id).unwrap();
-        validate_commodity_cost_map(map, regions, milestone_years, time_slice_info)
+        validate_commodity_levy_map(map, regions, milestone_years, time_slice_info)
             .with_context(|| format!("Missing costs for commodity {}", commodity_id))?;
     }
     Ok(map)
 }
 
-fn validate_commodity_cost_map(
-    map: &CommodityCostMap,
+fn validate_commodity_levy_map(
+    map: &CommodityLevyMap,
     regions: &HashSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
@@ -159,58 +159,58 @@ mod tests {
     }
 
     #[fixture]
-    fn cost_map(time_slice: TimeSliceID) -> CommodityCostMap {
-        let cost = CommodityCost {
+    fn cost_map(time_slice: TimeSliceID) -> CommodityLevyMap {
+        let cost = CommodityLevy {
             balance_type: BalanceType::Net,
             value: 1.0,
         };
 
-        let mut map = CommodityCostMap::new();
+        let mut map = CommodityLevyMap::new();
         map.insert(("GBR".into(), 2020, time_slice.clone()), cost.clone());
         map
     }
 
     #[rstest]
-    fn test_validate_commodity_costs_map_valid(
-        cost_map: CommodityCostMap,
+    fn test_validate_commodity_levies_map_valid(
+        cost_map: CommodityLevyMap,
         time_slice_info: TimeSliceInfo,
         region_ids: HashSet<RegionID>,
     ) {
         // Valid map
         assert!(
-            validate_commodity_cost_map(&cost_map, &region_ids, &[2020], &time_slice_info).is_ok()
+            validate_commodity_levy_map(&cost_map, &region_ids, &[2020], &time_slice_info).is_ok()
         );
     }
 
     #[rstest]
-    fn test_validate_commodity_costs_map_invalid_missing_region(
-        cost_map: CommodityCostMap,
+    fn test_validate_commodity_levies_map_invalid_missing_region(
+        cost_map: CommodityLevyMap,
         time_slice_info: TimeSliceInfo,
     ) {
         // Missing region
         let region_ids = HashSet::from(["GBR".into(), "FRA".into()]);
         assert_error!(
-            validate_commodity_cost_map(&cost_map, &region_ids, &[2020], &time_slice_info),
+            validate_commodity_levy_map(&cost_map, &region_ids, &[2020], &time_slice_info),
             "Missing cost for region FRA, year 2020, time slice winter.day"
         );
     }
 
     #[rstest]
-    fn test_validate_commodity_costs_map_invalid_missing_year(
-        cost_map: CommodityCostMap,
+    fn test_validate_commodity_levies_map_invalid_missing_year(
+        cost_map: CommodityLevyMap,
         time_slice_info: TimeSliceInfo,
         region_ids: HashSet<RegionID>,
     ) {
         // Missing year
         assert_error!(
-            validate_commodity_cost_map(&cost_map, &region_ids, &[2020, 2030], &time_slice_info),
+            validate_commodity_levy_map(&cost_map, &region_ids, &[2020, 2030], &time_slice_info),
             "Missing cost for region GBR, year 2030, time slice winter.day"
         );
     }
 
     #[rstest]
-    fn test_validate_commodity_costs_map_invalid(
-        cost_map: CommodityCostMap,
+    fn test_validate_commodity_levies_map_invalid(
+        cost_map: CommodityLevyMap,
         region_ids: HashSet<RegionID>,
     ) {
         // Missing time slice
@@ -224,7 +224,7 @@ mod tests {
             time_slices: [(time_slice.clone(), 0.5), (time_slice.clone(), 0.5)].into(),
         };
         assert_error!(
-            validate_commodity_cost_map(&cost_map, &region_ids, &[2020], &time_slice_info),
+            validate_commodity_levy_map(&cost_map, &region_ids, &[2020], &time_slice_info),
             "Missing cost for region GBR, year 2020, time slice winter.night"
         );
     }
