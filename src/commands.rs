@@ -3,7 +3,7 @@ use crate::input::load_model;
 use crate::log;
 use crate::output::{create_output_directory, get_output_dir};
 use crate::settings::Settings;
-use ::log::{error, info};
+use ::log::info;
 use anyhow::{ensure, Context, Result};
 use clap::{Parser, Subcommand};
 use include_dir::{include_dir, Dir, DirEntry};
@@ -98,20 +98,13 @@ pub fn handle_run_command(
     log::init(settings.log_level.as_deref(), &output_path)
         .context("Failed to initialise logging.")?;
 
-    let load_and_run_model = || {
-        // Load the model to run
-        let (model, assets) = load_model(model_path).context("Failed to load model.")?;
-        info!("Loaded model from {}", model_path.display());
-        info!("Output data will be written to {}", output_path.display());
+    // Load the model to run
+    let (model, assets) = load_model(model_path).context("Failed to load model.")?;
+    info!("Loaded model from {}", model_path.display());
+    info!("Output data will be written to {}", output_path.display());
 
-        // Run the simulation
-        crate::simulation::run(model, assets, &output_path, settings.debug_model)
-    };
-
-    // Once the logger is initialised, we can write fatal errors to log
-    if let Err(err) = load_and_run_model() {
-        error!("{err:?}");
-    }
+    // Run the simulation
+    crate::simulation::run(model, assets, &output_path, settings.debug_model)?;
 
     Ok(())
 }

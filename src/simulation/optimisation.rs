@@ -1,7 +1,7 @@
 //! Code for performing dispatch optimisation.
 //!
 //! This is used to calculate commodity flows and prices.
-use crate::asset::{Asset, AssetID, AssetPool};
+use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
@@ -29,14 +29,14 @@ type Variable = highs::Col;
 /// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
 ///    are reading the results of the optimisation.
 #[derive(Default)]
-pub struct VariableMap(IndexMap<(AssetID, TimeSliceID), Variable>);
+pub struct VariableMap(IndexMap<(AssetRef, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
     // **TODO:** Remove line below when we're using this
     #[allow(dead_code)]
-    fn get(&self, asset_id: AssetID, time_slice: &TimeSliceID) -> Variable {
-        let key = (asset_id, time_slice.clone());
+    fn get(&self, asset: &AssetRef, time_slice: &TimeSliceID) -> Variable {
+        let key = (asset.clone(), time_slice.clone());
 
         *self
             .0
@@ -64,7 +64,7 @@ impl Solution<'_> {
     /// An iterator of tuples containing an asset ID, commodity, time slice and flow.
     pub fn iter_commodity_flows_for_assets(
         &self,
-    ) -> impl Iterator<Item = (AssetID, &CommodityID, &TimeSliceID, f64)> {
+    ) -> impl Iterator<Item = (&AssetRef, &CommodityID, &TimeSliceID, f64)> {
         // **TODO:** Need to calculate flows by multiplying coeffs by asset activity:
         //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/593
         std::iter::empty()
@@ -88,11 +88,11 @@ impl Solution<'_> {
     }
 
     /// Keys and dual values for capacity constraints.
-    pub fn iter_capacity_duals(&self) -> impl Iterator<Item = (AssetID, &TimeSliceID, f64)> {
+    pub fn iter_capacity_duals(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, f64)> {
         self.constraint_keys
             .capacity_keys
             .zip_duals(self.solution.dual_rows())
-            .map(|((asset_id, time_slice), dual)| (*asset_id, time_slice, dual))
+            .map(|((asset, time_slice), dual)| (asset, time_slice, dual))
     }
 }
 
@@ -184,7 +184,7 @@ fn add_variables(
         for time_slice in model.time_slice_info.iter_ids() {
             let coeff = calculate_cost_coefficient(asset, year, time_slice);
             let var = problem.add_column(coeff, 0.0..);
-            let key = (asset.id, time_slice.clone());
+            let key = (asset.clone(), time_slice.clone());
             let existing = variables.0.insert(key, var).is_some();
             assert!(!existing, "Duplicate entry for var");
         }

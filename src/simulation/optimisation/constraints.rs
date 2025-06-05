@@ -1,6 +1,6 @@
 //! Code for adding constraints to the dispatch optimisation problem.
 use super::VariableMap;
-use crate::asset::{AssetID, AssetPool};
+use crate::asset::{AssetPool, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
@@ -29,7 +29,7 @@ impl<T> KeysWithOffset<T> {
 pub type CommodityBalanceKeys = KeysWithOffset<(CommodityID, RegionID, TimeSliceSelection)>;
 
 /// Indicates the asset ID and time slice covered by each capacity constraint
-pub type CapacityKeys = KeysWithOffset<(AssetID, TimeSliceID)>;
+pub type CapacityKeys = KeysWithOffset<(AssetRef, TimeSliceID)>;
 
 /// The keys for different constraints
 pub struct ConstraintKeys {

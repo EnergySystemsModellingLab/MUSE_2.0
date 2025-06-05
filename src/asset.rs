@@ -6,24 +6,19 @@ use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
-use std::collections::HashSet;
-use std::ops::RangeInclusive;
+use std::hash::{Hash, Hasher};
+use std::ops::{Deref, RangeInclusive};
 use std::rc::Rc;
 
 /// A unique identifier for an asset
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AssetID(u32);
 
-impl AssetID {
-    /// Sentinel value assigned to [`Asset`]s when they are added to the pool
-    pub const INVALID: AssetID = AssetID(u32::MAX);
-}
-
 /// An asset controlled by an agent.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Asset {
     /// A unique identifier for the asset
-    pub id: AssetID,
+    id: Option<AssetID>,
     /// A unique identifier for the agent
     pub agent_id: AgentID,
     /// The [`Process`] that this asset corresponds to
@@ -41,8 +36,8 @@ pub struct Asset {
 impl Asset {
     /// Create a new [`Asset`].
     ///
-    /// The `id` field is initially set to [`AssetID::INVALID`], but is changed to a unique value
-    /// when the asset is stored in an [`AssetPool`].
+    /// The `id` field is initially set to `None`, but is changed to a unique value when the asset
+    /// is stored in an [`AssetPool`].
     pub fn new(
         agent_id: AgentID,
         process: Rc<Process>,
@@ -74,7 +69,7 @@ impl Asset {
         );
 
         Ok(Self {
-            id: AssetID::INVALID,
+            id: None,
             agent_id,
             process,
             process_parameter,
@@ -139,10 +134,62 @@ impl Asset {
     }
 }
 
+/// A wrapper around [`Asset`] for storing references in maps.
+///
+/// An [`AssetRef`] is guaranteed to have been commissioned at some point, though it may
+/// subsequently have been decommissioned.
+///
+/// [`AssetRef`]s must be created from `Rc<Asset>`s. If the asset has not been commissioned, this
+/// will panic.
+#[derive(Clone, Debug)]
+pub struct AssetRef(Rc<Asset>);
+
+impl From<Rc<Asset>> for AssetRef {
+    fn from(value: Rc<Asset>) -> Self {
+        assert!(value.id.is_some());
+        Self(value)
+    }
+}
+
+impl From<Asset> for AssetRef {
+    fn from(value: Asset) -> Self {
+        Self::from(Rc::new(value))
+    }
+}
+
+impl From<AssetRef> for Rc<Asset> {
+    fn from(value: AssetRef) -> Self {
+        value.0
+    }
+}
+
+impl Deref for AssetRef {
+    type Target = Asset;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl PartialEq for AssetRef {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.id == other.0.id
+    }
+}
+
+impl Eq for AssetRef {}
+
+impl Hash for AssetRef {
+    /// Hash asset based purely on its ID
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.id.unwrap().hash(state);
+    }
+}
+
 /// A pool of [`Asset`]s
 pub struct AssetPool {
     /// The pool of active assets
-    active: Vec<Asset>,
+    active: Vec<AssetRef>,
     /// Assets that have not yet been commissioned, sorted by commission year
     future: Vec<Asset>,
     /// Next available asset ID number
@@ -162,24 +209,6 @@ impl AssetPool {
         }
     }
 
-    /// Add an asset to the active pool (i.e. commission it immediately).
-    ///
-    /// The asset's commission year is ignored by this function.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the asset has already been commissioned.
-    pub fn commission(&mut self, mut asset: Asset) {
-        assert!(
-            asset.id == AssetID::INVALID,
-            "Asset has already been commissioned"
-        );
-
-        asset.id = AssetID(self.next_id);
-        self.next_id += 1;
-        self.active.push(asset);
-    }
-
     /// Commission new assets for the specified milestone year from the input data
     pub fn commission_new(&mut self, year: u32) {
         // Count the number of assets to move
@@ -191,9 +220,9 @@ impl AssetPool {
 
         // Move assets from future to active
         for mut asset in self.future.drain(0..count) {
-            asset.id = AssetID(self.next_id);
+            asset.id = Some(AssetID(self.next_id));
             self.next_id += 1;
-            self.active.push(asset);
+            self.active.push(asset.into());
         }
     }
 
@@ -206,20 +235,20 @@ impl AssetPool {
     ///
     /// # Returns
     ///
-    /// Reference to an [`Asset`] if found, else `None`. The asset may not be found if it has
-    /// already been decommissioned.
-    pub fn get(&self, id: AssetID) -> Option<&Asset> {
+    /// An [`AssetRef`] if found, else `None`. The asset may not be found if it has already been
+    /// decommissioned.
+    pub fn get(&self, id: AssetID) -> Option<&AssetRef> {
         // The assets in `active` are in order of ID
         let idx = self
             .active
-            .binary_search_by(|asset| asset.id.cmp(&id))
+            .binary_search_by(|asset| asset.id.unwrap().cmp(&id))
             .ok()?;
 
         Some(&self.active[idx])
     }
 
     /// Iterate over active assets
-    pub fn iter(&self) -> impl Iterator<Item = &Asset> {
+    pub fn iter(&self) -> impl Iterator<Item = &AssetRef> {
         self.active.iter()
     }
 
@@ -227,7 +256,7 @@ impl AssetPool {
     pub fn iter_for_region<'a>(
         &'a self,
         region_id: &'a RegionID,
-    ) -> impl Iterator<Item = &'a Asset> {
+    ) -> impl Iterator<Item = &'a AssetRef> {
         self.iter().filter(|asset| asset.region_id == *region_id)
     }
 
@@ -237,7 +266,7 @@ impl AssetPool {
         &'a self,
         region_id: &'a RegionID,
         commodity_id: &'a CommodityID,
-    ) -> impl Iterator<Item = &'a Asset> {
+    ) -> impl Iterator<Item = &'a AssetRef> {
         self.iter_for_region(region_id).filter(|asset| {
             asset.process.contains_commodity_flow(
                 commodity_id,
@@ -247,20 +276,24 @@ impl AssetPool {
         })
     }
 
-    /// Retain all assets whose IDs are in `assets_to_keep`.
-    ///
-    /// Other assets will be decommissioned. Assets which have not yet been commissioned will not be
-    /// affected.
-    pub fn retain(&mut self, assets_to_keep: &HashSet<AssetID>) {
-        // Sanity check: all IDs should be valid. As this check is slow, only do it for debug
-        // builds.
-        debug_assert!(
-            assets_to_keep.iter().all(|id| self.get(*id).is_some()),
-            "One or more asset IDs were invalid"
-        );
+    /// Replace the active pool with new and/or already commissioned assets
+    pub fn replace_active_pool<I>(&mut self, assets: I)
+    where
+        I: IntoIterator<Item = Rc<Asset>>,
+    {
+        let new_pool = assets.into_iter().map(|mut asset| {
+            if asset.id.is_none() {
+                // Asset is newly created from process so we need to assign an ID
+                let asset = Rc::make_mut(&mut asset);
+                asset.id = Some(AssetID(self.next_id));
+                self.next_id += 1;
+            }
 
-        self.active
-            .retain(|asset| assets_to_keep.contains(&asset.id));
+            asset.into()
+        });
+
+        self.active.clear();
+        self.active.extend(new_pool);
     }
 }
 
@@ -273,6 +306,7 @@ mod tests {
     };
     use itertools::{assert_equal, Itertools};
     use rstest::{fixture, rstest};
+    use std::collections::HashSet;
     use std::iter;
     use std::ops::RangeInclusive;
 
@@ -285,7 +319,7 @@ mod tests {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("GBR".into());
         let asset = Asset::new(agent_id, process.into(), region_id, capacity, 2015).unwrap();
-        assert!(asset.id == AssetID::INVALID);
+        assert!(asset.id.is_none());
     }
 
     #[rstest]
@@ -444,23 +478,14 @@ mod tests {
     }
 
     #[rstest]
-    fn test_asset_pool_commission(mut asset_pool: AssetPool, process: Process) {
-        let mut asset =
-            Asset::new("agent2".into(), process.into(), "USA".into(), 100.0, 2015).unwrap();
-        asset_pool.commission(asset.clone());
-        asset.id = AssetID(0);
-        assert_equal(asset_pool.iter(), iter::once(&asset));
-    }
-
-    #[rstest]
     fn test_asset_pool_decommission_old(mut asset_pool: AssetPool) {
         asset_pool.commission_new(2020);
-        assert!(asset_pool.active.len() == 2);
+        assert_eq!(asset_pool.active.len(), 2);
         asset_pool.decommission_old(2020); // should decommission first asset (lifetime == 5)
-        assert!(asset_pool.active.len() == 1);
+        assert_eq!(asset_pool.active.len(), 1);
         assert_eq!(asset_pool.active[0].commission_year, 2020);
         asset_pool.decommission_old(2022); // nothing to decommission
-        assert!(asset_pool.active.len() == 1);
+        assert_eq!(asset_pool.active.len(), 1);
         assert_eq!(asset_pool.active[0].commission_year, 2020);
         asset_pool.decommission_old(2025); // should decommission second asset
         assert!(asset_pool.active.is_empty());
@@ -474,26 +499,30 @@ mod tests {
     }
 
     #[rstest]
-    fn test_asset_pool_retain1(mut asset_pool: AssetPool) {
-        // Even though we are retaining no assets, none have been commissioned so the asset pool
-        // should not be changed
-        asset_pool.retain(&HashSet::new());
-        assert!(asset_pool.active.is_empty());
-
-        // Decommission all active assets
-        asset_pool.commission_new(2010); // Commission first asset
+    fn test_asset_pool_replace_active_pool_existing(mut asset_pool: AssetPool) {
+        asset_pool.commission_new(2020);
+        assert_eq!(asset_pool.active.len(), 2);
+        asset_pool.replace_active_pool(iter::once(asset_pool.active[1].clone().into()));
         assert_eq!(asset_pool.active.len(), 1);
-        asset_pool.retain(&HashSet::new());
-        assert!(asset_pool.active.is_empty());
+        assert_eq!(asset_pool.active[0].id, Some(AssetID(1)));
     }
 
     #[rstest]
-    fn test_asset_pool_retain2(mut asset_pool: AssetPool) {
-        // Decommission single asset
-        asset_pool.commission_new(2020); // Commission all assets
+    fn test_asset_pool_replace_active_pool_new_asset(mut asset_pool: AssetPool, process: Process) {
+        let asset = Asset::new(
+            "some_other_agent".into(),
+            process.into(),
+            "GBR".into(),
+            2.0,
+            2010,
+        )
+        .unwrap();
+
+        asset_pool.commission_new(2020);
         assert_eq!(asset_pool.active.len(), 2);
-        asset_pool.retain(&iter::once(AssetID(1)).collect());
+        asset_pool.replace_active_pool(iter::once(asset.into()));
         assert_eq!(asset_pool.active.len(), 1);
-        assert_eq!(asset_pool.active[0].id, AssetID(1));
+        assert_eq!(asset_pool.active[0].id, Some(AssetID(2)));
+        assert_eq!(asset_pool.active[0].agent_id, "some_other_agent".into());
     }
 }

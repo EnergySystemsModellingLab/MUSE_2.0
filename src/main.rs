@@ -1,10 +1,12 @@
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use human_panic::{metadata, setup_panic};
+use log::error;
 use muse2::commands::{
     handle_example_extract_command, handle_example_list_command, handle_example_run_command,
     handle_run_command, Cli, Commands, ExampleSubcommands,
 };
+use muse2::log::is_logger_initialised;
 
 fn main() {
     setup_panic!(metadata!().support(format!(
@@ -20,7 +22,16 @@ fn main() {
         return;
     }
 
-    execute_cli_command(cli.command).unwrap_or_else(|err| eprintln!("Error: {:?}", err));
+    if let Err(err) = execute_cli_command(cli.command) {
+        if is_logger_initialised() {
+            error!("{err:?}");
+        } else {
+            eprintln!("Error: {err:?}");
+        }
+
+        // Terminate program, signalling an error
+        std::process::exit(1);
+    }
 }
 
 fn execute_cli_command(command: Option<Commands>) -> Result<()> {
