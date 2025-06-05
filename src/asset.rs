@@ -282,32 +282,14 @@ impl AssetPool {
         I: IntoIterator<Item = Rc<Asset>>,
     {
         let new_pool = assets.into_iter().map(|mut asset| {
-            if asset.id.is_some() {
-                // Already commissioned
-                asset.into()
-            } else {
-                let mut update_id = |asset: &mut Asset| {
-                    // We need to assign an ID
-                    asset.id = Some(AssetID(self.next_id));
-                    self.next_id += 1;
-                };
-
-                // Asset is newly created from process. We use `get_mut` to avoid a clone in the
-                // (likely) case that there is only one reference to `asset`
-                let rc_asset = match Rc::get_mut(&mut asset) {
-                    Some(asset_inner) => {
-                        update_id(asset_inner);
-                        asset
-                    }
-                    None => {
-                        let mut asset = asset.as_ref().clone();
-                        update_id(&mut asset);
-                        asset.into()
-                    }
-                };
-
-                rc_asset.into()
+            if asset.id.is_none() {
+                // Asset is newly created from process so we need to assign an ID
+                let asset = Rc::make_mut(&mut asset);
+                asset.id = Some(AssetID(self.next_id));
+                self.next_id += 1;
             }
+
+            asset.into()
         });
 
         self.active.clear();
