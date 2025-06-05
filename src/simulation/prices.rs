@@ -5,13 +5,12 @@ use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use indexmap::IndexMap;
 use log::warn;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
 #[derive(Default)]
-pub struct CommodityPrices(IndexMap<(CommodityID, RegionID, TimeSliceID), f64>);
+pub struct CommodityPrices(BTreeMap<(CommodityID, RegionID, TimeSliceID), f64>);
 
 impl CommodityPrices {
     /// Calculate commodity prices based on the result of the dispatch optimisation.

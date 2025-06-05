@@ -5,7 +5,7 @@ use crate::process::{
     Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessID, ProcessMap, ProcessParameterMap,
 };
 use crate::region::{parse_region_str, RegionID};
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use anyhow::{ensure, Context, Ok, Result};
 use itertools::iproduct;
 use serde::Deserialize;
@@ -173,14 +173,17 @@ fn validate_commodities(
                 validate_sed_commodity(&commodity.id, flows, region_id, year)?;
             }
             CommodityType::ServiceDemand => {
-                for time_slice in time_slice_info.iter_ids() {
+                for ts_selection in
+                    time_slice_info.iter_selections_for_level(commodity.time_slice_level)
+                {
                     validate_svd_commodity(
+                        time_slice_info,
                         commodity,
                         flows,
                         availabilities,
                         region_id,
                         year,
-                        time_slice,
+                        &ts_selection,
                     )?;
                 }
             }
@@ -221,35 +224,44 @@ fn validate_sed_commodity(
 }
 
 fn validate_svd_commodity(
+    time_slice_info: &TimeSliceInfo,
     commodity: &Commodity,
     flows: &HashMap<ProcessID, ProcessFlowsMap>,
     availabilities: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
     region_id: &RegionID,
     year: &u32,
-    time_slice: &TimeSliceID,
+    ts_selection: &TimeSliceSelection,
 ) -> Result<()> {
     // Check if the commodity has a demand in the given time slice, region and year.
     // We only need to check for producers if there is positive demand.
-    let demand = commodity
+    let demand = *commodity
         .demand
-        .get(&(region_id.clone(), *year, time_slice.clone()))
+        .get(&(region_id.clone(), *year, ts_selection.clone()))
         .unwrap();
-    if demand <= &0.0 {
+    if demand <= 0.0 {
         return Ok(());
     }
 
-    // We must check for producers in the given year, region and time slice.
+    // We must check for producers in the given year, region and time slices.
     // This includes checking if flow > 0 and if availability > 0.
     for (process_id, flows) in flows.iter() {
         let flows = flows.get(&(region_id.clone(), *year)).unwrap();
-        let availability = availabilities
-            .get(process_id)
-            .unwrap()
-            .get(&(region_id.clone(), *year, time_slice.clone()))
-            .unwrap();
+        let Some(flow) = flows.get(&commodity.id) else {
+            // We're only interested in processes which produce this commodity
+            continue;
+        };
+        if flow.flow <= 0.0 {
+            // Check if it's a producer
+            continue;
+        }
 
-        if let Some(flow) = flows.get(&commodity.id) {
-            if flow.flow > 0.0 && *availability.end() > 0.0 {
+        // If the process has availability >0 in any time slice for this selection, we accept it
+        let availabilities = availabilities.get(process_id).unwrap();
+        for (ts, _) in ts_selection.iter(time_slice_info) {
+            let availability = availabilities
+                .get(&(region_id.clone(), *year, ts.clone()))
+                .unwrap();
+            if *availability.end() > 0.0 {
                 return Ok(());
             }
         }
@@ -257,11 +269,11 @@ fn validate_svd_commodity(
 
     // If we reach this point it means there is no producer, so we return an error.
     bail!(
-        "Commodity {} of 'SVD' type must have a producer process for region {} in year {} and time slice {}",
+        "Commodity {} of 'SVD' type must have a producer process for region {} in year {} and time slice(s) {}",
         commodity.id,
         region_id,
         year,
-        time_slice,
+        ts_selection,
     )
 }
 
@@ -269,9 +281,9 @@ fn validate_svd_commodity(
 mod tests {
     use super::*;
     use crate::commodity::{CommodityCostMap, DemandMap};
-    use crate::fixture::time_slice;
+    use crate::fixture::{time_slice, time_slice_info};
     use crate::process::{FlowType, ProcessFlow};
-    use crate::time_slice::TimeSliceLevel;
+    use crate::time_slice::{TimeSliceID, TimeSliceLevel};
     use indexmap::indexmap;
     use rstest::{fixture, rstest};
 
@@ -348,7 +360,7 @@ mod tests {
 
     #[fixture]
     fn commodity_svd(time_slice: TimeSliceID) -> Commodity {
-        let demand = DemandMap::from_iter(vec![(("GBR".into(), 2010, time_slice.clone()), 10.0)]);
+        let demand = DemandMap::from_iter(vec![(("GBR".into(), 2010, time_slice.into()), 10.0)]);
 
         Commodity {
             id: "commodity_svd".into(),
@@ -381,6 +393,7 @@ mod tests {
     fn test_validate_svd_commodity_valid(
         commodity_svd: Commodity,
         flows_svd: HashMap<ProcessID, ProcessFlowsMap>,
+        time_slice_info: TimeSliceInfo,
         time_slice: TimeSliceID,
     ) {
         let availabilities = HashMap::from_iter(vec![(
@@ -393,18 +406,20 @@ mod tests {
 
         // Valid scenario
         assert!(validate_svd_commodity(
+            &time_slice_info,
             &commodity_svd,
             &flows_svd,
             &availabilities,
             &"GBR".into(),
             &2010,
-            &time_slice.clone(),
+            &time_slice.into()
         )
         .is_ok());
     }
 
     #[rstest]
     fn test_validate_svd_commodity_invalid_no_availability(
+        time_slice_info: TimeSliceInfo,
         commodity_svd: Commodity,
         flows_svd: HashMap<ProcessID, ProcessFlowsMap>,
         time_slice: TimeSliceID,
@@ -418,12 +433,13 @@ mod tests {
             )]),
         )]);
         assert!(validate_svd_commodity(
+            &time_slice_info,
             &commodity_svd,
             &flows_svd,
             &availabilities,
             &"GBR".into(),
             &2010,
-            &time_slice.clone(),
+            &time_slice.into()
         )
         .is_err());
     }

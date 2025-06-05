@@ -134,7 +134,7 @@ where
         let entry = map
             .entry(id.clone())
             .or_insert_with(ProcessEnergyLimitsMap::new);
-        for (time_slice, ts_length) in time_slice_info.iter_selection(&ts_selection) {
+        for (time_slice, ts_length) in ts_selection.iter(time_slice_info) {
             let bounds = record.to_bounds(ts_length);
 
             for region in &record_regions {
