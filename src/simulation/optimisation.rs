@@ -13,6 +13,9 @@ use indexmap::IndexMap;
 mod constraints;
 use constraints::{add_asset_constraints, ConstraintKeys};
 
+/// A map of commodity flows calculated during the optimisation
+pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), f64>;
+
 /// A decision variable in the optimisation
 ///
 /// Note that this type does **not** include the value of the variable; it just refers to a
@@ -54,17 +57,11 @@ pub struct Solution<'a> {
 }
 
 impl Solution<'_> {
-    /// Iterate over the newly calculated commodity flows for assets.
+    /// Create a map of commodity flows for each asset's coeffs at every time slice.
     ///
     /// Note that this only includes commodity flows which relate to assets, so not every commodity
     /// in the simulation will necessarily be represented.
-    ///
-    /// # Returns
-    ///
-    /// An iterator of tuples containing an asset, commodity, time slice and flow.
-    pub fn iter_commodity_flows_for_assets(
-        &self,
-    ) -> impl Iterator<Item = (&AssetRef, &CommodityID, &TimeSliceID, f64)> {
+    pub fn create_flow_map(&self) -> FlowMap {
         // The decision variables represent assets' activity levels, not commodity flows. We
         // multiply this value by the flow coeffs to get commodity flows.
         self.variables
@@ -72,10 +69,14 @@ impl Solution<'_> {
             .keys()
             .zip(self.solution.columns())
             .flat_map(|((asset, time_slice), activity)| {
-                asset
-                    .iter_flows()
-                    .map(move |flow| (asset, &flow.commodity.id, time_slice, activity * flow.coeff))
+                asset.iter_flows().map(move |flow| {
+                    (
+                        (asset.clone(), flow.commodity.id.clone(), time_slice.clone()),
+                        activity * flow.coeff,
+                    )
+                })
             })
+            .collect()
     }
 
     /// Keys and dual values for commodity balance constraints.

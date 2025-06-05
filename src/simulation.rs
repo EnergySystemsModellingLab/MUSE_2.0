@@ -56,11 +56,12 @@ pub fn run(
 
         // Dispatch optimisation
         let solution = perform_dispatch_optimisation(&model, &assets, year)?;
+        let flow_map = solution.create_flow_map();
         let prices = CommodityPrices::from_model_and_solution(&model, &solution, &assets);
 
         // Write result of dispatch optimisation to file
         writer.write_debug_info(year, &solution)?;
-        writer.write_flows(year, solution.iter_commodity_flows_for_assets())?;
+        writer.write_flows(year, &flow_map)?;
         writer.write_prices(year, &prices)?;
 
         opt_results = Some((solution, prices));

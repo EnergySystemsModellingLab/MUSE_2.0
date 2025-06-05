@@ -4,7 +4,7 @@ use crate::asset::{Asset, AssetRef};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
 use crate::region::RegionID;
-use crate::simulation::optimisation::Solution;
+use crate::simulation::optimisation::{FlowMap, Solution};
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
 use anyhow::{Context, Result};
@@ -269,16 +269,13 @@ impl DataWriter {
     }
 
     /// Write commodity flows to a CSV file
-    pub fn write_flows<'a, I>(&mut self, milestone_year: u32, flows: I) -> Result<()>
-    where
-        I: Iterator<Item = (&'a AssetRef, &'a CommodityID, &'a TimeSliceID, f64)>,
-    {
-        for (asset, commodity_id, time_slice, flow) in flows {
+    pub fn write_flows(&mut self, milestone_year: u32, flow_map: &FlowMap) -> Result<()> {
+        for ((asset, commodity_id, time_slice), flow) in flow_map {
             let asset_row = AssetRow::new(milestone_year, asset);
             let flow_row = CommodityFlowRow {
                 commodity_id: commodity_id.clone(),
                 time_slice: time_slice.clone(),
-                flow,
+                flow: *flow,
             };
             self.flows_writer.serialize((asset_row, flow_row))?;
         }
@@ -330,6 +327,7 @@ mod tests {
     use crate::asset::AssetPool;
     use crate::fixture::{assets, commodity_id, region_id, time_slice};
     use crate::time_slice::TimeSliceID;
+    use indexmap::indexmap;
     use itertools::{assert_equal, Itertools};
     use rstest::rstest;
     use std::iter;
@@ -362,15 +360,15 @@ mod tests {
     fn test_write_flows(assets: AssetPool, commodity_id: CommodityID, time_slice: TimeSliceID) {
         let milestone_year = 2020;
         let asset = assets.iter().next().unwrap();
-        let flow_item = (asset, &commodity_id, &time_slice, 42.0);
+        let flow_map = indexmap! {
+            (asset.clone(), commodity_id.clone(), time_slice.clone()) => 42.0
+        };
 
         // Write a flow
         let dir = tempdir().unwrap();
         {
             let mut writer = DataWriter::create(dir.path(), false).unwrap();
-            writer
-                .write_flows(milestone_year, iter::once(flow_item))
-                .unwrap();
+            writer.write_flows(milestone_year, &flow_map).unwrap();
             writer.flush().unwrap();
         }
 
