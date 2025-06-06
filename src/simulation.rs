@@ -63,7 +63,7 @@ pub fn run(
             year = next_year;
 
             // NB: Agent investment is not carried out in first milestone year
-            perform_agent_investment(&model, &flow_map, &prices, &mut assets);
+            perform_agent_investment(&model, &mut assets, &flow_map, &prices, year);
 
             // Decommission assets whose lifetime has passed
             assets.decommission_old(year);
