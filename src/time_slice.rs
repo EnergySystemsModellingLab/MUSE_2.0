@@ -3,7 +3,7 @@
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
 use crate::id::{define_id_type, IDCollection};
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 use serde::de::Error;
@@ -15,6 +15,17 @@ use std::iter;
 define_id_type! {Season}
 define_id_type! {TimeOfDay}
 
+impl TryFrom<TimeSliceSelection> for Season {
+    type Error = anyhow::Error;
+
+    fn try_from(value: TimeSliceSelection) -> std::result::Result<Self, Self::Error> {
+        match value {
+            TimeSliceSelection::Season(season) => Ok(season),
+            other => bail!("Cannot convert {other:?} to season"),
+        }
+    }
+}
+
 /// An ID describing season and time of day
 #[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
 pub struct TimeSliceID {
@@ -22,6 +33,17 @@ pub struct TimeSliceID {
     pub season: Season,
     /// The name of each time slice within a day.
     pub time_of_day: TimeOfDay,
+}
+
+impl TryFrom<TimeSliceSelection> for TimeSliceID {
+    type Error = anyhow::Error;
+
+    fn try_from(value: TimeSliceSelection) -> std::result::Result<Self, Self::Error> {
+        match value {
+            TimeSliceSelection::Single(time_slice) => Ok(time_slice),
+            other => bail!("Cannot convert {other:?} to time slice"),
+        }
+    }
 }
 
 /// Only implement for tests as this is a bit of a footgun
