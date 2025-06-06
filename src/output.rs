@@ -133,17 +133,6 @@ struct CommodityBalanceDualsRow {
     value: f64,
 }
 
-/// Represents the fixed asset duals data in a row of the fixed asset duals CSV file
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-struct FixedAssetDualsRow {
-    pac: CommodityID,
-    pac_flow: f64,
-    commodity_id: CommodityID,
-    commodity_flow: f64,
-    time_slice: TimeSliceID,
-    value: f64,
-}
-
 /// Write commodity balance duals to file
 fn write_commodity_balance_duals<'a, I>(
     writer: &mut csv::Writer<File>,
