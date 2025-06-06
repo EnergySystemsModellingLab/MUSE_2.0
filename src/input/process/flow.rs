@@ -1,6 +1,6 @@
 //! Code for reading process flows file
 use super::super::*;
-use crate::commodity::{CommodityID, CommodityMap};
+use crate::commodity::CommodityMap;
 use crate::id::IDCollection;
 use crate::process::{FlowType, Process, ProcessFlow, ProcessFlowsMap, ProcessID};
 use crate::region::parse_region_str;
@@ -25,7 +25,6 @@ struct ProcessFlowRaw {
     #[serde(rename = "type")]
     kind: FlowType,
     cost: Option<f64>,
-    is_pac: bool,
 }
 
 impl ProcessFlowRaw {
@@ -112,7 +111,6 @@ where
             coeff: record.coeff,
             kind: record.kind,
             cost: record.cost.unwrap_or(0.0),
-            is_pac: record.is_pac,
         };
 
         // Insert flow into the map
@@ -134,63 +132,26 @@ where
         }
     }
 
-    // Validate flows and sort flows so PACs are at the start
     for (process_id, map) in map.iter_mut() {
         let process = processes.get(process_id).unwrap();
         validate_process_flows_map(process, map)?;
-        sort_flows(map);
     }
 
     Ok(map)
 }
 
-/// Sort flows so PACs come first
-fn sort_flows(map: &mut ProcessFlowsMap) {
-    for map in map.values_mut() {
-        map.sort_by(|_, a, _, b| b.is_pac.cmp(&a.is_pac));
-    }
-}
-
 /// Validate flows for a process
 fn validate_process_flows_map(process: &Process, map: &ProcessFlowsMap) -> Result<()> {
     let process_id = process.id.clone();
-    let reference_years = &process.years;
-    let reference_regions = &process.regions;
-    for year in reference_years.iter() {
-        for region in reference_regions {
+    for year in process.years.iter() {
+        for region in process.regions.iter() {
             // Check that the process has flows for this region/year
-            let flow_map = map.get(&(region.clone(), *year)).with_context(|| {
-                format!("Missing entry for process {process_id} in {region}/{year}")
-            })?;
-
-            // Validate flows for this process/region/year
-            validate_flow_map(flow_map).with_context(|| {
-                format!("Invalid flows for process {process_id} in {region}/{year}")
-            })?;
-        }
-    }
-    Ok(())
-}
-
-/// Validate a vector of flows for a process in a given region/year
-fn validate_flow_map(flow_map: &IndexMap<CommodityID, ProcessFlow>) -> Result<()> {
-    // PACs must be either all inputs or all outputs
-    let mut flow_sign: Option<bool> = None; // False for inputs, true for outputs
-    for flow in flow_map.values().filter(|flow| flow.is_pac) {
-        // Check that flow sign is consistent
-        let current_flow_sign = flow.coeff > 0.0;
-        if let Some(flow_sign) = flow_sign {
             ensure!(
-                current_flow_sign == flow_sign,
-                "PACs are a mix of inputs and outputs",
+                map.contains_key(&(region.clone(), *year)),
+                "Missing entry for process {process_id} in {region}/{year}"
             );
         }
-        flow_sign = Some(current_flow_sign);
     }
-
-    // Check that at least one PAC is defined
-    ensure!(flow_sign.is_some(), "No PACs defined");
-
     Ok(())
 }
 
@@ -199,15 +160,10 @@ mod tests {
     use super::*;
     use crate::commodity::{Commodity, CommodityLevyMap, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
-    use indexmap::indexmap;
-    use rstest::{fixture, rstest};
 
-    fn create_process_flow_raw(
-        coeff: f64,
-        kind: FlowType,
-        cost: Option<f64>,
-        is_pac: bool,
-    ) -> ProcessFlowRaw {
+    use rstest::fixture;
+
+    fn create_process_flow_raw(coeff: f64, kind: FlowType, cost: Option<f64>) -> ProcessFlowRaw {
         ProcessFlowRaw {
             process_id: "process".into(),
             commodity_id: "commodity".into(),
@@ -216,43 +172,32 @@ mod tests {
             coeff,
             kind,
             cost,
-            is_pac,
         }
     }
 
     #[test]
     fn test_validate_flow_raw() {
         // Valid
-        let valid = create_process_flow_raw(1.0, FlowType::Fixed, Some(0.0), true);
+        let valid = create_process_flow_raw(1.0, FlowType::Fixed, Some(0.0));
         assert!(valid.validate().is_ok());
 
         // Invalid: Bad flow value
-        let invalid = create_process_flow_raw(0.0, FlowType::Fixed, Some(0.0), true);
+        let invalid = create_process_flow_raw(0.0, FlowType::Fixed, Some(0.0));
         assert!(invalid.validate().is_err());
-        let invalid = create_process_flow_raw(f64::NAN, FlowType::Fixed, Some(0.0), true);
+        let invalid = create_process_flow_raw(f64::NAN, FlowType::Fixed, Some(0.0));
         assert!(invalid.validate().is_err());
-        let invalid = create_process_flow_raw(f64::INFINITY, FlowType::Fixed, Some(0.0), true);
+        let invalid = create_process_flow_raw(f64::INFINITY, FlowType::Fixed, Some(0.0));
         assert!(invalid.validate().is_err());
-        let invalid = create_process_flow_raw(f64::NEG_INFINITY, FlowType::Fixed, Some(0.0), true);
+        let invalid = create_process_flow_raw(f64::NEG_INFINITY, FlowType::Fixed, Some(0.0));
         assert!(invalid.validate().is_err());
 
         // Invalid: Bad flow cost value
-        let invalid = create_process_flow_raw(1.0, FlowType::Fixed, Some(f64::NAN), true);
+        let invalid = create_process_flow_raw(1.0, FlowType::Fixed, Some(f64::NAN));
         assert!(invalid.validate().is_err());
-        let invalid = create_process_flow_raw(1.0, FlowType::Fixed, Some(f64::NEG_INFINITY), true);
+        let invalid = create_process_flow_raw(1.0, FlowType::Fixed, Some(f64::NEG_INFINITY));
         assert!(invalid.validate().is_err());
-        let invalid = create_process_flow_raw(1.0, FlowType::Fixed, Some(f64::INFINITY), true);
+        let invalid = create_process_flow_raw(1.0, FlowType::Fixed, Some(f64::INFINITY));
         assert!(invalid.validate().is_err());
-    }
-
-    fn create_process_flow(commodity: Rc<Commodity>, coeff: f64, is_pac: bool) -> ProcessFlow {
-        ProcessFlow {
-            commodity,
-            coeff,
-            kind: FlowType::Fixed,
-            cost: 0.0,
-            is_pac,
-        }
     }
 
     #[fixture]
@@ -277,45 +222,5 @@ mod tests {
             time_slice_level: TimeSliceLevel::Annual,
             levies: CommodityLevyMap::default(),
         }
-    }
-
-    #[rstest]
-    fn test_validate_flow_map_valid_single(commodity1: Commodity, commodity2: Commodity) {
-        // Valid: Single PAC
-        let flows = indexmap! {
-            commodity1.id.clone() => create_process_flow(commodity1.into(), 1.0, true),
-            commodity2.id.clone() => create_process_flow(commodity2.into(), 1.0, false),
-        };
-        assert!(validate_flow_map(&flows).is_ok());
-    }
-
-    #[rstest]
-    fn test_validate_flow_map_valid_multiple(commodity1: Commodity, commodity2: Commodity) {
-        // Valid: Multiple PACs
-        let flows = indexmap! {
-            commodity1.id.clone() => create_process_flow(commodity1.into(), 1.0, true),
-            commodity2.id.clone() => create_process_flow(commodity2.into(), 1.0, true),
-        };
-        assert!(validate_flow_map(&flows).is_ok());
-    }
-
-    #[rstest]
-    fn test_validate_flow_map_invalid_no_pacs(commodity1: Commodity, commodity2: Commodity) {
-        // Invalid: No PACs
-        let flows = indexmap! {
-            commodity1.id.clone() => create_process_flow(commodity1.into(), 1.0, false),
-            commodity2.id.clone() => create_process_flow(commodity2.into(), 1.0, false),
-        };
-        assert!(validate_flow_map(&flows).is_err());
-    }
-
-    #[rstest]
-    fn test_validate_flow_map(commodity1: Commodity, commodity2: Commodity) {
-        // Invalid: Mixed PAC flow types
-        let flows = indexmap! {
-            commodity1.id.clone() => create_process_flow(commodity1.into(), 1.0, true),
-            commodity2.id.clone() => create_process_flow(commodity2.into(), -1.0, true),
-        };
-        assert!(validate_flow_map(&flows).is_err());
     }
 }

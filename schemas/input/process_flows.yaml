@@ -3,9 +3,6 @@ description: |
   Commodity flows can vary by region and year. For each process, there must be entries covering all
   the years and regions in which the process operates.
 
-  One (and only one) commodity flow for each region/year must be designated as the primary activity
-  commodity (PAC).
-
 fields:
   - name: process_id
     type: string
@@ -36,9 +33,3 @@ fields:
     type: number
     title: The cost per unit flow
     description: Optional. If present, must be >0.
-  - name: is_pac
-    type: boolean
-    title: Whether this commodity flow is a primary activity commodity (PAC)
-    description: |
-      One and only one commodity flow can be a PAC for a given combination of region and milestone
-      year

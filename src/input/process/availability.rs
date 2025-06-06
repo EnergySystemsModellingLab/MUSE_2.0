@@ -39,8 +39,8 @@ impl ProcessAvailabilityRaw {
 
     /// Calculate fraction of annual energy as availability multiplied by time slice length.
     ///
-    /// The resulting limits are max/min PAC energy produced/consumed in each timeslice per
-    /// cap2act units of capacity
+    /// The resulting limits are max/min energy produced/consumed in each timeslice per
+    /// `capacity_to_activity` units of capacity.
     fn to_bounds(&self, ts_length: f64) -> RangeInclusive<f64> {
         let value = self.value * ts_length;
         match self.limit_type {

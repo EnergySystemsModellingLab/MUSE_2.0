@@ -308,7 +308,6 @@ mod tests {
                 coeff: -10.0,
                 kind: FlowType::Fixed,
                 cost: 1.0,
-                is_pac: false,
             }},
         )])
     }
@@ -322,7 +321,6 @@ mod tests {
                 coeff: 10.0,
                 kind: FlowType::Fixed,
                 cost: 1.0,
-                is_pac: false,
             }},
         )])
     }
@@ -383,7 +381,6 @@ mod tests {
                     coeff: 10.0,
                     kind: FlowType::Fixed,
                     cost: 1.0,
-                    is_pac: false,
                 }},
             )]),
         )])

@@ -86,7 +86,7 @@ impl Asset {
 
     /// Get the energy limits for this asset in a particular time slice
     ///
-    /// This is an absolute max and min on the PAC energy produced/consumed in that time slice.
+    /// This is an absolute max and min on the energy produced/consumed in that time slice.
     pub fn get_energy_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
         let limits = self
             .process
@@ -104,7 +104,7 @@ impl Asset {
         (max_act * limits.start())..=(max_act * limits.end())
     }
 
-    /// Maximum activity for this asset (PAC energy produced/consumed per year)
+    /// Maximum activity for this asset (energy produced/consumed per year)
     pub fn maximum_activity(&self) -> f64 {
         self.capacity * self.process_parameter.capacity_to_activity
     }
@@ -125,12 +125,6 @@ impl Asset {
     /// Iterate over the asset's flows
     pub fn iter_flows(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.get_flows_map().values()
-    }
-
-    /// Iterate over the asset's Primary Activity Commodity flows
-    pub fn iter_pacs(&self) -> impl Iterator<Item = &ProcessFlow> {
-        self.process
-            .iter_pacs(&self.region_id, self.commission_year)
     }
 }
 
