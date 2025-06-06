@@ -4,7 +4,7 @@ use crate::model::Model;
 use crate::output::DataWriter;
 use anyhow::Result;
 use log::{error, info};
-use std::path::Path;
+use std::{mem::replace, path::Path};
 
 pub mod optimisation;
 use optimisation::perform_dispatch_optimisation;
@@ -60,10 +60,10 @@ pub fn run(
         writer.write_prices(year, &prices)?;
 
         if let Some(next_year) = year_iter.next() {
-            year = next_year;
+            let previous_year = replace(&mut year, next_year);
 
             // NB: Agent investment is not carried out in first milestone year
-            perform_agent_investment(&model, &flow_map, &prices, &mut assets);
+            perform_agent_investment(&model, &flow_map, &prices, &mut assets, previous_year, year);
 
             // Decommission assets whose lifetime has passed
             assets.decommission_old(year);
