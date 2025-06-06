@@ -109,12 +109,7 @@ fn add_commodity_balance_constraints(
                 .time_slice_info
                 .iter_selections_at_level(commodity.time_slice_level)
             {
-                for asset in assets.iter_for_region(region_id) {
-                    let Some(flow) = asset.get_flow(commodity_id) else {
-                        // Asset doesn't produce or consume commodity
-                        continue;
-                    };
-
+                for (asset, flow) in assets.iter_for_region_and_commodity(region_id, commodity_id) {
                     // If the commodity has a time slice level of season/annual, the constraint will
                     // cover multiple time slices
                     for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
@@ -162,11 +157,7 @@ fn add_demand_constraints(
                 .time_slice_info
                 .iter_selections_at_level(commodity.time_slice_level)
             {
-                for asset in assets.iter_for_region(region_id) {
-                    let Some(flow) = asset.get_flow(commodity_id) else {
-                        // Asset doesn't produce or consume commodity
-                        continue;
-                    };
+                for (asset, flow) in assets.iter_for_region_and_commodity(region_id, commodity_id) {
                     if flow.coeff < 0.0 {
                         // Asset consumes commodity; we're interested in producers
                         continue;
