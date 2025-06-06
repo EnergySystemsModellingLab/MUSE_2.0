@@ -190,8 +190,8 @@ fn add_demand_constraints(
 
 /// Add asset-level capacity and availability constraints.
 ///
-/// For every asset at every time slice, the sum of the commodity flows for PACs must not exceed the
-/// capacity limits, which are a product of the annual capacity, time slice length and process
+/// For every asset at every time slice, the sum of the commodity flows for assets must not exceed
+/// the capacity limits, which are a product of the annual capacity, time slice length and process
 /// availability.
 ///
 /// See description in [the dispatch optimisation documentation][1].
