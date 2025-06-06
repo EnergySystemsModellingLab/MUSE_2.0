@@ -252,6 +252,14 @@ impl AssetPool {
         self.active.iter()
     }
 
+    /// Iterate over active assets for a particular agent
+    pub fn iter_for_agent<'a>(
+        &'a self,
+        agent_id: &'a AgentID,
+    ) -> impl Iterator<Item = &'a Rc<Asset>> {
+        self.iter().filter(|asset| asset.agent_id == *agent_id)
+    }
+
     /// Iterate over active assets for a particular region
     pub fn iter_for_region<'a>(
         &'a self,

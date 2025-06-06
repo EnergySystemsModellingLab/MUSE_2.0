@@ -1,0 +1,101 @@
+//! Code for calculating potential utilisation for assets
+use super::super::optimisation::UtilisationMap;
+use super::MarginalCosts;
+use crate::agent::Agent;
+use crate::asset::{Asset, AssetID};
+use crate::commodity::Commodity;
+use crate::region::RegionID;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use itertools::iproduct;
+use std::collections::HashMap;
+use std::rc::Rc;
+
+/// Calculate the potential utilisation for assets for a single agent
+pub fn calculate_potential_utilisation_for_assets<'a, F>(
+    agent: &'a Agent,
+    commodity: &'a Commodity,
+    time_slice_info: &'a TimeSliceInfo,
+    utilisations: &'a UtilisationMap,
+    marginal_costs: &'a MarginalCosts,
+    get_demand: F,
+) -> impl Iterator<Item = (&'a Rc<Asset>, &'a RegionID, &'a TimeSliceID, f64)>
+where
+    F: Fn(&RegionID, &TimeSliceID) -> f64,
+{
+    calculate_potential_utilisation(
+        agent,
+        commodity,
+        time_slice_info,
+        utilisations,
+        marginal_costs,
+        get_demand,
+        costs_to_utilisation_for_assets,
+    )
+}
+
+/// Calculate the potential utilisation for a single agent
+fn calculate_potential_utilisation<'a, F, G, I, T>(
+    agent: &'a Agent,
+    commodity: &'a Commodity,
+    time_slice_info: &'a TimeSliceInfo,
+    utilisations: &'a UtilisationMap,
+    marginal_costs: &'a MarginalCosts,
+    get_demand: F,
+    costs_to_utilisations: G,
+) -> impl Iterator<Item = (T, &'a RegionID, &'a TimeSliceID, f64)>
+where
+    F: Fn(&RegionID, &TimeSliceID) -> f64,
+    G: Fn(f64, &'a [(Rc<Asset>, f64)], &'a HashMap<AssetID, f64>) -> I,
+    I: Iterator<Item = (T, f64)>,
+{
+    iproduct!(time_slice_info.iter_ids(), agent.regions.iter()).flat_map(
+        move |(time_slice, region_id)| {
+            let marginal_costs = marginal_costs
+                .get(&(region_id.clone(), time_slice.clone()))
+                .unwrap();
+
+            // Calculate share of demand for this agent
+            let demand = get_demand(region_id, time_slice);
+
+            let utilisations = utilisations
+                .get(&(commodity.id.clone(), time_slice.clone()))
+                .unwrap();
+
+            costs_to_utilisations(demand, marginal_costs, utilisations)
+                .map(move |(ret, utilisation)| (ret, region_id, time_slice, utilisation))
+        },
+    )
+}
+
+/// Calculate potential utilisation for a single asset/process
+fn utilisation_for_asset(
+    demand: f64,
+    marginal_cost: f64,
+    marginal_costs: &[(Rc<Asset>, f64)],
+    utilisations: &HashMap<AssetID, f64>,
+) -> f64 {
+    let cheaper_assets = marginal_costs
+        .iter()
+        .take_while(|(_, cost)| *cost <= marginal_cost)
+        .map(|(asset, _)| asset);
+    let cheaper_demand = cheaper_assets
+        .map(|asset| utilisations.get(&asset.id).unwrap())
+        .sum::<f64>();
+    let remaining_demand = demand - cheaper_demand;
+    assert!(remaining_demand >= 0.0);
+
+    remaining_demand
+}
+
+fn costs_to_utilisation_for_assets<'a>(
+    demand: f64,
+    marginal_costs: &'a [(Rc<Asset>, f64)],
+    utilisations: &'a HashMap<AssetID, f64>,
+) -> impl Iterator<Item = (&'a Rc<Asset>, f64)> {
+    marginal_costs.iter().map(move |(asset, marginal_cost)| {
+        let utilisation =
+            utilisation_for_asset(demand, *marginal_cost, marginal_costs, utilisations);
+
+        (asset, utilisation)
+    })
+}

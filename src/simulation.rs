@@ -63,6 +63,9 @@ pub fn run(
         if let Some(next_year) = year_iter.next() {
             year = next_year;
 
+            // **HACK!!!!!**
+            let utilisations = solution.create_utilisation_map();
+
             // NB: Agent investment is not carried out in first milestone year
             perform_agent_investment(&model, &mut assets, &flow_map, &prices, year);
 
