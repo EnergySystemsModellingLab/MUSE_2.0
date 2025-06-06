@@ -54,19 +54,6 @@ pub struct Process {
 }
 
 impl Process {
-    /// Whether the process contains a flow for a given commodity
-    pub fn contains_commodity_flow(
-        &self,
-        commodity_id: &CommodityID,
-        region_id: &RegionID,
-        year: u32,
-    ) -> bool {
-        self.flows
-            .get(&(region_id.clone(), year))
-            .unwrap() // all regions and years are covered
-            .contains_key(commodity_id)
-    }
-
     /// Iterate over this process's Primary Activity Commodity flows
     pub fn iter_pacs(&self, region_id: &RegionID, year: u32) -> impl Iterator<Item = &ProcessFlow> {
         self.flows
