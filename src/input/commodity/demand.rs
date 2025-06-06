@@ -5,7 +5,7 @@ use super::demand_slicing::{read_demand_slices, DemandSliceMap};
 use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
 use crate::id::IDCollection;
 use crate::region::RegionID;
-use crate::time_slice::{TimeSliceInfo, TimeSliceLevel};
+use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Result};
 use itertools::iproduct;
 use serde::Deserialize;
@@ -28,7 +28,7 @@ struct Demand {
 }
 
 /// A map relating commodity, region and year to annual demand
-pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), (TimeSliceLevel, f64)>;
+pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), f64>;
 
 /// A map containing a references to commodities
 pub type BorrowedCommodityMap<'a> = HashMap<CommodityID, &'a Commodity>;
@@ -63,7 +63,12 @@ pub fn read_demand(
     let demand = read_demand_file(model_dir, &svd_commodities, region_ids, milestone_years)?;
     let slices = read_demand_slices(model_dir, &svd_commodities, region_ids, time_slice_info)?;
 
-    Ok(compute_demand_maps(time_slice_info, &demand, &slices))
+    Ok(compute_demand_maps(
+        time_slice_info,
+        &svd_commodities,
+        &demand,
+        &slices,
+    ))
 }
 
 /// Read the demand.csv file.
@@ -139,7 +144,7 @@ where
         ensure!(
             map.insert(
                 (commodity.id.clone(), region_id.clone(), demand.year),
-                (commodity.time_slice_level, demand.demand)
+                demand.demand
             )
             .is_none(),
             "Duplicate demand entries (commodity: {}, region: {}, year: {})",
@@ -173,6 +178,7 @@ where
 /// # Arguments
 ///
 /// * `time_slice_info` - Information about time slices
+/// * `svd_commodities` - Map of service demand commodities
 /// * `demand` - Total annual demand for combinations of commodity, region and year
 /// * `slices` - How annual demand is shared between time slices
 ///
@@ -182,12 +188,14 @@ where
 /// which the demand applies.
 fn compute_demand_maps(
     time_slice_info: &TimeSliceInfo,
+    svd_commodities: &BorrowedCommodityMap,
     demand: &AnnualDemandMap,
     slices: &DemandSliceMap,
 ) -> HashMap<CommodityID, DemandMap> {
     let mut map = HashMap::new();
-    for ((commodity_id, region_id, year), (level, annual_demand)) in demand.iter() {
-        for ts_selection in time_slice_info.iter_selections_at_level(*level) {
+    for ((commodity_id, region_id, year), annual_demand) in demand.iter() {
+        let level = svd_commodities.get(commodity_id).unwrap().time_slice_level;
+        for ts_selection in time_slice_info.iter_selections_at_level(level) {
             let slice_key = (
                 commodity_id.clone(),
                 region_id.clone(),
@@ -430,14 +438,8 @@ mod tests {
         create_demand_file(dir.path());
         let milestone_years = [2020];
         let expected = AnnualDemandMap::from_iter([
-            (
-                ("commodity1".into(), "GBR".into(), 2020),
-                (TimeSliceLevel::DayNight, 10.0),
-            ),
-            (
-                ("commodity1".into(), "USA".into(), 2020),
-                (TimeSliceLevel::DayNight, 11.0),
-            ),
+            (("commodity1".into(), "GBR".into(), 2020), 10.0),
+            (("commodity1".into(), "USA".into(), 2020), 11.0),
         ]);
         let demand =
             read_demand_file(dir.path(), &svd_commodities, &region_ids, &milestone_years).unwrap();
