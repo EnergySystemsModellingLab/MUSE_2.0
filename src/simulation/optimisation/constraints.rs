@@ -56,8 +56,7 @@ pub struct ConstraintKeys {
 ///
 /// # Returns:
 ///
-/// * A vector of keys for commodity balance constraints
-/// * A vector of keys for capacity constraints
+/// Keys indicating the relevant parameters for each constraint.
 pub fn add_asset_constraints(
     problem: &mut Problem,
     variables: &VariableMap,
