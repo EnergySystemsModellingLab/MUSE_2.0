@@ -197,7 +197,9 @@ fn validate_flow_map(flow_map: &IndexMap<CommodityID, ProcessFlow>) -> Result<()
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{Commodity, CommodityLevyMap, CommodityType, DemandMap};
+    use crate::commodity::{
+        AnnualDemandMap, Commodity, CommodityLevyMap, CommodityType, DemandMap,
+    };
     use crate::time_slice::TimeSliceLevel;
     use indexmap::indexmap;
     use rstest::{fixture, rstest};
@@ -261,9 +263,10 @@ mod tests {
             id: "commodity1".into(),
             description: "A commodity".into(),
             kind: CommodityType::ServiceDemand,
-            demand: DemandMap::default(),
+            annual_demand: AnnualDemandMap::new(),
+            demand: DemandMap::new(),
             time_slice_level: TimeSliceLevel::Annual,
-            levies: CommodityLevyMap::default(),
+            levies: CommodityLevyMap::new(),
         }
     }
 
@@ -273,9 +276,10 @@ mod tests {
             id: "commodity2".into(),
             description: "Another commodity".into(),
             kind: CommodityType::ServiceDemand,
-            demand: DemandMap::default(),
+            annual_demand: AnnualDemandMap::new(),
+            demand: DemandMap::new(),
             time_slice_level: TimeSliceLevel::Annual,
-            levies: CommodityLevyMap::default(),
+            levies: CommodityLevyMap::new(),
         }
     }
 

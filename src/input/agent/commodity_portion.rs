@@ -194,7 +194,9 @@ mod tests {
     use crate::agent::{
         Agent, AgentCostLimitsMap, AgentObjectiveMap, AgentSearchSpaceMap, DecisionRule,
     };
-    use crate::commodity::{Commodity, CommodityID, CommodityLevyMap, CommodityType, DemandMap};
+    use crate::commodity::{
+        AnnualDemandMap, Commodity, CommodityID, CommodityLevyMap, CommodityType, DemandMap,
+    };
     use crate::time_slice::TimeSliceLevel;
     use std::rc::Rc;
 
@@ -223,6 +225,7 @@ mod tests {
                 kind: CommodityType::SupplyEqualsDemand,
                 time_slice_level: TimeSliceLevel::Annual,
                 levies: CommodityLevyMap::new(),
+                annual_demand: AnnualDemandMap::new(),
                 demand: DemandMap::new(),
             }),
         )]);
@@ -262,6 +265,7 @@ mod tests {
                 kind: CommodityType::SupplyEqualsDemand,
                 time_slice_level: TimeSliceLevel::Annual,
                 levies: CommodityLevyMap::new(),
+                annual_demand: AnnualDemandMap::new(),
                 demand: DemandMap::new(),
             }),
         );

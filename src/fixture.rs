@@ -5,7 +5,9 @@ use crate::agent::{
     AgentSearchSpaceMap, DecisionRule,
 };
 use crate::asset::{Asset, AssetPool};
-use crate::commodity::{Commodity, CommodityID, CommodityLevyMap, CommodityType, DemandMap};
+use crate::commodity::{
+    AnnualDemandMap, Commodity, CommodityID, CommodityLevyMap, CommodityType, DemandMap,
+};
 use crate::process::{
     Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessMap, ProcessParameter,
     ProcessParameterMap,
@@ -63,6 +65,7 @@ pub fn svd_commodity() -> Commodity {
         kind: CommodityType::ServiceDemand,
         time_slice_level: TimeSliceLevel::DayNight,
         levies: CommodityLevyMap::new(),
+        annual_demand: AnnualDemandMap::new(),
         demand: DemandMap::new(),
     }
 }

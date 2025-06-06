@@ -2,7 +2,7 @@
 //! slice.
 use super::super::*;
 use super::demand_slicing::{read_demand_slices, DemandSliceMap};
-use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
+use crate::commodity::{AnnualDemandMap, Commodity, CommodityID, CommodityType, DemandMap};
 use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
@@ -13,6 +13,9 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 const DEMAND_FILE_NAME: &str = "demand.csv";
+
+/// Annual demand maps for every commodity
+type AllAnnualDemandMaps = HashMap<CommodityID, AnnualDemandMap>;
 
 /// Represents a single demand entry in the dataset.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -26,9 +29,6 @@ struct Demand {
     /// Annual demand quantity
     demand: f64,
 }
-
-/// A map relating commodity, region and year to annual demand
-pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), f64>;
 
 /// A map containing a references to commodities
 pub type BorrowedCommodityMap<'a> = HashMap<CommodityID, &'a Commodity>;
@@ -52,7 +52,7 @@ pub fn read_demand(
     region_ids: &HashSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
-) -> Result<HashMap<CommodityID, DemandMap>> {
+) -> Result<HashMap<CommodityID, (AnnualDemandMap, DemandMap)>> {
     // Demand only applies to SVD commodities
     let svd_commodities = commodities
         .iter()
@@ -60,13 +60,13 @@ pub fn read_demand(
         .map(|(id, commodity)| (id.clone(), commodity))
         .collect();
 
-    let demand = read_demand_file(model_dir, &svd_commodities, region_ids, milestone_years)?;
+    let annual_demand = read_demand_file(model_dir, &svd_commodities, region_ids, milestone_years)?;
     let slices = read_demand_slices(model_dir, &svd_commodities, region_ids, time_slice_info)?;
 
-    Ok(compute_demand_maps(
+    Ok(create_demand_maps(
         time_slice_info,
         &svd_commodities,
-        &demand,
+        annual_demand,
         &slices,
     ))
 }
@@ -88,7 +88,7 @@ fn read_demand_file(
     svd_commodities: &BorrowedCommodityMap,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
-) -> Result<AnnualDemandMap> {
+) -> Result<AllAnnualDemandMaps> {
     let file_path = model_dir.join(DEMAND_FILE_NAME);
     let iter = read_csv(&file_path)?;
     read_demand_from_iter(iter, svd_commodities, region_ids, milestone_years)
@@ -113,11 +113,11 @@ fn read_demand_from_iter<I>(
     svd_commodities: &BorrowedCommodityMap,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
-) -> Result<AnnualDemandMap>
+) -> Result<AllAnnualDemandMaps>
 where
     I: Iterator<Item = Demand>,
 {
-    let mut map = AnnualDemandMap::new();
+    let mut map = AllAnnualDemandMaps::new();
     for demand in iter {
         let commodity = svd_commodities
             .get(demand.commodity_id.as_str())
@@ -141,12 +141,10 @@ where
             "Demand must be a valid number greater than zero"
         );
 
+        let map = map.entry(commodity.id.clone()).or_default();
         ensure!(
-            map.insert(
-                (commodity.id.clone(), region_id.clone(), demand.year),
-                demand.demand
-            )
-            .is_none(),
+            map.insert((region_id.clone(), demand.year), demand.demand)
+                .is_none(),
             "Duplicate demand entries (commodity: {}, region: {}, year: {})",
             commodity.id,
             region_id,
@@ -157,11 +155,16 @@ where
     // Check that demand data is specified for all combinations of commodity, region and year
     for commodity_id in svd_commodities.keys() {
         let mut missing_keys = Vec::new();
+        let Some(map) = map.get(commodity_id) else {
+            bail!("No demand slices specified for commodity {commodity_id}");
+        };
+
         for (region_id, year) in iproduct!(region_ids, milestone_years) {
-            if !map.contains_key(&(commodity_id.clone(), region_id.clone(), *year)) {
+            if !map.contains_key(&(region_id.clone(), *year)) {
                 missing_keys.push((region_id.clone(), *year));
             }
         }
+
         ensure!(
             missing_keys.is_empty(),
             "Commodity {} is missing demand data for {:?}",
@@ -175,47 +178,49 @@ where
 
 /// Calculate the demand for each combination of commodity, region, year and time slice.
 ///
+/// This function also consumes all the annual demand data and includes this in the returned map.
+///
 /// # Arguments
 ///
 /// * `time_slice_info` - Information about time slices
 /// * `svd_commodities` - Map of service demand commodities
-/// * `demand` - Total annual demand for combinations of commodity, region and year
+/// * `all_annual_demand` - Total annual demand for combinations of commodity, region and year
 /// * `slices` - How annual demand is shared between time slices
 ///
 /// # Returns
 ///
-/// [`DemandMap`]s for combinations of region, year and time slice, grouped by the commodity to
-/// which the demand applies.
-fn compute_demand_maps(
+/// [`AnnualDemandMap`]s and [`DemandMap`]s for combinations of region, year and time slice, grouped
+/// by the commodity to which the demand applies.
+fn create_demand_maps(
     time_slice_info: &TimeSliceInfo,
     svd_commodities: &BorrowedCommodityMap,
-    demand: &AnnualDemandMap,
+    all_annual_demand: AllAnnualDemandMaps,
     slices: &DemandSliceMap,
-) -> HashMap<CommodityID, DemandMap> {
+) -> HashMap<CommodityID, (AnnualDemandMap, DemandMap)> {
     let mut map = HashMap::new();
-    for ((commodity_id, region_id, year), annual_demand) in demand.iter() {
-        let level = svd_commodities.get(commodity_id).unwrap().time_slice_level;
-        for ts_selection in time_slice_info.iter_selections_at_level(level) {
-            let slice_key = (
-                commodity_id.clone(),
-                region_id.clone(),
-                ts_selection.clone(),
-            );
+    for (commodity_id, annual_demand_map) in all_annual_demand {
+        let level = svd_commodities.get(&commodity_id).unwrap().time_slice_level;
+        let mut demand_map = DemandMap::new();
+        for ((region_id, year), annual_demand) in annual_demand_map.iter() {
+            for ts_selection in time_slice_info.iter_selections_at_level(level) {
+                let slice_key = (
+                    commodity_id.clone(),
+                    region_id.clone(),
+                    ts_selection.clone(),
+                );
 
-            // NB: This has already been checked, so shouldn't fail
-            let demand_fraction = slices.get(&slice_key).unwrap();
+                // NB: This has already been checked, so shouldn't fail
+                let demand_fraction = slices.get(&slice_key).unwrap();
 
-            // Get or create entry
-            let map = map
-                .entry(commodity_id.clone())
-                .or_insert_with(DemandMap::new);
-
-            // Add a new demand entry
-            map.insert(
-                (region_id.clone(), *year, ts_selection.clone()),
-                annual_demand * demand_fraction,
-            );
+                // Add a new demand entry
+                demand_map.insert(
+                    (region_id.clone(), *year, ts_selection.clone()),
+                    annual_demand * demand_fraction,
+                );
+            }
         }
+
+        map.insert(commodity_id, (annual_demand_map, demand_map));
     }
 
     map
@@ -228,6 +233,7 @@ mod tests {
     use rstest::rstest;
     use std::fs::File;
     use std::io::Write;
+    use std::iter;
     use std::path::Path;
     use tempfile::tempdir;
 
@@ -437,10 +443,14 @@ mod tests {
         let dir = tempdir().unwrap();
         create_demand_file(dir.path());
         let milestone_years = [2020];
-        let expected = AnnualDemandMap::from_iter([
-            (("commodity1".into(), "GBR".into(), 2020), 10.0),
-            (("commodity1".into(), "USA".into(), 2020), 11.0),
-        ]);
+        let expected = iter::once((
+            "commodity1".into(),
+            AnnualDemandMap::from_iter([
+                (("GBR".into(), 2020), 10.0),
+                (("USA".into(), 2020), 11.0),
+            ]),
+        ))
+        .collect();
         let demand =
             read_demand_file(dir.path(), &svd_commodities, &region_ids, &milestone_years).unwrap();
         assert_eq!(demand, expected);

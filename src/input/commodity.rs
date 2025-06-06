@@ -59,7 +59,8 @@ pub fn read_commodities(
             if let Some(costs) = costs.remove(&id) {
                 commodity.levies = costs;
             }
-            if let Some(demand) = demand.remove(&id) {
+            if let Some((annual_demand, demand)) = demand.remove(&id) {
+                commodity.annual_demand = annual_demand;
                 commodity.demand = demand;
             }
 

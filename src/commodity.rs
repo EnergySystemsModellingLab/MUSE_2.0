@@ -16,6 +16,9 @@ pub type CommodityMap = IndexMap<CommodityID, Rc<Commodity>>;
 /// A map of [`CommodityLevy`]s, keyed by region ID, year and time slice ID
 pub type CommodityLevyMap = HashMap<(RegionID, u32, TimeSliceID), CommodityLevy>;
 
+/// A map relating  region and year to annual demand
+pub type AnnualDemandMap = HashMap<(RegionID, u32), f64>;
+
 /// A map of demand values, keyed by region ID, year and time slice selection
 pub type DemandMap = HashMap<(RegionID, u32, TimeSliceSelection), f64>;
 
@@ -41,7 +44,14 @@ pub struct Commodity {
     /// incentive.
     #[serde(skip)]
     pub levies: CommodityLevyMap,
-    /// Demand as defined in input files. Will be empty for non-service-demand commodities.
+    /// Total annual demand as defined in input files.
+    ///
+    /// Will be empty for non-service-demand commodities.
+    #[serde(skip)]
+    pub annual_demand: AnnualDemandMap,
+    /// Demand as defined in input files.
+    ///
+    /// Will be empty for non-service-demand commodities.
     ///
     /// The [`TimeSliceSelection`] part of the key is always at the same [`TimeSliceLevel`] as the
     /// `time_slice_level` field. E.g. if the `time_slice_level` is seasonal, then there will be

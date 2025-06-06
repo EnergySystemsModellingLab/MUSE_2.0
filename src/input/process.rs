@@ -280,12 +280,13 @@ fn validate_svd_commodity(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{CommodityLevyMap, DemandMap};
+    use crate::commodity::{AnnualDemandMap, CommodityLevyMap, DemandMap};
     use crate::fixture::{time_slice, time_slice_info};
     use crate::process::{FlowType, ProcessFlow};
     use crate::time_slice::{TimeSliceID, TimeSliceLevel};
     use indexmap::indexmap;
     use rstest::{fixture, rstest};
+    use std::iter;
 
     #[fixture]
     fn commodity_sed() -> Commodity {
@@ -295,6 +296,7 @@ mod tests {
             kind: CommodityType::SupplyEqualsDemand,
             time_slice_level: TimeSliceLevel::Annual,
             levies: CommodityLevyMap::new(),
+            annual_demand: AnnualDemandMap::new(),
             demand: DemandMap::new(),
         }
     }
@@ -360,7 +362,10 @@ mod tests {
 
     #[fixture]
     fn commodity_svd(time_slice: TimeSliceID) -> Commodity {
-        let demand = DemandMap::from_iter(vec![(("GBR".into(), 2010, time_slice.into()), 10.0)]);
+        // As there's only one time slice, annual demand and demand maps both only contain one entry
+        let annual_demand = AnnualDemandMap::from_iter(iter::once((("GBR".into(), 2010), 10.0)));
+        let demand =
+            DemandMap::from_iter(iter::once((("GBR".into(), 2010, time_slice.into()), 10.0)));
 
         Commodity {
             id: "commodity_svd".into(),
@@ -368,6 +373,7 @@ mod tests {
             kind: CommodityType::ServiceDemand,
             time_slice_level: TimeSliceLevel::Annual,
             levies: CommodityLevyMap::new(),
+            annual_demand,
             demand,
         }
     }
