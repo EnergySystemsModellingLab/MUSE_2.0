@@ -71,7 +71,7 @@ pub fn add_asset_constraints(
     let demand_keys = add_demand_constraints(problem, variables, model, assets, year);
 
     let capacity_keys =
-        add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
+        add_asset_capacity_constraints(problem, variables, &model.time_slice_info, assets);
 
     // Return constraint keys
     ConstraintKeys {
@@ -200,17 +200,23 @@ fn add_demand_constraints(
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#asset-level-capacity-and-availability-constraints
 fn add_asset_capacity_constraints(
     problem: &mut Problem,
-    _variables: &VariableMap,
-    _assets: &AssetPool,
-    _time_slice_info: &TimeSliceInfo,
+    variables: &VariableMap,
+    time_slice_info: &TimeSliceInfo,
+    assets: &AssetPool,
 ) -> CapacityKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
-    let keys = Vec::new();
+    let mut keys = Vec::new();
+    for asset in assets.iter() {
+        for time_slice in time_slice_info.iter_ids() {
+            let var = variables.get(asset, time_slice);
+            let limits = asset.get_energy_limits(time_slice);
 
-    // **TODO:** Add capacity/availability constraints:
-    //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/579
+            problem.add_row(limits, [(var, 1.0)]);
+            keys.push((asset.clone(), time_slice.clone()))
+        }
+    }
 
     CapacityKeys { offset, keys }
 }
