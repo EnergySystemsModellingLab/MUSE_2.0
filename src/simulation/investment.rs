@@ -1,5 +1,5 @@
 //! Code for performing agent investment.
-use super::optimisation::Solution;
+use super::optimisation::FlowMap;
 use super::CommodityPrices;
 use crate::asset::AssetPool;
 use crate::model::Model;
@@ -10,12 +10,12 @@ use log::info;
 /// # Arguments
 ///
 /// * `model` - The model
-/// * `solution` - The solution to the dispatch optimisation
+/// * `flow_map` - Map of commodity flows
 /// * `prices` - Commodity prices
 /// * `assets` - The asset pool
 pub fn perform_agent_investment(
     _model: &Model,
-    _solution: &Solution,
+    _flow_map: &FlowMap,
     _prices: &CommodityPrices,
     assets: &mut AssetPool,
 ) {

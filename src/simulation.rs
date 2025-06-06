@@ -37,8 +37,8 @@ pub fn run(
         assets.decommission_old(year);
 
         // NB: Agent investment is not carried out in first milestone year
-        if let Some((solution, prices)) = opt_results {
-            perform_agent_investment(&model, &solution, &prices, &mut assets);
+        if let Some((flow_map, prices)) = opt_results {
+            perform_agent_investment(&model, &flow_map, &prices, &mut assets);
 
             // **TODO:** Remove this when we implement at least some of the agent investment code
             //   See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/304
@@ -64,7 +64,7 @@ pub fn run(
         writer.write_flows(year, &flow_map)?;
         writer.write_prices(year, &prices)?;
 
-        opt_results = Some((solution, prices));
+        opt_results = Some((flow_map, prices));
     }
 
     writer.flush()?;
