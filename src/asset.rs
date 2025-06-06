@@ -264,20 +264,15 @@ impl AssetPool {
         self.iter().filter(|asset| asset.region_id == *region_id)
     }
 
-    /// Iterate over only the active assets in a given region that produce or consume a given
-    /// commodity
+    /// Iterate over the active assets in a given region that produce/consume a commodity with the
+    /// associated process flow
     pub fn iter_for_region_and_commodity<'a>(
         &'a self,
         region_id: &'a RegionID,
         commodity_id: &'a CommodityID,
-    ) -> impl Iterator<Item = &'a AssetRef> {
-        self.iter_for_region(region_id).filter(|asset| {
-            asset.process.contains_commodity_flow(
-                commodity_id,
-                &asset.region_id,
-                asset.commission_year,
-            )
-        })
+    ) -> impl Iterator<Item = (&'a AssetRef, &'a ProcessFlow)> {
+        self.iter_for_region(region_id)
+            .filter_map(|asset| Some((asset, asset.get_flow(commodity_id)?)))
     }
 
     /// Replace the active pool with new and/or already commissioned assets
