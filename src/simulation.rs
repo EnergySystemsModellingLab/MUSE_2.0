@@ -29,22 +29,17 @@ pub fn run(
 ) -> Result<()> {
     let mut writer = DataWriter::create(output_path, debug_model)?;
 
-    let mut opt_results = None; // all results of dispatch optimisation
-    for year in model.iter_years() {
+    // Iterate over milestone years
+    let mut year_iter = model.iter_years();
+    let mut year = year_iter.next().unwrap(); // NB: There will be at least one year
+
+    // There shouldn't be assets already commissioned, but let's do this just in case
+    assets.decommission_old(year);
+
+    // **TODO:** Remove annotation when the loop actually loops
+    #[allow(clippy::never_loop)]
+    loop {
         info!("Milestone year: {year}");
-
-        // Assets that have been decommissioned cannot be selected by agents
-        assets.decommission_old(year);
-
-        // NB: Agent investment is not carried out in first milestone year
-        if let Some((flow_map, prices)) = opt_results {
-            perform_agent_investment(&model, &flow_map, &prices, &mut assets);
-
-            // **TODO:** Remove this when we implement at least some of the agent investment code
-            //   See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/304
-            error!("Agent investment is not yet implemented. Exiting...");
-            return Ok(());
-        }
 
         // Newly commissioned assets will be included in optimisation for at least one milestone
         // year before agents have the option of decommissioning them
@@ -64,7 +59,23 @@ pub fn run(
         writer.write_flows(year, &flow_map)?;
         writer.write_prices(year, &prices)?;
 
-        opt_results = Some((flow_map, prices));
+        if let Some(next_year) = year_iter.next() {
+            year = next_year;
+
+            // NB: Agent investment is not carried out in first milestone year
+            perform_agent_investment(&model, &flow_map, &prices, &mut assets);
+
+            // Decommission assets whose lifetime has passed
+            assets.decommission_old(year);
+        } else {
+            // No more milestone years. Simulation is finished.
+            break;
+        }
+
+        // **TODO:** Remove this when we implement at least some of the agent investment code
+        //   See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/304
+        error!("Agent investment is not yet implemented. Exiting...");
+        break;
     }
 
     writer.flush()?;
