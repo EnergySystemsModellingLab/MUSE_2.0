@@ -7,12 +7,14 @@ use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const MODEL_FILE_NAME: &str = "model.toml";
 
 /// Model definition
 pub struct Model {
+    /// Path to model folder
+    pub model_path: PathBuf,
     /// Milestone years for the simulation. Sorted.
     pub milestone_years: Vec<u32>,
     /// Agents for the simulation
