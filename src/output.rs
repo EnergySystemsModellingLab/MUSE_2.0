@@ -236,9 +236,10 @@ impl DataWriter {
     /// # Arguments
     ///
     /// * `output_path` - Folder where files will be saved
+    /// * `model_path` - Path to input model
     /// * `save_debug_info` - Whether to include extra CSV files for debugging model
-    pub fn create(output_path: &Path, save_debug_info: bool) -> Result<Self> {
-        write_metadata(output_path).context("Failed to save metadata")?;
+    pub fn create(output_path: &Path, model_path: &Path, save_debug_info: bool) -> Result<Self> {
+        write_metadata(output_path, model_path).context("Failed to save metadata")?;
 
         let new_writer = |file_name| {
             let file_path = output_path.join(file_name);
@@ -345,7 +346,7 @@ mod tests {
 
         // Write an asset
         {
-            let mut writer = DataWriter::create(dir.path(), false).unwrap();
+            let mut writer = DataWriter::create(dir.path(), dir.path(), false).unwrap();
             writer.write_assets(milestone_year, assets.iter()).unwrap();
             writer.flush().unwrap();
         }
@@ -372,7 +373,7 @@ mod tests {
         // Write a flow
         let dir = tempdir().unwrap();
         {
-            let mut writer = DataWriter::create(dir.path(), false).unwrap();
+            let mut writer = DataWriter::create(dir.path(), dir.path(), false).unwrap();
             writer.write_flows(milestone_year, &flow_map).unwrap();
             writer.flush().unwrap();
         }
@@ -403,7 +404,7 @@ mod tests {
 
         // Write a price
         {
-            let mut writer = DataWriter::create(dir.path(), false).unwrap();
+            let mut writer = DataWriter::create(dir.path(), dir.path(), false).unwrap();
             writer.write_prices(milestone_year, &prices).unwrap();
             writer.flush().unwrap();
         }

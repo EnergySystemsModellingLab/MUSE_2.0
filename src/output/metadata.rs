@@ -1,5 +1,6 @@
 //! Code for writing metadata to file
 use anyhow::Result;
+use chrono::prelude::*;
 use platform_info::{PlatformInfo, PlatformInfoAPI, UNameAPI};
 use serde::Serialize;
 use std::fs;
@@ -27,13 +28,32 @@ fn get_git_hash() -> String {
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize)]
 struct Metadata<'a> {
+    run: RunMetadata<'a>,
     program: ProgramMetadata<'a>,
     platform: PlatformMetadata,
 }
 
-/// Information about the version and build of MUSE
+/// Information about the model run
+#[derive(Serialize)]
+struct RunMetadata<'a> {
+    /// Path to the model which was run
+    model_path: &'a Path,
+    /// The date and time on which the run started
+    datetime: String,
+}
+
+impl<'a> RunMetadata<'a> {
+    fn new(model_path: &'a Path) -> Self {
+        let dt = Local::now();
+        Self {
+            model_path,
+            datetime: dt.to_rfc2822(),
+        }
+    }
+}
+
 #[derive(Serialize)]
 struct ProgramMetadata<'a> {
     /// The program name
@@ -94,8 +114,12 @@ impl Default for PlatformMetadata {
 }
 
 /// Write metadata to the specified output path in TOML format
-pub fn write_metadata(output_path: &Path) -> Result<()> {
-    let metadata = Metadata::default();
+pub fn write_metadata(output_path: &Path, model_path: &Path) -> Result<()> {
+    let metadata = Metadata {
+        run: RunMetadata::new(model_path),
+        program: ProgramMetadata::default(),
+        platform: PlatformMetadata::default(),
+    };
     let file_path = output_path.join(METADATA_FILE_NAME);
     fs::write(&file_path, toml::to_string(&metadata)?)?;
 
