@@ -42,16 +42,26 @@ def process_file(path: Path) -> str:
     with path.open() as f:
         data = yaml.safe_load(f)
 
-    info = data["title"]
-    if desc := data.get("description", ""):
-        info = f"{add_full_stop(info)} {desc}"
-    out += f"{add_full_stop(info)}\n\n"
+    out += f"{add_full_stop(data['title'])}\n\n"
 
     try:
-        out += fields2table(data["fields"])
+        table_str, notes_str = fields2table(data["fields"])
+        out += table_str
     except KeyError:
         print(f"MISSING VALUE IN {path}")
         raise
+
+    desc = data.get("description", "")
+    if not desc and not notes_str:
+        return out
+
+    out += "\n#### Notes\n\n"
+
+    if desc:
+        out += f"{add_full_stop(desc)}\n\n"
+
+    if notes_str:
+        out += notes_str
 
     return out
 
@@ -64,20 +74,30 @@ def add_full_stop(s: str) -> str:
         return f"{s}."
 
 
-def fields2table(fields: list[dict[str, str]]) -> str:
+def fields2table(fields: list[dict[str, str]]) -> tuple[str, str]:
+    data = []
+    notes = []
+    for f in fields:
+        row = {"Field": f"`{f['name']}`", "Description": f["title"]}
+        data.append(row)
+
+        if desc := f.get("description", ""):
+            # MarkdownTable can't handle newlines, so replace with HTML equivalent
+            desc = desc.replace("\n\n", "<br /><br />").replace("\n", " ")
+            row = {"Field": f"`{f['name']}`", "Notes": desc}
+            notes.append(row)
+
     data = [
         {
             "Field": f"`{f['name']}`",
-            "Title": f["title"],
-            # MarkdownTable can't handle newlines, so replace with HTML equivalent
-            "Description": add_full_stop(f.get("description", ""))
-            .replace("\n\n", "<br /><br />")
-            .replace("\n", " "),
+            "Description": f["title"],
         }
         for f in fields
     ]
 
-    return str(MarkdownTable.from_dicts(data))
+    table_str = str(MarkdownTable.from_dicts(data))
+    notes_str = str(MarkdownTable.from_dicts(notes)) if notes else ""
+    return table_str, notes_str
 
 
 if __name__ == "__main__":
