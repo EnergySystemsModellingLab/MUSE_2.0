@@ -1,5 +1,6 @@
 //! Code for writing metadata to file
 use anyhow::Result;
+use platform_info::{PlatformInfo, PlatformInfoAPI, UNameAPI};
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
@@ -29,6 +30,7 @@ fn get_git_hash() -> String {
 #[derive(Serialize, Default)]
 struct Metadata<'a> {
     program: ProgramMetadata<'a>,
+    platform: PlatformMetadata,
 }
 
 /// Information about the version and build of MUSE
@@ -60,6 +62,33 @@ impl Default for ProgramMetadata<'_> {
             rustc_version: built_info::RUSTC_VERSION,
             build_time_utc: built_info::BUILT_TIME_UTC,
             git_commit_hash: get_git_hash(),
+        }
+    }
+}
+
+/// Information about the platform on which MUSE is running.
+///
+/// The fields correspond to different data available from the [`PlatformInfo`] struct.
+#[derive(Serialize)]
+struct PlatformMetadata {
+    sysname: String,
+    nodename: String,
+    release: String,
+    version: String,
+    machine: String,
+    osname: String,
+}
+
+impl Default for PlatformMetadata {
+    fn default() -> Self {
+        let info = PlatformInfo::new().expect("Unable to determine platform info");
+        Self {
+            sysname: info.sysname().to_string_lossy().into(),
+            nodename: info.nodename().to_string_lossy().into(),
+            release: info.release().to_string_lossy().into(),
+            version: info.version().to_string_lossy().into(),
+            machine: info.machine().to_string_lossy().into(),
+            osname: info.osname().to_string_lossy().into(),
         }
     }
 }
