@@ -17,6 +17,9 @@ use std::path::{Path, PathBuf};
 /// The root folder in which model-specific output folders will be created
 const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
 
+/// The output file name for metadata
+const METADATA_FILE_NAME: &str = "metadata.toml";
+
 /// The output file name for commodity flows
 const COMMODITY_FLOWS_FILE_NAME: &str = "commodity_flows.csv";
 
@@ -59,6 +62,47 @@ pub fn create_output_directory(output_dir: &Path) -> Result<()> {
 
     // Try to create the directory, with parents
     fs::create_dir_all(output_dir)?;
+
+    Ok(())
+}
+
+#[derive(Serialize, Default)]
+struct Metadata<'a> {
+    program: ProgramMetadata<'a>,
+}
+
+#[derive(Serialize)]
+struct ProgramMetadata<'a> {
+    name: &'a str,
+    version: &'a str,
+    target: &'a str,
+    is_debug: bool,
+    rustc_version: &'a str,
+}
+
+/// Information about the program build via `built` crate
+mod built_info {
+    // The file has been placed there by the build script.
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
+impl Default for ProgramMetadata<'_> {
+    fn default() -> Self {
+        Self {
+            name: built_info::PKG_NAME,
+            version: built_info::PKG_VERSION,
+            target: built_info::TARGET,
+            is_debug: built_info::DEBUG,
+            rustc_version: built_info::RUSTC_VERSION,
+        }
+    }
+}
+
+/// Write metadata to the specified output path in TOML format
+fn write_metadata(output_path: &Path) -> Result<()> {
+    let metadata = Metadata::default();
+    let file_path = output_path.join(METADATA_FILE_NAME);
+    fs::write(&file_path, toml::to_string(&metadata)?)?;
 
     Ok(())
 }
@@ -235,6 +279,8 @@ impl DataWriter {
     /// * `output_path` - Folder where files will be saved
     /// * `save_debug_info` - Whether to include extra CSV files for debugging model
     pub fn create(output_path: &Path, save_debug_info: bool) -> Result<Self> {
+        write_metadata(output_path).context("Failed to save metadata")?;
+
         let new_writer = |file_name| {
             let file_path = output_path.join(file_name);
             csv::Writer::from_path(file_path)
