@@ -14,11 +14,11 @@ use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
+pub mod metadata;
+use metadata::write_metadata;
+
 /// The root folder in which model-specific output folders will be created
 const OUTPUT_DIRECTORY_ROOT: &str = "muse2_results";
-
-/// The output file name for metadata
-const METADATA_FILE_NAME: &str = "metadata.toml";
 
 /// The output file name for commodity flows
 const COMMODITY_FLOWS_FILE_NAME: &str = "commodity_flows.csv";
@@ -62,72 +62,6 @@ pub fn create_output_directory(output_dir: &Path) -> Result<()> {
 
     // Try to create the directory, with parents
     fs::create_dir_all(output_dir)?;
-
-    Ok(())
-}
-
-#[derive(Serialize, Default)]
-struct Metadata<'a> {
-    program: ProgramMetadata<'a>,
-}
-
-/// Information about the version and build of MUSE
-#[derive(Serialize)]
-struct ProgramMetadata<'a> {
-    /// The program name
-    name: &'a str,
-    /// The program version as specified in Cargo.toml
-    version: &'a str,
-    /// The target architecture for the build (e.g. x86_64-unknown-linux-gnu)
-    target: &'a str,
-    /// Whether it is a debug build
-    is_debug: bool,
-    /// The version of rustc used to compile MUSE
-    rustc_version: &'a str,
-    /// When MUSE was built
-    build_time_utc: &'a str,
-    /// The git commit hash for the version of MUSE (if known)
-    git_commit_hash: String,
-}
-
-/// Information about the program build via `built` crate
-mod built_info {
-    // The file has been placed there by the build script.
-    include!(concat!(env!("OUT_DIR"), "/built.rs"));
-}
-
-/// Get information about program version from git
-fn get_git_hash() -> String {
-    let Some(hash) = built_info::GIT_COMMIT_HASH_SHORT else {
-        return "unknown".into();
-    };
-
-    if built_info::GIT_DIRTY == Some(true) {
-        format!("{hash}-dirty")
-    } else {
-        hash.into()
-    }
-}
-
-impl Default for ProgramMetadata<'_> {
-    fn default() -> Self {
-        Self {
-            name: built_info::PKG_NAME,
-            version: built_info::PKG_VERSION,
-            target: built_info::TARGET,
-            is_debug: built_info::DEBUG,
-            rustc_version: built_info::RUSTC_VERSION,
-            build_time_utc: built_info::BUILT_TIME_UTC,
-            git_commit_hash: get_git_hash(),
-        }
-    }
-}
-
-/// Write metadata to the specified output path in TOML format
-fn write_metadata(output_path: &Path) -> Result<()> {
-    let metadata = Metadata::default();
-    let file_path = output_path.join(METADATA_FILE_NAME);
-    fs::write(&file_path, toml::to_string(&metadata)?)?;
 
     Ok(())
 }
