@@ -81,4 +81,5 @@ def fields2table(fields: list[dict[str, str]]) -> str:
 
 
 if __name__ == "__main__":
-    print(generate_markdown(), end="")
+    output_path = _DOCS_DIR / "input_format.md"
+    output_path.write_text(generate_markdown(), encoding="utf-8")
