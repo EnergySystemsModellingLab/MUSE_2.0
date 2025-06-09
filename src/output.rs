@@ -78,6 +78,7 @@ struct ProgramMetadata<'a> {
     target: &'a str,
     is_debug: bool,
     rustc_version: &'a str,
+    build_time_utc: &'a str,
 }
 
 /// Information about the program build via `built` crate
@@ -94,6 +95,7 @@ impl Default for ProgramMetadata<'_> {
             target: built_info::TARGET,
             is_debug: built_info::DEBUG,
             rustc_version: built_info::RUSTC_VERSION,
+            build_time_utc: built_info::BUILT_TIME_UTC,
         }
     }
 }

@@ -36,4 +36,4 @@ regex = "1.11.1"
 rstest = {version = "0.25.0", default-features = false, features = ["crate-name"]}
 
 [build-dependencies]
-built = "0.8.0"
+built = {version = "0.8.0", features = ["chrono"]}
