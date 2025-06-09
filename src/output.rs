@@ -79,12 +79,26 @@ struct ProgramMetadata<'a> {
     is_debug: bool,
     rustc_version: &'a str,
     build_time_utc: &'a str,
+    git_commit_hash: String,
 }
 
 /// Information about the program build via `built` crate
 mod built_info {
     // The file has been placed there by the build script.
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
+/// Get information about program version from git
+fn get_git_hash() -> String {
+    let Some(hash) = built_info::GIT_COMMIT_HASH_SHORT else {
+        return "unknown".into();
+    };
+
+    if built_info::GIT_DIRTY == Some(true) {
+        format!("{hash}-dirty")
+    } else {
+        hash.into()
+    }
 }
 
 impl Default for ProgramMetadata<'_> {
@@ -96,6 +110,7 @@ impl Default for ProgramMetadata<'_> {
             is_debug: built_info::DEBUG,
             rustc_version: built_info::RUSTC_VERSION,
             build_time_utc: built_info::BUILT_TIME_UTC,
+            git_commit_hash: get_git_hash(),
         }
     }
 }
