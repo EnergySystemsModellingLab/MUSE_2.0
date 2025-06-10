@@ -71,14 +71,22 @@ struct Metadata<'a> {
     program: ProgramMetadata<'a>,
 }
 
+/// Information about the version and build of MUSE
 #[derive(Serialize)]
 struct ProgramMetadata<'a> {
+    /// The program name
     name: &'a str,
+    /// The program version as specified in Cargo.toml
     version: &'a str,
+    /// The target architecture for the build (e.g. x86_64-unknown-linux-gnu)
     target: &'a str,
+    /// Whether it is a debug build
     is_debug: bool,
+    /// The version of rustc used to compile MUSE
     rustc_version: &'a str,
+    /// When MUSE was built
     build_time_utc: &'a str,
+    /// The git commit hash for the version of MUSE (if known)
     git_commit_hash: String,
 }
 
