@@ -27,7 +27,7 @@ pub fn run(
     output_path: &Path,
     debug_model: bool,
 ) -> Result<()> {
-    let mut writer = DataWriter::create(output_path, debug_model)?;
+    let mut writer = DataWriter::create(output_path, &model.model_path, debug_model)?;
 
     // Iterate over milestone years
     let mut year_iter = model.iter_years();

@@ -196,7 +196,12 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let agent_ids = agents.keys().cloned().collect();
     let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
 
+    let model_path = model_dir
+        .as_ref()
+        .canonicalize()
+        .context("Could not parse path to model")?;
     let model = Model {
+        model_path,
         milestone_years: model_file.milestone_years.years,
         agents,
         commodities,
