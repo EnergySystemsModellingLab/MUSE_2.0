@@ -16,7 +16,7 @@ runs:
       run: pip install -r doc-requirements.txt
     - name: Generate input format documentation
       shell: bash
-      run: python docs/generate_input_format_doc.py > docs/input_format.md
+      run: python docs/generate_input_format_doc.py
     - name: Build API docs
       shell: bash
       run: |
