@@ -56,7 +56,7 @@ pub fn read_processes(
     let process_ids = processes.keys().cloned().collect();
 
     let mut activity_limits = read_process_availabilities(model_dir, &processes, time_slice_info)?;
-    let mut flows = read_process_flows(model_dir, &process_ids, &processes, commodities)?;
+    let mut flows = read_process_flows(model_dir, &processes, commodities)?;
     let mut parameters = read_process_parameters(model_dir, &process_ids, &processes)?;
 
     // Validate commodities after the flows have been read
