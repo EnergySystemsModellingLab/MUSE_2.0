@@ -1,12 +1,10 @@
 //! Code for reading process availabilities CSV file
 use super::super::*;
-use crate::id::IDCollection;
 use crate::process::{Process, ProcessActivityLimitsMap, ProcessID};
 use crate::region::parse_region_str;
 use crate::time_slice::TimeSliceInfo;
 use crate::year::parse_year_str;
 use anyhow::{Context, Result};
-use indexmap::IndexSet;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
@@ -70,7 +68,7 @@ enum LimitType {
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
-/// * `process_ids` - The possible valid process IDs
+/// * `processes` - Map of processes
 /// * `time_slice_info` - Information about seasons and times of day
 ///
 /// # Returns
@@ -79,25 +77,18 @@ enum LimitType {
 /// error.
 pub fn read_process_availabilities(
     model_dir: &Path,
-    process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<HashMap<ProcessID, ProcessActivityLimitsMap>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let process_availabilities_csv = read_csv(&file_path)?;
-    read_process_availabilities_from_iter(
-        process_availabilities_csv,
-        process_ids,
-        processes,
-        time_slice_info,
-    )
-    .with_context(|| input_err_msg(&file_path))
+    read_process_availabilities_from_iter(process_availabilities_csv, processes, time_slice_info)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 /// Process raw process availabilities input data into [`ProcessActivityLimitsMap`]s
 fn read_process_availabilities_from_iter<I>(
     iter: I,
-    process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<HashMap<ProcessID, ProcessActivityLimitsMap>>
@@ -109,10 +100,9 @@ where
         record.validate()?;
 
         // Get process
-        let id = process_ids.get_id(&record.process_id)?;
-        let process = processes
-            .get(id)
-            .with_context(|| format!("Process {id} not found"))?;
+        let (id, process) = processes
+            .get_key_value(record.process_id.as_str())
+            .with_context(|| format!("Process {} not found", record.process_id))?;
 
         // Get regions
         let process_regions = &process.regions;
