@@ -1,6 +1,6 @@
 //! Code for reading process parameters CSV file
 use super::super::*;
-use crate::process::{Process, ProcessID, ProcessParameter, ProcessParameterMap};
+use crate::process::{ProcessID, ProcessMap, ProcessParameter, ProcessParameterMap};
 use crate::region::parse_region_str;
 use crate::year::parse_year_str;
 use ::log::warn;
@@ -95,7 +95,7 @@ impl ProcessParameterRaw {
 /// Read process parameters from the specified model directory
 pub fn read_process_parameters(
     model_dir: &Path,
-    processes: &HashMap<ProcessID, Process>,
+    processes: &ProcessMap,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
@@ -104,7 +104,7 @@ pub fn read_process_parameters(
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
-    processes: &HashMap<ProcessID, Process>,
+    processes: &ProcessMap,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>>
 where
     I: Iterator<Item = ProcessParameterRaw>,

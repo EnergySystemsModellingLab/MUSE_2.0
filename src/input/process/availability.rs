@@ -1,6 +1,6 @@
 //! Code for reading process availabilities CSV file
 use super::super::*;
-use crate::process::{Process, ProcessEnergyLimitsMap, ProcessID};
+use crate::process::{ProcessEnergyLimitsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
 use crate::time_slice::TimeSliceInfo;
 use crate::year::parse_year_str;
@@ -77,7 +77,7 @@ enum LimitType {
 /// error.
 pub fn read_process_availabilities(
     model_dir: &Path,
-    processes: &HashMap<ProcessID, Process>,
+    processes: &ProcessMap,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<HashMap<ProcessID, ProcessEnergyLimitsMap>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
@@ -89,7 +89,7 @@ pub fn read_process_availabilities(
 /// Process raw process availabilities input data into [`ProcessEnergyLimitsMap`]s
 fn read_process_availabilities_from_iter<I>(
     iter: I,
-    processes: &HashMap<ProcessID, Process>,
+    processes: &ProcessMap,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<HashMap<ProcessID, ProcessEnergyLimitsMap>>
 where
@@ -147,7 +147,7 @@ where
 /// Check that every energy limits covers every time slice, and all regions/years of the process
 fn validate_energy_limits_maps(
     map: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
-    processes: &HashMap<ProcessID, Process>,
+    processes: &ProcessMap,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
     for (process_id, map) in map.iter() {
