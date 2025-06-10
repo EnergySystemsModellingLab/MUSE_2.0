@@ -1,7 +1,7 @@
 //! Code for reading process flows file
 use super::super::*;
 use crate::commodity::CommodityMap;
-use crate::process::{FlowType, Process, ProcessFlow, ProcessFlowsMap, ProcessID};
+use crate::process::{FlowType, Process, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
@@ -55,7 +55,7 @@ impl ProcessFlowRaw {
 /// Read process flows from a CSV file
 pub fn read_process_flows(
     model_dir: &Path,
-    processes: &HashMap<ProcessID, Process>,
+    processes: &ProcessMap,
     commodities: &CommodityMap,
 ) -> Result<HashMap<ProcessID, ProcessFlowsMap>> {
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
@@ -67,7 +67,7 @@ pub fn read_process_flows(
 /// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.
 fn read_process_flows_from_iter<I>(
     iter: I,
-    processes: &HashMap<ProcessID, Process>,
+    processes: &ProcessMap,
     commodities: &CommodityMap,
 ) -> Result<HashMap<ProcessID, ProcessFlowsMap>>
 where

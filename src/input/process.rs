@@ -11,6 +11,7 @@ use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::rc::Rc;
 
 mod availability;
 use availability::read_process_availabilities;
@@ -69,6 +70,8 @@ pub fn read_processes(
 
     // Add data to Process objects
     for (id, process) in processes.iter_mut() {
+        // This will always succeed as we know there will only be one reference to the process here
+        let process = Rc::get_mut(process).unwrap();
         process.activity_limits = activity_limits
             .remove(id)
             .with_context(|| format!("Missing availabilities for process {id}"))?;
@@ -80,20 +83,14 @@ pub fn read_processes(
             .with_context(|| format!("Missing parameters for process {id}"))?;
     }
 
-    // Create ProcessMap
-    let mut process_map = ProcessMap::new();
-    for (id, process) in processes {
-        process_map.insert(id, process.into());
-    }
-
-    Ok(process_map)
+    Ok(processes)
 }
 
 fn read_processes_file(
     model_dir: &Path,
     milestone_years: &[u32],
     region_ids: &HashSet<RegionID>,
-) -> Result<HashMap<ProcessID, Process>> {
+) -> Result<ProcessMap> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let processes_csv = read_csv(&file_path)?;
     read_processes_file_from_iter(processes_csv, milestone_years, region_ids)
@@ -104,11 +101,11 @@ fn read_processes_file_from_iter<I>(
     iter: I,
     milestone_years: &[u32],
     region_ids: &HashSet<RegionID>,
-) -> Result<HashMap<ProcessID, Process>>
+) -> Result<ProcessMap>
 where
     I: Iterator<Item = ProcessRaw>,
 {
-    let mut processes = HashMap::new();
+    let mut processes = ProcessMap::new();
     for process_raw in iter {
         let start_year = process_raw.start_year.unwrap_or(milestone_years[0]);
         let end_year = process_raw
@@ -143,7 +140,7 @@ where
         };
 
         ensure!(
-            processes.insert(process_raw.id, process).is_none(),
+            processes.insert(process_raw.id, process.into()).is_none(),
             "Duplicate process ID"
         );
     }
