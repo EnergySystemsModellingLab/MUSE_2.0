@@ -155,32 +155,64 @@ fn validate_commodities(
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
-    for (commodity, region_id, year) in iproduct!(
-        commodities.values(),
-        region_ids.iter(),
-        milestone_years.iter(),
-    ) {
-        match commodity.kind {
-            CommodityType::SupplyEqualsDemand => {
-                validate_sed_commodity(&commodity.id, processes, region_id, year)?;
-            }
-            CommodityType::ServiceDemand => {
-                for ts_selection in
-                    time_slice_info.iter_selections_for_level(commodity.time_slice_level)
-                {
-                    validate_svd_commodity(
-                        time_slice_info,
-                        processes,
-                        commodity,
-                        region_id,
-                        year,
-                        &ts_selection,
-                    )?;
+    for commodity in commodities.values() {
+        if commodity.kind == CommodityType::Other {
+            validate_other_commodity(&commodity.id, processes)?;
+            continue;
+        }
+
+        for (region_id, year) in iproduct!(region_ids.iter(), milestone_years.iter()) {
+            match commodity.kind {
+                CommodityType::SupplyEqualsDemand => {
+                    validate_sed_commodity(&commodity.id, processes, region_id, year)?;
                 }
+                CommodityType::ServiceDemand => {
+                    for ts_selection in
+                        time_slice_info.iter_selections_for_level(commodity.time_slice_level)
+                    {
+                        validate_svd_commodity(
+                            time_slice_info,
+                            processes,
+                            commodity,
+                            region_id,
+                            year,
+                            &ts_selection,
+                        )?;
+                    }
+                }
+                _ => unreachable!(),
             }
-            _ => {}
         }
     }
+
+    Ok(())
+}
+
+/// Check that commodities of type other are either produced or consumed but not both
+fn validate_other_commodity(commodity_id: &CommodityID, processes: &ProcessMap) -> Result<()> {
+    let mut is_producer = None;
+    for process in processes.values() {
+        for flows in process.flows.values() {
+            if let Some(flow) = flows.get(commodity_id) {
+                let cur_is_producer = flow.coeff > 0.0;
+                if let Some(is_producer) = is_producer {
+                    ensure!(
+                        is_producer == cur_is_producer,
+                        "{commodity_id} is both a producer and consumer.
+                        Commodities of type 'other' must only be consumed or produced."
+                    );
+                } else {
+                    is_producer = Some(cur_is_producer);
+                }
+            }
+        }
+    }
+
+    ensure!(
+        is_producer.is_some(),
+        "Commodity {commodity_id} is neither produced or consumed."
+    );
+
     Ok(())
 }
 
@@ -298,13 +330,25 @@ mod tests {
             kind: CommodityType::ServiceDemand,
             time_slice_level: TimeSliceLevel::DayNight,
             levies: CommodityLevyMap::new(),
-            demand: DemandMap::from_iter(vec![(("GBR".into(), 2010, time_slice.into()), 10.0)]),
+            demand: DemandMap::from_iter([(("GBR".into(), 2010, time_slice.into()), 10.0)]),
+        }
+    }
+
+    #[fixture]
+    fn commodity_other() -> Commodity {
+        Commodity {
+            id: "commodity_other".into(),
+            description: "Other commodity".into(),
+            kind: CommodityType::Other,
+            time_slice_level: TimeSliceLevel::Annual,
+            levies: CommodityLevyMap::new(),
+            demand: DemandMap::new(),
         }
     }
 
     #[fixture]
     fn input_flows_sed(commodity_sed: Commodity) -> ProcessFlowsMap {
-        ProcessFlowsMap::from_iter(vec![(
+        ProcessFlowsMap::from_iter([(
             ("GBR".into(), 2010),
             indexmap! { commodity_sed.id.clone() => ProcessFlow {
                 commodity: commodity_sed.into(),
@@ -318,7 +362,7 @@ mod tests {
 
     #[fixture]
     fn output_flows_sed(commodity_sed: Commodity) -> ProcessFlowsMap {
-        ProcessFlowsMap::from_iter(vec![(
+        ProcessFlowsMap::from_iter([(
             ("GBR".into(), 2010),
             indexmap! {commodity_sed.id.clone()=>ProcessFlow {
                 commodity: commodity_sed.into(),
@@ -332,7 +376,7 @@ mod tests {
 
     #[fixture]
     fn flows_svd(commodity_svd: Commodity) -> ProcessFlowsMap {
-        ProcessFlowsMap::from_iter(vec![(
+        ProcessFlowsMap::from_iter([(
             ("GBR".into(), 2010),
             indexmap! {commodity_svd.id.clone()=>ProcessFlow {
                 commodity: commodity_svd.into(),
@@ -345,8 +389,36 @@ mod tests {
     }
 
     #[fixture]
+    fn input_flows_other(commodity_other: Commodity) -> ProcessFlowsMap {
+        ProcessFlowsMap::from_iter([(
+            ("GBR".into(), 2010),
+            indexmap! { commodity_other.id.clone() => ProcessFlow {
+                commodity: commodity_other.into(),
+                coeff: -10.0,
+                kind: FlowType::Fixed,
+                cost: 1.0,
+                is_pac: false,
+            }},
+        )])
+    }
+
+    #[fixture]
+    fn output_flows_other(commodity_other: Commodity) -> ProcessFlowsMap {
+        ProcessFlowsMap::from_iter([(
+            ("GBR".into(), 2010),
+            indexmap! {commodity_other.id.clone()=>ProcessFlow {
+                commodity: commodity_other.into(),
+                coeff: 10.0,
+                kind: FlowType::Fixed,
+                cost: 1.0,
+                is_pac: false,
+            }},
+        )])
+    }
+
+    #[fixture]
     fn availabilities(time_slice: TimeSliceID) -> ProcessEnergyLimitsMap {
-        ProcessEnergyLimitsMap::from_iter(vec![(("GBR".into(), 2010, time_slice), 0.0..=10.0)])
+        ProcessEnergyLimitsMap::from_iter([(("GBR".into(), 2010, time_slice), 0.0..=10.0)])
     }
 
     fn create_process(
@@ -372,7 +444,7 @@ mod tests {
         output_flows_sed: ProcessFlowsMap,
     ) {
         // Valid scenario: has both producer and consumer
-        let processes = ProcessMap::from_iter(vec![
+        let processes = ProcessMap::from_iter([
             (
                 "process1".into(),
                 create_process(
@@ -402,7 +474,7 @@ mod tests {
         output_flows_sed: ProcessFlowsMap,
     ) {
         // Invalid scenario: no producer
-        let processes = ProcessMap::from_iter(vec![(
+        let processes = ProcessMap::from_iter([(
             "process1".into(),
             create_process(
                 "process1".into(),
@@ -415,7 +487,7 @@ mod tests {
         );
 
         // Invalid scenario: no consumer
-        let processes = ProcessMap::from_iter(vec![(
+        let processes = ProcessMap::from_iter([(
             "process2".into(),
             create_process(
                 "process2".into(),
@@ -436,7 +508,7 @@ mod tests {
         time_slice: TimeSliceID,
     ) {
         // Valid scenario
-        let processes = ProcessMap::from_iter(vec![(
+        let processes = ProcessMap::from_iter([(
             "process1".into(),
             create_process("process1".into(), flows_svd.clone(), availabilities.clone()),
         )]);
@@ -464,5 +536,74 @@ mod tests {
             &time_slice().into()
         )
         .is_err());
+    }
+
+    #[rstest]
+    fn test_validate_other_commodity_valid_producer(
+        commodity_other: Commodity,
+        output_flows_other: ProcessFlowsMap,
+    ) {
+        // Valid scenario: commodity is only produced
+        let processes = ProcessMap::from_iter([(
+            "process1".into(),
+            create_process(
+                "process1".into(),
+                output_flows_other.clone(),
+                ProcessEnergyLimitsMap::new(),
+            ),
+        )]);
+        assert!(validate_other_commodity(&commodity_other.id, &processes).is_ok());
+    }
+
+    #[rstest]
+    fn test_validate_other_commodity_valid_consumer(
+        commodity_other: Commodity,
+        input_flows_other: ProcessFlowsMap,
+    ) {
+        // Valid scenario: commodity is only consumed
+        let processes = ProcessMap::from_iter([(
+            "process1".into(),
+            create_process(
+                "process1".into(),
+                input_flows_other.clone(),
+                ProcessEnergyLimitsMap::new(),
+            ),
+        )]);
+        assert!(validate_other_commodity(&commodity_other.id, &processes).is_ok());
+    }
+
+    #[rstest]
+    fn test_validate_other_commodity_invalid_both(
+        commodity_other: Commodity,
+        input_flows_other: ProcessFlowsMap,
+        output_flows_other: ProcessFlowsMap,
+    ) {
+        // Invalid scenario: commodity is both produced and consumed
+        let processes = ProcessMap::from_iter([
+            (
+                "process1".into(),
+                create_process(
+                    "process1".into(),
+                    input_flows_other.clone(),
+                    ProcessEnergyLimitsMap::new(),
+                ),
+            ),
+            (
+                "process2".into(),
+                create_process(
+                    "process2".into(),
+                    output_flows_other.clone(),
+                    ProcessEnergyLimitsMap::new(),
+                ),
+            ),
+        ]);
+        assert!(validate_other_commodity(&commodity_other.id, &processes).is_err());
+    }
+
+    #[rstest]
+    fn test_validate_other_commodity_invalid_neither(commodity_other: Commodity) {
+        // Invalid scenario: commodity is neither produced nor consumed
+        let processes = ProcessMap::new();
+        assert!(validate_other_commodity(&commodity_other.id, &processes).is_err());
     }
 }
