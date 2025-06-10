@@ -34,6 +34,11 @@ pub struct Asset {
 }
 
 impl Asset {
+    /// Get the asset's ID as a u32
+    pub fn get_id(&self) -> Option<u32> {
+        self.id.map(|AssetID(id)| id)
+    }
+
     /// Create a new [`Asset`].
     ///
     /// The `id` field is initially set to `None`, but is changed to a unique value when the asset
