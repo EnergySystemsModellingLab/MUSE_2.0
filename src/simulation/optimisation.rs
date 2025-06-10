@@ -64,19 +64,17 @@ impl Solution<'_> {
     pub fn create_flow_map(&self) -> FlowMap {
         // The decision variables represent assets' activity levels, not commodity flows. We
         // multiply this value by the flow coeffs to get commodity flows.
-        self.variables
-            .0
-            .keys()
-            .zip(self.solution.columns())
-            .flat_map(|((asset, time_slice), activity)| {
-                asset.iter_flows().map(move |flow| {
-                    (
-                        (asset.clone(), flow.commodity.id.clone(), time_slice.clone()),
-                        activity * flow.coeff,
-                    )
-                })
-            })
-            .collect()
+        let mut flows = FlowMap::new();
+        for ((asset, time_slice), activity) in self.variables.0.keys().zip(self.solution.columns())
+        {
+            for flow in asset.iter_flows() {
+                let flow_key = (asset.clone(), flow.commodity.id.clone(), time_slice.clone());
+                let flow_value = activity * flow.coeff;
+                flows.insert(flow_key, flow_value);
+            }
+        }
+
+        flows
     }
 
     /// Keys and dual values for commodity balance constraints.
