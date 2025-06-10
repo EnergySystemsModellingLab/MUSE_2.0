@@ -313,6 +313,78 @@ mod tests {
         })
     }
 
+    #[fixture]
+    fn flow_with_cost() -> ProcessFlow {
+        ProcessFlow {
+            commodity: Rc::new(Commodity {
+                id: "test_commodity".into(),
+                description: "Test commodity".into(),
+                kind: CommodityType::ServiceDemand,
+                time_slice_level: TimeSliceLevel::Annual,
+                levies: CommodityLevyMap::new(),
+                demand: DemandMap::new(),
+            }),
+            coeff: 1.0,
+            kind: FlowType::Fixed,
+            cost: 5.0,
+            is_pac: true,
+        }
+    }
+
+    #[fixture]
+    fn flow_with_cost_and_levy(region_id: RegionID, time_slice: TimeSliceID) -> ProcessFlow {
+        let mut levies = CommodityLevyMap::new();
+        levies.insert(
+            (region_id, 2020, time_slice),
+            CommodityLevy {
+                balance_type: BalanceType::Net,
+                value: 10.0,
+            },
+        );
+
+        ProcessFlow {
+            commodity: Rc::new(Commodity {
+                id: "test_commodity".into(),
+                description: "Test commodity".into(),
+                kind: CommodityType::ServiceDemand,
+                time_slice_level: TimeSliceLevel::Annual,
+                levies,
+                demand: DemandMap::new(),
+            }),
+            coeff: 1.0,
+            kind: FlowType::Fixed,
+            cost: 5.0,
+            is_pac: true,
+        }
+    }
+
+    #[fixture]
+    fn flow_with_cost_and_incentive(region_id: RegionID, time_slice: TimeSliceID) -> ProcessFlow {
+        let mut levies = CommodityLevyMap::new();
+        levies.insert(
+            (region_id, 2020, time_slice),
+            CommodityLevy {
+                balance_type: BalanceType::Net,
+                value: -3.0,
+            },
+        );
+
+        ProcessFlow {
+            commodity: Rc::new(Commodity {
+                id: "test_commodity".into(),
+                description: "Test commodity".into(),
+                kind: CommodityType::ServiceDemand,
+                time_slice_level: TimeSliceLevel::Annual,
+                levies,
+                demand: DemandMap::new(),
+            }),
+            coeff: 1.0,
+            kind: FlowType::Fixed,
+            cost: 5.0,
+            is_pac: true,
+        }
+    }
+
     #[rstest]
     fn test_get_levy_no_levies(
         commodity_no_levies: Rc<Commodity>,
@@ -478,5 +550,67 @@ mod tests {
         };
 
         assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 0.0);
+    }
+
+    #[rstest]
+    fn test_get_total_cost_base_cost(
+        flow_with_cost: ProcessFlow,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        assert_eq!(
+            flow_with_cost.get_total_cost(&region_id, 2020, &time_slice),
+            5.0
+        );
+    }
+
+    #[rstest]
+    fn test_get_total_cost_with_levy(
+        flow_with_cost_and_levy: ProcessFlow,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        assert_eq!(
+            flow_with_cost_and_levy.get_total_cost(&region_id, 2020, &time_slice),
+            15.0
+        );
+    }
+
+    #[rstest]
+    fn test_get_total_cost_with_incentive(
+        flow_with_cost_and_incentive: ProcessFlow,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        assert_eq!(
+            flow_with_cost_and_incentive.get_total_cost(&region_id, 2020, &time_slice),
+            2.0
+        );
+    }
+
+    #[rstest]
+    fn test_get_total_cost_negative_coeff(
+        flow_with_cost: ProcessFlow,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        let flow = ProcessFlow {
+            coeff: -2.0,
+            ..flow_with_cost
+        };
+        assert_eq!(flow.get_total_cost(&region_id, 2020, &time_slice), 10.0);
+    }
+
+    #[rstest]
+    fn test_get_total_cost_zero_coeff(
+        flow_with_cost: ProcessFlow,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        let flow = ProcessFlow {
+            coeff: 0.0,
+            ..flow_with_cost
+        };
+        assert_eq!(flow.get_total_cost(&region_id, 2020, &time_slice), 0.0);
     }
 }
