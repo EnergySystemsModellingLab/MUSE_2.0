@@ -28,6 +28,7 @@ fn get_git_hash() -> String {
     }
 }
 
+/// Metadata about the program run, build and version information for MUSE and the user's system
 #[derive(Serialize)]
 struct Metadata<'a> {
     run: RunMetadata<'a>,
