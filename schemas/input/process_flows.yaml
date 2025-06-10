@@ -23,16 +23,16 @@ fields:
     type: string
     title: The year(s) to which this entry applies
     description: One or more milestone years separated by semicolons or `all`
-  - name: flow
+  - name: coeff
     type: number
     title: The flow for this commodity
     description: |
       Can be <0, indicating an input flow, or >0, indicating an output flow. Cannot be zero.
-  - name: flow_type
+  - name: type
     type: string
     title: The type of commodity flow
     description: Currently this value must be `fixed`
-  - name: flow_cost
+  - name: cost
     type: number
     title: The cost per unit flow
     description: Optional. If present, must be >0.

@@ -7,8 +7,8 @@ use anyhow::Result;
 use std::collections::HashSet;
 use std::path::Path;
 
-mod cost;
-use cost::read_commodity_costs;
+mod levy;
+use levy::read_commodity_levies;
 mod demand;
 use demand::read_demand;
 mod demand_slicing;
@@ -36,7 +36,7 @@ pub fn read_commodities(
     let commodities =
         read_csv_id_file::<Commodity, CommodityID>(&model_dir.join(COMMODITY_FILE_NAME))?;
     let commodity_ids = commodities.keys().cloned().collect();
-    let mut costs = read_commodity_costs(
+    let mut costs = read_commodity_levies(
         model_dir,
         &commodity_ids,
         region_ids,
@@ -57,7 +57,7 @@ pub fn read_commodities(
         .into_iter()
         .map(|(id, mut commodity)| {
             if let Some(costs) = costs.remove(&id) {
-                commodity.costs = costs;
+                commodity.levies = costs;
             }
             if let Some(demand) = demand.remove(&id) {
                 commodity.demand = demand;

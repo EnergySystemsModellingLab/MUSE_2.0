@@ -5,7 +5,6 @@ use crate::id::define_id_type;
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use indexmap::IndexMap;
-use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
@@ -78,23 +77,23 @@ impl Process {
     }
 }
 
-/// Represents a maximum annual commodity flow for a given process
-#[derive(PartialEq, Debug, Deserialize, Clone)]
+/// Represents a maximum annual commodity coeff for a given process
+#[derive(PartialEq, Debug, Clone)]
 pub struct ProcessFlow {
     /// The commodity produced or consumed by this flow
     pub commodity: Rc<Commodity>,
     /// Maximum annual commodity flow quantity relative to other commodity flows.
     ///
     /// Positive value indicates flow out and negative value indicates flow in.
-    pub flow: f64,
+    pub coeff: f64,
     /// Identifies if a flow is fixed or flexible.
-    pub flow_type: FlowType,
+    pub kind: FlowType,
     /// Cost per unit flow.
     ///
     /// For example, cost per unit of natural gas produced. The user can apply it to any specified
     /// flow, in contrast to [`ProcessParameter::variable_operating_cost`], which applies only to
     /// PAC flows.
-    pub flow_cost: f64,
+    pub cost: f64,
     /// Whether this flow represents a Primary Activity Commodity
     pub is_pac: bool,
 }
@@ -102,18 +101,18 @@ pub struct ProcessFlow {
 /// Type of commodity flow (see [`ProcessFlow`])
 #[derive(PartialEq, Default, Debug, Clone, DeserializeLabeledStringEnum)]
 pub enum FlowType {
+    /// The input to output flow ratio is fixed
     #[default]
     #[string = "fixed"]
-    /// The input to output flow ratio is fixed
     Fixed,
-    #[string = "flexible"]
     /// The flow ratio can vary, subject to overall flow of a specified group of commodities whose
     /// input/output ratio must be as per user input data
+    #[string = "flexible"]
     Flexible,
 }
 
 /// Additional parameters for a process
-#[derive(PartialEq, Clone, Debug, Deserialize)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct ProcessParameter {
     /// Overnight capital cost per unit capacity
     pub capital_cost: f64,

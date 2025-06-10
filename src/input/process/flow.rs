@@ -20,10 +20,11 @@ struct ProcessFlowRaw {
     commodity_id: String,
     years: String,
     regions: String,
-    flow: f64,
+    coeff: f64,
     #[serde(default)]
-    flow_type: FlowType,
-    flow_cost: Option<f64>,
+    #[serde(rename = "type")]
+    kind: FlowType,
+    cost: Option<f64>,
     is_pac: bool,
 }
 
@@ -31,22 +32,22 @@ impl ProcessFlowRaw {
     fn validate(&self) -> Result<()> {
         // Check that flow is not infinity, nan, 0 etc.
         ensure!(
-            self.flow.is_normal(),
-            "Invalid value for flow ({})",
-            self.flow
+            self.coeff.is_normal(),
+            "Invalid value for coeff ({})",
+            self.coeff
         );
 
         // **TODO**: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/300
         ensure!(
-            self.flow_type == FlowType::Fixed,
+            self.kind == FlowType::Fixed,
             "Commodity flexible assets are not currently supported"
         );
 
         // Check that flow cost is non-negative
-        if let Some(flow_cost) = self.flow_cost {
+        if let Some(cost) = self.cost {
             ensure!(
-                (0.0..f64::INFINITY).contains(&flow_cost),
-                "Invalid value for flow cost ({flow_cost}). Must be >=0."
+                (0.0..f64::INFINITY).contains(&cost),
+                "Invalid value for flow cost ({cost}). Must be >=0."
             )
         }
 
@@ -108,9 +109,9 @@ where
         // Create ProcessFlow object
         let process_flow = ProcessFlow {
             commodity: Rc::clone(commodity),
-            flow: record.flow,
-            flow_type: record.flow_type,
-            flow_cost: record.flow_cost.unwrap_or(0.0),
+            coeff: record.coeff,
+            kind: record.kind,
+            cost: record.cost.unwrap_or(0.0),
             is_pac: record.is_pac,
         };
 
@@ -177,7 +178,7 @@ fn validate_flow_map(flow_map: &IndexMap<CommodityID, ProcessFlow>) -> Result<()
     let mut flow_sign: Option<bool> = None; // False for inputs, true for outputs
     for flow in flow_map.values().filter(|flow| flow.is_pac) {
         // Check that flow sign is consistent
-        let current_flow_sign = flow.flow > 0.0;
+        let current_flow_sign = flow.coeff > 0.0;
         if let Some(flow_sign) = flow_sign {
             ensure!(
                 current_flow_sign == flow_sign,
@@ -196,15 +197,15 @@ fn validate_flow_map(flow_map: &IndexMap<CommodityID, ProcessFlow>) -> Result<()
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{Commodity, CommodityCostMap, CommodityType, DemandMap};
+    use crate::commodity::{Commodity, CommodityLevyMap, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
     use indexmap::indexmap;
     use rstest::{fixture, rstest};
 
     fn create_process_flow_raw(
-        flow: f64,
-        flow_type: FlowType,
-        flow_cost: Option<f64>,
+        coeff: f64,
+        kind: FlowType,
+        cost: Option<f64>,
         is_pac: bool,
     ) -> ProcessFlowRaw {
         ProcessFlowRaw {
@@ -212,9 +213,9 @@ mod tests {
             commodity_id: "commodity".into(),
             years: "2020".into(),
             regions: "region".into(),
-            flow,
-            flow_type,
-            flow_cost,
+            coeff,
+            kind,
+            cost,
             is_pac,
         }
     }
@@ -244,12 +245,12 @@ mod tests {
         assert!(invalid.validate().is_err());
     }
 
-    fn create_process_flow(commodity: Rc<Commodity>, flow: f64, is_pac: bool) -> ProcessFlow {
+    fn create_process_flow(commodity: Rc<Commodity>, coeff: f64, is_pac: bool) -> ProcessFlow {
         ProcessFlow {
             commodity,
-            flow,
-            flow_type: FlowType::Fixed,
-            flow_cost: 0.0,
+            coeff,
+            kind: FlowType::Fixed,
+            cost: 0.0,
             is_pac,
         }
     }
@@ -262,7 +263,7 @@ mod tests {
             kind: CommodityType::ServiceDemand,
             demand: DemandMap::default(),
             time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::default(),
+            levies: CommodityLevyMap::default(),
         }
     }
 
@@ -274,7 +275,7 @@ mod tests {
             kind: CommodityType::ServiceDemand,
             demand: DemandMap::default(),
             time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::default(),
+            levies: CommodityLevyMap::default(),
         }
     }
 

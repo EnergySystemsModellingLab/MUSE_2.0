@@ -205,9 +205,9 @@ fn validate_sed_commodity(
     for flows in flows.values() {
         let flows = flows.get(&(region_id.clone(), *year)).unwrap();
         if let Some(flow) = flows.get(&commodity_id.clone()) {
-            if flow.flow > 0.0 {
+            if flow.coeff > 0.0 {
                 has_producer = true;
-            } else if flow.flow < 0.0 {
+            } else if flow.coeff < 0.0 {
                 has_consumer = true;
             }
         }
@@ -250,7 +250,7 @@ fn validate_svd_commodity(
             // We're only interested in processes which produce this commodity
             continue;
         };
-        if flow.flow <= 0.0 {
+        if flow.coeff <= 0.0 {
             // Check if it's a producer
             continue;
         }
@@ -280,7 +280,7 @@ fn validate_svd_commodity(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{CommodityCostMap, DemandMap};
+    use crate::commodity::{CommodityLevyMap, DemandMap};
     use crate::fixture::{time_slice, time_slice_info};
     use crate::process::{FlowType, ProcessFlow};
     use crate::time_slice::{TimeSliceID, TimeSliceLevel};
@@ -294,7 +294,7 @@ mod tests {
             description: "SED commodity".into(),
             kind: CommodityType::SupplyEqualsDemand,
             time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::new(),
+            levies: CommodityLevyMap::new(),
             demand: DemandMap::new(),
         }
     }
@@ -305,9 +305,9 @@ mod tests {
             ("GBR".into(), 2010),
             indexmap! { commodity_sed.id.clone() => ProcessFlow {
                 commodity: commodity_sed.into(),
-                flow: -10.0,
-                flow_type: FlowType::Fixed,
-                flow_cost: 1.0,
+                coeff: -10.0,
+                kind: FlowType::Fixed,
+                cost: 1.0,
                 is_pac: false,
             }},
         )])
@@ -319,9 +319,9 @@ mod tests {
             ("GBR".into(), 2010),
             indexmap! {commodity_sed.id.clone()=>ProcessFlow {
                 commodity: commodity_sed.into(),
-                flow: 10.0,
-                flow_type: FlowType::Fixed,
-                flow_cost: 1.0,
+                coeff: 10.0,
+                kind: FlowType::Fixed,
+                cost: 1.0,
                 is_pac: false,
             }},
         )])
@@ -367,7 +367,7 @@ mod tests {
             description: "SVD commodity".into(),
             kind: CommodityType::ServiceDemand,
             time_slice_level: TimeSliceLevel::Annual,
-            costs: CommodityCostMap::new(),
+            levies: CommodityLevyMap::new(),
             demand,
         }
     }
@@ -380,9 +380,9 @@ mod tests {
                 ("GBR".into(), 2010),
                 indexmap! { commodity_svd.id.clone() => ProcessFlow {
                     commodity: commodity_svd.into(),
-                    flow: 10.0,
-                    flow_type: FlowType::Fixed,
-                    flow_cost: 1.0,
+                    coeff: 10.0,
+                    kind: FlowType::Fixed,
+                    cost: 1.0,
                     is_pac: false,
                 }},
             )]),
