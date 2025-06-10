@@ -167,3 +167,316 @@ pub struct ProcessParameter {
     /// PJ energy output in a year.
     pub capacity_to_activity: f64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commodity::{
+        BalanceType, CommodityLevy, CommodityLevyMap, CommodityType, DemandMap,
+    };
+    use crate::fixture::{region_id, time_slice};
+    use crate::time_slice::TimeSliceLevel;
+    use rstest::{fixture, rstest};
+    use std::rc::Rc;
+
+    #[fixture]
+    fn commodity_with_levy(region_id: RegionID, time_slice: TimeSliceID) -> Rc<Commodity> {
+        let mut levies = CommodityLevyMap::new();
+        // Add levy for the default region and time slice
+        levies.insert(
+            (region_id.clone(), 2020, time_slice.clone()),
+            CommodityLevy {
+                balance_type: BalanceType::Net,
+                value: 10.0,
+            },
+        );
+        // Add levy for a different region
+        levies.insert(
+            ("USA".into(), 2020, time_slice.clone()),
+            CommodityLevy {
+                balance_type: BalanceType::Net,
+                value: 5.0,
+            },
+        );
+        // Add levy for a different year
+        levies.insert(
+            (region_id.clone(), 2030, time_slice.clone()),
+            CommodityLevy {
+                balance_type: BalanceType::Net,
+                value: 7.0,
+            },
+        );
+        // Add levy for a different time slice
+        levies.insert(
+            (
+                region_id.clone(),
+                2020,
+                TimeSliceID {
+                    season: "summer".into(),
+                    time_of_day: "day".into(),
+                },
+            ),
+            CommodityLevy {
+                balance_type: BalanceType::Net,
+                value: 3.0,
+            },
+        );
+
+        Rc::new(Commodity {
+            id: "test_commodity".into(),
+            description: "Test commodity".into(),
+            kind: CommodityType::ServiceDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            levies,
+            demand: DemandMap::new(),
+        })
+    }
+
+    #[fixture]
+    fn commodity_with_consumption_levy(
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) -> Rc<Commodity> {
+        let mut levies = CommodityLevyMap::new();
+        levies.insert(
+            (region_id, 2020, time_slice),
+            CommodityLevy {
+                balance_type: BalanceType::Consumption,
+                value: 10.0,
+            },
+        );
+
+        Rc::new(Commodity {
+            id: "test_commodity".into(),
+            description: "Test commodity".into(),
+            kind: CommodityType::ServiceDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            levies,
+            demand: DemandMap::new(),
+        })
+    }
+
+    #[fixture]
+    fn commodity_with_production_levy(
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) -> Rc<Commodity> {
+        let mut levies = CommodityLevyMap::new();
+        levies.insert(
+            (region_id, 2020, time_slice),
+            CommodityLevy {
+                balance_type: BalanceType::Production,
+                value: 10.0,
+            },
+        );
+
+        Rc::new(Commodity {
+            id: "test_commodity".into(),
+            description: "Test commodity".into(),
+            kind: CommodityType::ServiceDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            levies,
+            demand: DemandMap::new(),
+        })
+    }
+
+    #[fixture]
+    fn commodity_with_incentive(region_id: RegionID, time_slice: TimeSliceID) -> Rc<Commodity> {
+        let mut levies = CommodityLevyMap::new();
+        levies.insert(
+            (region_id, 2020, time_slice),
+            CommodityLevy {
+                balance_type: BalanceType::Net,
+                value: -5.0,
+            },
+        );
+
+        Rc::new(Commodity {
+            id: "test_commodity".into(),
+            description: "Test commodity".into(),
+            kind: CommodityType::ServiceDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            levies,
+            demand: DemandMap::new(),
+        })
+    }
+
+    #[fixture]
+    fn commodity_no_levies() -> Rc<Commodity> {
+        Rc::new(Commodity {
+            id: "test_commodity".into(),
+            description: "Test commodity".into(),
+            kind: CommodityType::ServiceDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            levies: CommodityLevyMap::new(),
+            demand: DemandMap::new(),
+        })
+    }
+
+    #[rstest]
+    fn test_get_levy_no_levies(
+        commodity_no_levies: Rc<Commodity>,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        let flow = ProcessFlow {
+            commodity: commodity_no_levies,
+            coeff: 1.0,
+            kind: FlowType::Fixed,
+            cost: 0.0,
+            is_pac: true,
+        };
+
+        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 0.0);
+    }
+
+    #[rstest]
+    fn test_get_levy_with_levy(
+        commodity_with_levy: Rc<Commodity>,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        let flow = ProcessFlow {
+            commodity: commodity_with_levy,
+            coeff: 1.0,
+            kind: FlowType::Fixed,
+            cost: 0.0,
+            is_pac: true,
+        };
+
+        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 10.0);
+    }
+
+    #[rstest]
+    fn test_get_levy_with_incentive(
+        commodity_with_incentive: Rc<Commodity>,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        let flow = ProcessFlow {
+            commodity: commodity_with_incentive,
+            coeff: 1.0,
+            kind: FlowType::Fixed,
+            cost: 0.0,
+            is_pac: true,
+        };
+
+        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), -5.0);
+    }
+
+    #[rstest]
+    fn test_get_levy_different_region(commodity_with_levy: Rc<Commodity>, time_slice: TimeSliceID) {
+        let flow = ProcessFlow {
+            commodity: commodity_with_levy,
+            coeff: 1.0,
+            kind: FlowType::Fixed,
+            cost: 0.0,
+            is_pac: true,
+        };
+
+        assert_eq!(flow.get_levy(&"USA".into(), 2020, &time_slice), 5.0);
+    }
+
+    #[rstest]
+    fn test_get_levy_different_year(
+        commodity_with_levy: Rc<Commodity>,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        let flow = ProcessFlow {
+            commodity: commodity_with_levy,
+            coeff: 1.0,
+            kind: FlowType::Fixed,
+            cost: 0.0,
+            is_pac: true,
+        };
+
+        assert_eq!(flow.get_levy(&region_id, 2030, &time_slice), 7.0);
+    }
+
+    #[rstest]
+    fn test_get_levy_different_time_slice(commodity_with_levy: Rc<Commodity>, region_id: RegionID) {
+        let flow = ProcessFlow {
+            commodity: commodity_with_levy,
+            coeff: 1.0,
+            kind: FlowType::Fixed,
+            cost: 0.0,
+            is_pac: true,
+        };
+
+        let different_time_slice = TimeSliceID {
+            season: "summer".into(),
+            time_of_day: "day".into(),
+        };
+
+        assert_eq!(flow.get_levy(&region_id, 2020, &different_time_slice), 3.0);
+    }
+
+    #[rstest]
+    fn test_get_levy_consumption_positive_coeff(
+        commodity_with_consumption_levy: Rc<Commodity>,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        let flow = ProcessFlow {
+            commodity: commodity_with_consumption_levy,
+            coeff: 1.0, // Positive coefficient means production
+            kind: FlowType::Fixed,
+            cost: 0.0,
+            is_pac: true,
+        };
+
+        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 0.0);
+    }
+
+    #[rstest]
+    fn test_get_levy_consumption_negative_coeff(
+        commodity_with_consumption_levy: Rc<Commodity>,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        let flow = ProcessFlow {
+            commodity: commodity_with_consumption_levy,
+            coeff: -1.0, // Negative coefficient means consumption
+            kind: FlowType::Fixed,
+            cost: 0.0,
+            is_pac: true,
+        };
+
+        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 10.0);
+    }
+
+    #[rstest]
+    fn test_get_levy_production_positive_coeff(
+        commodity_with_production_levy: Rc<Commodity>,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        let flow = ProcessFlow {
+            commodity: commodity_with_production_levy,
+            coeff: 1.0, // Positive coefficient means production
+            kind: FlowType::Fixed,
+            cost: 0.0,
+            is_pac: true,
+        };
+
+        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 10.0);
+    }
+
+    #[rstest]
+    fn test_get_levy_production_negative_coeff(
+        commodity_with_production_levy: Rc<Commodity>,
+        region_id: RegionID,
+        time_slice: TimeSliceID,
+    ) {
+        let flow = ProcessFlow {
+            commodity: commodity_with_production_levy,
+            coeff: -1.0, // Negative coefficient means consumption
+            kind: FlowType::Fixed,
+            cost: 0.0,
+            is_pac: true,
+        };
+
+        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 0.0);
+    }
+}
