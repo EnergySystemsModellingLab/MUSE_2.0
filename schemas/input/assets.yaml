@@ -1,0 +1,24 @@
+title: Main assets file
+description: Defines assets in the system
+
+fields:
+  - name: process_id
+    type: string
+    title: The process of which this asset is an instance
+  - name: region_id
+    type: string
+    title: The region in which this agent operates
+  - name: agent_id
+    type: string
+    title: The agent to which this asset belongs
+  - name: capacity
+    type: number
+    title: The capacity of the asset
+    description: Must be >0
+  - name: commission_year
+    type: integer
+    title: The year in which to commission this asset
+    description: |
+      This value can be any integer >=0. If it is before the start of the simulation, it will
+      already be commissioned in the first year and if it after the end of the simulation then it
+      will never be commissioned.

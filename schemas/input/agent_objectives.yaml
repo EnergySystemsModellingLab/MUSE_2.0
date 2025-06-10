@@ -1,0 +1,29 @@
+title: Agent objectives
+description: |
+  Describes the agents' objectives.
+
+  Every agent must have one objective for each milestone year. If the weighted sum decision rule is
+  in use, the `decision_weight` value must be provided, otherwise it must be omitted. If the lexico
+  decision rule is in use, the `decision_lexico_order` value must be provided, otherwise it must be
+  omitted.
+
+fields:
+  - name: agent_id
+    type: string
+    title: An agent ID
+  - name: years
+    type: string
+    title: The year(s) to which this entry applies
+    description: One or more milestone years separated by semicolons or `all`
+  - name: objective_type
+    type: string
+    title: The type of objective
+    description: Currently only `lcox` is supported
+  - name: decision_weight
+    type: number
+    title: Weight for weighted sum decision rule
+    description: Currently unused
+  - name: decision_lexico_order
+    type: integer
+    title: Order in which to consider objectives for lexico decision rule
+    description: Currently unused

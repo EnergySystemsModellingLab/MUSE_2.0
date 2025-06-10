@@ -1,0 +1,20 @@
+title: Main processes file
+
+fields:
+  - name: id
+    type: string
+    title: A unique identifier for a process
+  - name: description
+    type: string
+    title: A human-readable label for the process
+  - name: regions
+    type: string
+    title: The region(s) in which this process can operate
+    description: One or more region IDs, separated by semicolons or the string `all`
+  - name: start_year
+    type: integer
+    title: The first year when this process is available to agents
+  - name: end_year
+    type: integer
+    title: The last year when this process is available to agents
+    description: Must be >= to `start_year`

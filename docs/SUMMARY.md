@@ -3,6 +3,7 @@
 [Introduction](./introduction.md)
 
 - [User Guide](./user_guide.md)
+- [Input Format](./input_format.md)
 - [Command Line Help](./command_line_help.md)
 - [Model Description](./model_description.md)
 - [Dispatch Optimisation](./dispatch_optimisation.md)
