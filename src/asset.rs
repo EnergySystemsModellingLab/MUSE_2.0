@@ -6,19 +6,20 @@ use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, RangeInclusive};
 use std::rc::Rc;
 
 /// A unique identifier for an asset
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct AssetID(u32);
 
 /// An asset controlled by an agent.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Asset {
     /// A unique identifier for the asset
-    id: Option<AssetID>,
+    pub id: Option<AssetID>,
     /// A unique identifier for the agent
     pub agent_id: AgentID,
     /// The [`Process`] that this asset corresponds to
@@ -34,11 +35,6 @@ pub struct Asset {
 }
 
 impl Asset {
-    /// Get the asset's ID as a u32
-    pub fn get_id(&self) -> Option<u32> {
-        self.id.map(|AssetID(id)| id)
-    }
-
     /// Create a new [`Asset`].
     ///
     /// The `id` field is initially set to `None`, but is changed to a unique value when the asset

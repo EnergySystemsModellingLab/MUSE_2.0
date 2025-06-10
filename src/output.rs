@@ -1,6 +1,6 @@
 //! The module responsible for writing output data to disk.
 use crate::agent::AgentID;
-use crate::asset::{Asset, AssetRef};
+use crate::asset::{Asset, AssetID, AssetRef};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
 use crate::region::RegionID;
@@ -70,7 +70,7 @@ pub fn create_output_directory(output_dir: &Path) -> Result<()> {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct AssetRow {
     milestone_year: u32,
-    asset_id: u32,
+    asset_id: AssetID,
     process_id: ProcessID,
     region_id: RegionID,
     agent_id: AgentID,
@@ -82,7 +82,7 @@ impl AssetRow {
     fn new(milestone_year: u32, asset: &Asset) -> Self {
         Self {
             milestone_year,
-            asset_id: asset.get_id().unwrap(),
+            asset_id: asset.id.unwrap(),
             process_id: asset.process.id.clone(),
             region_id: asset.region_id.clone(),
             agent_id: asset.agent_id.clone(),
@@ -95,7 +95,7 @@ impl AssetRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityFlowRow {
     milestone_year: u32,
-    asset_id: u32,
+    asset_id: AssetID,
     commodity_id: CommodityID,
     time_slice: TimeSliceID,
     flow: f64,
@@ -115,7 +115,7 @@ struct CommodityPriceRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CapacityDualsRow {
     milestone_year: u32,
-    asset_id: u32,
+    asset_id: AssetID,
     time_slice: TimeSliceID,
     value: f64,
 }
@@ -183,7 +183,7 @@ impl DebugDataWriter {
         for (asset, time_slice, value) in iter {
             let row = CapacityDualsRow {
                 milestone_year,
-                asset_id: asset.get_id().unwrap(),
+                asset_id: asset.id.unwrap(),
                 time_slice: time_slice.clone(),
                 value,
             };
@@ -278,7 +278,7 @@ impl DataWriter {
         for ((asset, commodity_id, time_slice), flow) in flow_map {
             let row = CommodityFlowRow {
                 milestone_year,
-                asset_id: asset.get_id().unwrap(),
+                asset_id: asset.id.unwrap(),
                 commodity_id: commodity_id.clone(),
                 time_slice: time_slice.clone(),
                 flow: *flow,
@@ -381,7 +381,7 @@ mod tests {
         // Read back and compare
         let expected = CommodityFlowRow {
             milestone_year,
-            asset_id: asset.get_id().unwrap(),
+            asset_id: asset.id.unwrap(),
             commodity_id,
             time_slice,
             flow: 42.0,
@@ -486,7 +486,7 @@ mod tests {
         // Read back and compare
         let expected = CapacityDualsRow {
             milestone_year,
-            asset_id: asset.get_id().unwrap(),
+            asset_id: asset.id.unwrap(),
             time_slice,
             value,
         };
