@@ -201,8 +201,12 @@ fn add_variables(
 }
 
 /// Calculate the cost coefficient for a decision variable
-fn calculate_cost_coefficient(_asset: &Asset, _year: u32, _time_slice: &TimeSliceID) -> f64 {
-    // **TODO:** Calculate cost coefficient here:
-    //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/590
-    1.0
+fn calculate_cost_coefficient(asset: &Asset, year: u32, time_slice: &TimeSliceID) -> f64 {
+    // The cost for all commodity flows (including levies/incentives)
+    let flows_cost: f64 = asset
+        .iter_flows()
+        .map(|flow| flow.get_total_cost(&asset.region_id, year, time_slice))
+        .sum();
+
+    asset.process_parameter.variable_operating_cost + flows_cost
 }
