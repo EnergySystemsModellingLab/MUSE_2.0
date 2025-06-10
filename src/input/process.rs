@@ -157,33 +157,66 @@ fn validate_commodities(
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
-    for (commodity, region_id, year) in iproduct!(
-        commodities.values(),
-        region_ids.iter(),
-        milestone_years.iter().copied(),
-    ) {
-        match commodity.kind {
-            CommodityType::SupplyEqualsDemand => {
-                validate_sed_commodity(&commodity.id, flows, region_id, year)?;
-            }
-            CommodityType::ServiceDemand => {
-                for ts_selection in
-                    time_slice_info.iter_selections_for_level(commodity.time_slice_level)
-                {
-                    validate_svd_commodity(
-                        time_slice_info,
-                        commodity,
-                        flows,
-                        availabilities,
-                        region_id,
-                        year,
-                        &ts_selection,
-                    )?;
+    for commodity in commodities.values() {
+        if commodity.kind == CommodityType::Other {
+            validate_other_commodity(&commodity.id, flows)?;
+            continue;
+        }
+
+        for (region_id, year) in iproduct!(region_ids.iter(), milestone_years.iter().copied()) {
+            match commodity.kind {
+                CommodityType::SupplyEqualsDemand => {
+                    validate_sed_commodity(&commodity.id, flows, region_id, year)?;
                 }
+                CommodityType::ServiceDemand => {
+                    for ts_selection in
+                        time_slice_info.iter_selections_for_level(commodity.time_slice_level)
+                    {
+                        validate_svd_commodity(
+                            time_slice_info,
+                            commodity,
+                            flows,
+                            availabilities,
+                            region_id,
+                            year,
+                            &ts_selection,
+                        )?;
+                    }
+                }
+                _ => unreachable!(),
             }
-            _ => {}
         }
     }
+
+    Ok(())
+}
+
+/// Check that commodities of type other are either produced or consumed but not both
+fn validate_other_commodity(
+    commodity_id: &CommodityID,
+    flows: &HashMap<ProcessID, ProcessFlowsMap>,
+) -> Result<()> {
+    let mut is_producer = None;
+    for flows in flows.values().flat_map(|flows| flows.values()) {
+        if let Some(flow) = flows.get(commodity_id) {
+            let cur_is_producer = flow.coeff > 0.0;
+            if let Some(is_producer) = is_producer {
+                ensure!(
+                    is_producer == cur_is_producer,
+                    "{commodity_id} is both a producer and consumer. \
+                    Commodities of type 'other' must only be consumed or produced."
+                );
+            } else {
+                is_producer = Some(cur_is_producer);
+            }
+        }
+    }
+
+    ensure!(
+        is_producer.is_some(),
+        "Commodity {commodity_id} is neither produced or consumed."
+    );
+
     Ok(())
 }
 
@@ -441,6 +474,92 @@ mod tests {
             ),
             "Commodity commodity_svd of 'SVD' type must have a producer process \
             for region GBR in year 2010 and time slice(s) winter.day"
+        );
+    }
+
+    #[fixture]
+    fn commodity_other() -> Commodity {
+        Commodity {
+            id: "commodity_other".into(),
+            description: "Other commodity".into(),
+            kind: CommodityType::Other,
+            time_slice_level: TimeSliceLevel::Annual,
+            levies: CommodityLevyMap::new(),
+            demand: DemandMap::new(),
+        }
+    }
+
+    #[fixture]
+    fn producer_flows(commodity_other: Commodity) -> ProcessFlowsMap {
+        ProcessFlowsMap::from_iter(vec![(
+            ("GBR".into(), 2010),
+            indexmap! { commodity_other.id.clone() => ProcessFlow {
+                commodity: commodity_other.into(),
+                coeff: 10.0,
+                kind: FlowType::Fixed,
+                cost: 1.0
+            }},
+        )])
+    }
+
+    #[fixture]
+    fn consumer_flows(commodity_other: Commodity) -> ProcessFlowsMap {
+        ProcessFlowsMap::from_iter(vec![(
+            ("GBR".into(), 2010),
+            indexmap! { commodity_other.id.clone() => ProcessFlow {
+                commodity: commodity_other.into(),
+                coeff: -10.0,
+                kind: FlowType::Fixed,
+                cost: 1.0
+            }},
+        )])
+    }
+
+    #[rstest]
+    fn test_validate_other_commodity_valid_producer(
+        commodity_other: Commodity,
+        producer_flows: ProcessFlowsMap,
+    ) {
+        // Valid scenario: commodity is only produced
+        let flows = HashMap::from_iter(vec![("process1".into(), producer_flows)]);
+        assert!(validate_other_commodity(&commodity_other.id, &flows).is_ok());
+    }
+
+    #[rstest]
+    fn test_validate_other_commodity_valid_consumer(
+        commodity_other: Commodity,
+        consumer_flows: ProcessFlowsMap,
+    ) {
+        // Valid scenario: commodity is only consumed
+        let flows = HashMap::from_iter(vec![("process1".into(), consumer_flows)]);
+        assert!(validate_other_commodity(&commodity_other.id, &flows).is_ok());
+    }
+
+    #[rstest]
+    fn test_validate_other_commodity_invalid_both(
+        commodity_other: Commodity,
+        producer_flows: ProcessFlowsMap,
+        consumer_flows: ProcessFlowsMap,
+    ) {
+        // Invalid scenario: commodity is both produced and consumed
+        let flows = HashMap::from_iter(vec![
+            ("process1".into(), producer_flows),
+            ("process2".into(), consumer_flows),
+        ]);
+        assert_error!(
+            validate_other_commodity(&commodity_other.id, &flows),
+            "commodity_other is both a producer and consumer. \
+             Commodities of type 'other' must only be consumed or produced."
+        );
+    }
+
+    #[rstest]
+    fn test_validate_other_commodity_invalid_neither(commodity_other: Commodity) {
+        // Invalid scenario: commodity is neither produced nor consumed
+        let flows = HashMap::new();
+        assert_error!(
+            validate_other_commodity(&commodity_other.id, &flows),
+            "Commodity commodity_other is neither produced or consumed."
         );
     }
 }
