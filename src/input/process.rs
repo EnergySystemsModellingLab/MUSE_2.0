@@ -275,7 +275,7 @@ fn validate_svd_commodity(
 mod tests {
     use super::*;
     use crate::commodity::{CommodityLevyMap, DemandMap};
-    use crate::fixture::{time_slice, time_slice_info};
+    use crate::fixture::{assert_error, time_slice, time_slice_info};
     use crate::process::{FlowType, ProcessFlow};
     use crate::time_slice::{TimeSliceID, TimeSliceLevel};
     use indexmap::indexmap;
@@ -340,14 +340,20 @@ mod tests {
     ) {
         // Invalid scenario: no producer
         let flows = HashMap::from_iter(vec![("process1".into(), input_flows_sed.clone())]);
-        assert!(validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), 2010).is_err());
+        assert_error!(
+            validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), 2010),
+            "Commodity commodity_sed of 'SED' type must have both producer and consumer processes for region GBR in year 2010"
+        );
     }
 
     #[rstest]
     fn test_validate_sed_commodity(commodity_sed: Commodity, output_flows_sed: ProcessFlowsMap) {
         // Invalid scenario: no consumer
         let flows = HashMap::from_iter(vec![("process2".into(), output_flows_sed.clone())]);
-        assert!(validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), 2010).is_err());
+        assert_error!(
+            validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), 2010),
+            "Commodity commodity_sed of 'SED' type must have both producer and consumer processes for region GBR in year 2010"
+        );
     }
 
     #[fixture]
@@ -423,15 +429,18 @@ mod tests {
                 0.0..=0.0,
             )]),
         )]);
-        assert!(validate_svd_commodity(
-            &time_slice_info,
-            &commodity_svd,
-            &flows_svd,
-            &availabilities,
-            &"GBR".into(),
-            2010,
-            &time_slice.into()
-        )
-        .is_err());
+        assert_error!(
+            validate_svd_commodity(
+                &time_slice_info,
+                &commodity_svd,
+                &flows_svd,
+                &availabilities,
+                &"GBR".into(),
+                2010,
+                &time_slice.into()
+            ),
+            "Commodity commodity_svd of 'SVD' type must have a producer process \
+            for region GBR in year 2010 and time slice(s) winter.day"
+        );
     }
 }
