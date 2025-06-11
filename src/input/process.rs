@@ -160,7 +160,7 @@ fn validate_commodities(
     for (commodity, region_id, year) in iproduct!(
         commodities.values(),
         region_ids.iter(),
-        milestone_years.iter(),
+        milestone_years.iter().copied(),
     ) {
         match commodity.kind {
             CommodityType::SupplyEqualsDemand => {
@@ -192,12 +192,12 @@ fn validate_sed_commodity(
     commodity_id: &CommodityID,
     flows: &HashMap<ProcessID, ProcessFlowsMap>,
     region_id: &RegionID,
-    year: &u32,
+    year: u32,
 ) -> Result<()> {
     let mut has_producer = false;
     let mut has_consumer = false;
     for flows in flows.values() {
-        let flows = flows.get(&(region_id.clone(), *year)).unwrap();
+        let flows = flows.get(&(region_id.clone(), year)).unwrap();
         if let Some(flow) = flows.get(&commodity_id.clone()) {
             if flow.coeff > 0.0 {
                 has_producer = true;
@@ -223,14 +223,14 @@ fn validate_svd_commodity(
     flows: &HashMap<ProcessID, ProcessFlowsMap>,
     availabilities: &HashMap<ProcessID, ProcessActivityLimitsMap>,
     region_id: &RegionID,
-    year: &u32,
+    year: u32,
     ts_selection: &TimeSliceSelection,
 ) -> Result<()> {
     // Check if the commodity has a demand in the given time slice, region and year.
     // We only need to check for producers if there is positive demand.
     let demand = *commodity
         .demand
-        .get(&(region_id.clone(), *year, ts_selection.clone()))
+        .get(&(region_id.clone(), year, ts_selection.clone()))
         .unwrap();
     if demand <= 0.0 {
         return Ok(());
@@ -239,7 +239,7 @@ fn validate_svd_commodity(
     // We must check for producers in the given year, region and time slices.
     // This includes checking if flow > 0 and if availability > 0.
     for (process_id, flows) in flows.iter() {
-        let flows = flows.get(&(region_id.clone(), *year)).unwrap();
+        let flows = flows.get(&(region_id.clone(), year)).unwrap();
         let Some(flow) = flows.get(&commodity.id) else {
             // We're only interested in processes which produce this commodity
             continue;
@@ -253,7 +253,7 @@ fn validate_svd_commodity(
         let availabilities = availabilities.get(process_id).unwrap();
         for (ts, _) in ts_selection.iter(time_slice_info) {
             let availability = availabilities
-                .get(&(region_id.clone(), *year, ts.clone()))
+                .get(&(region_id.clone(), year, ts.clone()))
                 .unwrap();
             if *availability.end() > 0.0 {
                 return Ok(());
@@ -330,7 +330,7 @@ mod tests {
             ("process1".into(), input_flows_sed.clone()),
             ("process2".into(), output_flows_sed.clone()),
         ]);
-        assert!(validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), &2010).is_ok());
+        assert!(validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), 2010).is_ok());
     }
 
     #[rstest]
@@ -340,14 +340,14 @@ mod tests {
     ) {
         // Invalid scenario: no producer
         let flows = HashMap::from_iter(vec![("process1".into(), input_flows_sed.clone())]);
-        assert!(validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), &2010).is_err());
+        assert!(validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), 2010).is_err());
     }
 
     #[rstest]
     fn test_validate_sed_commodity(commodity_sed: Commodity, output_flows_sed: ProcessFlowsMap) {
         // Invalid scenario: no consumer
         let flows = HashMap::from_iter(vec![("process2".into(), output_flows_sed.clone())]);
-        assert!(validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), &2010).is_err());
+        assert!(validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), 2010).is_err());
     }
 
     #[fixture]
@@ -402,7 +402,7 @@ mod tests {
             &flows_svd,
             &availabilities,
             &"GBR".into(),
-            &2010,
+            2010,
             &time_slice.into()
         )
         .is_ok());
@@ -429,7 +429,7 @@ mod tests {
             &flows_svd,
             &availabilities,
             &"GBR".into(),
-            &2010,
+            2010,
             &time_slice.into()
         )
         .is_err());
