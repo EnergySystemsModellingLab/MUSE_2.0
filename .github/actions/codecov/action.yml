@@ -1,0 +1,23 @@
+name: Code coverage
+description: Generate code coverage and upload to codecov
+inputs:
+  token:
+    description: Codecov token
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install cargo-llvm-cov
+      shell: bash
+      run: cargo install cargo-llvm-cov
+
+    - name: Generate code coverage
+      shell: bash
+      run: cargo llvm-cov --codecov --output-path codecov.json
+
+    - name: Upload to codecov.io
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ inputs.token }}
+        fail_ci_if_error: true
