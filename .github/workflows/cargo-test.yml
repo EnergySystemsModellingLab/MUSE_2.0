@@ -1,4 +1,4 @@
-name: Cargo Build & Test
+name: Cargo Test
 
 on:
   push:
@@ -10,7 +10,7 @@ env:
 
 jobs:
   build_and_test:
-    name: Build and test
+    name: Run tests
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
