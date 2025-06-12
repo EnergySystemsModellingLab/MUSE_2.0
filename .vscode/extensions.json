@@ -4,6 +4,7 @@
         "vadimcn.vscode-lldb",
         "editorconfig.editorconfig",
         "esbenp.prettier-vscode",
-        "davidanson.vscode-markdownlint"
+        "davidanson.vscode-markdownlint",
+        "samuelcolvin.jinjahtml"
     ]
 }
