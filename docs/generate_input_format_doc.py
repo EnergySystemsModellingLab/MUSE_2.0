@@ -43,7 +43,7 @@ class Section:
 
 def generate_markdown() -> str:
     """Generate markdown from Jinja template using metadata in schemas."""
-    env = Environment(loader=FileSystemLoader(_DOCS_DIR))
+    env = Environment(loader=FileSystemLoader(_DOCS_DIR / "file_format_docs"))
     template = env.get_template("input_format.md.jinja")
     return template.render(script_name=Path(__file__).name, sections=load_sections())
 
