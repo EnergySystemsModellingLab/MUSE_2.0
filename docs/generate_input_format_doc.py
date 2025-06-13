@@ -44,10 +44,11 @@ def generate_markdown() -> str:
 
 def load_sections() -> Iterable[Section]:
     for title, patterns in _FILE_ORDER.items():
+        paths = []
         for pattern in patterns:
-            paths = map(str, _SCHEMA_DIR.glob(f"{pattern}.yaml"))
-            files = (load_file(Path(path)) for path in sorted(paths))
-            yield Section(title, files)
+            paths.extend(map(str, _SCHEMA_DIR.glob(f"{pattern}.yaml")))
+        files = (load_file(Path(path)) for path in sorted(paths))
+        yield Section(title, files)
 
 
 def load_file(path: Path) -> File:

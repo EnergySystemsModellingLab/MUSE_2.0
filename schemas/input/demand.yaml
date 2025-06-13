@@ -13,7 +13,7 @@ fields:
     type: string
     description: The region to which this entry applies
     notes: A region ID
-  - name: years
+  - name: year
     type: string
     description: The year(s) to which this entry applies
     notes: One or more milestone years separated by semicolons or `all`
