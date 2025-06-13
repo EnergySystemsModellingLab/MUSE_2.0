@@ -1,35 +1,38 @@
-title: The commodity flows for each process
 description: |
-  Commodity flows can vary by region and year. For each process, there must be entries covering all
-  the years and regions in which the process operates.
+  The commodity flows for each process
+
+notes:
+  - Commodity flows can vary by region and year.
+  - For each process, there must be entries covering all the years and regions in which the process
+    operates.
 
 fields:
   - name: process_id
     type: string
-    title: The process to which this entry applies
+    description: The process to which this entry applies
   - name: commodity_id
     type: string
-    title: The commodity for this flow
+    description: The commodity for this flow
   - name: regions
     type: string
-    title: The region(s) to which this entry applies
-    description: |
+    description: The region(s) to which this entry applies
+    notes: |
       One or more region IDs, separated by semicolons or the string `all`. Must be regions in which
       the process operates.
   - name: years
     type: string
-    title: The year(s) to which this entry applies
-    description: One or more milestone years separated by semicolons or `all`
+    description: The year(s) to which this entry applies
+    notes: One or more milestone years separated by semicolons or `all`
   - name: coeff
     type: number
-    title: The flow for this commodity
-    description: |
+    description: The flow for this commodity
+    notes: |
       Can be <0, indicating an input flow, or >0, indicating an output flow. Cannot be zero.
   - name: type
     type: string
-    title: The type of commodity flow
-    description: Currently this value must be `fixed`
+    description: The type of commodity flow
+    notes: Currently this value must be `fixed`
   - name: cost
     type: number
-    title: The cost per unit flow
-    description: Optional. If present, must be >0.
+    description: The cost per unit flow
+    notes: Optional. If present, must be >0.

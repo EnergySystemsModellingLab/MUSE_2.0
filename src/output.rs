@@ -1,6 +1,6 @@
 //! The module responsible for writing output data to disk.
 use crate::agent::AgentID;
-use crate::asset::{Asset, AssetRef};
+use crate::asset::{Asset, AssetID, AssetRef};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
 use crate::region::RegionID;
@@ -66,13 +66,11 @@ pub fn create_output_directory(output_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Used to represent assets in assets output CSV file and other output files.
-///
-/// NB: It may be better to represent assets in these other files with IDs instead, see
-/// [#581](https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/581).
+/// Represents a row in the assets output CSV file.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct AssetRow {
     milestone_year: u32,
+    asset_id: AssetID,
     process_id: ProcessID,
     region_id: RegionID,
     agent_id: AgentID,
@@ -84,6 +82,7 @@ impl AssetRow {
     fn new(milestone_year: u32, asset: &Asset) -> Self {
         Self {
             milestone_year,
+            asset_id: asset.id.unwrap(),
             process_id: asset.process.id.clone(),
             region_id: asset.region_id.clone(),
             agent_id: asset.agent_id.clone(),
@@ -93,10 +92,10 @@ impl AssetRow {
 }
 
 /// Represents the flow-related data in a row of the commodity flows CSV file.
-///
-/// This will be written along with an [`AssetRow`] containing asset-related info.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityFlowRow {
+    milestone_year: u32,
+    asset_id: AssetID,
     commodity_id: CommodityID,
     time_slice: TimeSliceID,
     flow: f64,
@@ -112,11 +111,11 @@ struct CommodityPriceRow {
     price: f64,
 }
 
-/// Represents the capacity duals data in a row of the capacity duals CSV file.
-///
-/// This will be written along with an [`AssetRow`] containing asset-related info.
+/// Represents the capacity duals data in a row of the capacity duals CSV file
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CapacityDualsRow {
+    milestone_year: u32,
+    asset_id: AssetID,
     time_slice: TimeSliceID,
     value: f64,
 }
@@ -182,13 +181,13 @@ impl DebugDataWriter {
         I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, f64)>,
     {
         for (asset, time_slice, value) in iter {
-            let asset_row = AssetRow::new(milestone_year, asset);
-            let dual_row = CapacityDualsRow {
+            let row = CapacityDualsRow {
+                milestone_year,
+                asset_id: asset.id.unwrap(),
                 time_slice: time_slice.clone(),
                 value,
             };
-            self.capacity_duals_writer
-                .serialize((asset_row, dual_row))?;
+            self.capacity_duals_writer.serialize(row)?;
         }
 
         Ok(())
@@ -277,13 +276,14 @@ impl DataWriter {
     /// Write commodity flows to a CSV file
     pub fn write_flows(&mut self, milestone_year: u32, flow_map: &FlowMap) -> Result<()> {
         for ((asset, commodity_id, time_slice), flow) in flow_map {
-            let asset_row = AssetRow::new(milestone_year, asset);
-            let flow_row = CommodityFlowRow {
+            let row = CommodityFlowRow {
+                milestone_year,
+                asset_id: asset.id.unwrap(),
                 commodity_id: commodity_id.clone(),
                 time_slice: time_slice.clone(),
                 flow: *flow,
             };
-            self.flows_writer.serialize((asset_row, flow_row))?;
+            self.flows_writer.serialize(row)?;
         }
 
         Ok(())
@@ -380,6 +380,8 @@ mod tests {
 
         // Read back and compare
         let expected = CommodityFlowRow {
+            milestone_year,
+            asset_id: asset.id.unwrap(),
             commodity_id,
             time_slice,
             flow: 42.0,
@@ -482,7 +484,12 @@ mod tests {
         }
 
         // Read back and compare
-        let expected = CapacityDualsRow { time_slice, value };
+        let expected = CapacityDualsRow {
+            milestone_year,
+            asset_id: asset.id.unwrap(),
+            time_slice,
+            value,
+        };
         let records: Vec<CapacityDualsRow> =
             csv::Reader::from_path(dir.path().join(CAPACITY_DUALS_FILE_NAME))
                 .unwrap()

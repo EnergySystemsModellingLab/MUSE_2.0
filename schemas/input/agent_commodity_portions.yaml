@@ -1,24 +1,26 @@
-title: Commodity demand portions for agents
 description: |
   Portions of commodity demand for which agents are responsible.
 
-  If an entry is specified for one agent and commodity, there must be entries covering all milestone
-  years. For each agent listed in this file, the total portions for each region/commodity/year
-  combination must sum to one. In addition, there must be entries for every SVD and SED commodity
-  for all regions and milestone years.
+notes:
+  - If an entry is specified for one agent and commodity, there must be entries covering all
+    milestone years.
+  - For each agent listed in this file, the total portions for each region/commodity/year
+    combination must sum to one.
+  - In addition, there must be entries for every SVD and SED commodity for all regions and
+    milestone years.
 
 fields:
   - name: agent_id
     type: string
-    title: The agent to apply these values to
+    description: The agent to apply these values to
   - name: commodity_id
     type: string
-    title: The commodity for which the agent is responsible
+    description: The commodity for which the agent is responsible
   - name: years
     type: string
-    title: The year(s) to which this entry applies
-    description: One or more milestone years separated by semicolons or `all`
+    description: The year(s) to which this entry applies
+    notes: One or more milestone years separated by semicolons or `all`
   - name: commodity_portion
     type: number
-    title: Portion of commodity demand
-    description: Value must be >0 and <=1. The portion applies only to the specified years.
+    description: Portion of commodity demand
+    notes: Value must be >0 and <=1. The portion applies only to the specified years.

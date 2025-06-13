@@ -1,35 +1,35 @@
-title: Process availabilities
 description: |
-  Defines how much of a process's capacity is available throughout the year. Must be provided for
-  every process.
+  Defines how much of a process's capacity is available throughout the year.
 
-  Only one type of limit can be supplied for each combination of process/region/year/time slice.
+notes:
+  - Must be provided for every process.
+  - Only one type of limit can be supplied for each combination of process/region/year/time slice.
 
 fields:
   - name: process_id
     type: string
-    title: The process to which this entry applies
+    description: The process to which this entry applies
   - name: regions
     type: string
-    title: The region(s) to which this entry applies
-    description: One or more region IDs, separated by semicolons or the string `all`
+    description: The region(s) to which this entry applies
+    notes: One or more region IDs, separated by semicolons or the string `all`
   - name: years
     type: string
-    title: The milestone year(s) to which this entry applies
-    description: One or more milestone years separated by semicolons or `all`
+    description: The milestone year(s) to which this entry applies
+    notes: One or more milestone years separated by semicolons or `all`
   - name: time_slice
     type: string
-    title: The time slices(s) to which this entry applies
-    description: |
+    description: The time slices(s) to which this entry applies
+    notes: |
       Can be a single time slice (e.g. `winter.day`), a whole season (e.g. `winter`) or `annual`,
       representing the whole year
   - name: limit_type
     type: string
-    title: The type of limit
-    description: |
+    description: The type of limit
+    notes: |
       Can be `lo` (a lower bound), `hi` (an upper bound) or `fx` (indicating that the availability
       is constant)
   - name: value
     type: number
-    title: The proportion of capacity which is available
-    description: Must be >0 and <=1
+    description: The proportion of capacity which is available
+    notes: Must be >0 and <=1
