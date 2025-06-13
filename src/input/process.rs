@@ -2,7 +2,7 @@
 use super::*;
 use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::process::{
-    Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessID, ProcessMap, ProcessParameterMap,
+    Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessID, ProcessMap, ProcessParameterMap,
 };
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
@@ -55,7 +55,7 @@ pub fn read_processes(
     let mut processes = read_processes_file(model_dir, milestone_years, region_ids)?;
     let process_ids = processes.keys().cloned().collect();
 
-    let mut energy_limits =
+    let mut activity_limits =
         read_process_availabilities(model_dir, &process_ids, &processes, time_slice_info)?;
     let mut flows = read_process_flows(model_dir, &process_ids, &processes, commodities)?;
     let mut parameters = read_process_parameters(model_dir, &process_ids, &processes)?;
@@ -64,7 +64,7 @@ pub fn read_processes(
     validate_commodities(
         commodities,
         &flows,
-        &energy_limits,
+        &activity_limits,
         region_ids,
         milestone_years,
         time_slice_info,
@@ -72,7 +72,7 @@ pub fn read_processes(
 
     // Add data to Process objects
     for (id, process) in processes.iter_mut() {
-        process.energy_limits = energy_limits
+        process.activity_limits = activity_limits
             .remove(id)
             .with_context(|| format!("Missing availabilities for process {id}"))?;
         process.flows = flows
@@ -139,7 +139,7 @@ where
             id: process_raw.id.clone(),
             description: process_raw.description,
             years,
-            energy_limits: ProcessEnergyLimitsMap::new(),
+            activity_limits: ProcessActivityLimitsMap::new(),
             flows: ProcessFlowsMap::new(),
             parameters: ProcessParameterMap::new(),
             regions,
@@ -158,7 +158,7 @@ where
 fn validate_commodities(
     commodities: &CommodityMap,
     flows: &HashMap<ProcessID, ProcessFlowsMap>,
-    availabilities: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
+    availabilities: &HashMap<ProcessID, ProcessActivityLimitsMap>,
     region_ids: &HashSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
@@ -227,7 +227,7 @@ fn validate_svd_commodity(
     time_slice_info: &TimeSliceInfo,
     commodity: &Commodity,
     flows: &HashMap<ProcessID, ProcessFlowsMap>,
-    availabilities: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
+    availabilities: &HashMap<ProcessID, ProcessActivityLimitsMap>,
     region_id: &RegionID,
     year: &u32,
     ts_selection: &TimeSliceSelection,
@@ -308,7 +308,6 @@ mod tests {
                 coeff: -10.0,
                 kind: FlowType::Fixed,
                 cost: 1.0,
-                is_pac: false,
             }},
         )])
     }
@@ -322,7 +321,6 @@ mod tests {
                 coeff: 10.0,
                 kind: FlowType::Fixed,
                 cost: 1.0,
-                is_pac: false,
             }},
         )])
     }
@@ -383,7 +381,6 @@ mod tests {
                     coeff: 10.0,
                     kind: FlowType::Fixed,
                     cost: 1.0,
-                    is_pac: false,
                 }},
             )]),
         )])
@@ -398,7 +395,7 @@ mod tests {
     ) {
         let availabilities = HashMap::from_iter(vec![(
             "process1".into(),
-            ProcessEnergyLimitsMap::from_iter(vec![(
+            ProcessActivityLimitsMap::from_iter(vec![(
                 ("GBR".into(), 2010, time_slice.clone()),
                 0.1..=0.9,
             )]),
@@ -427,7 +424,7 @@ mod tests {
         // Invalid scenario: no availability
         let availabilities = HashMap::from_iter(vec![(
             "process1".into(),
-            ProcessEnergyLimitsMap::from_iter(vec![(
+            ProcessActivityLimitsMap::from_iter(vec![(
                 ("GBR".into(), 2010, time_slice.clone()),
                 0.0..=0.0,
             )]),

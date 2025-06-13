@@ -7,7 +7,7 @@ use crate::agent::{
 use crate::asset::{Asset, AssetPool};
 use crate::commodity::{Commodity, CommodityID, CommodityLevyMap, CommodityType, DemandMap};
 use crate::process::{
-    Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessMap, ProcessParameter,
+    Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessMap, ProcessParameter,
     ProcessParameterMap,
 };
 use crate::region::RegionID;
@@ -114,7 +114,7 @@ pub fn process(
         id: "process1".into(),
         description: "Description".into(),
         years: vec![2010, 2020],
-        energy_limits: ProcessEnergyLimitsMap::new(),
+        activity_limits: ProcessActivityLimitsMap::new(),
         flows: ProcessFlowsMap::new(),
         parameters: process_parameter_map,
         regions: region_ids,

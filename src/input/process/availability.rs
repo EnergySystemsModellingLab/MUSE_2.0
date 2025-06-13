@@ -1,7 +1,7 @@
 //! Code for reading process availabilities CSV file
 use super::super::*;
 use crate::id::IDCollection;
-use crate::process::{Process, ProcessEnergyLimitsMap, ProcessID};
+use crate::process::{Process, ProcessActivityLimitsMap, ProcessID};
 use crate::region::parse_region_str;
 use crate::time_slice::TimeSliceInfo;
 use crate::year::parse_year_str;
@@ -39,8 +39,8 @@ impl ProcessAvailabilityRaw {
 
     /// Calculate fraction of annual energy as availability multiplied by time slice length.
     ///
-    /// The resulting limits are max/min PAC energy produced/consumed in each timeslice per
-    /// cap2act units of capacity
+    /// The resulting limits are max/min energy produced/consumed in each timeslice per
+    /// `capacity_to_activity` units of capacity.
     fn to_bounds(&self, ts_length: f64) -> RangeInclusive<f64> {
         let value = self.value * ts_length;
         match self.limit_type {
@@ -75,14 +75,14 @@ enum LimitType {
 ///
 /// # Returns
 ///
-/// A [`HashMap`] with process IDs as the keys and [`ProcessEnergyLimitsMap`]s as the values or an
+/// A [`HashMap`] with process IDs as the keys and [`ProcessActivityLimitsMap`]s as the values or an
 /// error.
 pub fn read_process_availabilities(
     model_dir: &Path,
     process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<ProcessID, ProcessEnergyLimitsMap>> {
+) -> Result<HashMap<ProcessID, ProcessActivityLimitsMap>> {
     let file_path = model_dir.join(PROCESS_AVAILABILITIES_FILE_NAME);
     let process_availabilities_csv = read_csv(&file_path)?;
     read_process_availabilities_from_iter(
@@ -94,13 +94,13 @@ pub fn read_process_availabilities(
     .with_context(|| input_err_msg(&file_path))
 }
 
-/// Process raw process availabilities input data into [`ProcessEnergyLimitsMap`]s
+/// Process raw process availabilities input data into [`ProcessActivityLimitsMap`]s
 fn read_process_availabilities_from_iter<I>(
     iter: I,
     process_ids: &IndexSet<ProcessID>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
-) -> Result<HashMap<ProcessID, ProcessEnergyLimitsMap>>
+) -> Result<HashMap<ProcessID, ProcessActivityLimitsMap>>
 where
     I: Iterator<Item = ProcessAvailabilityRaw>,
 {
@@ -130,10 +130,10 @@ where
         // Get timeslices
         let ts_selection = time_slice_info.get_selection(&record.time_slice)?;
 
-        // Insert the energy limit into the map
+        // Insert the activity limit into the map
         let entry = map
             .entry(id.clone())
-            .or_insert_with(ProcessEnergyLimitsMap::new);
+            .or_insert_with(ProcessActivityLimitsMap::new);
         for (time_slice, ts_length) in ts_selection.iter(time_slice_info) {
             let bounds = record.to_bounds(ts_length);
 
@@ -149,14 +149,14 @@ where
         }
     }
 
-    validate_energy_limits_maps(&map, processes, time_slice_info)?;
+    validate_activity_limits_maps(&map, processes, time_slice_info)?;
 
     Ok(map)
 }
 
-/// Check that every energy limits covers every time slice, and all regions/years of the process
-fn validate_energy_limits_maps(
-    map: &HashMap<ProcessID, ProcessEnergyLimitsMap>,
+/// Check that the activity limits cover every time slice and all regions/years of the process
+fn validate_activity_limits_maps(
+    map: &HashMap<ProcessID, ProcessActivityLimitsMap>,
     processes: &HashMap<ProcessID, Process>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {

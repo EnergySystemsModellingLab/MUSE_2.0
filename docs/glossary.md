@@ -2,9 +2,7 @@
 
 **Activity:** The flow of input/s or output/s of a *Process* that are limited by its capacity. For
 example, a 500MW power station can output 500MWh per hour of electrical power, or a 50MW
-electrolyser consumes up to 50MWh per hour of electrical power to produce hydrogen. The
-*Primary Activity Commodity* specifies which output/s or input/s are linked to the *Process*
-capacity.
+electrolyser consumes up to 50MWh per hour of electrical power to produce hydrogen.
 
 **Agent:** A decision-making entity in the system. An *Agent* is responsible for serving a
 user-specified portion of a *Commodity* demand or *Service Demand*. *Agents* invest in and operate
@@ -27,14 +25,9 @@ data, including **Process** stock and commodity consumption/production.
 **Calibration:** The act of ensuring that the model represents the system being modelled in a
 historical base year.
 
-**Capacity:** The maximum output (or input) of an *Asset*, as measured by units of the *Primary
-Activity Commodity*.
+**Capacity:** The maximum output (or input) of an *Asset*.
 
-**Capital Cost:** The overnight capital cost of a process, measured in units of the *Primary
-Activity Commodity* divided by CAP2ACT. CAP2ACT is a factor that converts 1 unit of capacity to
-maximum activity of the primary activity commodity/ies per year. For example, if capacity is
-measured in GW and activity is measured in PJ, CAP2ACT for the process is 31.536 because 1 GW of
-capacity can produce 31.536 PJ energy output in a year.
+**Capital Cost:** The overnight capital cost of a process.
 
 <!-- markdownlint-disable-next-line MD033 -->
 **Commodity:** A substance (e.g. CO<sub>2</sub>) or form of energy (e.g. electricity) that can be
@@ -79,10 +72,6 @@ the next most expensive, etc, until demand is served. Also called “unit commit
 
 **Output Commodity/ies:** The commodities that flow out of a *Process*.
 
-**Primary Activity Commodity (PAC):** The PACs specify which output/s are linked to the *Process*
-capacity. The combined output of all PACs cannot exceed the *Asset's* capacity. A user can define
-which output/s are PACs. Most, but not all *Process*es will have only one PAC.
-
 **Process:** A blueprint of an available *Process* that converts input commodities to output
 commodities. *Process*es have economic attributes of capital cost, fixed operating cost per unit
 capacity, non-fuel variable operating cost per unit activity, and risk discount rate. They have
@@ -114,9 +103,8 @@ Levelised Cost of X, etc.
 a model does not represent seasons or within-day (diurnal) variation). A typical model will have
 several diurnal time slices, and several seasonal time slices.
 
-**Utilisation:** The percentage of an *Asset*s capacity that is actually used to produce *Primary
-Activity Commodities*. Must be between 0 and 1, and can be measured at time slice, season, or year
-level.
+**Utilisation:** The percentage of an *Asset*'s capacity that is actually used to produce its
+commodities. Must be between 0 and 1, and can be measured at time slice, season, or year level.
 
-**Variable Operating Cost:** The variable operating cost charged per unit of input or output of the
-*Primary Activity Commodity* of the *Process*.
+**Variable Operating Cost:** The variable operating cost charged per unit of activity of the
+ *Process*.

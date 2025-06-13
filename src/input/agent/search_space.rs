@@ -157,7 +157,9 @@ where
 mod tests {
     use super::*;
     use crate::fixture::{agents, assert_error, region_ids};
-    use crate::process::{ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessID, ProcessParameterMap};
+    use crate::process::{
+        ProcessActivityLimitsMap, ProcessFlowsMap, ProcessID, ProcessParameterMap,
+    };
     use crate::region::RegionID;
     use rstest::{fixture, rstest};
     use std::iter;
@@ -171,7 +173,7 @@ mod tests {
                     id: id.clone(),
                     description: "Description".into(),
                     years: vec![2010, 2020],
-                    energy_limits: ProcessEnergyLimitsMap::new(),
+                    activity_limits: ProcessActivityLimitsMap::new(),
                     flows: ProcessFlowsMap::new(),
                     parameters: ProcessParameterMap::new(),
                     regions: region_ids.clone(),

@@ -27,7 +27,7 @@ fields:
     description: Annual operating cost per unit capacity
   - name: variable_operating_cost
     type: number
-    description: Annual variable operating cost per unit activity, for PACs **only**
+    description: Annual variable operating cost per unit activity
   - name: lifetime
     type: integer
     description: Lifetime in years of an asset created from this process
@@ -38,5 +38,5 @@ fields:
     notes: Must be positive. A warning will be issued if this number is >1.
   - name: capacity_to_activity
     type: number
-    description: Factor for calculating the maximum PAC consumption/production over a year.
+    description: Factor for calculating the maximum consumption/production over a year.
     notes: Must be >=0
