@@ -75,7 +75,7 @@ enum LimitType {
 ///
 /// # Returns
 ///
-/// A [`HashMap`] with process IDs as the keys and [`ProcessEnergyLimitsMap`]s as the values or an
+/// A [`HashMap`] with process IDs as the keys and [`ProcessActivityLimitsMap`]s as the values or an
 /// error.
 pub fn read_process_availabilities(
     model_dir: &Path,
@@ -94,7 +94,7 @@ pub fn read_process_availabilities(
     .with_context(|| input_err_msg(&file_path))
 }
 
-/// Process raw process availabilities input data into [`ProcessEnergyLimitsMap`]s
+/// Process raw process availabilities input data into [`ProcessActivityLimitsMap`]s
 fn read_process_availabilities_from_iter<I>(
     iter: I,
     process_ids: &IndexSet<ProcessID>,
