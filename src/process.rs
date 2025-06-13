@@ -15,16 +15,11 @@ define_id_type! {ProcessID}
 /// A map of [`Process`]es, keyed by process ID
 pub type ProcessMap = IndexMap<ProcessID, Rc<Process>>;
 
-/// A map indicating relative energy limits for a [`Process`] throughout the year.
+/// A map indicating activity limits for a [`Process`] throughout the year.
 ///
-/// The value is calculated as availability multiplied by time slice length. Note that it is a
-/// **fraction** of energy for the year; to calculate **actual** energy limits for a given time
-/// slice you need to know the maximum activity (energy per year) for the specific instance of a
-/// [`Process`] in use.
-///
-/// The limits are given as ranges, depending on the user-specified limit type and value for
-/// availability.
-pub type ProcessEnergyLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<f64>>;
+/// The value is calculated as availability multiplied by time slice length. The limits are given as
+/// ranges, depending on the user-specified limit type and value for availability.
+pub type ProcessActivityLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<f64>>;
 
 /// A map of [`ProcessParameter`]s, keyed by region and year
 pub type ProcessParameterMap = HashMap<(RegionID, u32), Rc<ProcessParameter>>;
@@ -43,8 +38,8 @@ pub struct Process {
     pub description: String,
     /// The years in which this process is available for investment
     pub years: Vec<u32>,
-    /// Limits on energy consumption/production for each time slice (as a fraction of maximum)
-    pub energy_limits: ProcessEnergyLimitsMap,
+    /// Limits on activity for each time slice (as a fraction of maximum)
+    pub activity_limits: ProcessActivityLimitsMap,
     /// Maximum annual commodity flows for this process
     pub flows: ProcessFlowsMap,
     /// Additional parameters for this process

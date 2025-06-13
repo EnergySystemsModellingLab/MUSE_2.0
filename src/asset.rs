@@ -85,13 +85,11 @@ impl Asset {
         self.commission_year + self.process_parameter.lifetime
     }
 
-    /// Get the energy limits for this asset in a particular time slice
-    ///
-    /// This is an absolute max and min on the energy produced/consumed in that time slice.
-    pub fn get_energy_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
+    /// Get the activity limits for this asset in a particular time slice
+    pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
         let limits = self
             .process
-            .energy_limits
+            .activity_limits
             .get(&(
                 self.region_id.clone(),
                 self.commission_year,
@@ -100,12 +98,11 @@ impl Asset {
             .unwrap();
         let max_act = self.maximum_activity();
 
-        // Multiply the fractional energy limits by this asset's maximum activity to get energy
         // limits in real units (which are user defined)
         (max_act * limits.start())..=(max_act * limits.end())
     }
 
-    /// Maximum activity for this asset (energy produced/consumed per year)
+    /// Maximum activity for this asset
     pub fn maximum_activity(&self) -> f64 {
         self.capacity * self.process_parameter.capacity_to_activity
     }
@@ -312,7 +309,7 @@ mod tests {
     use super::*;
     use crate::fixture::{assert_error, process};
     use crate::process::{
-        Process, ProcessEnergyLimitsMap, ProcessFlowsMap, ProcessParameter, ProcessParameterMap,
+        Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessParameter, ProcessParameterMap,
     };
     use itertools::{assert_equal, Itertools};
     use rstest::{fixture, rstest};
@@ -387,7 +384,7 @@ mod tests {
             id: "process1".into(),
             description: "Description".into(),
             years: vec![2010, 2020],
-            energy_limits: ProcessEnergyLimitsMap::new(),
+            activity_limits: ProcessActivityLimitsMap::new(),
             flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: HashSet::from(["GBR".into()]),
@@ -410,7 +407,7 @@ mod tests {
     }
 
     #[test]
-    fn test_asset_get_energy_limits() {
+    fn test_asset_get_activity_limits() {
         let time_slice = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
@@ -429,9 +426,9 @@ mod tests {
             .map(|&year| (("GBR".into(), year), process_param.clone()))
             .collect();
         let fraction_limits = 1.0..=f64::INFINITY;
-        let mut energy_limits = ProcessEnergyLimitsMap::new();
+        let mut activity_limits = ProcessActivityLimitsMap::new();
         for year in [2010, 2020] {
-            energy_limits.insert(
+            activity_limits.insert(
                 ("GBR".into(), year, time_slice.clone()),
                 fraction_limits.clone(),
             );
@@ -440,7 +437,7 @@ mod tests {
             id: "process1".into(),
             description: "Description".into(),
             years: vec![2010, 2020],
-            energy_limits,
+            activity_limits,
             flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: HashSet::from(["GBR".into()]),
@@ -454,7 +451,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(asset.get_energy_limits(&time_slice), 6.0..=f64::INFINITY);
+        assert_eq!(asset.get_activity_limits(&time_slice), 6.0..=f64::INFINITY);
     }
 
     #[rstest]
