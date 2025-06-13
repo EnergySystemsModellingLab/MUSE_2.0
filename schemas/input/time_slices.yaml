@@ -1,18 +1,18 @@
-title: Time slices
 description: |
   Time slices define how the year is divided up. Each time slice is composed of a season and a time
   of day. Often, this is written separated by a dot (e.g. `winter.day`).
 
-  The fractions for the different time slices must sum to one.
+notes:
+  - The fractions for the different time slices must sum to one.
 
 fields:
   - name: season
     type: string
-    title: Name of season
+    description: Name of season
   - name: time_of_day
     type: string
-    title: Name of time of day
+    description: Name of time of day
   - name: fraction
     type: number
-    title: Fraction of year
-    description: Must be >0 and <=1
+    description: Fraction of year
+    notes: Must be >0 and <=1

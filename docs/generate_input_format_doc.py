@@ -22,17 +22,11 @@ _FILE_ORDER = {
 
 
 @dataclass
-class Notes:
-    description: str | None
-    table: str | None
-
-
-@dataclass
 class File:
     name: str
     description: str
     table: str
-    notes: Notes | None
+    notes: str | None
 
 
 @dataclass
@@ -50,10 +44,11 @@ def generate_markdown() -> str:
 
 def load_sections() -> Iterable[Section]:
     for title, patterns in _FILE_ORDER.items():
+        paths = []
         for pattern in patterns:
-            paths = map(str, _SCHEMA_DIR.glob(f"{pattern}.yaml"))
-            files = (load_file(Path(path)) for path in sorted(paths))
-            yield Section(title, files)
+            paths.extend(map(str, _SCHEMA_DIR.glob(f"{pattern}.yaml")))
+        files = (load_file(Path(path)) for path in sorted(paths))
+        yield Section(title, files)
 
 
 def load_file(path: Path) -> File:
@@ -61,17 +56,16 @@ def load_file(path: Path) -> File:
         data = yaml.safe_load(f)
 
     try:
-        table, notes_table = fields2table(data["fields"])
+        table = fields2table(data["fields"])
     except KeyError:
         print(f"MISSING VALUE IN {path}")
         raise
 
     name = f"{path.stem}.csv"
-    title = add_full_stop(data["title"])
-    if desc := data.get("description", None):
-        desc = add_full_stop(desc)
-    notes = Notes(desc, notes_table) if desc or notes_table else None
-    return File(name, title, table, notes)
+    desc = add_full_stop(data["description"])
+    if note := data.get("notes", None):
+        note = format_notes(note)
+    return File(name, desc, table, note)
 
 
 def add_full_stop(s: str) -> str:
@@ -84,28 +78,28 @@ def add_full_stop(s: str) -> str:
 
 def fields2table(fields: list[dict[str, str]]) -> tuple[str, str | None]:
     data = []
-    notes = []
     for f in fields:
-        row = {"Field": f"`{f['name']}`", "Description": f["title"]}
-        data.append(row)
-
-        if desc := f.get("description", ""):
-            # MarkdownTable can't handle newlines, so replace with HTML equivalent
-            desc = desc.replace("\n\n", "<br /><br />").replace("\n", " ")
-            row = {"Field": f"`{f['name']}`", "Notes": desc}
-            notes.append(row)
-
-    data = [
-        {
+        # MarkdownTable can't handle newlines, so replace with HTML equivalent
+        notes = f.get("notes", "")
+        notes = notes.replace("\n\n", "<br /><br />").replace("\n", " ")
+        row = {
             "Field": f"`{f['name']}`",
-            "Description": f["title"],
+            "Description": f["description"],
+            "Notes": notes,
         }
-        for f in fields
-    ]
-
+        data.append(row)
     table = str(MarkdownTable.from_dicts(data))
-    notes_table = str(MarkdownTable.from_dicts(notes)) if notes else None
-    return table, notes_table
+    return table
+
+
+def format_notes(notes) -> str:
+    if isinstance(notes, list):
+        items = [add_full_stop(item) for item in notes]
+    elif isinstance(notes, str):
+        items = [add_full_stop(notes)]
+    else:
+        return ""
+    return "\n".join(f"- {item}" for item in items)
 
 
 if __name__ == "__main__":

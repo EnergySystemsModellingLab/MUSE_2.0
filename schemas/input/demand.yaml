@@ -1,20 +1,22 @@
-title: Demand for service demand commodities
 description: |
-  Every service demand commodity must have entries in this file covering every combination of
-  milestone year and region
+  Specifies the demand for service demand commodities.
+
+notes:
+  - Every service demand commodity must have entries in this file covering every combination of
+    milestone year and region
 
 fields:
   - name: commodity_id
     type: string
-    title: The service demand commodity to which this entry applies
+    description: The service demand commodity to which this entry applies
   - name: region_id
     type: string
-    title: The region to which this entry applies
-    description: A region ID
-  - name: years
+    description: The region to which this entry applies
+    notes: A region ID
+  - name: year
     type: string
-    title: The year(s) to which this entry applies
-    description: One or more milestone years separated by semicolons or `all`
+    description: The year(s) to which this entry applies
+    notes: One or more milestone years separated by semicolons or `all`
   - name: demand
     type: number
-    title: Total demand for this year
+    description: Total demand for this year

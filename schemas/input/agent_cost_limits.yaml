@@ -1,24 +1,24 @@
-title: Agent cost limits
 description: |
   Limits on expenditure for agents.
 
-  If cost limits are provided for an agent, they must be present for all years.
+notes:
+  - If cost limits are provided for an agent, they must be present for all years.
 
 fields:
   - name: agent_id
     type: string
-    title: The agent to apply these values to
+    description: The agent to apply these values to
   - name: years
     type: string
-    title: The year(s) to which this entry applies
-    description: One or more milestone years separated by semicolons or `all`
+    description: The year(s) to which this entry applies
+    notes: One or more milestone years separated by semicolons or `all`
   - name: capex_limit
     type: number
-    title: Maximum capital cost the agent will pay
-    description: Must be >0. Optional (defaults to infinity).
+    description: Maximum capital cost the agent will pay
+    notes: Must be >0. Optional (defaults to infinity).
   - name: annual_cost_limit
     type: number
-    title: Maximum annual operating cost
-    description: |
+    description: Maximum annual operating cost
+    notes: |
       The maximum annual operating cost (fuel plus variable operating cost etc.) that the agent will
       pay. Must be >0. Optional (defaults to infinity).

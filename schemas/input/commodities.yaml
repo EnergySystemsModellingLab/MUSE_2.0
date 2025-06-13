@@ -1,25 +1,27 @@
-title: Main commodities file
 description: |
-  Every SED (supply equals demand) commodity must have both producer and consumer processes for
-  every region and milestone year. Every SVD (service demand) commodity must have a producer for
-  every region and milestone year.
+  Describes commodities in the system.
+
+notes:
+  - Every SED (supply equals demand) commodity must have both producer and consumer processes for
+    every region and milestone year.
+  - Every SVD (service demand) commodity must have a producer for every region and milestone year.
 
 fields:
   - name: id
     type: string
-    title: A unique identifier for the commodity
+    description: A unique identifier for the commodity
   - name: description
     type: string
-    title: A human-readable label for the commodity
+    description: A human-readable label for the commodity
   - name: type
     type: string
-    title: The type of commodity
-    description: |
+    description: The type of commodity
+    notes: |
       Must be one of `svd` (service demand), `sed` (supply equals demand), `inc` (input
       commodity) or `ouc` (output commodity)
   - name: time_slice_level
     type: string
-    title: The time slice level at which constraints for this commodity are applied
-    description: |
+    description: The time slice level at which constraints for this commodity are applied
+    notes: |
       Must be one of `annual` (whole year), `season` (whole season) or `daynight` (a particular time
       of day)

@@ -1,9 +1,10 @@
-title: Regions
+description: |
+  Describes regions in the system.
 
 fields:
   - name: id
     type: string
-    title: A unique identifier for a region
+    description: A unique identifier for a region
   - name: description
     type: string
-    title: A human-readable label for the region
+    description: A human-readable label for the region
