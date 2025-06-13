@@ -1,4 +1,5 @@
-title: Main processes file
+description: |
+  Describes processes in the system.
 
 fields:
   - name: id

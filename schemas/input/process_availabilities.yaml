@@ -1,8 +1,8 @@
-title: Process availabilities
 description: |
-  Defines how much of a process's capacity is available throughout the year. Must be provided for
-  every process.
+  Defines how much of a process's capacity is available throughout the year.
 
+notes: |
+  Must be provided for every process.
   Only one type of limit can be supplied for each combination of process/region/year/time slice.
 
 fields:

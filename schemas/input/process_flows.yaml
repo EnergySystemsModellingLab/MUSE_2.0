@@ -1,8 +1,10 @@
-title: The commodity flows for each process
 description: |
-  Commodity flows can vary by region and year. For each process, there must be entries covering all
-  the years and regions in which the process operates.
+  The commodity flows for each process
 
+notes: |
+  Commodity flows can vary by region and year.
+  For each process, there must be entries covering all the years and regions in which the process
+  operates.
   One (and only one) commodity flow for each region/year must be designated as the primary activity
   commodity (PAC).
 

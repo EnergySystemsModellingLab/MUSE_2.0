@@ -1,7 +1,7 @@
-title: Process parameters
 description: |
   Parameters for processes which vary by region and year.
 
+notes: |
   For each process, entries must be provided which cover every combination of milestone year and
   region in which the process operates.
 

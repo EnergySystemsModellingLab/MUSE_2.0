@@ -1,8 +1,8 @@
-title: Time slices
 description: |
   Time slices define how the year is divided up. Each time slice is composed of a season and a time
   of day. Often, this is written separated by a dot (e.g. `winter.day`).
 
+notes: |
   The fractions for the different time slices must sum to one.
 
 fields:

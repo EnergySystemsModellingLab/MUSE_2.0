@@ -26,10 +26,9 @@ This file contains information about the input file format for MUSE 2.0.
     (such as a requirement that the value is >=0 etc.). -#}
 {%- if file.notes %}
 #### Notes
-{% if file.notes.description %}
-{{ file.notes.description }}{% endif %}
-{% if file.notes.table %}
-{{ file.notes.table }}{% endif -%}
+{{ file.notes }}
 {%- endif %}
+
 {% endfor -%}
+
 {% endfor %}

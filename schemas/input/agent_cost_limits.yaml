@@ -1,7 +1,7 @@
-title: Agent cost limits
 description: |
   Limits on expenditure for agents.
 
+notes: |
   If cost limits are provided for an agent, they must be present for all years.
 
 fields:

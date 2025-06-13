@@ -1,4 +1,5 @@
-title: Regions
+description: |
+  Describes regions in the system.
 
 fields:
   - name: id

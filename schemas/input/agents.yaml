@@ -1,4 +1,3 @@
-title: Main agents file
 description: Describes agents in the system
 fields:
   - name: id

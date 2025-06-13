@@ -1,6 +1,7 @@
-title: Demand for service demand commodities
 description: |
-  Every service demand commodity must have entries in this file covering every combination of
+  Specifies the demand for service demand commodities.
+
+notes: Every service demand commodity must have entries in this file covering every combination of
   milestone year and region
 
 fields:

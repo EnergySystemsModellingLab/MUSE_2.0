@@ -1,7 +1,7 @@
-title: Annual distribution of demand
 description: |
   Specifies how demand is distributed throughout the year (i.e. for different milestones).
 
+notes: |
   The user must provide entries covering every combination of service demand commodity, region and
   time slice. For each combination, the sum of the fractions must equal one.
 

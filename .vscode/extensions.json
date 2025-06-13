@@ -5,6 +5,8 @@
         "editorconfig.editorconfig",
         "esbenp.prettier-vscode",
         "davidanson.vscode-markdownlint",
-        "samuelcolvin.jinjahtml"
+        "samuelcolvin.jinjahtml",
+        "ms-python.python",
+        "charliermarsh.ruff"
     ]
 }
