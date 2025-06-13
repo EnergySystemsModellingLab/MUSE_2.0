@@ -1,0 +1,66 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  release:
+  workflow_dispatch:
+
+jobs:
+  build_and_upload:
+    name: Build release
+    timeout-minutes: 15
+    runs-on: ${{ matrix.os }}
+    container:
+      image: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        archive_ext: [tar.gz]
+        archive_cmd: ["tar cf"]
+        include:
+          - os: ubuntu-latest
+            osname: linux
+            # We build on an old Linux distro so that we get an older version of libstdc++.
+            # libstdc++ has good backwards compatibility (but not forwards) so by linking against an
+            # old version, we can target more Linuxes.
+            image: debian:oldstable
+          - os: windows-latest
+            osname: windows
+            archive_ext: zip
+            archive_cmd: 7z a
+            exe_suffix: .exe
+          - os: macos-latest
+            osname: macos_arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install extra dependencies on Linux
+        if: ${{ matrix.osname == 'linux' }}
+        run: |
+          apt update
+          apt install -y curl build-essential cmake libclang-16-dev
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+      - run: cargo build --release
+      - name: Gather release files
+        run: |
+          mkdir muse2
+          cp target/release/muse2${{ matrix.exe_suffix }} muse2
+          cp LICENSE muse2/LICENCE.txt
+          cp assets/readme/readme_${{ matrix.osname }}.txt muse2/README.txt
+      - uses: actions/upload-artifact@v4
+        if: ${{ github.event_name != 'release' }}
+        with:
+          name: muse2_${{ matrix.osname }}
+          path: muse2
+      - name: Archive release
+        if: ${{ github.event_name == 'release' }}
+        run: |
+          cd muse2
+          ${{ matrix.archive_cmd }} ../muse2_${{ matrix.osname }}.${{ matrix.archive_ext }} *
+      - name: Upload release artifacts
+        if: ${{ github.event_name == 'release' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: muse2_${{ matrix.osname }}.${{ matrix.archive_ext }}
