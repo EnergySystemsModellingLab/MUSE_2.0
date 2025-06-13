@@ -187,6 +187,18 @@ impl Hash for AssetRef {
     }
 }
 
+impl PartialOrd for AssetRef {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for AssetRef {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.unwrap().cmp(&other.id.unwrap())
+    }
+}
+
 /// A pool of [`Asset`]s
 pub struct AssetPool {
     /// The pool of active assets
