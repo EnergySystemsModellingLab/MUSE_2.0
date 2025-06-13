@@ -106,5 +106,5 @@ several diurnal time slices, and several seasonal time slices.
 **Utilisation:** The percentage of an *Asset*'s capacity that is actually used to produce its
 commodities. Must be between 0 and 1, and can be measured at time slice, season, or year level.
 
-**Variable Operating Cost:** The variable operating cost charged per unit of input or output of the
+**Variable Operating Cost:** The variable operating cost charged per unit of activity of the
  *Process*.
