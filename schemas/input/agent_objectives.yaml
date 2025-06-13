@@ -11,20 +11,20 @@ notes:
 fields:
   - name: agent_id
     type: string
-    title: An agent ID
+    description: An agent ID
   - name: years
     type: string
-    title: The year(s) to which this entry applies
-    description: One or more milestone years separated by semicolons or `all`
+    description: The year(s) to which this entry applies
+    notes: One or more milestone years separated by semicolons or `all`
   - name: objective_type
     type: string
-    title: The type of objective
-    description: Currently only `lcox` is supported
+    description: The type of objective
+    notes: Currently only `lcox` is supported
   - name: decision_weight
     type: number
-    title: Weight for weighted sum decision rule
-    description: Currently unused
+    description: Weight for weighted sum decision rule
+    notes: Currently unused
   - name: decision_lexico_order
     type: integer
-    title: Order in which to consider objectives for lexico decision rule
-    description: Currently unused
+    description: Order in which to consider objectives for lexico decision rule
+    notes: Currently unused

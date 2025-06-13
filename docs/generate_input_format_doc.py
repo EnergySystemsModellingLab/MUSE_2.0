@@ -79,12 +79,12 @@ def fields2table(fields: list[dict[str, str]]) -> tuple[str, str | None]:
     data = []
     for f in fields:
         # MarkdownTable can't handle newlines, so replace with HTML equivalent
-        desc = f.get("description", "")
-        desc = desc.replace("\n\n", "<br /><br />").replace("\n", " ")
+        notes = f.get("notes", "")
+        notes = notes.replace("\n\n", "<br /><br />").replace("\n", " ")
         row = {
             "Field": f"`{f['name']}`",
-            "Description": f["title"],
-            "Notes": desc,
+            "Description": f["description"],
+            "Notes": notes,
         }
         data.append(row)
     table = str(MarkdownTable.from_dicts(data))
@@ -97,8 +97,6 @@ def format_notes(notes) -> str:
     elif isinstance(notes, str):
         items = [add_full_stop(notes)]
     else:
-        items = []
-    if not items:
         return ""
     return "\n".join(f"- {item}" for item in items)
 

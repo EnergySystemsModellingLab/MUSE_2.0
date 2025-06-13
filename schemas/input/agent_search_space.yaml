@@ -8,17 +8,17 @@ notes:
 fields:
   - name: agent_id
     type: string
-    title: An agent ID
+    description: An agent ID
   - name: commodity_id
     type: string
-    title: The commodity to which this entry applies
+    description: The commodity to which this entry applies
   - name: years
     type: string
-    title: The year(s) to which this entry applies
-    description: One or more milestone years separated by semicolons or `all`
+    description: The year(s) to which this entry applies
+    notes: One or more milestone years separated by semicolons or `all`
   - name: search_space
     type: string
-    title: The processes in which this agent will invest
-    description: |
+    description: The processes in which this agent will invest
+    notes: |
       One or more process IDs separated by semicolons. If this field is empty or `all`, all
       processes will be considered.

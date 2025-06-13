@@ -8,11 +8,11 @@ notes:
 fields:
   - name: season
     type: string
-    title: Name of season
+    description: Name of season
   - name: time_of_day
     type: string
-    title: Name of time of day
+    description: Name of time of day
   - name: fraction
     type: number
-    title: Fraction of year
-    description: Must be >0 and <=1
+    description: Fraction of year
+    notes: Must be >0 and <=1

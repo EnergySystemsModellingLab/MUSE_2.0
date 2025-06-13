@@ -8,35 +8,35 @@ notes:
 fields:
   - name: process_id
     type: string
-    title: The process to which this entry applies
+    description: The process to which this entry applies
   - name: regions
     type: string
-    title: The region(s) to which this entry applies
-    description: |
+    description: The region(s) to which this entry applies
+    notes: |
       One or more region IDs, separated by semicolons or the string `all`. Must be regions in which
       the process operates.
   - name: years
     type: string
-    title: The milestone year(s) to which this entry applies
-    description: One or more milestone years separated by semicolons or `all`
+    description: The milestone year(s) to which this entry applies
+    notes: One or more milestone years separated by semicolons or `all`
   - name: capital_cost
     type: number
-    title: Overnight capital cost per unit capacity
+    description: Overnight capital cost per unit capacity
   - name: fixed_operating_cost
     type: number
-    title: Annual operating cost per unit capacity
+    description: Annual operating cost per unit capacity
   - name: variable_operating_cost
     type: number
-    title: Annual variable operating cost per unit activity, for PACs **only**
+    description: Annual variable operating cost per unit activity, for PACs **only**
   - name: lifetime
     type: integer
-    title: Lifetime in years of an asset created from this process
-    description: Must be a positive integer
+    description: Lifetime in years of an asset created from this process
+    notes: Must be a positive integer
   - name: discount_rate
     type: number
-    title: Process-specific discount rate
-    description: Must be positive. A warning will be issued if this number is >1.
+    description: Process-specific discount rate
+    notes: Must be positive. A warning will be issued if this number is >1.
   - name: capacity_to_activity
     type: number
-    title: Factor for calculating the maximum PAC consumption/production over a year.
-    description: Must be >=0
+    description: Factor for calculating the maximum PAC consumption/production over a year.
+    notes: Must be >=0
