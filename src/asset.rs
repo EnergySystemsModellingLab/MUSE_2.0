@@ -187,6 +187,18 @@ impl Hash for AssetRef {
     }
 }
 
+impl PartialOrd for AssetRef {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for AssetRef {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.unwrap().cmp(&other.id.unwrap())
+    }
+}
+
 /// A pool of [`Asset`]s
 pub struct AssetPool {
     /// The pool of active assets
@@ -295,6 +307,9 @@ impl AssetPool {
 
         self.active.clear();
         self.active.extend(new_pool);
+
+        // New pool may not have been sorted, but active needs to be sorted by ID
+        self.active.sort();
     }
 }
 
@@ -525,5 +540,34 @@ mod tests {
         assert_eq!(asset_pool.active.len(), 1);
         assert_eq!(asset_pool.active[0].id, Some(AssetID(2)));
         assert_eq!(asset_pool.active[0].agent_id, "some_other_agent".into());
+    }
+
+    #[rstest]
+    fn test_asset_pool_replace_active_pool_out_of_order(
+        mut asset_pool: AssetPool,
+        process: Process,
+    ) {
+        let new_asset = Asset::new(
+            "some_other_agent".into(),
+            process.into(),
+            "GBR".into(),
+            2.0,
+            2010,
+        )
+        .unwrap();
+
+        asset_pool.commission_new(2020);
+        assert_eq!(asset_pool.active.len(), 2);
+        let mut new_pool: Vec<Rc<Asset>> = asset_pool
+            .iter()
+            .map(|asset| asset.clone().into())
+            .collect();
+        new_pool.push(new_asset.into());
+        new_pool.reverse();
+
+        asset_pool.replace_active_pool(new_pool);
+        assert_equal(asset_pool.iter().map(|asset| asset.id.unwrap().0), 0..3);
+        assert_eq!(asset_pool.active[2].id, Some(AssetID(2)));
+        assert_eq!(asset_pool.active[2].agent_id, "some_other_agent".into());
     }
 }
