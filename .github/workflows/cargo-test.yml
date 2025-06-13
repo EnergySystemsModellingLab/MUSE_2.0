@@ -4,9 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-
-env:
-  CARGO_TERM_COLOR: always
+  workflow_dispatch:
 
 jobs:
   build_and_test:
