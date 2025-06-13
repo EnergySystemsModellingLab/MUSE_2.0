@@ -1,11 +1,13 @@
 description: |
   Portions of commodity demand for which agents are responsible.
 
-notes: |
-  If an entry is specified for one agent and commodity, there must be entries covering all milestone
-  years. For each agent listed in this file, the total portions for each region/commodity/year
-  combination must sum to one. In addition, there must be entries for every SVD and SED commodity
-  for all regions and milestone years.
+notes:
+  - If an entry is specified for one agent and commodity, there must be entries covering all
+    milestone years.
+  - For each agent listed in this file, the total portions for each region/commodity/year
+    combination must sum to one.
+  - In addition, there must be entries for every SVD and SED commodity for all regions and
+    milestone years.
 
 fields:
   - name: agent_id

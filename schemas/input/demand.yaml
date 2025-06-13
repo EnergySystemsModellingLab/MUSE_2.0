@@ -1,8 +1,9 @@
 description: |
   Specifies the demand for service demand commodities.
 
-notes: Every service demand commodity must have entries in this file covering every combination of
-  milestone year and region
+notes:
+  - Every service demand commodity must have entries in this file covering every combination of
+    milestone year and region
 
 fields:
   - name: commodity_id

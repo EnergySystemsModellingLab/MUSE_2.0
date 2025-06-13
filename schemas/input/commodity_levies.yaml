@@ -1,9 +1,9 @@
 description: |
   Defines levies for commodities (or, if `value` is negative, incentives).
 
-notes: |
-  If an entry is included for a given combination of commodity and region, entries must be provided
-  covering all milestone years and time slices.
+notes:
+  - If an entry is included for a given combination of commodity and region, entries must be
+    provided covering all milestone years and time slices.
 
 fields:
   - name: commodity_id

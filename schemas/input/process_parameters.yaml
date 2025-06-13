@@ -1,9 +1,9 @@
 description: |
   Parameters for processes which vary by region and year.
 
-notes: |
-  For each process, entries must be provided which cover every combination of milestone year and
-  region in which the process operates.
+notes:
+  - For each process, entries must be provided which cover every combination of milestone year and
+    region in which the process operates.
 
 fields:
   - name: process_id

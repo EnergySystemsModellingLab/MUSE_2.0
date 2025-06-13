@@ -1,9 +1,9 @@
 description: |
   Defines the processes in which an agent will invest for given parameters.
 
-notes: |
-  If entries are missing for any combination of agent, commodity or milestone year, then it is
-  assumed that all processes can be considered in this case.
+notes:
+  - If entries are missing for any combination of agent, commodity or milestone year, then it is
+    assumed that all processes can be considered in this case.
 
 fields:
   - name: agent_id

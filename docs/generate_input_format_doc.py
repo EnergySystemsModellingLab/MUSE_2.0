@@ -63,7 +63,7 @@ def load_file(path: Path) -> File:
     name = f"{path.stem}.csv"
     desc = add_full_stop(data["description"])
     if note := data.get("notes", None):
-        note = add_full_stop(note)
+        note = format_notes(note)
     return File(name, desc, table, note)
 
 
@@ -89,6 +89,18 @@ def fields2table(fields: list[dict[str, str]]) -> tuple[str, str | None]:
         data.append(row)
     table = str(MarkdownTable.from_dicts(data))
     return table
+
+
+def format_notes(notes) -> str:
+    if isinstance(notes, list):
+        items = [add_full_stop(item) for item in notes]
+    elif isinstance(notes, str):
+        items = [add_full_stop(notes)]
+    else:
+        items = []
+    if not items:
+        return ""
+    return "\n".join(f"- {item}" for item in items)
 
 
 if __name__ == "__main__":

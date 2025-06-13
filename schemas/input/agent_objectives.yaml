@@ -1,11 +1,12 @@
 description: |
   Describes the agents' objectives.
 
-notes: |
-  Every agent must have one objective for each milestone year. If the weighted sum decision rule is
-  in use, the `decision_weight` value must be provided, otherwise it must be omitted. If the lexico
-  decision rule is in use, the `decision_lexico_order` value must be provided, otherwise it must be
-  omitted.
+notes:
+  - Every agent must have one objective for each milestone year.
+  - If the weighted sum decision rule is in use, the `decision_weight` value must be provided,
+    otherwise it must be omitted.
+  - If the lexico decision rule is in use, the `decision_lexico_order` value must be provided,
+    otherwise it must be omitted.
 
 fields:
   - name: agent_id
