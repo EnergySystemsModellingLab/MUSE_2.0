@@ -1,12 +1,10 @@
 //! Code for reading process parameters CSV file
 use super::super::*;
-use crate::id::IDCollection;
-use crate::process::{Process, ProcessID, ProcessParameter, ProcessParameterMap};
+use crate::process::{ProcessID, ProcessMap, ProcessParameter, ProcessParameterMap};
 use crate::region::parse_region_str;
 use crate::year::parse_year_str;
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
-use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -97,19 +95,16 @@ impl ProcessParameterRaw {
 /// Read process parameters from the specified model directory
 pub fn read_process_parameters(
     model_dir: &Path,
-    process_ids: &IndexSet<ProcessID>,
-    processes: &HashMap<ProcessID, Process>,
+    processes: &ProcessMap,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
-    read_process_parameters_from_iter(iter, process_ids, processes)
-        .with_context(|| input_err_msg(&file_path))
+    read_process_parameters_from_iter(iter, processes).with_context(|| input_err_msg(&file_path))
 }
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
-    process_ids: &IndexSet<ProcessID>,
-    processes: &HashMap<ProcessID, Process>,
+    processes: &ProcessMap,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
@@ -117,10 +112,9 @@ where
     let mut map: HashMap<ProcessID, ProcessParameterMap> = HashMap::new();
     for param_raw in iter {
         // Get process
-        let id = process_ids.get_id(&param_raw.process_id)?;
-        let process = processes
-            .get(id)
-            .with_context(|| format!("Process {id} not found"))?;
+        let (id, process) = processes
+            .get_key_value(param_raw.process_id.as_str())
+            .with_context(|| format!("Process {} not found", param_raw.process_id))?;
 
         // Get years
         let process_years = &process.years;

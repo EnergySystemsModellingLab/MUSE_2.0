@@ -86,12 +86,11 @@ pub enum CommodityType {
     /// Specifies a demand (specified in input files) which must be met by the simulation
     #[string = "svd"]
     ServiceDemand,
-    /// Only an input to the simulation, cannot be produced by processes
-    #[string = "inc"]
-    InputCommodity,
-    /// Only an output for the simulation, cannot be consumed by processes
-    #[string = "ouc"]
-    OutputCommodity,
+    /// Either an input or an output to the simulation.
+    ///
+    /// This represents a commodity which can either be produced or consumed, but not both.
+    #[string = "oth"]
+    Other,
 }
 
 #[cfg(test)]

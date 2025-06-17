@@ -1,12 +1,10 @@
 //! Code for reading process flows file
 use super::super::*;
 use crate::commodity::CommodityMap;
-use crate::id::IDCollection;
-use crate::process::{FlowType, Process, ProcessFlow, ProcessFlowsMap, ProcessID};
+use crate::process::{FlowType, Process, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
-use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -57,21 +55,19 @@ impl ProcessFlowRaw {
 /// Read process flows from a CSV file
 pub fn read_process_flows(
     model_dir: &Path,
-    process_ids: &IndexSet<ProcessID>,
-    processes: &HashMap<ProcessID, Process>,
+    processes: &ProcessMap,
     commodities: &CommodityMap,
 ) -> Result<HashMap<ProcessID, ProcessFlowsMap>> {
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let process_flow_csv = read_csv(&file_path)?;
-    read_process_flows_from_iter(process_flow_csv, process_ids, processes, commodities)
+    read_process_flows_from_iter(process_flow_csv, processes, commodities)
         .with_context(|| input_err_msg(&file_path))
 }
 
 /// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.
 fn read_process_flows_from_iter<I>(
     iter: I,
-    process_ids: &IndexSet<ProcessID>,
-    processes: &HashMap<ProcessID, Process>,
+    processes: &ProcessMap,
     commodities: &CommodityMap,
 ) -> Result<HashMap<ProcessID, ProcessFlowsMap>>
 where
@@ -82,10 +78,9 @@ where
         record.validate()?;
 
         // Get process
-        let id = process_ids.get_id(&record.process_id)?;
-        let process = processes
-            .get(id)
-            .with_context(|| format!("Process {id} not found"))?;
+        let (id, process) = processes
+            .get_key_value(record.process_id.as_str())
+            .with_context(|| format!("Process {} not found", record.process_id))?;
 
         // Get regions
         let process_regions = &process.regions;
