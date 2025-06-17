@@ -277,10 +277,13 @@ fn validate_svd_commodity(
             // We're only interested in processes which produce this commodity
             continue;
         };
-        if flow.coeff <= 0.0 {
-            // Check if it's a producer
-            continue;
-        }
+        ensure!(
+            flow.coeff > 0.0,
+            "SVD commodity {} is consumed by process {}. \
+            SVD commodities can only be produced, not consumed.",
+            commodity.id,
+            process_id
+        );
 
         // If the process has availability >0 in any time slice for this selection, we accept it
         let availabilities = availabilities.get(process_id).unwrap();
@@ -313,6 +316,7 @@ mod tests {
     use crate::time_slice::{TimeSliceID, TimeSliceLevel};
     use indexmap::indexmap;
     use rstest::{fixture, rstest};
+    use std::iter;
 
     #[fixture]
     fn commodity_sed() -> Commodity {
@@ -560,6 +564,48 @@ mod tests {
         assert_error!(
             validate_other_commodity(&commodity_other.id, &flows),
             "Commodity commodity_other is neither produced or consumed."
+        );
+    }
+
+    #[rstest]
+    fn test_validate_svd_commodity_invalid_consumed(
+        commodity_svd: Commodity,
+        time_slice_info: TimeSliceInfo,
+        time_slice: TimeSliceID,
+    ) {
+        let commodity_svd = Rc::new(commodity_svd);
+        let region_id = RegionID("GBR".into());
+        let availabilities = HashMap::from_iter([(
+            "process1".into(),
+            ProcessActivityLimitsMap::from_iter([(
+                (region_id.clone(), 2010, time_slice.clone()),
+                0.1..=0.9,
+            )]),
+        )]);
+        let flows = HashMap::from_iter(iter::once((
+            "process1".into(),
+            ProcessFlowsMap::from_iter([(
+                (region_id.clone(), 2010),
+                indexmap! { commodity_svd.id.clone() => ProcessFlow {
+                    commodity: Rc::clone(&commodity_svd),
+                    coeff: -10.0,
+                    kind: FlowType::Fixed,
+                    cost: 1.0
+                }},
+            )]),
+        )));
+        assert_error!(
+            validate_svd_commodity(
+                &time_slice_info,
+                &commodity_svd,
+                &flows,
+                &availabilities,
+                &region_id,
+                2010,
+                &time_slice.into()
+            ),
+            "SVD commodity commodity_svd is consumed by process process1. \
+            SVD commodities can only be produced, not consumed."
         );
     }
 }
