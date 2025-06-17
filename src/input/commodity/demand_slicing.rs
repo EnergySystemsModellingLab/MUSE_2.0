@@ -128,7 +128,7 @@ fn validate_demand_slices(
 ) -> Result<()> {
     for (commodity, region_id) in iproduct!(svd_commodities.values(), region_ids) {
         time_slice_info
-            .iter_selections_for_level(commodity.time_slice_level)
+            .iter_selections_at_level(commodity.time_slice_level)
             .map(|ts_selection| {
                 demand_slices
                     .get(&(
