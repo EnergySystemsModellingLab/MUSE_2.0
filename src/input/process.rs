@@ -328,7 +328,7 @@ mod tests {
 
     #[fixture]
     fn input_flows_sed(commodity_sed: Commodity) -> ProcessFlowsMap {
-        ProcessFlowsMap::from_iter(vec![(
+        ProcessFlowsMap::from_iter([(
             ("GBR".into(), 2010),
             indexmap! { commodity_sed.id.clone() => ProcessFlow {
                 commodity: commodity_sed.into(),
@@ -341,7 +341,7 @@ mod tests {
 
     #[fixture]
     fn output_flows_sed(commodity_sed: Commodity) -> ProcessFlowsMap {
-        ProcessFlowsMap::from_iter(vec![(
+        ProcessFlowsMap::from_iter([(
             ("GBR".into(), 2010),
             indexmap! {commodity_sed.id.clone()=>ProcessFlow {
                 commodity: commodity_sed.into(),
@@ -359,7 +359,7 @@ mod tests {
         output_flows_sed: ProcessFlowsMap,
     ) {
         // Valid scenario
-        let flows = HashMap::from_iter(vec![
+        let flows = HashMap::from_iter([
             ("process1".into(), input_flows_sed.clone()),
             ("process2".into(), output_flows_sed.clone()),
         ]);
@@ -372,7 +372,7 @@ mod tests {
         input_flows_sed: ProcessFlowsMap,
     ) {
         // Invalid scenario: no producer
-        let flows = HashMap::from_iter(vec![("process1".into(), input_flows_sed.clone())]);
+        let flows = HashMap::from_iter([("process1".into(), input_flows_sed.clone())]);
         assert_error!(
             validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), 2010),
             "Commodity commodity_sed of 'SED' type must have both producer and consumer processes for region GBR in year 2010"
@@ -382,7 +382,7 @@ mod tests {
     #[rstest]
     fn test_validate_sed_commodity(commodity_sed: Commodity, output_flows_sed: ProcessFlowsMap) {
         // Invalid scenario: no consumer
-        let flows = HashMap::from_iter(vec![("process2".into(), output_flows_sed.clone())]);
+        let flows = HashMap::from_iter([("process2".into(), output_flows_sed.clone())]);
         assert_error!(
             validate_sed_commodity(&commodity_sed.id, &flows, &"GBR".into(), 2010),
             "Commodity commodity_sed of 'SED' type must have both producer and consumer processes for region GBR in year 2010"
@@ -391,7 +391,7 @@ mod tests {
 
     #[fixture]
     fn commodity_svd(time_slice: TimeSliceID) -> Commodity {
-        let demand = DemandMap::from_iter(vec![(("GBR".into(), 2010, time_slice.into()), 10.0)]);
+        let demand = DemandMap::from_iter([(("GBR".into(), 2010, time_slice.into()), 10.0)]);
 
         Commodity {
             id: "commodity_svd".into(),
@@ -405,9 +405,9 @@ mod tests {
 
     #[fixture]
     fn flows_svd(commodity_svd: Commodity) -> HashMap<ProcessID, ProcessFlowsMap> {
-        HashMap::from_iter(vec![(
+        HashMap::from_iter([(
             "process1".into(),
-            ProcessFlowsMap::from_iter(vec![(
+            ProcessFlowsMap::from_iter([(
                 ("GBR".into(), 2010),
                 indexmap! { commodity_svd.id.clone() => ProcessFlow {
                     commodity: commodity_svd.into(),
@@ -426,9 +426,9 @@ mod tests {
         time_slice_info: TimeSliceInfo,
         time_slice: TimeSliceID,
     ) {
-        let availabilities = HashMap::from_iter(vec![(
+        let availabilities = HashMap::from_iter([(
             "process1".into(),
-            ProcessActivityLimitsMap::from_iter(vec![(
+            ProcessActivityLimitsMap::from_iter([(
                 ("GBR".into(), 2010, time_slice.clone()),
                 0.1..=0.9,
             )]),
@@ -455,9 +455,9 @@ mod tests {
         time_slice: TimeSliceID,
     ) {
         // Invalid scenario: no availability
-        let availabilities = HashMap::from_iter(vec![(
+        let availabilities = HashMap::from_iter([(
             "process1".into(),
-            ProcessActivityLimitsMap::from_iter(vec![(
+            ProcessActivityLimitsMap::from_iter([(
                 ("GBR".into(), 2010, time_slice.clone()),
                 0.0..=0.0,
             )]),
@@ -491,7 +491,7 @@ mod tests {
 
     #[fixture]
     fn producer_flows(commodity_other: Commodity) -> ProcessFlowsMap {
-        ProcessFlowsMap::from_iter(vec![(
+        ProcessFlowsMap::from_iter([(
             ("GBR".into(), 2010),
             indexmap! { commodity_other.id.clone() => ProcessFlow {
                 commodity: commodity_other.into(),
@@ -504,7 +504,7 @@ mod tests {
 
     #[fixture]
     fn consumer_flows(commodity_other: Commodity) -> ProcessFlowsMap {
-        ProcessFlowsMap::from_iter(vec![(
+        ProcessFlowsMap::from_iter([(
             ("GBR".into(), 2010),
             indexmap! { commodity_other.id.clone() => ProcessFlow {
                 commodity: commodity_other.into(),
@@ -521,7 +521,7 @@ mod tests {
         producer_flows: ProcessFlowsMap,
     ) {
         // Valid scenario: commodity is only produced
-        let flows = HashMap::from_iter(vec![("process1".into(), producer_flows)]);
+        let flows = HashMap::from_iter([("process1".into(), producer_flows)]);
         assert!(validate_other_commodity(&commodity_other.id, &flows).is_ok());
     }
 
@@ -531,7 +531,7 @@ mod tests {
         consumer_flows: ProcessFlowsMap,
     ) {
         // Valid scenario: commodity is only consumed
-        let flows = HashMap::from_iter(vec![("process1".into(), consumer_flows)]);
+        let flows = HashMap::from_iter([("process1".into(), consumer_flows)]);
         assert!(validate_other_commodity(&commodity_other.id, &flows).is_ok());
     }
 
@@ -542,7 +542,7 @@ mod tests {
         consumer_flows: ProcessFlowsMap,
     ) {
         // Invalid scenario: commodity is both produced and consumed
-        let flows = HashMap::from_iter(vec![
+        let flows = HashMap::from_iter([
             ("process1".into(), producer_flows),
             ("process2".into(), consumer_flows),
         ]);
