@@ -50,6 +50,7 @@ pub struct ConstraintKeys {
 /// * `variables` - The variables in the problem
 /// * `model` - The model
 /// * `assets` - The asset pool
+/// * `year` - Current milestone year
 ///
 /// # Returns:
 ///
@@ -60,9 +61,10 @@ pub fn add_asset_constraints(
     variables: &VariableMap,
     model: &Model,
     assets: &AssetPool,
+    year: u32,
 ) -> ConstraintKeys {
     let commodity_balance_keys =
-        add_commodity_balance_constraints(problem, variables, model, assets);
+        add_commodity_balance_constraints(problem, variables, model, assets, year);
 
     let capacity_keys =
         add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
@@ -86,6 +88,7 @@ fn add_commodity_balance_constraints(
     variables: &VariableMap,
     model: &Model,
     assets: &AssetPool,
+    year: u32,
 ) -> CommodityBalanceKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
@@ -93,7 +96,10 @@ fn add_commodity_balance_constraints(
     let mut keys = Vec::new();
     let mut terms = Vec::new();
     for (commodity_id, commodity) in model.commodities.iter() {
-        if commodity.kind != CommodityType::SupplyEqualsDemand {
+        if !matches!(
+            commodity.kind,
+            CommodityType::SupplyEqualsDemand | CommodityType::ServiceDemand
+        ) {
             continue;
         }
 
@@ -111,8 +117,17 @@ fn add_commodity_balance_constraints(
                     }
                 }
 
-                // Add constraint
-                problem.add_row(0.0..=0.0, terms.drain(..));
+                // Add constraint. For SED commodities, the RHS is zero and for SVD commodities it
+                // is the exogenous demand supplied by the user.
+                let rhs = if commodity.kind == CommodityType::ServiceDemand {
+                    *commodity
+                        .demand
+                        .get(&(region_id.clone(), year, ts_selection.clone()))
+                        .unwrap()
+                } else {
+                    0.0
+                };
+                problem.add_row(rhs..=rhs, terms.drain(..));
                 keys.push((
                     commodity_id.clone(),
                     region_id.clone(),

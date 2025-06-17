@@ -128,7 +128,7 @@ pub fn perform_dispatch_optimisation<'a>(
     let variables = add_variables(&mut problem, model, assets, year);
 
     // Add constraints
-    let constraint_keys = add_asset_constraints(&mut problem, &variables, model, assets);
+    let constraint_keys = add_asset_constraints(&mut problem, &variables, model, assets, year);
 
     // Solve problem
     let mut highs_model = problem.optimise(Sense::Minimise);
