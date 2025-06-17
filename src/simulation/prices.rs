@@ -39,7 +39,7 @@ impl CommodityPrices {
     /// Add commodity prices for which there are values in the solution
     ///
     /// Commodity prices are calculated as the sum of the commodity balance duals and the highest
-    /// capacity dual for each commodity/timeslice.
+    /// activity dual for each commodity/timeslice.
     ///
     /// # Arguments
     ///

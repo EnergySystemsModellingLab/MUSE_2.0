@@ -32,8 +32,8 @@ const ASSETS_FILE_NAME: &str = "assets.csv";
 /// The output file name for commodity balance duals
 const COMMODITY_BALANCE_DUALS_FILE_NAME: &str = "debug_commodity_balance_duals.csv";
 
-/// The output file name for capacity duals
-const CAPACITY_DUALS_FILE_NAME: &str = "debug_capacity_duals.csv";
+/// The output file name for activity duals
+const ACTIVITY_DUALS_FILE_NAME: &str = "debug_activity_duals.csv";
 
 /// Get the model name from the specified directory path
 pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
@@ -111,9 +111,9 @@ struct CommodityPriceRow {
     price: f64,
 }
 
-/// Represents the capacity duals data in a row of the capacity duals CSV file
+/// Represents the activity duals data in a row of the activity duals CSV file
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-struct CapacityDualsRow {
+struct ActivityDualsRow {
     milestone_year: u32,
     asset_id: AssetID,
     time_slice: TimeSliceID,
@@ -144,7 +144,7 @@ struct FixedAssetDualsRow {
 /// For writing extra debug information about the model
 struct DebugDataWriter {
     commodity_balance_duals_writer: csv::Writer<File>,
-    capacity_duals_writer: csv::Writer<File>,
+    activity_duals_writer: csv::Writer<File>,
 }
 
 impl DebugDataWriter {
@@ -161,13 +161,13 @@ impl DebugDataWriter {
 
         Ok(Self {
             commodity_balance_duals_writer: new_writer(COMMODITY_BALANCE_DUALS_FILE_NAME)?,
-            capacity_duals_writer: new_writer(CAPACITY_DUALS_FILE_NAME)?,
+            activity_duals_writer: new_writer(ACTIVITY_DUALS_FILE_NAME)?,
         })
     }
 
     /// Write all debug info to output files
     fn write_debug_info(&mut self, milestone_year: u32, solution: &Solution) -> Result<()> {
-        self.write_capacity_duals(milestone_year, solution.iter_capacity_duals())?;
+        self.write_activity_duals(milestone_year, solution.iter_activity_duals())?;
         self.write_commodity_balance_duals(
             milestone_year,
             solution.iter_commodity_balance_duals(),
@@ -175,19 +175,19 @@ impl DebugDataWriter {
         Ok(())
     }
 
-    /// Write capacity duals to file
-    fn write_capacity_duals<'a, I>(&mut self, milestone_year: u32, iter: I) -> Result<()>
+    /// Write activity duals to file
+    fn write_activity_duals<'a, I>(&mut self, milestone_year: u32, iter: I) -> Result<()>
     where
         I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, f64)>,
     {
         for (asset, time_slice, value) in iter {
-            let row = CapacityDualsRow {
+            let row = ActivityDualsRow {
                 milestone_year,
                 asset_id: asset.id.unwrap(),
                 time_slice: time_slice.clone(),
                 value,
             };
-            self.capacity_duals_writer.serialize(row)?;
+            self.activity_duals_writer.serialize(row)?;
         }
 
         Ok(())
@@ -215,7 +215,7 @@ impl DebugDataWriter {
     /// Flush the underlying streams
     fn flush(&mut self) -> Result<()> {
         self.commodity_balance_duals_writer.flush()?;
-        self.capacity_duals_writer.flush()?;
+        self.activity_duals_writer.flush()?;
 
         Ok(())
     }
@@ -468,30 +468,30 @@ mod tests {
     }
 
     #[rstest]
-    fn test_write_capacity_duals(assets: AssetPool, time_slice: TimeSliceID) {
+    fn test_write_activity_duals(assets: AssetPool, time_slice: TimeSliceID) {
         let milestone_year = 2020;
         let value = 0.5;
         let dir = tempdir().unwrap();
         let asset = assets.iter().next().unwrap();
 
-        // Write capacity dual
+        // Write activity dual
         {
             let mut writer = DebugDataWriter::create(dir.path()).unwrap();
             writer
-                .write_capacity_duals(milestone_year, iter::once((asset, &time_slice, value)))
+                .write_activity_duals(milestone_year, iter::once((asset, &time_slice, value)))
                 .unwrap();
             writer.flush().unwrap();
         }
 
         // Read back and compare
-        let expected = CapacityDualsRow {
+        let expected = ActivityDualsRow {
             milestone_year,
             asset_id: asset.id.unwrap(),
             time_slice,
             value,
         };
-        let records: Vec<CapacityDualsRow> =
-            csv::Reader::from_path(dir.path().join(CAPACITY_DUALS_FILE_NAME))
+        let records: Vec<ActivityDualsRow> =
+            csv::Reader::from_path(dir.path().join(ACTIVITY_DUALS_FILE_NAME))
                 .unwrap()
                 .into_deserialize()
                 .try_collect()
