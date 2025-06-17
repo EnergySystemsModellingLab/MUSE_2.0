@@ -28,15 +28,15 @@ impl<T> KeysWithOffset<T> {
 /// Indicates the commodity ID and time slice selection covered by each commodity balance constraint
 pub type CommodityBalanceKeys = KeysWithOffset<(CommodityID, RegionID, TimeSliceSelection)>;
 
-/// Indicates the asset ID and time slice covered by each capacity constraint
-pub type CapacityKeys = KeysWithOffset<(AssetRef, TimeSliceID)>;
+/// Indicates the asset ID and time slice covered by each activity constraint
+pub type ActivityKeys = KeysWithOffset<(AssetRef, TimeSliceID)>;
 
 /// The keys for different constraints
 pub struct ConstraintKeys {
     /// Keys for commodity balance constraints
     pub commodity_balance_keys: CommodityBalanceKeys,
-    /// Keys for capacity constraints
-    pub capacity_keys: CapacityKeys,
+    /// Keys for activity constraints
+    pub activity_keys: ActivityKeys,
 }
 
 /// Add asset-level constraints
@@ -44,7 +44,7 @@ pub struct ConstraintKeys {
 /// Note: the ordering of constraints is important, as the dual values of the constraints must later
 /// be retrieved to calculate commodity prices.
 ///
-/// # Arguments:
+/// # Arguments
 ///
 /// * `problem` - The optimisation problem
 /// * `variables` - The variables in the problem
@@ -52,10 +52,9 @@ pub struct ConstraintKeys {
 /// * `assets` - The asset pool
 /// * `year` - Current milestone year
 ///
-/// # Returns:
+/// # Returns
 ///
-/// * A vector of keys for commodity balance constraints
-/// * A vector of keys for capacity constraints
+/// Keys for the different constraints.
 pub fn add_asset_constraints(
     problem: &mut Problem,
     variables: &VariableMap,
@@ -67,12 +66,12 @@ pub fn add_asset_constraints(
         add_commodity_balance_constraints(problem, variables, model, assets, year);
 
     let capacity_keys =
-        add_asset_capacity_constraints(problem, variables, assets, &model.time_slice_info);
+        add_activity_constraints(problem, variables, &model.time_slice_info, assets);
 
     // Return constraint keys
     ConstraintKeys {
         commodity_balance_keys,
-        capacity_keys,
+        activity_keys: capacity_keys,
     }
 }
 
@@ -140,28 +139,29 @@ fn add_commodity_balance_constraints(
     CommodityBalanceKeys { offset, keys }
 }
 
-/// Add asset-level capacity and availability constraints.
+/// Add constraints on the activity of different assets.
 ///
-/// For every asset at every time slice, the sum of the commodity flows for assets must not exceed
-/// the capacity limits, which are a product of the annual capacity, time slice length and process
-/// availability.
-///
-/// See description in [the dispatch optimisation documentation][1].
-///
-/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#asset-level-capacity-and-availability-constraints
-fn add_asset_capacity_constraints(
+/// This ensures that assets do not exceed their specified capacity and availability for each time
+/// slice.
+fn add_activity_constraints(
     problem: &mut Problem,
-    _variables: &VariableMap,
-    _assets: &AssetPool,
-    _time_slice_info: &TimeSliceInfo,
-) -> CapacityKeys {
+    variables: &VariableMap,
+    time_slice_info: &TimeSliceInfo,
+    assets: &AssetPool,
+) -> ActivityKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
-    let keys = Vec::new();
+    let mut keys = Vec::new();
+    for asset in assets.iter() {
+        for time_slice in time_slice_info.iter_ids() {
+            let var = variables.get(asset, time_slice);
+            let limits = asset.get_activity_limits(time_slice);
 
-    // **TODO:** Add capacity/availability constraints:
-    //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/579
+            problem.add_row(limits, [(var, 1.0)]);
+            keys.push((asset.clone(), time_slice.clone()))
+        }
+    }
 
-    CapacityKeys { offset, keys }
+    ActivityKeys { offset, keys }
 }

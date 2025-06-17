@@ -94,10 +94,10 @@ impl Solution<'_> {
             })
     }
 
-    /// Keys and dual values for capacity constraints.
-    pub fn iter_capacity_duals(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, f64)> {
+    /// Keys and dual values for activity constraints.
+    pub fn iter_activity_duals(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, f64)> {
         self.constraint_keys
-            .capacity_keys
+            .activity_keys
             .zip_duals(self.solution.dual_rows())
             .map(|((asset, time_slice), dual)| (asset, time_slice, dual))
     }
