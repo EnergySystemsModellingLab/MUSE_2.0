@@ -48,21 +48,6 @@ pub struct Process {
     pub regions: HashSet<RegionID>,
 }
 
-impl Process {
-    /// Whether the process contains a flow for a given commodity
-    pub fn contains_commodity_flow(
-        &self,
-        commodity_id: &CommodityID,
-        region_id: &RegionID,
-        year: u32,
-    ) -> bool {
-        self.flows
-            .get(&(region_id.clone(), year))
-            .unwrap() // all regions and years are covered
-            .contains_key(commodity_id)
-    }
-}
-
 /// Represents a maximum annual commodity coeff for a given process
 #[derive(PartialEq, Debug, Clone)]
 pub struct ProcessFlow {

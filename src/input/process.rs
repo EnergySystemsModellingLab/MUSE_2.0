@@ -170,7 +170,7 @@ fn validate_commodities(
                 }
                 CommodityType::ServiceDemand => {
                     for ts_selection in
-                        time_slice_info.iter_selections_for_level(commodity.time_slice_level)
+                        time_slice_info.iter_selections_at_level(commodity.time_slice_level)
                     {
                         validate_svd_commodity(
                             time_slice_info,
