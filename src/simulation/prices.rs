@@ -1,5 +1,6 @@
 //! Code for updating the simulation state.
 use super::optimisation::Solution;
+use crate::asset::AssetRef;
 use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
@@ -46,34 +47,31 @@ impl CommodityPrices {
     ///
     /// The set of commodity/region pairs for which prices were added.
     fn add_from_solution(&mut self, solution: &Solution) -> HashSet<(CommodityID, RegionID)> {
+        let highest_activity_duals = get_highest_activity_duals(solution.iter_activity_duals());
+        self.add_from_duals(
+            &highest_activity_duals,
+            solution.iter_commodity_balance_duals(),
+        )
+    }
+
+    /// Add the highest activity dual for each commodity/region/timeslice to each commodity balance
+    /// dual
+    ///
+    /// # Returns
+    ///
+    /// The commodity/region pairs which have been updated
+    fn add_from_duals<'a, I>(
+        &mut self,
+        highest_activity_duals: &HashMap<(CommodityID, RegionID, TimeSliceID), f64>,
+        commodity_balance_duals: I,
+    ) -> HashSet<(CommodityID, RegionID)>
+    where
+        I: Iterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, f64)>,
+    {
         let mut commodity_regions_updated = HashSet::new();
-
-        // Calculate highest activity dual for each commodity/region/timeslice
-        let mut highest_duals = HashMap::new();
-        for (asset, time_slice, dual) in solution.iter_activity_duals() {
-            // Iterate over all output flows
-            for flow in asset.iter_flows().filter(|flow| flow.coeff > 0.0) {
-                // Update the highest dual for this commodity/timeslice
-                highest_duals
-                    .entry((
-                        flow.commodity.id.clone(),
-                        asset.region_id.clone(),
-                        time_slice.clone(),
-                    ))
-                    .and_modify(|current_dual| {
-                        if dual > *current_dual {
-                            *current_dual = dual;
-                        }
-                    })
-                    .or_insert(dual);
-            }
-        }
-
-        // Add the highest activity dual for each commodity/region/timeslice to each commodity
-        // balance dual
-        for (commodity_id, region_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
+        for (commodity_id, region_id, time_slice, dual) in commodity_balance_duals {
             let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
-            let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
+            let price = dual + highest_activity_duals.get(&key).unwrap_or(&0.0);
             self.insert(commodity_id, region_id, time_slice, price);
             commodity_regions_updated.insert((commodity_id.clone(), region_id.clone()));
         }
@@ -121,4 +119,34 @@ impl CommodityPrices {
             .iter()
             .map(|((commodity_id, region_id, ts), price)| (commodity_id, region_id, ts, *price))
     }
+}
+
+/// Calculate highest activity dual for each commodity/region/timeslice
+fn get_highest_activity_duals<'a, I>(
+    activity_duals: I,
+) -> HashMap<(CommodityID, RegionID, TimeSliceID), f64>
+where
+    I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, f64)>,
+{
+    let mut highest_duals = HashMap::new();
+    for (asset, time_slice, dual) in activity_duals {
+        // Iterate over all output flows
+        for flow in asset.iter_flows().filter(|flow| flow.coeff > 0.0) {
+            // Update the highest dual for this commodity/timeslice
+            highest_duals
+                .entry((
+                    flow.commodity.id.clone(),
+                    asset.region_id.clone(),
+                    time_slice.clone(),
+                ))
+                .and_modify(|current_dual| {
+                    if dual > *current_dual {
+                        *current_dual = dual;
+                    }
+                })
+                .or_insert(dual);
+        }
+    }
+
+    highest_duals
 }
