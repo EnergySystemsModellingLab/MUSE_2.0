@@ -1,6 +1,6 @@
 //! Code for adding constraints to the dispatch optimisation problem.
 use super::VariableMap;
-use crate::asset::{AssetIterator, AssetPool, AssetRef};
+use crate::asset::{AssetIterator, AssetRef};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
@@ -55,15 +55,18 @@ pub struct ConstraintKeys {
 /// # Returns
 ///
 /// Keys for the different constraints.
-pub fn add_asset_constraints(
+pub fn add_asset_constraints<'a, I>(
     problem: &mut Problem,
     variables: &VariableMap,
-    model: &Model,
-    assets: &AssetPool,
+    model: &'a Model,
+    assets: I,
     year: u32,
-) -> ConstraintKeys {
+) -> ConstraintKeys
+where
+    I: Iterator<Item = &'a AssetRef> + Clone + 'a,
+{
     let commodity_balance_keys =
-        add_commodity_balance_constraints(problem, variables, model, assets, year);
+        add_commodity_balance_constraints(problem, variables, model, assets.clone(), year);
 
     let activity_keys = add_activity_constraints(problem, variables);
 
@@ -81,13 +84,16 @@ pub fn add_asset_constraints(
 /// See description in [the dispatch optimisation documentation][1].
 ///
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#commodity-balance-constraints
-fn add_commodity_balance_constraints(
+fn add_commodity_balance_constraints<'a, I>(
     problem: &mut Problem,
     variables: &VariableMap,
-    model: &Model,
-    assets: &AssetPool,
+    model: &'a Model,
+    assets: I,
     year: u32,
-) -> CommodityBalanceKeys {
+) -> CommodityBalanceKeys
+where
+    I: Iterator<Item = &'a AssetRef> + Clone + 'a,
+{
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
@@ -107,7 +113,7 @@ fn add_commodity_balance_constraints(
                 .iter_selections_at_level(commodity.time_slice_level)
             {
                 for (asset, flow) in assets
-                    .iter()
+                    .clone()
                     .filter_region(region_id)
                     .flows_for_commodity(commodity_id)
                 {
