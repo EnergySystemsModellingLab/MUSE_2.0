@@ -257,25 +257,6 @@ impl AssetPool {
         self.active.iter()
     }
 
-    /// Iterate over active assets for a particular region
-    pub fn iter_for_region<'a>(
-        &'a self,
-        region_id: &'a RegionID,
-    ) -> impl Iterator<Item = &'a AssetRef> {
-        self.iter().filter(|asset| asset.region_id == *region_id)
-    }
-
-    /// Iterate over the active assets in a given region that produce/consume a commodity with the
-    /// associated process flow
-    pub fn iter_for_region_and_commodity<'a>(
-        &'a self,
-        region_id: &'a RegionID,
-        commodity_id: &'a CommodityID,
-    ) -> impl Iterator<Item = (&'a AssetRef, &'a ProcessFlow)> {
-        self.iter_for_region(region_id)
-            .filter_map(|asset| Some((asset, asset.get_flow(commodity_id)?)))
-    }
-
     /// Replace the active pool with new and/or already commissioned assets
     pub fn replace_active_pool<I>(&mut self, assets: I)
     where
@@ -297,6 +278,34 @@ impl AssetPool {
 
         // New pool may not have been sorted, but active needs to be sorted by ID
         self.active.sort();
+    }
+}
+
+/// Additional methods for iterating over assets
+pub trait AssetIterator<'a> {
+    /// Filter the assets by region
+    fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a;
+
+    /// Iterate over process flows affecting the given commodity
+    fn flows_for_commodity(
+        self,
+        commodity_id: &'a CommodityID,
+    ) -> impl Iterator<Item = (&'a AssetRef, &'a ProcessFlow)> + 'a;
+}
+
+impl<'a, I> AssetIterator<'a> for I
+where
+    I: Iterator<Item = &'a AssetRef> + 'a,
+{
+    fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a {
+        self.filter(move |asset| asset.region_id == *region_id)
+    }
+
+    fn flows_for_commodity(
+        self,
+        commodity_id: &'a CommodityID,
+    ) -> impl Iterator<Item = (&'a AssetRef, &'a ProcessFlow)> + 'a {
+        self.filter_map(|asset| Some((asset, asset.get_flow(commodity_id)?)))
     }
 }
 
