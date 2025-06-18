@@ -69,7 +69,7 @@ impl CommodityPrices {
             }
         }
 
-        // Add the highest capacity dual for each commodity/region/timeslice to each commodity
+        // Add the highest activity dual for each commodity/region/timeslice to each commodity
         // balance dual
         for (commodity_id, region_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
             let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
