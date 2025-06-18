@@ -66,7 +66,7 @@ impl Asset {
             .clone();
 
         ensure!(
-            capacity.0.is_finite() && capacity > Dimensionless(0.0),
+            capacity.is_finite() && capacity > Dimensionless(0.0),
             "Capacity must be a finite, positive number"
         );
 

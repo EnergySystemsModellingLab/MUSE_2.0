@@ -67,6 +67,14 @@ macro_rules! base_unit_struct {
             pub fn is_normal(self) -> bool {
                 self.0.is_normal()
             }
+            /// Returns true if the value is finite.
+            pub fn is_finite(self) -> bool {
+                self.0.is_finite()
+            }
+            /// Returns the absolute value of this unit.
+            pub fn abs(self) -> Self {
+                $name(self.0.abs())
+            }
         }
     };
 }
@@ -87,10 +95,6 @@ impl From<Dimensionless> for f64 {
 }
 
 impl Dimensionless {
-    /// Returns the absolute value of this dimensionless number.
-    pub fn abs(self) -> Self {
-        Dimensionless(self.0.abs())
-    }
     /// Raises this dimensionless number to the power of `rhs`.
     pub fn powi(self, rhs: i32) -> Self {
         Dimensionless(self.0.powi(rhs))

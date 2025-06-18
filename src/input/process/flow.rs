@@ -44,7 +44,7 @@ impl ProcessFlowRaw {
         // Check that flow cost is non-negative
         if let Some(cost) = self.cost {
             ensure!(
-                (0.0..f64::INFINITY).contains(&cost.0),
+                (0.0..f64::INFINITY).contains(&cost.value()),
                 "Invalid value for flow cost ({cost}). Must be >=0."
             )
         }

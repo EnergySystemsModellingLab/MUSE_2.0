@@ -112,7 +112,7 @@ fn add_commodity_balance_constraints(
                     // cover multiple time slices
                     for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
                         let var = variables.get(asset, time_slice);
-                        terms.push((var, flow.coeff.0));
+                        terms.push((var, flow.coeff.value()));
                     }
                 }
 
