@@ -65,13 +65,13 @@ pub fn add_asset_constraints(
     let commodity_balance_keys =
         add_commodity_balance_constraints(problem, variables, model, assets, year);
 
-    let capacity_keys =
+    let activity_keys =
         add_activity_constraints(problem, variables, &model.time_slice_info, assets);
 
     // Return constraint keys
     ConstraintKeys {
         commodity_balance_keys,
-        activity_keys: capacity_keys,
+        activity_keys,
     }
 }
 
