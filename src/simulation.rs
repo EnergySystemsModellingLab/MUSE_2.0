@@ -52,7 +52,7 @@ pub fn run(
         // Dispatch optimisation
         let solution = perform_dispatch_optimisation(&model, &assets, year)?;
         let flow_map = solution.create_flow_map();
-        let prices = CommodityPrices::from_model_and_solution(&model, &solution, &assets);
+        let prices = CommodityPrices::from_model_and_solution(&model, &solution);
 
         // Write result of dispatch optimisation to file
         writer.write_debug_info(year, &solution)?;
