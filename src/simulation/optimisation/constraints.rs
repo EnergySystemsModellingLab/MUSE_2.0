@@ -1,6 +1,6 @@
 //! Code for adding constraints to the dispatch optimisation problem.
 use super::VariableMap;
-use crate::asset::{AssetPool, AssetRef};
+use crate::asset::{AssetIterator, AssetPool, AssetRef};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
@@ -106,7 +106,11 @@ fn add_commodity_balance_constraints(
                 .time_slice_info
                 .iter_selections_at_level(commodity.time_slice_level)
             {
-                for (asset, flow) in assets.iter_for_region_and_commodity(region_id, commodity_id) {
+                for (asset, flow) in assets
+                    .iter()
+                    .filter_region(region_id)
+                    .flows_for_commodity(commodity_id)
+                {
                     // If the commodity has a time slice level of season/annual, the constraint will
                     // cover multiple time slices
                     for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
