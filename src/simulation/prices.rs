@@ -12,9 +12,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 pub struct CommodityPrices(BTreeMap<(CommodityID, RegionID, TimeSliceID), f64>);
 
 impl CommodityPrices {
-    /// Calculate commodity prices based on the result of the dispatch optimisation.
-    ///
-    /// Missing prices will be calculated directly from the input data
+    /// Calculate commodity prices based on the result of the dispatch optimisation
     pub fn from_model_and_solution(model: &Model, solution: &Solution) -> Self {
         let mut prices = CommodityPrices::default();
         let commodity_regions_updated = prices.add_from_solution(solution);
@@ -46,7 +44,7 @@ impl CommodityPrices {
     ///
     /// # Returns
     ///
-    /// The set of commodities for which prices were added.
+    /// The set of commodity/region pairs for which prices were added.
     fn add_from_solution(&mut self, solution: &Solution) -> HashSet<(CommodityID, RegionID)> {
         let mut commodity_regions_updated = HashSet::new();
 
@@ -71,7 +69,8 @@ impl CommodityPrices {
             }
         }
 
-        // Add the highest capacity dual for each commodity/timeslice to each commodity balance dual
+        // Add the highest capacity dual for each commodity/region/timeslice to each commodity
+        // balance dual
         for (commodity_id, region_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
             let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
             let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
@@ -86,7 +85,7 @@ impl CommodityPrices {
     ///
     /// # Arguments
     ///
-    /// * `commodity_ids` - IDs of commodities to update
+    /// * `commodity_regions` - Commodity/region pairs to update
     /// * `time_slice_info` - Information about time slices
     fn add_remaining<'a, I>(&mut self, commodity_regions: I, time_slice_info: &TimeSliceInfo)
     where
@@ -100,7 +99,7 @@ impl CommodityPrices {
         }
     }
 
-    /// Insert a price for the given commodity, time slice and region
+    /// Insert a price for the given commodity, region and time slice
     pub fn insert(
         &mut self,
         commodity_id: &CommodityID,
@@ -116,7 +115,7 @@ impl CommodityPrices {
     ///
     /// # Returns
     ///
-    /// An iterator of tuples containing commodity ID, time slice and price.
+    /// An iterator of tuples containing commodity ID, region ID, time slice and price.
     pub fn iter(&self) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, f64)> {
         self.0
             .iter()
