@@ -4,6 +4,7 @@ use crate::commodity::{BalanceType, CommodityID, CommodityLevy, CommodityLevyMap
 use crate::id::IDCollection;
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::TimeSliceInfo;
+use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -26,7 +27,7 @@ struct CommodityLevyRaw {
     /// The time slice to which the cost applies.
     time_slice: String,
     /// Cost per unit commodity
-    value: f64,
+    value: Dimensionless,
 }
 
 /// Read costs associated with each commodity from levies CSV file.

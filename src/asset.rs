@@ -4,6 +4,7 @@ use crate::commodity::CommodityID;
 use crate::process::{Process, ProcessFlow, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
+use crate::units::Dimensionless;
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -29,7 +30,7 @@ pub struct Asset {
     /// The region in which the asset is located
     pub region_id: RegionID,
     /// Capacity of asset
-    pub capacity: f64,
+    pub capacity: Dimensionless,
     /// The year the asset comes online
     pub commission_year: u32,
 }
@@ -43,7 +44,7 @@ impl Asset {
         agent_id: AgentID,
         process: Rc<Process>,
         region_id: RegionID,
-        capacity: f64,
+        capacity: Dimensionless,
         commission_year: u32,
     ) -> Result<Self> {
         ensure!(
@@ -65,7 +66,7 @@ impl Asset {
             .clone();
 
         ensure!(
-            capacity.is_finite() && capacity > 0.0,
+            capacity.0.is_finite() && capacity > Dimensionless(0.0),
             "Capacity must be a finite, positive number"
         );
 
@@ -86,7 +87,7 @@ impl Asset {
     }
 
     /// Get the activity limits for this asset in a particular time slice
-    pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<f64> {
+    pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<Dimensionless> {
         let limits = self
             .process
             .activity_limits
@@ -99,11 +100,11 @@ impl Asset {
         let max_act = self.maximum_activity();
 
         // limits in real units (which are user defined)
-        (max_act * limits.start())..=(max_act * limits.end())
+        (max_act * *limits.start())..=(max_act * *limits.end())
     }
 
     /// Maximum activity for this asset
-    pub fn maximum_activity(&self) -> f64 {
+    pub fn maximum_activity(&self) -> Dimensionless {
         self.capacity * self.process_parameter.capacity_to_activity
     }
 
@@ -313,11 +314,11 @@ mod tests {
     use std::ops::RangeInclusive;
 
     #[rstest]
-    #[case(0.01)]
-    #[case(0.5)]
-    #[case(1.0)]
-    #[case(100.0)]
-    fn test_asset_new_valid(process: Process, #[case] capacity: f64) {
+    #[case(Dimensionless(0.01))]
+    #[case(Dimensionless(0.5))]
+    #[case(Dimensionless(1.0))]
+    #[case(Dimensionless(100.0))]
+    fn test_asset_new_valid(process: Process, #[case] capacity: Dimensionless) {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("GBR".into());
         let asset = Asset::new(agent_id, process.into(), region_id, capacity, 2015).unwrap();
@@ -325,13 +326,13 @@ mod tests {
     }
 
     #[rstest]
-    #[case(0.0)]
-    #[case(-0.01)]
-    #[case(-1.0)]
-    #[case(f64::NAN)]
-    #[case(f64::INFINITY)]
-    #[case(f64::NEG_INFINITY)]
-    fn test_asset_new_invalid_capacity(process: Process, #[case] capacity: f64) {
+    #[case(Dimensionless(0.0))]
+    #[case(Dimensionless(-0.01))]
+    #[case(Dimensionless(-1.0))]
+    #[case(Dimensionless(f64::NAN))]
+    #[case(Dimensionless(f64::INFINITY))]
+    #[case(Dimensionless(f64::NEG_INFINITY))]
+    fn test_asset_new_invalid_capacity(process: Process, #[case] capacity: Dimensionless) {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("GBR".into());
         assert_error!(
@@ -345,7 +346,13 @@ mod tests {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("GBR".into());
         assert_error!(
-            Asset::new(agent_id, process.into(), region_id, 1.0, 2009),
+            Asset::new(
+                agent_id,
+                process.into(),
+                region_id,
+                Dimensionless(1.0),
+                2009
+            ),
             "Process process1 does not operate in the year 2009"
         );
     }
@@ -355,7 +362,13 @@ mod tests {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("FRA".into());
         assert_error!(
-            Asset::new(agent_id, process.into(), region_id, 1.0, 2015),
+            Asset::new(
+                agent_id,
+                process.into(),
+                region_id,
+                Dimensionless(1.0),
+                2015
+            ),
             "Region FRA is not one of the regions in which process process1 operates"
         );
     }
@@ -363,12 +376,12 @@ mod tests {
     #[fixture]
     fn asset_pool() -> AssetPool {
         let process_param = Rc::new(ProcessParameter {
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
+            capital_cost: Dimensionless(5.0),
+            fixed_operating_cost: Dimensionless(2.0),
+            variable_operating_cost: Dimensionless(1.0),
             lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 1.0,
+            discount_rate: Dimensionless(0.9),
+            capacity_to_activity: Dimensionless(1.0),
         });
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
@@ -390,7 +403,7 @@ mod tests {
                     "agent1".into(),
                     Rc::clone(&process),
                     "GBR".into(),
-                    1.0,
+                    Dimensionless(1.0),
                     year,
                 )
                 .unwrap()
@@ -408,19 +421,19 @@ mod tests {
             time_of_day: "day".into(),
         };
         let process_param = Rc::new(ProcessParameter {
-            capital_cost: 5.0,
-            fixed_operating_cost: 2.0,
-            variable_operating_cost: 1.0,
+            capital_cost: Dimensionless(5.0),
+            fixed_operating_cost: Dimensionless(2.0),
+            variable_operating_cost: Dimensionless(1.0),
             lifetime: 5,
-            discount_rate: 0.9,
-            capacity_to_activity: 3.0,
+            discount_rate: Dimensionless(0.9),
+            capacity_to_activity: Dimensionless(3.0),
         });
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
             .iter()
             .map(|&year| (("GBR".into(), year), process_param.clone()))
             .collect();
-        let fraction_limits = 1.0..=f64::INFINITY;
+        let fraction_limits = Dimensionless(1.0)..=Dimensionless(f64::INFINITY);
         let mut activity_limits = ProcessActivityLimitsMap::new();
         for year in [2010, 2020] {
             activity_limits.insert(
@@ -441,12 +454,15 @@ mod tests {
             "agent1".into(),
             Rc::clone(&process),
             "GBR".into(),
-            2.0,
+            Dimensionless(2.0),
             2010,
         )
         .unwrap();
 
-        assert_eq!(asset.get_activity_limits(&time_slice), 6.0..=f64::INFINITY);
+        assert_eq!(
+            asset.get_activity_limits(&time_slice),
+            Dimensionless(6.0)..=Dimensionless(f64::INFINITY)
+        );
     }
 
     #[rstest]
@@ -515,7 +531,7 @@ mod tests {
             "some_other_agent".into(),
             process.into(),
             "GBR".into(),
-            2.0,
+            Dimensionless(2.0),
             2010,
         )
         .unwrap();
@@ -537,7 +553,7 @@ mod tests {
             "some_other_agent".into(),
             process.into(),
             "GBR".into(),
-            2.0,
+            Dimensionless(2.0),
             2010,
         )
         .unwrap();

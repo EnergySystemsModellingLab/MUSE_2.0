@@ -24,11 +24,11 @@ struct Demand {
     /// The year of the demand entry
     year: u32,
     /// Annual demand quantity
-    demand: f64,
+    demand: Dimensionless,
 }
 
 /// A map relating commodity, region and year to annual demand
-pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), (TimeSliceLevel, f64)>;
+pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), (TimeSliceLevel, Dimensionless)>;
 
 /// A map containing a references to commodities
 pub type BorrowedCommodityMap<'a> = HashMap<CommodityID, &'a Commodity>;
@@ -132,7 +132,7 @@ where
         );
 
         ensure!(
-            demand.demand.is_normal() && demand.demand > 0.0,
+            demand.demand.is_normal() && demand.demand > Dimensionless(0.0),
             "Demand must be a valid number greater than zero"
         );
 
@@ -205,7 +205,7 @@ fn compute_demand_maps(
             // Add a new demand entry
             map.insert(
                 (region_id.clone(), *year, ts_selection.clone()),
-                annual_demand * demand_fraction,
+                *annual_demand * *demand_fraction,
             );
         }
     }

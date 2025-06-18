@@ -2,6 +2,7 @@
 use super::super::*;
 use crate::process::{ProcessID, ProcessMap, ProcessParameter, ProcessParameterMap};
 use crate::region::parse_region_str;
+use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
@@ -17,12 +18,12 @@ struct ProcessParameterRaw {
     process_id: String,
     regions: String,
     years: String,
-    capital_cost: f64,
-    fixed_operating_cost: f64,
-    variable_operating_cost: f64,
+    capital_cost: Dimensionless,
+    fixed_operating_cost: Dimensionless,
+    variable_operating_cost: Dimensionless,
     lifetime: u32,
-    discount_rate: Option<f64>,
-    capacity_to_activity: Option<f64>,
+    discount_rate: Option<Dimensionless>,
+    capacity_to_activity: Option<Dimensionless>,
 }
 
 impl ProcessParameterRaw {
@@ -34,8 +35,8 @@ impl ProcessParameterRaw {
             fixed_operating_cost: self.fixed_operating_cost,
             variable_operating_cost: self.variable_operating_cost,
             lifetime: self.lifetime,
-            discount_rate: self.discount_rate.unwrap_or(0.0),
-            capacity_to_activity: self.capacity_to_activity.unwrap_or(1.0),
+            discount_rate: self.discount_rate.unwrap_or(Dimensionless(0.0)),
+            capacity_to_activity: self.capacity_to_activity.unwrap_or(Dimensionless(1.0)),
         })
     }
 }
@@ -67,12 +68,12 @@ impl ProcessParameterRaw {
 
         if let Some(dr) = self.discount_rate {
             ensure!(
-                dr >= 0.0,
+                dr >= Dimensionless(0.0),
                 "Error in parameter for process {}: Discount rate must be positive",
                 self.process_id
             );
 
-            if dr > 1.0 {
+            if dr > Dimensionless(1.0) {
                 warn!(
                     "Warning in parameter for process {}: Discount rate is greater than 1",
                     self.process_id
@@ -82,7 +83,7 @@ impl ProcessParameterRaw {
 
         if let Some(c2a) = self.capacity_to_activity {
             ensure!(
-                c2a >= 0.0,
+                c2a >= Dimensionless(0.0),
                 "Error in parameter for process {}: Cap2act must be positive",
                 self.process_id
             );

@@ -6,6 +6,7 @@ use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::units::Dimensionless;
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
@@ -14,7 +15,7 @@ mod constraints;
 use constraints::{add_asset_constraints, ConstraintKeys};
 
 /// A map of commodity flows calculated during the optimisation
-pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), f64>;
+pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), Dimensionless>;
 
 /// A decision variable in the optimisation
 ///
@@ -69,7 +70,7 @@ impl Solution<'_> {
         {
             for flow in asset.iter_flows() {
                 let flow_key = (asset.clone(), flow.commodity.id.clone(), time_slice.clone());
-                let flow_value = activity * flow.coeff;
+                let flow_value = Dimensionless(*activity) * flow.coeff;
                 flows.insert(flow_key, flow_value);
             }
         }
@@ -190,7 +191,7 @@ fn add_variables(
     for asset in assets.iter() {
         for time_slice in model.time_slice_info.iter_ids() {
             let coeff = calculate_cost_coefficient(asset, year, time_slice);
-            let var = problem.add_column(coeff, 0.0..);
+            let var = problem.add_column(coeff.0, 0.0..);
             let key = (asset.clone(), time_slice.clone());
             let existing = variables.0.insert(key, var).is_some();
             assert!(!existing, "Duplicate entry for var");
@@ -201,9 +202,9 @@ fn add_variables(
 }
 
 /// Calculate the cost coefficient for a decision variable
-fn calculate_cost_coefficient(asset: &Asset, year: u32, time_slice: &TimeSliceID) -> f64 {
+fn calculate_cost_coefficient(asset: &Asset, year: u32, time_slice: &TimeSliceID) -> Dimensionless {
     // The cost for all commodity flows (including levies/incentives)
-    let flows_cost: f64 = asset
+    let flows_cost: Dimensionless = asset
         .iter_flows()
         .map(|flow| flow.get_total_cost(&asset.region_id, year, time_slice))
         .sum();

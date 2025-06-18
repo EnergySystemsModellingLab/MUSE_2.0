@@ -5,6 +5,7 @@ use crate::id::IDCollection;
 use crate::input::commodity::demand::BorrowedCommodityMap;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
+use crate::units::Dimensionless;
 use anyhow::{ensure, Context, Result};
 use itertools::{iproduct, Itertools};
 use serde::Deserialize;
@@ -19,11 +20,11 @@ struct DemandSlice {
     region_id: String,
     time_slice: String,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
-    fraction: f64,
+    fraction: Dimensionless,
 }
 
 /// A map relating commodity, region and time slice selection to the fraction of annual demand
-pub type DemandSliceMap = HashMap<(CommodityID, RegionID, TimeSliceSelection), f64>;
+pub type DemandSliceMap = HashMap<(CommodityID, RegionID, TimeSliceSelection), Dimensionless>;
 
 /// Read demand slices from specified model directory.
 ///

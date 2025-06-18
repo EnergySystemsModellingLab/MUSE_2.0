@@ -3,6 +3,7 @@ use super::super::*;
 use crate::commodity::CommodityMap;
 use crate::process::{FlowType, Process, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
+use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -18,11 +19,11 @@ struct ProcessFlowRaw {
     commodity_id: String,
     years: String,
     regions: String,
-    coeff: f64,
+    coeff: Dimensionless,
     #[serde(default)]
     #[serde(rename = "type")]
     kind: FlowType,
-    cost: Option<f64>,
+    cost: Option<Dimensionless>,
 }
 
 impl ProcessFlowRaw {
@@ -43,7 +44,7 @@ impl ProcessFlowRaw {
         // Check that flow cost is non-negative
         if let Some(cost) = self.cost {
             ensure!(
-                (0.0..f64::INFINITY).contains(&cost),
+                (0.0..f64::INFINITY).contains(&cost.0),
                 "Invalid value for flow cost ({cost}). Must be >=0."
             )
         }
@@ -105,7 +106,7 @@ where
             commodity: Rc::clone(commodity),
             coeff: record.coeff,
             kind: record.kind,
-            cost: record.cost.unwrap_or(0.0),
+            cost: record.cost.unwrap_or(Dimensionless(0.0)),
         };
 
         // Insert flow into the map

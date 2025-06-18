@@ -2,6 +2,7 @@
 use crate::asset::AssetPool;
 use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
+use crate::units::Dimensionless;
 use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
@@ -80,12 +81,12 @@ pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
 }
 
 /// Read an f64, checking that it is between 0 and 1
-fn deserialise_proportion_nonzero<'de, D>(deserialiser: D) -> Result<f64, D::Error>
+fn deserialise_proportion_nonzero<'de, D>(deserialiser: D) -> Result<Dimensionless, D::Error>
 where
     D: Deserializer<'de>,
 {
     let value = Deserialize::deserialize(deserialiser)?;
-    if !(value > 0.0 && value <= 1.0) {
+    if !(value > Dimensionless(0.0) && value <= Dimensionless(1.0)) {
         Err(serde::de::Error::custom("Value must be > 0 and <= 1"))?
     }
 
@@ -126,11 +127,11 @@ where
 /// Check that fractions sum to (approximately) one
 fn check_fractions_sum_to_one<I>(fractions: I) -> Result<()>
 where
-    I: Iterator<Item = f64>,
+    I: Iterator<Item = Dimensionless>,
 {
     let sum = fractions.sum();
     ensure!(
-        approx_eq!(f64, sum, 1.0, epsilon = 1e-5),
+        approx_eq!(Dimensionless, sum, Dimensionless(1.0), epsilon = 1e-5),
         "Sum of fractions does not equal one (actual: {})",
         sum
     );

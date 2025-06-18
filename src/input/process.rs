@@ -199,7 +199,7 @@ fn validate_other_commodity(
     let mut is_producer = None;
     for flows in flows.values().flat_map(|flows| flows.values()) {
         if let Some(flow) = flows.get(commodity_id) {
-            let cur_is_producer = flow.coeff > 0.0;
+            let cur_is_producer = flow.coeff > Dimensionless(0.0);
             if let Some(is_producer) = is_producer {
                 ensure!(
                     is_producer == cur_is_producer,
@@ -232,9 +232,9 @@ fn validate_sed_commodity(
     for flows in flows.values() {
         let flows = flows.get(&(region_id.clone(), year)).unwrap();
         if let Some(flow) = flows.get(&commodity_id.clone()) {
-            if flow.coeff > 0.0 {
+            if flow.coeff > Dimensionless(0.0) {
                 has_producer = true;
-            } else if flow.coeff < 0.0 {
+            } else if flow.coeff < Dimensionless(0.0) {
                 has_consumer = true;
             }
         }
@@ -265,7 +265,7 @@ fn validate_svd_commodity(
         .demand
         .get(&(region_id.clone(), year, ts_selection.clone()))
         .unwrap();
-    if demand <= 0.0 {
+    if demand <= Dimensionless(0.0) {
         return Ok(());
     }
 
@@ -278,7 +278,7 @@ fn validate_svd_commodity(
             continue;
         };
         ensure!(
-            flow.coeff > 0.0,
+            flow.coeff > Dimensionless(0.0),
             "SVD commodity {} is consumed by process {}. \
             SVD commodities can only be produced, not consumed.",
             commodity.id,
@@ -291,7 +291,7 @@ fn validate_svd_commodity(
             let availability = availabilities
                 .get(&(region_id.clone(), year, ts.clone()))
                 .unwrap();
-            if *availability.end() > 0.0 {
+            if *availability.end() > Dimensionless(0.0) {
                 return Ok(());
             }
         }
@@ -336,9 +336,9 @@ mod tests {
             ("GBR".into(), 2010),
             indexmap! { commodity_sed.id.clone() => ProcessFlow {
                 commodity: commodity_sed.into(),
-                coeff: -10.0,
+                coeff: Dimensionless(-10.0),
                 kind: FlowType::Fixed,
-                cost: 1.0,
+                cost: Dimensionless(1.0),
             }},
         )])
     }

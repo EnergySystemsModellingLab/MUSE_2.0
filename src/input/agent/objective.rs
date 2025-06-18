@@ -1,6 +1,7 @@
 //! Code for reading the agent objectives CSV file.
 use super::super::*;
 use crate::agent::{AgentID, AgentMap, AgentObjectiveMap, DecisionRule, ObjectiveType};
+use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -19,7 +20,7 @@ struct AgentObjectiveRaw {
     /// Acronym identifying the objective (e.g. LCOX)
     objective_type: ObjectiveType,
     /// For the weighted sum decision rule, the set of weights to apply to each objective.
-    decision_weight: Option<f64>,
+    decision_weight: Option<Dimensionless>,
     /// For the lexico decision rule, the order in which to consider objectives.
     decision_lexico_order: Option<u32>,
 }

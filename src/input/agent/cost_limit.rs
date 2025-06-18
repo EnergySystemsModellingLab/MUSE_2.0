@@ -2,6 +2,7 @@
 use super::super::*;
 use crate::agent::{AgentCostLimits, AgentCostLimitsMap, AgentID};
 use crate::id::IDCollection;
+use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -14,8 +15,8 @@ const AGENT_COST_LIMITS_FILE_NAME: &str = "agent_cost_limits.csv";
 struct AgentCostLimitsRaw {
     agent_id: String,
     years: String,
-    capex_limit: Option<f64>,
-    annual_cost_limit: Option<f64>,
+    capex_limit: Option<Dimensionless>,
+    annual_cost_limit: Option<Dimensionless>,
 }
 
 impl AgentCostLimitsRaw {

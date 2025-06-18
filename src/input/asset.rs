@@ -5,6 +5,7 @@ use crate::asset::Asset;
 use crate::id::IDCollection;
 use crate::process::ProcessMap;
 use crate::region::RegionID;
+use crate::units::Dimensionless;
 use anyhow::{Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
@@ -19,7 +20,7 @@ struct AssetRaw {
     process_id: String,
     region_id: String,
     agent_id: String,
-    capacity: f64,
+    capacity: Dimensionless,
     commission_year: u32,
 }
 
@@ -110,7 +111,7 @@ mod tests {
             agent_id: "agent1".into(),
             process_id: "process1".into(),
             region_id: "GBR".into(),
-            capacity: 1.0,
+            capacity: Dimensionless(1.0),
             commission_year: 2010,
         };
         let asset_out = Asset::new(

@@ -2,6 +2,7 @@
 use super::*;
 use crate::id::IDCollection;
 use crate::time_slice::{Season, TimeOfDay, TimeSliceID, TimeSliceInfo};
+use crate::units::Dimensionless;
 use anyhow::{ensure, Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use serde::Deserialize;
@@ -15,7 +16,7 @@ struct TimeSliceRaw {
     season: Season,
     time_of_day: TimeOfDay,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
-    fraction: f64,
+    fraction: Dimensionless,
 }
 
 /// Get the specified ID from `set` or insert if it doesn't exist.

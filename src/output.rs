@@ -7,6 +7,7 @@ use crate::region::RegionID;
 use crate::simulation::optimisation::{FlowMap, Solution};
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
+use crate::units::Dimensionless;
 use anyhow::{Context, Result};
 use csv;
 use serde::{Deserialize, Serialize};
@@ -98,7 +99,7 @@ struct CommodityFlowRow {
     asset_id: AssetID,
     commodity_id: CommodityID,
     time_slice: TimeSliceID,
-    flow: f64,
+    flow: Dimensionless,
 }
 
 /// Represents a row in the commodity prices CSV file
@@ -108,7 +109,7 @@ struct CommodityPriceRow {
     commodity_id: CommodityID,
     region_id: RegionID,
     time_slice: TimeSliceID,
-    price: f64,
+    price: Dimensionless,
 }
 
 /// Represents the activity duals data in a row of the activity duals CSV file

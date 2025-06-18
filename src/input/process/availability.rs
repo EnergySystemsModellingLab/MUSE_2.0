@@ -3,6 +3,7 @@ use super::super::*;
 use crate::process::{ProcessActivityLimitsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
 use crate::time_slice::TimeSliceInfo;
+use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -21,14 +22,14 @@ struct ProcessAvailabilityRaw {
     years: String,
     time_slice: String,
     limit_type: LimitType,
-    value: f64,
+    value: Dimensionless,
 }
 
 impl ProcessAvailabilityRaw {
     fn validate(&self) -> Result<()> {
         // Check availability value
         ensure!(
-            self.value >= 0.0 && self.value <= 1.0,
+            self.value >= Dimensionless(0.0) && self.value <= Dimensionless(1.0),
             "Value for availability must be between 0 and 1 inclusive"
         );
 
@@ -39,11 +40,11 @@ impl ProcessAvailabilityRaw {
     ///
     /// The resulting limits are max/min energy produced/consumed in each timeslice per
     /// `capacity_to_activity` units of capacity.
-    fn to_bounds(&self, ts_length: f64) -> RangeInclusive<f64> {
+    fn to_bounds(&self, ts_length: Dimensionless) -> RangeInclusive<Dimensionless> {
         let value = self.value * ts_length;
         match self.limit_type {
-            LimitType::LowerBound => value..=f64::INFINITY,
-            LimitType::UpperBound => 0.0..=value,
+            LimitType::LowerBound => value..=Dimensionless(f64::INFINITY),
+            LimitType::UpperBound => Dimensionless(0.0)..=value,
             LimitType::Equality => value..=value,
         }
     }
