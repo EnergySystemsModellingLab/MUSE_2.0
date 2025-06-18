@@ -5,6 +5,7 @@ use crate::process::{FlowType, Process, ProcessFlow, ProcessFlowsMap, ProcessID,
 use crate::region::parse_region_str;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
+use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -55,7 +56,7 @@ impl ProcessFlowRaw {
 /// Read process flows from a CSV file
 pub fn read_process_flows(
     model_dir: &Path,
-    processes: &ProcessMap,
+    processes: &mut ProcessMap,
     commodities: &CommodityMap,
 ) -> Result<HashMap<ProcessID, ProcessFlowsMap>> {
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
@@ -67,7 +68,7 @@ pub fn read_process_flows(
 /// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.
 fn read_process_flows_from_iter<I>(
     iter: I,
-    processes: &ProcessMap,
+    processes: &mut ProcessMap,
     commodities: &CommodityMap,
 ) -> Result<HashMap<ProcessID, ProcessFlowsMap>>
 where
@@ -129,23 +130,31 @@ where
 
     for (process_id, map) in map.iter_mut() {
         let process = processes.get(process_id).unwrap();
-        validate_process_flows_map(process, map)?;
+        validate_flows_map_and_get_primary_output(process, map)?;
     }
 
     Ok(map)
 }
 
+// fn check_and_update_primary_output(process: &mut Rc<Process>, map: &ProcessFlowsMap) -> Result<()> {
+//     let output_flows = map.iter().filter(|(_, flow)| flow.kind == FlowType::Output);
+// }
+
 /// Validate flows for a process
-fn validate_process_flows_map(process: &Process, map: &ProcessFlowsMap) -> Result<()> {
-    let process_id = process.id.clone();
-    for year in process.years.iter() {
-        for region in process.regions.iter() {
-            // Check that the process has flows for this region/year
-            ensure!(
-                map.contains_key(&(region.clone(), *year)),
-                "Missing entry for process {process_id} in {region}/{year}"
-            );
-        }
+fn validate_flows_map_and_update_primary_output(
+    process: &Process,
+    map: &ProcessFlowsMap,
+) -> Result<()> {
+    let process_id = &process.id;
+    let primary_output = process.primary_output.clone();
+    let mut output_flows = Vec::new();
+    for (year, region_id) in iproduct!(process.years.iter(), process.regions.iter()) {
+        // Check that the process has flows for this region/year
+        let Some(flows) = map.get(&(region_id.clone(), *year)) else {
+            bail!("Missing entry for process {process_id} in {region_id}/{year}");
+        };
+
+        output_flows.extend(flows.values().filter(|flow| flow.coeff > 0.0));
     }
     Ok(())
 }
