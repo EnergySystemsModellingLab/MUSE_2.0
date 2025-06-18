@@ -252,7 +252,7 @@ impl AssetPool {
     }
 
     /// Iterate over active assets
-    pub fn iter(&self) -> impl Iterator<Item = &AssetRef> {
+    pub fn iter(&self) -> std::slice::Iter<AssetRef> {
         self.active.iter()
     }
 
