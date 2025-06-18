@@ -12,6 +12,12 @@ fields:
     type: string
     description: The region(s) in which this process can operate
     notes: One or more region IDs, separated by semicolons or the string `all`
+  - name: primary_output
+    type: string
+    description: The primary output flow of the process
+    notes: |
+      Only required if the process has more than one output flow. If the process has no output
+      flows, this field should be left blank.
   - name: start_year
     type: integer
     description: The first year when this process is available to agents

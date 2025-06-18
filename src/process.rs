@@ -46,6 +46,8 @@ pub struct Process {
     pub parameters: ProcessParameterMap,
     /// The regions in which this process can operate
     pub regions: HashSet<RegionID>,
+    /// The primary output commodity for this process
+    pub primary_output: Option<CommodityID>,
 }
 
 /// Represents a maximum annual commodity coeff for a given process

@@ -18,7 +18,7 @@ use availability::read_process_availabilities;
 mod flow;
 use flow::read_process_flows;
 mod parameter;
-use crate::id::define_id_getter;
+use crate::id::{define_id_getter, IDCollection};
 use parameter::read_process_parameters;
 
 const PROCESSES_FILE_NAME: &str = "processes.csv";
@@ -28,6 +28,7 @@ struct ProcessRaw {
     id: ProcessID,
     description: String,
     regions: String,
+    primary_output: Option<String>,
     start_year: Option<u32>,
     end_year: Option<u32>,
 }
@@ -53,7 +54,7 @@ pub fn read_processes(
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<ProcessMap> {
-    let mut processes = read_processes_file(model_dir, milestone_years, region_ids)?;
+    let mut processes = read_processes_file(model_dir, milestone_years, commodities, region_ids)?;
     let mut activity_limits = read_process_availabilities(model_dir, &processes, time_slice_info)?;
     let mut flows = read_process_flows(model_dir, &processes, commodities)?;
     let mut parameters = read_process_parameters(model_dir, &processes)?;
@@ -89,17 +90,19 @@ pub fn read_processes(
 fn read_processes_file(
     model_dir: &Path,
     milestone_years: &[u32],
+    commodities: &CommodityMap,
     region_ids: &HashSet<RegionID>,
 ) -> Result<ProcessMap> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let processes_csv = read_csv(&file_path)?;
-    read_processes_file_from_iter(processes_csv, milestone_years, region_ids)
+    read_processes_file_from_iter(processes_csv, milestone_years, commodities, region_ids)
         .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_processes_file_from_iter<I>(
     iter: I,
     milestone_years: &[u32],
+    commodities: &CommodityMap,
     region_ids: &HashSet<RegionID>,
 ) -> Result<ProcessMap>
 where
@@ -129,6 +132,11 @@ where
         // Parse region ID
         let regions = parse_region_str(&process_raw.regions, region_ids)?;
 
+        let primary_output = match process_raw.primary_output {
+            Some(primary_output) => Some(commodities.get_id(&primary_output)?.clone()),
+            None => None,
+        };
+
         let process = Process {
             id: process_raw.id.clone(),
             description: process_raw.description,
@@ -137,6 +145,7 @@ where
             flows: ProcessFlowsMap::new(),
             parameters: ProcessParameterMap::new(),
             regions,
+            primary_output,
         };
 
         ensure!(
