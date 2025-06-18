@@ -4,7 +4,7 @@ use crate::asset::{AssetPool, AssetRef};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
+use crate::time_slice::{TimeSliceID, TimeSliceSelection};
 use highs::RowProblem as Problem;
 
 /// Corresponding variables for a constraint along with the row offset in the solution
@@ -65,8 +65,7 @@ pub fn add_asset_constraints(
     let commodity_balance_keys =
         add_commodity_balance_constraints(problem, variables, model, assets, year);
 
-    let activity_keys =
-        add_activity_constraints(problem, variables, &model.time_slice_info, assets);
+    let activity_keys = add_activity_constraints(problem, variables);
 
     // Return constraint keys
     ConstraintKeys {
@@ -144,25 +143,17 @@ fn add_commodity_balance_constraints(
 ///
 /// This ensures that assets do not exceed their specified capacity and availability for each time
 /// slice.
-fn add_activity_constraints(
-    problem: &mut Problem,
-    variables: &VariableMap,
-    time_slice_info: &TimeSliceInfo,
-    assets: &AssetPool,
-) -> ActivityKeys {
+fn add_activity_constraints(problem: &mut Problem, variables: &VariableMap) -> ActivityKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
     let mut keys = Vec::new();
-    for asset in assets.iter() {
-        for time_slice in time_slice_info.iter_ids() {
-            let var = variables.get(asset, time_slice);
-            let limits = asset.get_activity_limits(time_slice);
-            let limits = limits.start().value()..=limits.end().value();
+    for (asset, time_slice, var) in variables.iter() {
+        let limits = asset.get_activity_limits(time_slice);
+        let limits = limits.start().value()..=limits.end().value();
 
-            problem.add_row(limits, [(var, 1.0)]);
-            keys.push((asset.clone(), time_slice.clone()))
-        }
+        problem.add_row(limits, [(var, 1.0)]);
+        keys.push((asset.clone(), time_slice.clone()))
     }
 
     ActivityKeys { offset, keys }
