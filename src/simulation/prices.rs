@@ -1,25 +1,22 @@
 //! Code for updating the simulation state.
 use super::optimisation::Solution;
-use crate::asset::AssetPool;
 use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::Dimensionless;
 use log::warn;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
 #[derive(Default)]
 pub struct CommodityPrices(BTreeMap<(CommodityID, RegionID, TimeSliceID), Dimensionless>);
 
 impl CommodityPrices {
-    /// Calculate commodity prices based on the result of the dispatch optimisation.
-    ///
-    /// Missing prices will be calculated directly from the input data
-    pub fn from_model_and_solution(model: &Model, solution: &Solution, assets: &AssetPool) -> Self {
+    /// Calculate commodity prices based on the result of the dispatch optimisation
+    pub fn from_model_and_solution(model: &Model, solution: &Solution) -> Self {
         let mut prices = CommodityPrices::default();
-        let commodity_regions_updated = prices.add_from_solution(solution, assets);
+        let commodity_regions_updated = prices.add_from_solution(solution);
 
         // Find commodity/region combinations not updated in last step
         let mut remaining_commodity_regions = HashSet::new();
@@ -45,27 +42,54 @@ impl CommodityPrices {
     /// # Arguments
     ///
     /// * `solution` - The solution to the dispatch optimisation
-    /// * `assets` - The asset pool
     ///
     /// # Returns
     ///
-    /// The set of commodities for which prices were added.
-    fn add_from_solution(
-        &mut self,
-        _solution: &Solution,
-        _assets: &AssetPool,
-    ) -> HashSet<(CommodityID, RegionID)> {
-        // **TODO:** Calculate commodity prices here:
-        //  https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/589
+    /// The set of commodity/region pairs for which prices were added.
+    fn add_from_solution(&mut self, solution: &Solution) -> HashSet<(CommodityID, RegionID)> {
+        let mut commodity_regions_updated = HashSet::new();
 
-        HashSet::new()
+        // Calculate highest activity dual for each commodity/region/timeslice
+        let mut highest_duals = HashMap::new();
+        for (asset, time_slice, dual) in solution.iter_activity_duals() {
+            // Iterate over all output flows
+            for flow in asset
+                .iter_flows()
+                .filter(|flow| flow.coeff > Dimensionless(0.0))
+            {
+                // Update the highest dual for this commodity/timeslice
+                highest_duals
+                    .entry((
+                        flow.commodity.id.clone(),
+                        asset.region_id.clone(),
+                        time_slice.clone(),
+                    ))
+                    .and_modify(|current_dual| {
+                        if dual > *current_dual {
+                            *current_dual = dual;
+                        }
+                    })
+                    .or_insert(dual);
+            }
+        }
+
+        // Add the highest activity dual for each commodity/region/timeslice to each commodity
+        // balance dual
+        for (commodity_id, region_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
+            let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
+            let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
+            self.insert(commodity_id, region_id, time_slice, Dimensionless(price));
+            commodity_regions_updated.insert((commodity_id.clone(), region_id.clone()));
+        }
+
+        commodity_regions_updated
     }
 
     /// Add prices for any commodity not updated by the dispatch step.
     ///
     /// # Arguments
     ///
-    /// * `commodity_ids` - IDs of commodities to update
+    /// * `commodity_regions` - Commodity/region pairs to update
     /// * `time_slice_info` - Information about time slices
     fn add_remaining<'a, I>(&mut self, commodity_regions: I, time_slice_info: &TimeSliceInfo)
     where
@@ -79,7 +103,7 @@ impl CommodityPrices {
         }
     }
 
-    /// Insert a price for the given commodity, time slice and region
+    /// Insert a price for the given commodity, region and time slice
     pub fn insert(
         &mut self,
         commodity_id: &CommodityID,
@@ -95,7 +119,7 @@ impl CommodityPrices {
     ///
     /// # Returns
     ///
-    /// An iterator of tuples containing commodity ID, time slice and price.
+    /// An iterator of tuples containing commodity ID, region ID, time slice and price.
     pub fn iter(
         &self,
     ) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, Dimensionless)> {
