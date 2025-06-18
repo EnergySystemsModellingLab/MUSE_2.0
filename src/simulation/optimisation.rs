@@ -37,8 +37,6 @@ pub struct VariableMap(IndexMap<(AssetRef, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
-    // **TODO:** Remove line below when we're using this
-    #[allow(dead_code)]
     fn get(&self, asset: &AssetRef, time_slice: &TimeSliceID) -> Variable {
         let key = (asset.clone(), time_slice.clone());
 
