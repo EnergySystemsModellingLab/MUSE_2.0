@@ -45,6 +45,14 @@ impl VariableMap {
             .get(&key)
             .expect("No variable found for given params")
     }
+
+    /// Iterate over the variable map
+    #[allow(dead_code)]
+    fn iter(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Variable)> {
+        self.0
+            .iter()
+            .map(|((asset, time_slice), var)| (asset, time_slice, *var))
+    }
 }
 
 /// The solution to the dispatch optimisation problem
