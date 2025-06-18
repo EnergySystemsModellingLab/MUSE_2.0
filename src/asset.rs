@@ -129,17 +129,15 @@ impl Asset {
 
 /// A wrapper around [`Asset`] for storing references in maps.
 ///
-/// An [`AssetRef`] is guaranteed to have been commissioned at some point, though it may
-/// subsequently have been decommissioned.
+/// If the asset has been commissioned, then comparison and hashing is done based on the asset ID,
+/// otherwise a combination of other parameters is used.
 ///
-/// [`AssetRef`]s must be created from `Rc<Asset>`s. If the asset has not been commissioned, this
-/// will panic.
+/// [`Ord`] is implemented for [`AssetRef`], but it will panic for non-commissioned assets.
 #[derive(Clone, Debug)]
 pub struct AssetRef(Rc<Asset>);
 
 impl From<Rc<Asset>> for AssetRef {
     fn from(value: Rc<Asset>) -> Self {
-        assert!(value.id.is_some());
         Self(value)
     }
 }
@@ -166,7 +164,15 @@ impl Deref for AssetRef {
 
 impl PartialEq for AssetRef {
     fn eq(&self, other: &Self) -> bool {
-        self.0.id == other.0.id
+        if self.0.id.is_some() {
+            self.0.id == other.0.id
+        } else {
+            other.0.id.is_none()
+                && self.0.agent_id == other.0.agent_id
+                && Rc::ptr_eq(&self.0.process, &other.0.process)
+                && self.0.region_id == other.0.region_id
+                && self.0.commission_year == other.0.commission_year
+        }
     }
 }
 
@@ -175,7 +181,14 @@ impl Eq for AssetRef {}
 impl Hash for AssetRef {
     /// Hash asset based purely on its ID
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.id.unwrap().hash(state);
+        if let Some(id) = self.0.id {
+            id.hash(state);
+        } else {
+            self.0.agent_id.hash(state);
+            self.0.process.id.hash(state);
+            self.0.region_id.hash(state);
+            self.0.commission_year.hash(state);
+        }
     }
 }
 
