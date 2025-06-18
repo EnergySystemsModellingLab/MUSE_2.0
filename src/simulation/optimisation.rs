@@ -46,7 +46,6 @@ impl VariableMap {
     }
 
     /// Iterate over the variable map
-    #[allow(dead_code)]
     fn iter(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Variable)> {
         self.0
             .iter()
