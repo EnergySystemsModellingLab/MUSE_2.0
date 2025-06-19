@@ -133,6 +133,8 @@ unit_struct!(Energy);
 unit_struct!(Activity);
 unit_struct!(Capacity);
 unit_struct!(Year);
+
+// Derived quantities
 unit_struct!(EnergyPerYear);
 unit_struct!(MoneyPerYear);
 unit_struct!(MoneyPerEnergy);
@@ -179,7 +181,7 @@ macro_rules! impl_div {
     };
 }
 
-// Derived quantities
+// Division rules for derived quantities
 impl_div!(Energy, Year, EnergyPerYear);
 impl_div!(Money, Year, MoneyPerYear);
 impl_div!(Money, Energy, MoneyPerEnergy);
