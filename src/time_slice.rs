@@ -277,7 +277,7 @@ impl TimeSliceInfo {
     }
 
     /// Iterate over all [`TimeSliceID`]s
-    pub fn iter_ids(&self) -> impl Iterator<Item = &TimeSliceID> {
+    pub fn iter_ids(&self) -> indexmap::map::Keys<TimeSliceID, f64> {
         self.time_slices.keys()
     }
 
