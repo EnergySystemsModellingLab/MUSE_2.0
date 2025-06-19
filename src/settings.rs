@@ -28,19 +28,20 @@ impl Settings {
     /// # Returns
     ///
     /// The program settings as a `Settings` struct or an error if the file is invalid
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<Settings> {
-        let file_path = model_dir.as_ref().join(SETTINGS_FILE_NAME);
+    pub fn load() -> Result<Settings> {
+        let file_path = Path::new(SETTINGS_FILE_NAME);
         if !file_path.is_file() {
             return Ok(Settings::default());
         }
 
-        read_toml(&file_path)
+        read_toml(file_path)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use current_dir::Cwd;
     use std::fs::File;
     use std::io::Write;
     use tempfile::tempdir;
@@ -48,21 +49,24 @@ mod tests {
     #[test]
     fn test_settings_from_path_no_file() {
         let dir = tempdir().unwrap();
-        assert_eq!(
-            Settings::from_path(dir.path()).unwrap(),
-            Settings::default()
-        );
+        let mut cwd = Cwd::mutex().lock().unwrap();
+        cwd.set(dir.path()).unwrap();
+        assert_eq!(Settings::load().unwrap(), Settings::default());
     }
 
     #[test]
     fn test_settings_from_path() {
         let dir = tempdir().unwrap();
+        let mut cwd = Cwd::mutex().lock().unwrap();
+        cwd.set(dir.path()).unwrap();
+
         {
-            let mut file = File::create(dir.path().join(SETTINGS_FILE_NAME)).unwrap();
+            let mut file = File::create(Path::new(SETTINGS_FILE_NAME)).unwrap();
             writeln!(file, "log_level = \"warn\"").unwrap();
         }
+
         assert_eq!(
-            Settings::from_path(dir.path()).unwrap(),
+            Settings::load().unwrap(),
             Settings {
                 log_level: Some("warn".to_string()),
                 debug_model: false
