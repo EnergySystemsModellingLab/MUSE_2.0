@@ -227,6 +227,11 @@ impl AssetPool {
         }
     }
 
+    /// Get the active pool as a slice of [`AssetRef`]s
+    pub fn as_slice(&self) -> &[AssetRef] {
+        &self.active
+    }
+
     /// Commission new assets for the specified milestone year from the input data
     pub fn commission_new(&mut self, year: u32) {
         // Count the number of assets to move
