@@ -3,6 +3,7 @@
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
 use crate::id::{define_id_type, IDCollection};
+use crate::units::Dimensionless;
 use anyhow::{Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
@@ -98,7 +99,7 @@ impl TimeSliceSelection {
     pub fn iter<'a>(
         &'a self,
         time_slice_info: &'a TimeSliceInfo,
-    ) -> Box<dyn Iterator<Item = (&'a TimeSliceID, f64)> + 'a> {
+    ) -> Box<dyn Iterator<Item = (&'a TimeSliceID, Dimensionless)> + 'a> {
         let ts_info = time_slice_info;
         match self {
             Self::Annual => Box::new(ts_info.iter()),
@@ -123,7 +124,7 @@ impl TimeSliceSelection {
         &'a self,
         time_slice_info: &'a TimeSliceInfo,
         level: TimeSliceLevel,
-    ) -> Option<Box<dyn Iterator<Item = (Self, f64)> + 'a>> {
+    ) -> Option<Box<dyn Iterator<Item = (Self, Dimensionless)> + 'a>> {
         if level > self.level() {
             return None;
         }
@@ -131,7 +132,7 @@ impl TimeSliceSelection {
         let ts_info = time_slice_info;
         let iter: Box<dyn Iterator<Item = _>> = match self {
             Self::Annual => match level {
-                TimeSliceLevel::Annual => Box::new(iter::once((Self::Annual, 1.0))),
+                TimeSliceLevel::Annual => Box::new(iter::once((Self::Annual, Dimensionless(1.0)))),
                 TimeSliceLevel::Season => Box::new(
                     ts_info
                         .seasons
@@ -211,9 +212,9 @@ pub struct TimeSliceInfo {
     /// Names of times of day (e.g. "evening")
     pub times_of_day: IndexSet<TimeOfDay>,
     /// Names and fraction of year occupied by each season
-    pub seasons: IndexMap<Season, f64>,
+    pub seasons: IndexMap<Season, Dimensionless>,
     /// The fraction of the year that this combination of season and time of day occupies
-    pub time_slices: IndexMap<TimeSliceID, f64>,
+    pub time_slices: IndexMap<TimeSliceID, Dimensionless>,
 }
 
 impl Default for TimeSliceInfo {
@@ -223,10 +224,10 @@ impl Default for TimeSliceInfo {
             season: "all-year".into(),
             time_of_day: "all-day".into(),
         };
-        let fractions = [(id.clone(), 1.0)].into_iter().collect();
+        let fractions = [(id.clone(), Dimensionless(1.0))].into_iter().collect();
 
         Self {
-            seasons: iter::once((id.season, 1.0)).collect(),
+            seasons: iter::once((id.season, Dimensionless(1.0))).collect(),
             times_of_day: iter::once(id.time_of_day).collect(),
             time_slices: fractions,
         }
@@ -282,7 +283,7 @@ impl TimeSliceInfo {
     }
 
     /// Iterate over all time slices
-    pub fn iter(&self) -> impl Iterator<Item = (&TimeSliceID, f64)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&TimeSliceID, Dimensionless)> {
         self.time_slices
             .iter()
             .map(|(ts, fraction)| (ts, *fraction))
@@ -323,12 +324,12 @@ impl TimeSliceInfo {
         &'a self,
         selection: &'a TimeSliceSelection,
         level: TimeSliceLevel,
-    ) -> Option<impl Iterator<Item = (TimeSliceSelection, f64)>> {
+    ) -> Option<impl Iterator<Item = (TimeSliceSelection, Dimensionless)>> {
         // Store selections as we have to iterate twice
         let selections = selection.iter_at_level(self, level)?.collect_vec();
 
         // Total fraction of year covered by selection
-        let time_total: f64 = selections.iter().map(|(_, fraction)| *fraction).sum();
+        let time_total: Dimensionless = selections.iter().map(|(_, fraction)| *fraction).sum();
 
         // Calculate share
         let iter = selections
@@ -354,8 +355,8 @@ impl TimeSliceInfo {
         &'a self,
         selection: &'a TimeSliceSelection,
         level: TimeSliceLevel,
-        value: f64,
-    ) -> Option<impl Iterator<Item = (TimeSliceSelection, f64)>> {
+        value: Dimensionless,
+    ) -> Option<impl Iterator<Item = (TimeSliceSelection, Dimensionless)>> {
         let iter = self
             .iter_selection_share(selection, level)?
             .map(move |(selection, share)| (selection, value * share));
@@ -386,11 +387,17 @@ mod tests {
     #[fixture]
     fn time_slice_info1(time_slices1: [TimeSliceID; 2]) -> TimeSliceInfo {
         TimeSliceInfo {
-            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
+            seasons: [
+                ("winter".into(), Dimensionless(0.5)),
+                ("summer".into(), Dimensionless(0.5)),
+            ]
+            .into_iter()
+            .collect(),
+            times_of_day: ["day".into(), "night".into()].into_iter().collect(),
+            time_slices: time_slices1
+                .map(|ts| (ts, Dimensionless(0.5)))
                 .into_iter()
                 .collect(),
-            times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            time_slices: time_slices1.map(|ts| (ts, 0.5)).into_iter().collect(),
         }
     }
 
@@ -416,10 +423,16 @@ mod tests {
         ];
         TimeSliceInfo {
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
-            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
-                .into_iter()
+            seasons: [
+                ("winter".into(), Dimensionless(0.5)),
+                ("summer".into(), Dimensionless(0.5)),
+            ]
+            .into_iter()
+            .collect(),
+            time_slices: time_slices
+                .iter()
+                .map(|ts| (ts.clone(), Dimensionless(0.25)))
                 .collect(),
-            time_slices: time_slices.iter().map(|ts| (ts.clone(), 0.25)).collect(),
         }
     }
 
@@ -430,7 +443,7 @@ mod tests {
     ) {
         assert_equal(
             TimeSliceSelection::Annual.iter(&time_slice_info1),
-            time_slices1.iter().map(|ts| (ts, 0.5)),
+            time_slices1.iter().map(|ts| (ts, Dimensionless(0.5))),
         );
     }
 
@@ -441,7 +454,7 @@ mod tests {
     ) {
         assert_equal(
             TimeSliceSelection::Season("winter".into()).iter(&time_slice_info1),
-            iter::once((&time_slices1[0], 0.5)),
+            iter::once((&time_slices1[0], Dimensionless(0.5))),
         );
     }
 
@@ -455,13 +468,13 @@ mod tests {
             .unwrap();
         assert_equal(
             TimeSliceSelection::Single(ts).iter(&time_slice_info1),
-            iter::once((&time_slices1[1], 0.5)),
+            iter::once((&time_slices1[1], Dimensionless(0.5))),
         );
     }
 
-    fn assert_selection_equal<I>(actual: Option<I>, expected: Option<Vec<(&str, f64)>>)
+    fn assert_selection_equal<I>(actual: Option<I>, expected: Option<Vec<(&str, Dimensionless)>>)
     where
-        I: Iterator<Item = (TimeSliceSelection, f64)>,
+        I: Iterator<Item = (TimeSliceSelection, Dimensionless)>,
     {
         let Some(actual) = actual else {
             assert!(expected.is_none());
@@ -477,46 +490,46 @@ mod tests {
     }
 
     #[rstest]
-    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Annual, Some(vec![("annual", 1.0)]))]
-    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Season, Some(vec![("winter", 0.5), ("summer", 0.5)]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Annual, Some(vec![("annual", Dimensionless(1.0))]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Season, Some(vec![("winter", Dimensionless(0.5)), ("summer", Dimensionless(0.5))]))]
     #[case(TimeSliceSelection::Annual, TimeSliceLevel::DayNight,
-           Some(vec![("winter.day", 0.25), ("winter.night", 0.25), ("summer.day", 0.25), ("summer.night", 0.25)]))]
+           Some(vec![("winter.day", Dimensionless(0.25)), ("winter.night", Dimensionless(0.25)), ("summer.day", Dimensionless(0.25)), ("summer.night", Dimensionless(0.25))]))]
     #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Annual, None)]
-    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Season, Some(vec![("winter", 0.5)]))]
+    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Season, Some(vec![("winter", Dimensionless(0.5))]))]
     #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::DayNight,
-           Some(vec![("winter.day", 0.25), ("winter.night", 0.25)]))]
+           Some(vec![("winter.day", Dimensionless(0.25)), ("winter.night", Dimensionless(0.25))]))]
     #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Annual, None)]
     #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Season, None)]
-    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::DayNight, Some(vec![("winter.day", 0.25)]))]
+    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::DayNight, Some(vec![("winter.day", Dimensionless(0.25))]))]
     fn test_ts_selection_iter_at_level(
         time_slice_info2: TimeSliceInfo,
         #[case] selection: TimeSliceSelection,
         #[case] level: TimeSliceLevel,
-        #[case] expected: Option<Vec<(&str, f64)>>,
+        #[case] expected: Option<Vec<(&str, Dimensionless)>>,
     ) {
         let actual = selection.iter_at_level(&time_slice_info2, level);
         assert_selection_equal(actual, expected);
     }
 
     #[rstest]
-    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Annual, Some(vec![("annual", 8.0)]))]
-    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Season, Some(vec![("winter", 4.0), ("summer", 4.0)]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Annual, Some(vec![("annual", Dimensionless(8.0))]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Season, Some(vec![("winter", Dimensionless(4.0)), ("summer", Dimensionless(4.0))]))]
     #[case(TimeSliceSelection::Annual, TimeSliceLevel::DayNight,
-           Some(vec![("winter.day", 2.0), ("winter.night", 2.0), ("summer.day", 2.0), ("summer.night", 2.0)]))]
+           Some(vec![("winter.day", Dimensionless(2.0)), ("winter.night", Dimensionless(2.0)), ("summer.day", Dimensionless(2.0)), ("summer.night", Dimensionless(2.0))]))]
     #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Annual, None)]
-    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Season, Some(vec![("winter", 8.0)]))]
+    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Season, Some(vec![("winter", Dimensionless(8.0))]))]
     #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::DayNight,
-           Some(vec![("winter.day", 4.0), ("winter.night", 4.0)]))]
+           Some(vec![("winter.day", Dimensionless(4.0)), ("winter.night", Dimensionless(4.0))]))]
     #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Annual, None)]
     #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Season, None)]
-    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::DayNight, Some(vec![("winter.day", 8.0)]))]
+    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::DayNight, Some(vec![("winter.day", Dimensionless(8.0))]))]
     fn test_calculate_share(
         time_slice_info2: TimeSliceInfo,
         #[case] selection: TimeSliceSelection,
         #[case] level: TimeSliceLevel,
-        #[case] expected: Option<Vec<(&str, f64)>>,
+        #[case] expected: Option<Vec<(&str, Dimensionless)>>,
     ) {
-        let actual = time_slice_info2.calculate_share(&selection, level, 8.0);
+        let actual = time_slice_info2.calculate_share(&selection, level, Dimensionless(8.0));
         assert_selection_equal(actual, expected);
     }
 }

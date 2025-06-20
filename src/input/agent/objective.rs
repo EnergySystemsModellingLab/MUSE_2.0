@@ -1,6 +1,7 @@
 //! Code for reading the agent objectives CSV file.
 use super::super::*;
 use crate::agent::{AgentID, AgentMap, AgentObjectiveMap, DecisionRule, ObjectiveType};
+use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -19,7 +20,7 @@ struct AgentObjectiveRaw {
     /// Acronym identifying the objective (e.g. LCOX)
     objective_type: ObjectiveType,
     /// For the weighted sum decision rule, the set of weights to apply to each objective.
-    decision_weight: Option<f64>,
+    decision_weight: Option<Dimensionless>,
     /// For the lexico decision rule, the order in which to consider objectives.
     decision_lexico_order: Option<u32>,
 }
@@ -166,7 +167,7 @@ mod tests {
         let decision_rule = DecisionRule::Single;
         let objective = objective!(None, None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
-        let objective = objective!(Some(1.0), None);
+        let objective = objective!(Some(Dimensionless(1.0)), None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
         let objective = objective!(None, Some(1));
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
@@ -176,7 +177,7 @@ mod tests {
     fn test_check_objective_parameter_weighted() {
         // DecisionRule::Weighted
         let decision_rule = DecisionRule::Weighted;
-        let objective = objective!(Some(1.0), None);
+        let objective = objective!(Some(Dimensionless(1.0)), None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
         let objective = objective!(None, None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
@@ -192,7 +193,7 @@ mod tests {
         assert!(check_objective_parameter(&objective, &decision_rule).is_ok());
         let objective = objective!(None, None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
-        let objective = objective!(Some(1.0), None);
+        let objective = objective!(Some(Dimensionless(1.0)), None);
         assert!(check_objective_parameter(&objective, &decision_rule).is_err());
     }
 
@@ -255,7 +256,7 @@ mod tests {
             agent_id: "agent1".into(),
             years: "2020".into(),
             objective_type: ObjectiveType::LevelisedCostOfX,
-            decision_weight: Some(1.0), // Should only accept None for DecisionRule::Single
+            decision_weight: Some(Dimensionless(1.0)), // Should only accept None for DecisionRule::Single
             decision_lexico_order: None,
         };
         assert_error!(

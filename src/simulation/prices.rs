@@ -4,12 +4,13 @@ use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::units::Dimensionless;
 use log::warn;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
 #[derive(Default)]
-pub struct CommodityPrices(BTreeMap<(CommodityID, RegionID, TimeSliceID), f64>);
+pub struct CommodityPrices(BTreeMap<(CommodityID, RegionID, TimeSliceID), Dimensionless>);
 
 impl CommodityPrices {
     /// Calculate commodity prices based on the result of the dispatch optimisation
@@ -52,7 +53,10 @@ impl CommodityPrices {
         let mut highest_duals = HashMap::new();
         for (asset, time_slice, dual) in solution.iter_activity_duals() {
             // Iterate over all output flows
-            for flow in asset.iter_flows().filter(|flow| flow.coeff > 0.0) {
+            for flow in asset
+                .iter_flows()
+                .filter(|flow| flow.coeff > Dimensionless(0.0))
+            {
                 // Update the highest dual for this commodity/timeslice
                 highest_duals
                     .entry((
@@ -74,7 +78,7 @@ impl CommodityPrices {
         for (commodity_id, region_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
             let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
             let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
-            self.insert(commodity_id, region_id, time_slice, price);
+            self.insert(commodity_id, region_id, time_slice, Dimensionless(price));
             commodity_regions_updated.insert((commodity_id.clone(), region_id.clone()));
         }
 
@@ -94,7 +98,7 @@ impl CommodityPrices {
         for (commodity_id, region_id) in commodity_regions {
             warn!("No prices calculated for commodity {commodity_id} in region {region_id}; setting to NaN");
             for time_slice in time_slice_info.iter_ids() {
-                self.insert(commodity_id, region_id, time_slice, f64::NAN);
+                self.insert(commodity_id, region_id, time_slice, Dimensionless(f64::NAN));
             }
         }
     }
@@ -105,7 +109,7 @@ impl CommodityPrices {
         commodity_id: &CommodityID,
         region_id: &RegionID,
         time_slice: &TimeSliceID,
-        price: f64,
+        price: Dimensionless,
     ) {
         let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
         self.0.insert(key, price);
@@ -116,7 +120,9 @@ impl CommodityPrices {
     /// # Returns
     ///
     /// An iterator of tuples containing commodity ID, region ID, time slice and price.
-    pub fn iter(&self) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, f64)> {
+    pub fn iter(
+        &self,
+    ) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, Dimensionless)> {
         self.0
             .iter()
             .map(|((commodity_id, region_id, ts), price)| (commodity_id, region_id, ts, *price))

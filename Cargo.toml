@@ -31,6 +31,7 @@ indexmap = "2.9.0"
 human-panic = "2.0.2"
 clap-markdown = "0.1.5"
 platform-info = "2.0.5"
+derive_more = "0.99"
 
 [dev-dependencies]
 regex = "1.11.1"

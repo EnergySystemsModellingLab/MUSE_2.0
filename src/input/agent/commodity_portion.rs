@@ -4,6 +4,7 @@ use crate::agent::{AgentCommodityPortionsMap, AgentID, AgentMap};
 use crate::commodity::{CommodityID, CommodityMap, CommodityType};
 use crate::id::IDCollection;
 use crate::region::RegionID;
+use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -22,7 +23,7 @@ struct AgentCommodityPortionRaw {
     years: String,
     /// The proportion of the commodity production that the agent is responsible for.
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
-    commodity_portion: f64,
+    commodity_portion: Dimensionless,
 }
 
 /// Read agent commodity portions info from the agent_commodity_portions.csv file.
@@ -147,7 +148,7 @@ fn validate_agent_commodity_portions(
     // We then check the map to ensure values for each key are 1
     for (key, portion) in summed_portions.iter() {
         ensure!(
-            approx_eq!(f64, *portion, 1.0, epsilon = 1e-5),
+            approx_eq!(Dimensionless, *portion, Dimensionless(1.0), epsilon = 1e-5),
             "Commodity {} in year {} and region {} does not sum to 1.0",
             key.0,
             key.1,
@@ -229,7 +230,7 @@ mod tests {
 
         // Valid case
         let mut map = AgentCommodityPortionsMap::new();
-        map.insert(("commodity1".into(), 2020), 1.0);
+        map.insert(("commodity1".into(), 2020), Dimensionless(1.0));
         let agent_commodity_portions = HashMap::from([("agent1".into(), map)]);
         assert!(validate_agent_commodity_portions(
             &agent_commodity_portions,
@@ -242,7 +243,7 @@ mod tests {
 
         // Invalid case: portions do not sum to 1
         let mut map_v2 = AgentCommodityPortionsMap::new();
-        map_v2.insert(("commodity1".into(), 2020), 0.5);
+        map_v2.insert(("commodity1".into(), 2020), Dimensionless(0.5));
         let agent_commodities_v2 = HashMap::from([("agent1".into(), map_v2)]);
         assert!(validate_agent_commodity_portions(
             &agent_commodities_v2,
