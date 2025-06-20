@@ -357,7 +357,7 @@ mod tests {
         let milestone_year = 2020;
         let asset = assets.iter().next().unwrap();
         let flow_map = indexmap! {
-            (asset.clone(), commodity_id.clone(), time_slice.clone()) => 42.0
+            (asset.clone(), commodity_id.clone(), time_slice.clone()) => Dimensionless(42.0)
         };
 
         // Write a flow
@@ -374,7 +374,7 @@ mod tests {
             asset_id: asset.id.unwrap(),
             commodity_id,
             time_slice,
-            flow: 42.0,
+            flow: Dimensionless(42.0),
         };
         let records: Vec<CommodityFlowRow> =
             csv::Reader::from_path(dir.path().join(COMMODITY_FLOWS_FILE_NAME))
@@ -388,7 +388,7 @@ mod tests {
     #[rstest]
     fn test_write_prices(commodity_id: CommodityID, region_id: RegionID, time_slice: TimeSliceID) {
         let milestone_year = 2020;
-        let price = 42.0;
+        let price = Dimensionless(42.0);
         let mut prices = CommodityPrices::default();
         prices.insert(&commodity_id, &region_id, &time_slice, price);
 

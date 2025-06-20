@@ -349,9 +349,9 @@ mod tests {
             ("GBR".into(), 2010),
             indexmap! {commodity_sed.id.clone()=>ProcessFlow {
                 commodity: commodity_sed.into(),
-                coeff: 10.0,
+                coeff: Dimensionless(10.0),
                 kind: FlowType::Fixed,
-                cost: 1.0,
+                cost: Dimensionless(1.0),
             }},
         )])
     }
@@ -395,7 +395,8 @@ mod tests {
 
     #[fixture]
     fn commodity_svd(time_slice: TimeSliceID) -> Commodity {
-        let demand = DemandMap::from_iter([(("GBR".into(), 2010, time_slice.into()), 10.0)]);
+        let demand =
+            DemandMap::from_iter([(("GBR".into(), 2010, time_slice.into()), Dimensionless(10.0))]);
 
         Commodity {
             id: "commodity_svd".into(),
@@ -415,9 +416,9 @@ mod tests {
                 ("GBR".into(), 2010),
                 indexmap! { commodity_svd.id.clone() => ProcessFlow {
                     commodity: commodity_svd.into(),
-                    coeff: 10.0,
+                    coeff: Dimensionless(10.0),
                     kind: FlowType::Fixed,
-                    cost: 1.0,
+                    cost: Dimensionless(1.0),
                 }},
             )]),
         )])
@@ -434,7 +435,7 @@ mod tests {
             "process1".into(),
             ProcessActivityLimitsMap::from_iter([(
                 ("GBR".into(), 2010, time_slice.clone()),
-                0.1..=0.9,
+                Dimensionless(0.1)..=Dimensionless(0.9),
             )]),
         )]);
 
@@ -463,7 +464,7 @@ mod tests {
             "process1".into(),
             ProcessActivityLimitsMap::from_iter([(
                 ("GBR".into(), 2010, time_slice.clone()),
-                0.0..=0.0,
+                Dimensionless(0.0)..=Dimensionless(0.0),
             )]),
         )]);
         assert_error!(
@@ -499,9 +500,9 @@ mod tests {
             ("GBR".into(), 2010),
             indexmap! { commodity_other.id.clone() => ProcessFlow {
                 commodity: commodity_other.into(),
-                coeff: 10.0,
+                coeff: Dimensionless(10.0),
                 kind: FlowType::Fixed,
-                cost: 1.0
+                cost: Dimensionless(1.0)
             }},
         )])
     }
@@ -512,9 +513,9 @@ mod tests {
             ("GBR".into(), 2010),
             indexmap! { commodity_other.id.clone() => ProcessFlow {
                 commodity: commodity_other.into(),
-                coeff: -10.0,
+                coeff: Dimensionless(-10.0),
                 kind: FlowType::Fixed,
-                cost: 1.0
+                cost: Dimensionless(1.0)
             }},
         )])
     }
@@ -579,7 +580,7 @@ mod tests {
             "process1".into(),
             ProcessActivityLimitsMap::from_iter([(
                 (region_id.clone(), 2010, time_slice.clone()),
-                0.1..=0.9,
+                Dimensionless(0.1)..=Dimensionless(0.9),
             )]),
         )]);
         let flows = HashMap::from_iter(iter::once((
@@ -588,9 +589,9 @@ mod tests {
                 (region_id.clone(), 2010),
                 indexmap! { commodity_svd.id.clone() => ProcessFlow {
                     commodity: Rc::clone(&commodity_svd),
-                    coeff: -10.0,
+                    coeff: Dimensionless(-10.0),
                     kind: FlowType::Fixed,
-                    cost: 1.0
+                    cost: Dimensionless(1.0)
                 }},
             )]),
         )));

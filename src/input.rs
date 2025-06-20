@@ -80,7 +80,7 @@ pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
     Ok(toml_data)
 }
 
-/// Read an f64, checking that it is between 0 and 1
+/// Read a Dimensionless float, checking that it is between 0 and 1
 fn deserialise_proportion_nonzero<'de, D>(deserialiser: D) -> Result<Dimensionless, D::Error>
 where
     D: Deserializer<'de>,
@@ -301,7 +301,7 @@ mod tests {
     }
 
     /// Deserialise value with deserialise_proportion_nonzero()
-    fn deserialise_f64(value: f64) -> Result<f64, ValueError> {
+    fn deserialise_f64(value: f64) -> Result<Dimensionless, ValueError> {
         let deserialiser: F64Deserializer<ValueError> = value.into_deserializer();
         deserialise_proportion_nonzero(deserialiser)
     }
@@ -309,9 +309,9 @@ mod tests {
     #[test]
     fn test_deserialise_proportion_nonzero() {
         // Valid inputs
-        assert_eq!(deserialise_f64(0.01), Ok(0.01));
-        assert_eq!(deserialise_f64(0.5), Ok(0.5));
-        assert_eq!(deserialise_f64(1.0), Ok(1.0));
+        assert_eq!(deserialise_f64(0.01), Ok(Dimensionless(0.01)));
+        assert_eq!(deserialise_f64(0.5), Ok(Dimensionless(0.5)));
+        assert_eq!(deserialise_f64(1.0), Ok(Dimensionless(1.0)));
 
         // Invalid inputs
         assert!(deserialise_f64(0.0).is_err());
@@ -324,20 +324,26 @@ mod tests {
     #[test]
     fn test_check_fractions_sum_to_one() {
         // Single input, valid
-        assert!(check_fractions_sum_to_one([1.0].into_iter()).is_ok());
+        assert!(check_fractions_sum_to_one([Dimensionless(1.0)].into_iter()).is_ok());
 
         // Multiple inputs, valid
-        assert!(check_fractions_sum_to_one([0.4, 0.6].into_iter()).is_ok());
+        assert!(
+            check_fractions_sum_to_one([Dimensionless(0.4), Dimensionless(0.6)].into_iter())
+                .is_ok()
+        );
 
         // Single input, invalid
-        assert!(check_fractions_sum_to_one([0.5].into_iter()).is_err());
+        assert!(check_fractions_sum_to_one([Dimensionless(0.5)].into_iter()).is_err());
 
         // Multiple inputs, invalid
-        assert!(check_fractions_sum_to_one([0.4, 0.3].into_iter()).is_err());
+        assert!(
+            check_fractions_sum_to_one([Dimensionless(0.4), Dimensionless(0.3)].into_iter())
+                .is_err()
+        );
 
         // Edge cases
-        assert!(check_fractions_sum_to_one([f64::INFINITY].into_iter()).is_err());
-        assert!(check_fractions_sum_to_one([f64::NAN].into_iter()).is_err());
+        assert!(check_fractions_sum_to_one([Dimensionless(f64::INFINITY)].into_iter()).is_err());
+        assert!(check_fractions_sum_to_one([Dimensionless(f64::NAN)].into_iter()).is_err());
     }
 
     #[rstest]

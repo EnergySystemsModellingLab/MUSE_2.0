@@ -231,13 +231,13 @@ mod tests {
                 year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: 10.0,
+                demand: Dimensionless(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: 11.0,
+                demand: Dimensionless(11.0),
             },
         ];
 
@@ -260,13 +260,13 @@ mod tests {
                 year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity2".to_string(),
-                demand: 10.0,
+                demand: Dimensionless(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: 11.0,
+                demand: Dimensionless(11.0),
             },
         ];
         assert_error!(
@@ -287,13 +287,13 @@ mod tests {
                 year: 2020,
                 region_id: "FRA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: 10.0,
+                demand: Dimensionless(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: 11.0,
+                demand: Dimensionless(11.0),
             },
         ];
         assert_error!(
@@ -314,13 +314,13 @@ mod tests {
                 year: 2010,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: 10.0,
+                demand: Dimensionless(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: 11.0,
+                demand: Dimensionless(11.0),
             },
         ];
         assert_error!(
@@ -347,7 +347,7 @@ mod tests {
             year: 2020,
             region_id: "GBR".to_string(),
             commodity_id: "commodity1".to_string(),
-            demand: quantity,
+            demand: Dimensionless(quantity),
         }];
         assert_error!(
             read_demand_from_iter(demand.into_iter(), &svd_commodities, &region_ids, &[2020],),
@@ -367,19 +367,19 @@ mod tests {
                 year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: 10.0,
+                demand: Dimensionless(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: 10.0,
+                demand: Dimensionless(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: 11.0,
+                demand: Dimensionless(11.0),
             },
         ];
         assert_error!(
@@ -399,7 +399,7 @@ mod tests {
             year: 2020,
             region_id: "GBR".to_string(),
             commodity_id: "commodity1".to_string(),
-            demand: 10.0,
+            demand: Dimensionless(10.0),
         };
         assert!(read_demand_from_iter(
             std::iter::once(demand),
@@ -432,11 +432,11 @@ mod tests {
         let expected = AnnualDemandMap::from_iter([
             (
                 ("commodity1".into(), "GBR".into(), 2020),
-                (TimeSliceLevel::DayNight, 10.0),
+                (TimeSliceLevel::DayNight, Dimensionless(10.0)),
             ),
             (
                 ("commodity1".into(), "USA".into(), 2020),
-                (TimeSliceLevel::DayNight, 11.0),
+                (TimeSliceLevel::DayNight, Dimensionless(11.0)),
             ),
         ]);
         let demand =

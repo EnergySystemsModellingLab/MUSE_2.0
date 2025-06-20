@@ -172,14 +172,14 @@ mod tests {
 
     fn create_param_raw(
         lifetime: u32,
-        discount_rate: Option<f64>,
-        capacity_to_activity: Option<f64>,
+        discount_rate: Option<Dimensionless>,
+        capacity_to_activity: Option<Dimensionless>,
     ) -> ProcessParameterRaw {
         ProcessParameterRaw {
             process_id: "id".to_string(),
-            capital_cost: 0.0,
-            fixed_operating_cost: 0.0,
-            variable_operating_cost: 0.0,
+            capital_cost: Dimensionless(0.0),
+            fixed_operating_cost: Dimensionless(0.0),
+            variable_operating_cost: Dimensionless(0.0),
             lifetime,
             discount_rate,
             capacity_to_activity,
@@ -188,11 +188,14 @@ mod tests {
         }
     }
 
-    fn create_param(discount_rate: f64, capacity_to_activity: f64) -> ProcessParameter {
+    fn create_param(
+        discount_rate: Dimensionless,
+        capacity_to_activity: Dimensionless,
+    ) -> ProcessParameter {
         ProcessParameter {
-            capital_cost: 0.0,
-            fixed_operating_cost: 0.0,
-            variable_operating_cost: 0.0,
+            capital_cost: Dimensionless(0.0),
+            fixed_operating_cost: Dimensionless(0.0),
+            variable_operating_cost: Dimensionless(0.0),
             lifetime: 1,
             discount_rate,
             capacity_to_activity,
@@ -202,39 +205,54 @@ mod tests {
     #[test]
     fn test_param_raw_into_param_ok() {
         // No missing values
-        let raw = create_param_raw(1, Some(1.0), Some(0.0));
-        assert_eq!(raw.into_parameter().unwrap(), create_param(1.0, 0.0));
+        let raw = create_param_raw(1, Some(Dimensionless(1.0)), Some(Dimensionless(0.0)));
+        assert_eq!(
+            raw.into_parameter().unwrap(),
+            create_param(Dimensionless(1.0), Dimensionless(0.0))
+        );
 
         // Missing discount_rate
-        let raw = create_param_raw(1, None, Some(0.0));
-        assert_eq!(raw.into_parameter().unwrap(), create_param(0.0, 0.0));
+        let raw = create_param_raw(1, None, Some(Dimensionless(0.0)));
+        assert_eq!(
+            raw.into_parameter().unwrap(),
+            create_param(Dimensionless(0.0), Dimensionless(0.0))
+        );
 
         // Missing capacity_to_activity
-        let raw = create_param_raw(1, Some(1.0), None);
-        assert_eq!(raw.into_parameter().unwrap(), create_param(1.0, 1.0));
+        let raw = create_param_raw(1, Some(Dimensionless(1.0)), None);
+        assert_eq!(
+            raw.into_parameter().unwrap(),
+            create_param(Dimensionless(1.0), Dimensionless(1.0))
+        );
     }
 
     #[test]
     fn test_param_raw_validate_bad_lifetime() {
         // lifetime = 0
-        assert!(create_param_raw(0, Some(1.0), Some(0.0))
-            .validate()
-            .is_err());
+        assert!(
+            create_param_raw(0, Some(Dimensionless(1.0)), Some(Dimensionless(0.0)))
+                .validate()
+                .is_err()
+        );
     }
 
     #[test]
     fn test_param_raw_validate_bad_discount_rate() {
         // discount rate = -1
-        assert!(create_param_raw(0, Some(-1.0), Some(0.0))
-            .validate()
-            .is_err());
+        assert!(
+            create_param_raw(0, Some(Dimensionless(-1.0)), Some(Dimensionless(0.0)))
+                .validate()
+                .is_err()
+        );
     }
 
     #[test]
     fn test_param_raw_validate_bad_capt2act() {
         // capt2act = -1
-        assert!(create_param_raw(0, Some(1.0), Some(-1.0))
-            .validate()
-            .is_err());
+        assert!(
+            create_param_raw(0, Some(Dimensionless(1.0)), Some(Dimensionless(-1.0)))
+                .validate()
+                .is_err()
+        );
     }
 }

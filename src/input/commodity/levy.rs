@@ -163,7 +163,7 @@ mod tests {
     fn cost_map(time_slice: TimeSliceID) -> CommodityLevyMap {
         let cost = CommodityLevy {
             balance_type: BalanceType::Net,
-            value: 1.0,
+            value: Dimensionless(1.0),
         };
 
         let mut map = CommodityLevyMap::new();
@@ -220,9 +220,13 @@ mod tests {
             time_of_day: "night".into(),
         };
         let time_slice_info = TimeSliceInfo {
-            seasons: [("winter".into(), 1.0)].into(),
+            seasons: [("winter".into(), Dimensionless(1.0))].into(),
             times_of_day: ["day".into(), "night".into()].into(),
-            time_slices: [(time_slice.clone(), 0.5), (time_slice.clone(), 0.5)].into(),
+            time_slices: [
+                (time_slice.clone(), Dimensionless(0.5)),
+                (time_slice.clone(), Dimensionless(0.5)),
+            ]
+            .into(),
         };
         assert_error!(
             validate_commodity_levy_map(&cost_map, &region_ids, &[2020], &time_slice_info),

@@ -472,7 +472,10 @@ mod tests {
         );
     }
 
-    fn assert_selection_equal<I>(actual: Option<I>, expected: Option<Vec<(&str, Dimensionless)>>) {
+    fn assert_selection_equal<I>(actual: Option<I>, expected: Option<Vec<(&str, Dimensionless)>>)
+    where
+        I: Iterator<Item = (TimeSliceSelection, Dimensionless)>,
+    {
         let Some(actual) = actual else {
             assert!(expected.is_none());
             return;
@@ -487,17 +490,17 @@ mod tests {
     }
 
     #[rstest]
-    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Annual, Some(vec![("annual", 1.0)]))]
-    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Season, Some(vec![("winter", 0.5), ("summer", 0.5)]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Annual, Some(vec![("annual", Dimensionless(1.0))]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Season, Some(vec![("winter", Dimensionless(0.5)), ("summer", Dimensionless(0.5))]))]
     #[case(TimeSliceSelection::Annual, TimeSliceLevel::DayNight,
-           Some(vec![("winter.day", 0.25), ("winter.night", 0.25), ("summer.day", 0.25), ("summer.night", 0.25)]))]
+           Some(vec![("winter.day", Dimensionless(0.25)), ("winter.night", Dimensionless(0.25)), ("summer.day", Dimensionless(0.25)), ("summer.night", Dimensionless(0.25))]))]
     #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Annual, None)]
-    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Season, Some(vec![("winter", 0.5)]))]
+    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Season, Some(vec![("winter", Dimensionless(0.5))]))]
     #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::DayNight,
-           Some(vec![("winter.day", 0.25), ("winter.night", 0.25)]))]
+           Some(vec![("winter.day", Dimensionless(0.25)), ("winter.night", Dimensionless(0.25))]))]
     #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Annual, None)]
     #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Season, None)]
-    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::DayNight, Some(vec![("winter.day", 0.25)]))]
+    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::DayNight, Some(vec![("winter.day", Dimensionless(0.25))]))]
     fn test_ts_selection_iter_at_level(
         time_slice_info2: TimeSliceInfo,
         #[case] selection: TimeSliceSelection,
@@ -509,17 +512,17 @@ mod tests {
     }
 
     #[rstest]
-    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Annual, Some(vec![("annual", 8.0)]))]
-    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Season, Some(vec![("winter", 4.0), ("summer", 4.0)]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Annual, Some(vec![("annual", Dimensionless(8.0))]))]
+    #[case(TimeSliceSelection::Annual, TimeSliceLevel::Season, Some(vec![("winter", Dimensionless(4.0)), ("summer", Dimensionless(4.0))]))]
     #[case(TimeSliceSelection::Annual, TimeSliceLevel::DayNight,
-           Some(vec![("winter.day", 2.0), ("winter.night", 2.0), ("summer.day", 2.0), ("summer.night", 2.0)]))]
+           Some(vec![("winter.day", Dimensionless(2.0)), ("winter.night", Dimensionless(2.0)), ("summer.day", Dimensionless(2.0)), ("summer.night", Dimensionless(2.0))]))]
     #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Annual, None)]
-    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Season, Some(vec![("winter", 8.0)]))]
+    #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::Season, Some(vec![("winter", Dimensionless(8.0))]))]
     #[case(TimeSliceSelection::Season("winter".into()), TimeSliceLevel::DayNight,
-           Some(vec![("winter.day", 4.0), ("winter.night", 4.0)]))]
+           Some(vec![("winter.day", Dimensionless(4.0)), ("winter.night", Dimensionless(4.0))]))]
     #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Annual, None)]
     #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::Season, None)]
-    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::DayNight, Some(vec![("winter.day", 8.0)]))]
+    #[case(TimeSliceSelection::Single("winter.day".into()), TimeSliceLevel::DayNight, Some(vec![("winter.day", Dimensionless(8.0))]))]
     fn test_calculate_share(
         time_slice_info2: TimeSliceInfo,
         #[case] selection: TimeSliceSelection,

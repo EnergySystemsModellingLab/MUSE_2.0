@@ -178,13 +178,13 @@ mod tests {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
             time_slice: "winter".into(),
-            fraction: 1.0,
+            fraction: Dimensionless(1.0),
         };
         let time_slice = time_slice_info
             .get_time_slice_id_from_str("winter.day")
             .unwrap();
         let key = ("commodity1".into(), "GBR".into(), time_slice.into());
-        let expected = DemandSliceMap::from_iter(iter::once((key, 1.0)));
+        let expected = DemandSliceMap::from_iter(iter::once((key, Dimensionless(1.0))));
         assert_eq!(
             read_demand_slices_from_iter(
                 iter::once(demand_slice.clone()),
@@ -205,9 +205,12 @@ mod tests {
         // Valid, multiple time slices
         let svd_commodities = get_svd_map(&svd_commodity);
         let time_slice_info = TimeSliceInfo {
-            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
-                .into_iter()
-                .collect(),
+            seasons: [
+                ("winter".into(), Dimensionless(0.5)),
+                ("summer".into(), Dimensionless(0.5)),
+            ]
+            .into_iter()
+            .collect(),
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
             time_slices: [
                 (
@@ -215,28 +218,28 @@ mod tests {
                         season: "summer".into(),
                         time_of_day: "day".into(),
                     },
-                    3.0 / 16.0,
+                    Dimensionless(3.0 / 16.0),
                 ),
                 (
                     TimeSliceID {
                         season: "summer".into(),
                         time_of_day: "night".into(),
                     },
-                    5.0 / 16.0,
+                    Dimensionless(5.0 / 16.0),
                 ),
                 (
                     TimeSliceID {
                         season: "winter".into(),
                         time_of_day: "day".into(),
                     },
-                    3.0 / 16.0,
+                    Dimensionless(3.0 / 16.0),
                 ),
                 (
                     TimeSliceID {
                         season: "winter".into(),
                         time_of_day: "night".into(),
                     },
-                    5.0 / 16.0,
+                    Dimensionless(5.0 / 16.0),
                 ),
             ]
             .into_iter()
@@ -247,21 +250,21 @@ mod tests {
                 commodity_id: "commodity1".into(),
                 region_id: "GBR".into(),
                 time_slice: "winter".into(),
-                fraction: 0.5,
+                fraction: Dimensionless(0.5),
             },
             DemandSlice {
                 commodity_id: "commodity1".into(),
                 region_id: "GBR".into(),
                 time_slice: "summer".into(),
-                fraction: 0.5,
+                fraction: Dimensionless(0.5),
             },
         ];
 
         fn demand_slice_entry(
             season: &str,
             time_of_day: &str,
-            demand: f64,
-        ) -> ((CommodityID, RegionID, TimeSliceSelection), f64) {
+            demand: Dimensionless,
+        ) -> ((CommodityID, RegionID, TimeSliceSelection), Dimensionless) {
             (
                 (
                     "commodity1".into(),
@@ -276,10 +279,10 @@ mod tests {
             )
         }
         let expected = DemandSliceMap::from_iter([
-            demand_slice_entry("summer", "day", 3.0 / 16.0),
-            demand_slice_entry("summer", "night", 5.0 / 16.0),
-            demand_slice_entry("winter", "day", 3.0 / 16.0),
-            demand_slice_entry("winter", "night", 5.0 / 16.0),
+            demand_slice_entry("summer", "day", Dimensionless(3.0 / 16.0)),
+            demand_slice_entry("summer", "night", Dimensionless(5.0 / 16.0)),
+            demand_slice_entry("winter", "day", Dimensionless(3.0 / 16.0)),
+            demand_slice_entry("winter", "night", Dimensionless(5.0 / 16.0)),
         ]);
 
         assert_eq!(
@@ -325,7 +328,7 @@ mod tests {
             commodity_id: "commodity2".into(),
             region_id: "GBR".into(),
             time_slice: "winter.day".into(),
-            fraction: 1.0,
+            fraction: Dimensionless(1.0),
         };
         assert_error!(
             read_demand_slices_from_iter(
@@ -350,7 +353,7 @@ mod tests {
             commodity_id: "commodity1".into(),
             region_id: "FRA".into(),
             time_slice: "winter.day".into(),
-            fraction: 1.0,
+            fraction: Dimensionless(1.0),
         };
         assert_error!(
             read_demand_slices_from_iter(
@@ -375,7 +378,7 @@ mod tests {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
             time_slice: "summer".into(),
-            fraction: 1.0,
+            fraction: Dimensionless(1.0),
         };
         assert_error!(
             read_demand_slices_from_iter(
@@ -396,9 +399,12 @@ mod tests {
         // Some time slices uncovered
         let svd_commodities = get_svd_map(&svd_commodity);
         let time_slice_info = TimeSliceInfo {
-            seasons: [("winter".into(), 0.5), ("summer".into(), 0.5)]
-                .into_iter()
-                .collect(),
+            seasons: [
+                ("winter".into(), Dimensionless(0.5)),
+                ("summer".into(), Dimensionless(0.5)),
+            ]
+            .into_iter()
+            .collect(),
             times_of_day: iter::once("day".into()).collect(),
             time_slices: [
                 (
@@ -406,14 +412,14 @@ mod tests {
                         season: "winter".into(),
                         time_of_day: "day".into(),
                     },
-                    0.5,
+                    Dimensionless(0.5),
                 ),
                 (
                     TimeSliceID {
                         season: "summer".into(),
                         time_of_day: "day".into(),
                     },
-                    0.5,
+                    Dimensionless(0.5),
                 ),
             ]
             .into_iter()
@@ -423,7 +429,7 @@ mod tests {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
             time_slice: "winter".into(),
-            fraction: 1.0,
+            fraction: Dimensionless(1.0),
         };
         assert_error!(
             read_demand_slices_from_iter(
@@ -448,7 +454,7 @@ mod tests {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
             time_slice: "winter.day".into(),
-            fraction: 0.5,
+            fraction: Dimensionless(0.5),
         };
         assert_error!(
             read_demand_slices_from_iter(
@@ -474,13 +480,13 @@ mod tests {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
             time_slice: "winter.day".into(),
-            fraction: 0.5,
+            fraction: Dimensionless(0.5),
         };
         let demand_slice_season = DemandSlice {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
             time_slice: "winter".into(),
-            fraction: 0.5,
+            fraction: Dimensionless(0.5),
         };
         assert_error!(
             read_demand_slices_from_iter(
@@ -506,7 +512,7 @@ mod tests {
             commodity_id: "commodity1".into(),
             region_id: "GBR".into(),
             time_slice: "winter".into(),
-            fraction: 0.5,
+            fraction: Dimensionless(0.5),
         };
         assert_error!(
             read_demand_slices_from_iter(

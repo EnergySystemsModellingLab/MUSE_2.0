@@ -183,7 +183,7 @@ mod tests {
 
     fn create_process_availability_raw(
         limit_type: LimitType,
-        value: f64,
+        value: Dimensionless,
     ) -> ProcessAvailabilityRaw {
         ProcessAvailabilityRaw {
             process_id: "process".into(),
@@ -198,51 +198,56 @@ mod tests {
     #[test]
     fn test_validate() {
         // Valid
-        let valid = create_process_availability_raw(LimitType::LowerBound, 0.5);
+        let valid = create_process_availability_raw(LimitType::LowerBound, Dimensionless(0.5));
         assert!(valid.validate().is_ok());
-        let valid = create_process_availability_raw(LimitType::LowerBound, 0.0);
+        let valid = create_process_availability_raw(LimitType::LowerBound, Dimensionless(0.0));
         assert!(valid.validate().is_ok());
-        let valid = create_process_availability_raw(LimitType::LowerBound, 1.0);
+        let valid = create_process_availability_raw(LimitType::LowerBound, Dimensionless(1.0));
         assert!(valid.validate().is_ok());
 
         // Invalid: negative value
-        let invalid = create_process_availability_raw(LimitType::LowerBound, -0.5);
+        let invalid = create_process_availability_raw(LimitType::LowerBound, Dimensionless(-0.5));
         assert!(invalid.validate().is_err());
 
         // Invalid: value greater than 1
-        let invalid = create_process_availability_raw(LimitType::LowerBound, 1.5);
+        let invalid = create_process_availability_raw(LimitType::LowerBound, Dimensionless(1.5));
         assert!(invalid.validate().is_err());
 
         // Invalid: infinity value
-        let invalid = create_process_availability_raw(LimitType::LowerBound, f64::INFINITY);
+        let invalid =
+            create_process_availability_raw(LimitType::LowerBound, Dimensionless(f64::INFINITY));
         assert!(invalid.validate().is_err());
 
         // Invalid: negative infinity value
-        let invalid = create_process_availability_raw(LimitType::LowerBound, f64::NEG_INFINITY);
+        let invalid = create_process_availability_raw(
+            LimitType::LowerBound,
+            Dimensionless(f64::NEG_INFINITY),
+        );
         assert!(invalid.validate().is_err());
 
         // Invalid: NaN value
-        let invalid = create_process_availability_raw(LimitType::LowerBound, f64::NAN);
+        let invalid =
+            create_process_availability_raw(LimitType::LowerBound, Dimensionless(f64::NAN));
         assert!(invalid.validate().is_err());
     }
 
     #[test]
     fn test_to_bounds() {
-        let ts_length = 0.1;
+        let ts_length = Dimensionless(0.1);
 
         // Lower bound
-        let raw = create_process_availability_raw(LimitType::LowerBound, 0.5);
+        let raw = create_process_availability_raw(LimitType::LowerBound, Dimensionless(0.5));
         let bounds = raw.to_bounds(ts_length);
-        assert_eq!(bounds, 0.05..=f64::INFINITY);
+        assert_eq!(bounds, Dimensionless(0.05)..=Dimensionless(f64::INFINITY));
 
         // Upper bound
-        let raw = create_process_availability_raw(LimitType::UpperBound, 0.5);
+        let raw = create_process_availability_raw(LimitType::UpperBound, Dimensionless(0.5));
         let bounds = raw.to_bounds(ts_length);
-        assert_eq!(bounds, 0.0..=0.05);
+        assert_eq!(bounds, Dimensionless(0.0)..=Dimensionless(0.05));
 
         // Equality
-        let raw = create_process_availability_raw(LimitType::Equality, 0.5);
+        let raw = create_process_availability_raw(LimitType::Equality, Dimensionless(0.5));
         let bounds = raw.to_bounds(ts_length);
-        assert_eq!(bounds, 0.05..=0.05);
+        assert_eq!(bounds, Dimensionless(0.05)..=Dimensionless(0.05));
     }
 }

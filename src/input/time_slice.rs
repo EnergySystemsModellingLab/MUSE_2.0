@@ -129,10 +129,10 @@ autumn,evening,0.25"
             info,
             TimeSliceInfo {
                 seasons: [
-                    ("winter".into(), 0.25),
-                    ("peak".into(), 0.25),
-                    ("summer".into(), 0.25),
-                    ("autumn".into(), 0.25)
+                    ("winter".into(), Dimensionless(0.25)),
+                    ("peak".into(), Dimensionless(0.25)),
+                    ("summer".into(), Dimensionless(0.25)),
+                    ("autumn".into(), Dimensionless(0.25))
                 ]
                 .into_iter()
                 .collect(),
@@ -150,28 +150,28 @@ autumn,evening,0.25"
                             season: "winter".into(),
                             time_of_day: "day".into(),
                         },
-                        0.25,
+                        Dimensionless(0.25),
                     ),
                     (
                         TimeSliceID {
                             season: "peak".into(),
                             time_of_day: "night".into(),
                         },
-                        0.25,
+                        Dimensionless(0.25),
                     ),
                     (
                         TimeSliceID {
                             season: "summer".into(),
                             time_of_day: "peak".into(),
                         },
-                        0.25,
+                        Dimensionless(0.25),
                     ),
                     (
                         TimeSliceID {
                             season: "autumn".into(),
                             time_of_day: "evening".into(),
                         },
-                        0.25,
+                        Dimensionless(0.25),
                     ),
                 ]
                 .into_iter()

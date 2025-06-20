@@ -159,7 +159,11 @@ mod tests {
 
     use rstest::fixture;
 
-    fn create_process_flow_raw(coeff: f64, kind: FlowType, cost: Option<f64>) -> ProcessFlowRaw {
+    fn create_process_flow_raw(
+        coeff: Dimensionless,
+        kind: FlowType,
+        cost: Option<Dimensionless>,
+    ) -> ProcessFlowRaw {
         ProcessFlowRaw {
             process_id: "process".into(),
             commodity_id: "commodity".into(),
@@ -174,25 +178,57 @@ mod tests {
     #[test]
     fn test_validate_flow_raw() {
         // Valid
-        let valid = create_process_flow_raw(1.0, FlowType::Fixed, Some(0.0));
+        let valid = create_process_flow_raw(
+            Dimensionless(1.0),
+            FlowType::Fixed,
+            Some(Dimensionless(0.0)),
+        );
         assert!(valid.validate().is_ok());
 
         // Invalid: Bad flow value
-        let invalid = create_process_flow_raw(0.0, FlowType::Fixed, Some(0.0));
+        let invalid = create_process_flow_raw(
+            Dimensionless(0.0),
+            FlowType::Fixed,
+            Some(Dimensionless(0.0)),
+        );
         assert!(invalid.validate().is_err());
-        let invalid = create_process_flow_raw(f64::NAN, FlowType::Fixed, Some(0.0));
+        let invalid = create_process_flow_raw(
+            Dimensionless(f64::NAN),
+            FlowType::Fixed,
+            Some(Dimensionless(0.0)),
+        );
         assert!(invalid.validate().is_err());
-        let invalid = create_process_flow_raw(f64::INFINITY, FlowType::Fixed, Some(0.0));
+        let invalid = create_process_flow_raw(
+            Dimensionless(f64::INFINITY),
+            FlowType::Fixed,
+            Some(Dimensionless(0.0)),
+        );
         assert!(invalid.validate().is_err());
-        let invalid = create_process_flow_raw(f64::NEG_INFINITY, FlowType::Fixed, Some(0.0));
+        let invalid = create_process_flow_raw(
+            Dimensionless(f64::NEG_INFINITY),
+            FlowType::Fixed,
+            Some(Dimensionless(0.0)),
+        );
         assert!(invalid.validate().is_err());
 
         // Invalid: Bad flow cost value
-        let invalid = create_process_flow_raw(1.0, FlowType::Fixed, Some(f64::NAN));
+        let invalid = create_process_flow_raw(
+            Dimensionless(1.0),
+            FlowType::Fixed,
+            Some(Dimensionless(f64::NAN)),
+        );
         assert!(invalid.validate().is_err());
-        let invalid = create_process_flow_raw(1.0, FlowType::Fixed, Some(f64::NEG_INFINITY));
+        let invalid = create_process_flow_raw(
+            Dimensionless(1.0),
+            FlowType::Fixed,
+            Some(Dimensionless(f64::NEG_INFINITY)),
+        );
         assert!(invalid.validate().is_err());
-        let invalid = create_process_flow_raw(1.0, FlowType::Fixed, Some(f64::INFINITY));
+        let invalid = create_process_flow_raw(
+            Dimensionless(1.0),
+            FlowType::Fixed,
+            Some(Dimensionless(f64::INFINITY)),
+        );
         assert!(invalid.validate().is_err());
     }
 
