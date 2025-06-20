@@ -4,7 +4,7 @@ use crate::commodity::CommodityID;
 use crate::process::{Process, ProcessFlow, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
-use crate::units::Dimensionless;
+use crate::units::{Capacity, Dimensionless};
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -30,7 +30,7 @@ pub struct Asset {
     /// The region in which the asset is located
     pub region_id: RegionID,
     /// Capacity of asset
-    pub capacity: Dimensionless,
+    pub capacity: Capacity,
     /// The year the asset comes online
     pub commission_year: u32,
 }
@@ -44,7 +44,7 @@ impl Asset {
         agent_id: AgentID,
         process: Rc<Process>,
         region_id: RegionID,
-        capacity: Dimensionless,
+        capacity: Capacity,
         commission_year: u32,
     ) -> Result<Self> {
         ensure!(
@@ -66,7 +66,7 @@ impl Asset {
             .clone();
 
         ensure!(
-            capacity.is_finite() && capacity > Dimensionless(0.0),
+            capacity.is_finite() && capacity > Capacity(0.0),
             "Capacity must be a finite, positive number"
         );
 
@@ -307,6 +307,7 @@ mod tests {
     use crate::process::{
         Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessParameter, ProcessParameterMap,
     };
+    use crate::units::PerCapacity;
     use itertools::{assert_equal, Itertools};
     use rstest::{fixture, rstest};
     use std::collections::HashSet;
@@ -314,11 +315,11 @@ mod tests {
     use std::ops::RangeInclusive;
 
     #[rstest]
-    #[case(Dimensionless(0.01))]
-    #[case(Dimensionless(0.5))]
-    #[case(Dimensionless(1.0))]
-    #[case(Dimensionless(100.0))]
-    fn test_asset_new_valid(process: Process, #[case] capacity: Dimensionless) {
+    #[case(Capacity(0.01))]
+    #[case(Capacity(0.5))]
+    #[case(Capacity(1.0))]
+    #[case(Capacity(100.0))]
+    fn test_asset_new_valid(process: Process, #[case] capacity: Capacity) {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("GBR".into());
         let asset = Asset::new(agent_id, process.into(), region_id, capacity, 2015).unwrap();
@@ -326,13 +327,13 @@ mod tests {
     }
 
     #[rstest]
-    #[case(Dimensionless(0.0))]
-    #[case(Dimensionless(-0.01))]
-    #[case(Dimensionless(-1.0))]
-    #[case(Dimensionless(f64::NAN))]
-    #[case(Dimensionless(f64::INFINITY))]
-    #[case(Dimensionless(f64::NEG_INFINITY))]
-    fn test_asset_new_invalid_capacity(process: Process, #[case] capacity: Dimensionless) {
+    #[case(Capacity(0.0))]
+    #[case(Capacity(-0.01))]
+    #[case(Capacity(-1.0))]
+    #[case(Capacity(f64::NAN))]
+    #[case(Capacity(f64::INFINITY))]
+    #[case(Capacity(f64::NEG_INFINITY))]
+    fn test_asset_new_invalid_capacity(process: Process, #[case] capacity: Capacity) {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("GBR".into());
         assert_error!(
@@ -346,13 +347,7 @@ mod tests {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("GBR".into());
         assert_error!(
-            Asset::new(
-                agent_id,
-                process.into(),
-                region_id,
-                Dimensionless(1.0),
-                2009
-            ),
+            Asset::new(agent_id, process.into(), region_id, Capacity(1.0), 2009),
             "Process process1 does not operate in the year 2009"
         );
     }
@@ -362,13 +357,7 @@ mod tests {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("FRA".into());
         assert_error!(
-            Asset::new(
-                agent_id,
-                process.into(),
-                region_id,
-                Dimensionless(1.0),
-                2015
-            ),
+            Asset::new(agent_id, process.into(), region_id, Capacity(1.0), 2015),
             "Region FRA is not one of the regions in which process process1 operates"
         );
     }
@@ -381,7 +370,7 @@ mod tests {
             variable_operating_cost: Dimensionless(1.0),
             lifetime: 5,
             discount_rate: Dimensionless(0.9),
-            capacity_to_activity: Dimensionless(1.0),
+            capacity_to_activity: PerCapacity(1.0),
         });
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
@@ -403,7 +392,7 @@ mod tests {
                     "agent1".into(),
                     Rc::clone(&process),
                     "GBR".into(),
-                    Dimensionless(1.0),
+                    Capacity(1.0),
                     year,
                 )
                 .unwrap()
@@ -426,7 +415,7 @@ mod tests {
             variable_operating_cost: Dimensionless(1.0),
             lifetime: 5,
             discount_rate: Dimensionless(0.9),
-            capacity_to_activity: Dimensionless(3.0),
+            capacity_to_activity: PerCapacity(3.0),
         });
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
@@ -454,7 +443,7 @@ mod tests {
             "agent1".into(),
             Rc::clone(&process),
             "GBR".into(),
-            Dimensionless(2.0),
+            Capacity(2.0),
             2010,
         )
         .unwrap();
@@ -531,7 +520,7 @@ mod tests {
             "some_other_agent".into(),
             process.into(),
             "GBR".into(),
-            Dimensionless(2.0),
+            Capacity(2.0),
             2010,
         )
         .unwrap();
@@ -553,7 +542,7 @@ mod tests {
             "some_other_agent".into(),
             process.into(),
             "GBR".into(),
-            Dimensionless(2.0),
+            Capacity(2.0),
             2010,
         )
         .unwrap();

@@ -5,7 +5,7 @@ use crate::asset::Asset;
 use crate::id::IDCollection;
 use crate::process::ProcessMap;
 use crate::region::RegionID;
-use crate::units::Dimensionless;
+use crate::units::Capacity;
 use anyhow::{Context, Result};
 use itertools::Itertools;
 use serde::Deserialize;
@@ -20,7 +20,7 @@ struct AssetRaw {
     process_id: String,
     region_id: String,
     agent_id: String,
-    capacity: Dimensionless,
+    capacity: Capacity,
     commission_year: u32,
 }
 
@@ -111,14 +111,14 @@ mod tests {
             agent_id: "agent1".into(),
             process_id: "process1".into(),
             region_id: "GBR".into(),
-            capacity: Dimensionless(1.0),
+            capacity: Capacity(1.0),
             commission_year: 2010,
         };
         let asset_out = Asset::new(
             "agent1".into(),
             Rc::clone(processes.values().next().unwrap()),
             "GBR".into(),
-            Dimensionless(1.0),
+            Capacity(1.0),
             2010,
         )
         .unwrap();
@@ -134,21 +134,21 @@ mod tests {
             agent_id: "agent1".into(),
             process_id: "process2".into(),
             region_id: "GBR".into(),
-            capacity: Dimensionless(1.0),
+            capacity: Capacity(1.0),
             commission_year: 2010,
         })]
     #[case(AssetRaw { // Bad agent ID
             agent_id: "agent2".into(),
             process_id: "process1".into(),
             region_id: "GBR".into(),
-            capacity: Dimensionless(1.0),
+            capacity: Capacity(1.0),
             commission_year: 2010,
         })]
     #[case(AssetRaw { // Bad region ID: not in region_ids
             agent_id: "agent1".into(),
             process_id: "process1".into(),
             region_id: "FRA".into(),
-            capacity: Dimensionless(1.0),
+            capacity: Capacity(1.0),
             commission_year: 2010,
         })]
     fn test_read_assets_from_iter_invalid(

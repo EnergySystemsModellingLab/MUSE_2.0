@@ -12,7 +12,7 @@ use crate::process::{
 };
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::Dimensionless;
+use crate::units::{Capacity, Dimensionless, PerCapacity};
 use indexmap::indexmap;
 use itertools::Itertools;
 use rstest::fixture;
@@ -81,7 +81,7 @@ pub fn asset(process: Process) -> Asset {
         agent_id,
         process.into(),
         region_id,
-        Dimensionless(2.0),
+        Capacity(2.0),
         commission_year,
     )
     .unwrap()
@@ -103,7 +103,7 @@ pub fn process_parameter_map(region_ids: HashSet<RegionID>) -> ProcessParameterM
         variable_operating_cost: Dimensionless(0.0),
         lifetime: 1,
         discount_rate: Dimensionless(1.0),
-        capacity_to_activity: Dimensionless(0.0),
+        capacity_to_activity: PerCapacity(0.0),
     });
 
     region_ids

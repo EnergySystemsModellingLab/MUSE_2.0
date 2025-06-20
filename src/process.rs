@@ -4,7 +4,7 @@ use crate::commodity::{BalanceType, Commodity, CommodityID};
 use crate::id::define_id_type;
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
-use crate::units::Dimensionless;
+use crate::units::{Dimensionless, PerCapacity};
 use indexmap::IndexMap;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
@@ -139,7 +139,7 @@ pub struct ProcessParameter {
     /// Used for converting one unit of capacity to maximum energy of asset per year. For example,
     /// if capacity is measured in GW and energy is measured in PJ, the capacity_to_activity for the
     /// process is 31.536 because 1 GW of capacity can produce 31.536 PJ energy output in a year.
-    pub capacity_to_activity: Dimensionless,
+    pub capacity_to_activity: PerCapacity,
 }
 
 #[cfg(test)]

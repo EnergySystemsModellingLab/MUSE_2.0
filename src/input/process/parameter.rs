@@ -2,7 +2,7 @@
 use super::super::*;
 use crate::process::{ProcessID, ProcessMap, ProcessParameter, ProcessParameterMap};
 use crate::region::parse_region_str;
-use crate::units::Dimensionless;
+use crate::units::{Dimensionless, PerCapacity};
 use crate::year::parse_year_str;
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
@@ -23,7 +23,7 @@ struct ProcessParameterRaw {
     variable_operating_cost: Dimensionless,
     lifetime: u32,
     discount_rate: Option<Dimensionless>,
-    capacity_to_activity: Option<Dimensionless>,
+    capacity_to_activity: Option<PerCapacity>,
 }
 
 impl ProcessParameterRaw {
@@ -36,7 +36,7 @@ impl ProcessParameterRaw {
             variable_operating_cost: self.variable_operating_cost,
             lifetime: self.lifetime,
             discount_rate: self.discount_rate.unwrap_or(Dimensionless(0.0)),
-            capacity_to_activity: self.capacity_to_activity.unwrap_or(Dimensionless(1.0)),
+            capacity_to_activity: self.capacity_to_activity.unwrap_or(PerCapacity(1.0)),
         })
     }
 }
@@ -83,7 +83,7 @@ impl ProcessParameterRaw {
 
         if let Some(c2a) = self.capacity_to_activity {
             ensure!(
-                c2a >= Dimensionless(0.0),
+                c2a >= PerCapacity(0.0),
                 "Error in parameter for process {}: Cap2act must be positive",
                 self.process_id
             );
@@ -173,7 +173,7 @@ mod tests {
     fn create_param_raw(
         lifetime: u32,
         discount_rate: Option<Dimensionless>,
-        capacity_to_activity: Option<Dimensionless>,
+        capacity_to_activity: Option<PerCapacity>,
     ) -> ProcessParameterRaw {
         ProcessParameterRaw {
             process_id: "id".to_string(),
@@ -190,7 +190,7 @@ mod tests {
 
     fn create_param(
         discount_rate: Dimensionless,
-        capacity_to_activity: Dimensionless,
+        capacity_to_activity: PerCapacity,
     ) -> ProcessParameter {
         ProcessParameter {
             capital_cost: Dimensionless(0.0),
@@ -205,24 +205,24 @@ mod tests {
     #[test]
     fn test_param_raw_into_param_ok() {
         // No missing values
-        let raw = create_param_raw(1, Some(Dimensionless(1.0)), Some(Dimensionless(0.0)));
+        let raw = create_param_raw(1, Some(Dimensionless(1.0)), Some(PerCapacity(0.0)));
         assert_eq!(
             raw.into_parameter().unwrap(),
-            create_param(Dimensionless(1.0), Dimensionless(0.0))
+            create_param(Dimensionless(1.0), PerCapacity(0.0))
         );
 
         // Missing discount_rate
-        let raw = create_param_raw(1, None, Some(Dimensionless(0.0)));
+        let raw = create_param_raw(1, None, Some(PerCapacity(0.0)));
         assert_eq!(
             raw.into_parameter().unwrap(),
-            create_param(Dimensionless(0.0), Dimensionless(0.0))
+            create_param(Dimensionless(0.0), PerCapacity(0.0))
         );
 
         // Missing capacity_to_activity
         let raw = create_param_raw(1, Some(Dimensionless(1.0)), None);
         assert_eq!(
             raw.into_parameter().unwrap(),
-            create_param(Dimensionless(1.0), Dimensionless(1.0))
+            create_param(Dimensionless(1.0), PerCapacity(1.0))
         );
     }
 
@@ -230,7 +230,7 @@ mod tests {
     fn test_param_raw_validate_bad_lifetime() {
         // lifetime = 0
         assert!(
-            create_param_raw(0, Some(Dimensionless(1.0)), Some(Dimensionless(0.0)))
+            create_param_raw(0, Some(Dimensionless(1.0)), Some(PerCapacity(0.0)))
                 .validate()
                 .is_err()
         );
@@ -240,7 +240,7 @@ mod tests {
     fn test_param_raw_validate_bad_discount_rate() {
         // discount rate = -1
         assert!(
-            create_param_raw(0, Some(Dimensionless(-1.0)), Some(Dimensionless(0.0)))
+            create_param_raw(0, Some(Dimensionless(-1.0)), Some(PerCapacity(0.0)))
                 .validate()
                 .is_err()
         );
@@ -250,7 +250,7 @@ mod tests {
     fn test_param_raw_validate_bad_capt2act() {
         // capt2act = -1
         assert!(
-            create_param_raw(0, Some(Dimensionless(1.0)), Some(Dimensionless(-1.0)))
+            create_param_raw(0, Some(Dimensionless(1.0)), Some(PerCapacity(-1.0)))
                 .validate()
                 .is_err()
         );
