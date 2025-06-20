@@ -3,7 +3,7 @@ use crate::asset::AssetPool;
 use crate::model::Model;
 use crate::output::DataWriter;
 use anyhow::Result;
-use log::{error, info};
+use log::info;
 use std::path::Path;
 
 pub mod optimisation;
@@ -31,47 +31,42 @@ pub fn run(
 
     // Iterate over milestone years
     let mut year_iter = model.iter_years();
-    let mut year = year_iter.next().unwrap(); // NB: There will be at least one year
+    let year = year_iter.next().unwrap(); // NB: There will be at least one year
+
+    info!("Milestone year: {year}");
 
     // There shouldn't be assets already commissioned, but let's do this just in case
     assets.decommission_old(year);
 
-    // **TODO:** Remove annotation when the loop actually loops
-    #[allow(clippy::never_loop)]
-    loop {
+    // Commission assets for baseline year
+    assets.commission_new(year);
+
+    // Dispatch optimisation
+    let solution = perform_dispatch_optimisation(&model, &assets, &[], year)?;
+    let flow_map = solution.create_flow_map();
+    let prices = CommodityPrices::calculate(&model, &solution, year);
+
+    // Write active assets and results of dispatch optimisation to file
+    writer.write(year, &solution, &assets, &flow_map, &prices)?;
+
+    for year in year_iter {
         info!("Milestone year: {year}");
+
+        // Decommission assets whose lifetime has passed. We do this *before* agent investment, to
+        // prevent agents from selecting assets that are being decommissioned in this milestone
+        // year.
+        assets.decommission_old(year);
+
+        // NB: Agent investment will actually be in a loop with more calls to
+        // `perform_dispatch_optimisation`, but let's leave this as a placeholder for now
+        perform_agent_investment(&model, &flow_map, &prices, &mut assets);
 
         // Newly commissioned assets will be included in optimisation for at least one milestone
         // year before agents have the option of decommissioning them
         assets.commission_new(year);
 
-        // Dispatch optimisation
-        let solution = perform_dispatch_optimisation(&model, &assets, &[], year)?;
-        let flow_map = solution.create_flow_map();
-        let prices = CommodityPrices::calculate(&model, &solution, year);
-
-        // Write active assets and results of dispatch optimisation to file. Note that we have to
-        // be careful about when we call this function, as we want to include newly commissioned
-        // assets and write them **before** assets have been decommissioned.
-        writer.write(year, &solution, &assets, &flow_map, &prices)?;
-
-        if let Some(next_year) = year_iter.next() {
-            year = next_year;
-
-            // NB: Agent investment is not carried out in first milestone year
-            perform_agent_investment(&model, &flow_map, &prices, &mut assets);
-
-            // Decommission assets whose lifetime has passed
-            assets.decommission_old(year);
-        } else {
-            // No more milestone years. Simulation is finished.
-            break;
-        }
-
-        // **TODO:** Remove this when we implement at least some of the agent investment code
-        //   See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/304
-        error!("Agent investment is not yet implemented. Exiting...");
-        break;
+        // **TODO:** Write output data for this milestone year. Skipping for now as agent investment
+        // is not implemented, so data will just be a duplicate of first milestone year.
     }
 
     writer.flush()?;
