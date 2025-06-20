@@ -45,19 +45,15 @@ pub fn run(
         // year before agents have the option of decommissioning them
         assets.commission_new(year);
 
-        // Write current assets to CSV. This indicates the set of assets fed into the dispatch
-        // optimisation, so we *must* do it after agent investment and new assets are commissioned
-        writer.write_assets(year, assets.iter())?;
-
         // Dispatch optimisation
         let solution = perform_dispatch_optimisation(&model, &assets, &[], year)?;
         let flow_map = solution.create_flow_map();
         let prices = CommodityPrices::calculate(&model, &solution, year);
 
-        // Write result of dispatch optimisation to file
-        writer.write_debug_info(year, &solution)?;
-        writer.write_flows(year, &flow_map)?;
-        writer.write_prices(year, &prices)?;
+        // Write active assets and results of dispatch optimisation to file. Note that we have to
+        // be careful about when we call this function, as we want to include newly commissioned
+        // assets and write them **before** assets have been decommissioned.
+        writer.write(year, &solution, &assets, &flow_map, &prices)?;
 
         if let Some(next_year) = year_iter.next() {
             year = next_year;

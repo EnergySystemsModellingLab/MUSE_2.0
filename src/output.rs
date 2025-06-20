@@ -1,6 +1,6 @@
 //! The module responsible for writing output data to disk.
 use crate::agent::AgentID;
-use crate::asset::{Asset, AssetID, AssetRef};
+use crate::asset::{Asset, AssetID, AssetPool, AssetRef};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
 use crate::region::RegionID;
@@ -250,8 +250,28 @@ impl DataWriter {
         })
     }
 
+    /// Write information to various output CSV files
+    pub fn write(
+        &mut self,
+        milestone_year: u32,
+        solution: &Solution,
+        assets: &AssetPool,
+        flow_map: &FlowMap,
+        prices: &CommodityPrices,
+    ) -> Result<()> {
+        if let Some(ref mut wtr) = &mut self.debug_writer {
+            wtr.write_debug_info(milestone_year, solution)?;
+        }
+
+        self.write_assets(milestone_year, assets.iter())?;
+        self.write_flows(milestone_year, flow_map)?;
+        self.write_prices(milestone_year, prices)?;
+
+        Ok(())
+    }
+
     /// Write assets to a CSV file
-    pub fn write_assets<'a, I>(&mut self, milestone_year: u32, assets: I) -> Result<()>
+    fn write_assets<'a, I>(&mut self, milestone_year: u32, assets: I) -> Result<()>
     where
         I: Iterator<Item = &'a AssetRef>,
     {
@@ -264,7 +284,7 @@ impl DataWriter {
     }
 
     /// Write commodity flows to a CSV file
-    pub fn write_flows(&mut self, milestone_year: u32, flow_map: &FlowMap) -> Result<()> {
+    fn write_flows(&mut self, milestone_year: u32, flow_map: &FlowMap) -> Result<()> {
         for ((asset, commodity_id, time_slice), flow) in flow_map {
             let row = CommodityFlowRow {
                 milestone_year,
@@ -280,7 +300,7 @@ impl DataWriter {
     }
 
     /// Write commodity prices to a CSV file
-    pub fn write_prices(&mut self, milestone_year: u32, prices: &CommodityPrices) -> Result<()> {
+    fn write_prices(&mut self, milestone_year: u32, prices: &CommodityPrices) -> Result<()> {
         for (commodity_id, region_id, time_slice, price) in prices.iter() {
             let row = CommodityPriceRow {
                 milestone_year,
@@ -290,15 +310,6 @@ impl DataWriter {
                 price,
             };
             self.prices_writer.serialize(row)?;
-        }
-
-        Ok(())
-    }
-
-    /// Write debug information to CSV files
-    pub fn write_debug_info(&mut self, milestone_year: u32, solution: &Solution) -> Result<()> {
-        if let Some(ref mut wtr) = &mut self.debug_writer {
-            wtr.write_debug_info(milestone_year, solution)?;
         }
 
         Ok(())
