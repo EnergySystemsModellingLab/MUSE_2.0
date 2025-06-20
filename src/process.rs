@@ -4,7 +4,7 @@ use crate::commodity::{BalanceType, Commodity, CommodityID};
 use crate::id::define_id_type;
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
-use crate::units::{Dimensionless, PerCapacity};
+use crate::units::{Dimensionless, MoneyPerCapacity, PerCapacity};
 use indexmap::IndexMap;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
@@ -125,7 +125,7 @@ pub enum FlowType {
 #[derive(PartialEq, Clone, Debug)]
 pub struct ProcessParameter {
     /// Overnight capital cost per unit capacity
-    pub capital_cost: Dimensionless,
+    pub capital_cost: MoneyPerCapacity,
     /// Annual operating cost per unit capacity
     pub fixed_operating_cost: Dimensionless,
     /// Annual variable operating cost per unit activity

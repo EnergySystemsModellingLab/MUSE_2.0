@@ -307,7 +307,7 @@ mod tests {
     use crate::process::{
         Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessParameter, ProcessParameterMap,
     };
-    use crate::units::PerCapacity;
+    use crate::units::{MoneyPerCapacity, PerCapacity};
     use itertools::{assert_equal, Itertools};
     use rstest::{fixture, rstest};
     use std::collections::HashSet;
@@ -365,7 +365,7 @@ mod tests {
     #[fixture]
     fn asset_pool() -> AssetPool {
         let process_param = Rc::new(ProcessParameter {
-            capital_cost: Dimensionless(5.0),
+            capital_cost: MoneyPerCapacity(5.0),
             fixed_operating_cost: Dimensionless(2.0),
             variable_operating_cost: Dimensionless(1.0),
             lifetime: 5,
@@ -410,7 +410,7 @@ mod tests {
             time_of_day: "day".into(),
         };
         let process_param = Rc::new(ProcessParameter {
-            capital_cost: Dimensionless(5.0),
+            capital_cost: MoneyPerCapacity(5.0),
             fixed_operating_cost: Dimensionless(2.0),
             variable_operating_cost: Dimensionless(1.0),
             lifetime: 5,
