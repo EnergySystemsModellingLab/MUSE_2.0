@@ -198,6 +198,7 @@ unit_struct!(MoneyPerCapacityPerYear);
 unit_struct!(MoneyPerActivity);
 unit_struct!(ActivityPerCapacity);
 unit_struct!(EnergyPerActivity);
+unit_struct!(PerYear);
 
 macro_rules! impl_div {
     ($Lhs:ident, $Rhs:ident, $Out:ident) => {
@@ -243,3 +244,22 @@ impl_div!(Money, Activity, MoneyPerActivity);
 impl_div!(Activity, Capacity, ActivityPerCapacity);
 impl_div!(MoneyPerYear, Capacity, MoneyPerCapacityPerYear);
 impl_div!(MoneyPerActivity, EnergyPerActivity, MoneyPerEnergy);
+
+impl std::ops::Div<PerYear> for Dimensionless {
+    type Output = Year;
+    fn div(self, rhs: PerYear) -> Year {
+        Year(self.0 / rhs.0)
+    }
+}
+impl std::ops::Mul<PerYear> for Year {
+    type Output = Dimensionless;
+    fn mul(self, by: PerYear) -> Dimensionless {
+        Dimensionless(self.0 * by.0)
+    }
+}
+impl std::ops::Mul<Year> for PerYear {
+    type Output = Dimensionless;
+    fn mul(self, by: Year) -> Dimensionless {
+        Dimensionless(self.0 * by.0)
+    }
+}
