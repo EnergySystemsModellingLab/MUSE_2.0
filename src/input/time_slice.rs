@@ -2,7 +2,7 @@
 use super::*;
 use crate::id::IDCollection;
 use crate::time_slice::{Season, TimeOfDay, TimeSliceID, TimeSliceInfo};
-use crate::units::Dimensionless;
+use crate::units::Year;
 use anyhow::{ensure, Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use serde::Deserialize;
@@ -16,7 +16,7 @@ struct TimeSliceRaw {
     season: Season,
     time_of_day: TimeOfDay,
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
-    fraction: Dimensionless,
+    fraction: Year,
 }
 
 /// Get the specified ID from `set` or insert if it doesn't exist.
@@ -129,10 +129,10 @@ autumn,evening,0.25"
             info,
             TimeSliceInfo {
                 seasons: [
-                    ("winter".into(), Dimensionless(0.25)),
-                    ("peak".into(), Dimensionless(0.25)),
-                    ("summer".into(), Dimensionless(0.25)),
-                    ("autumn".into(), Dimensionless(0.25))
+                    ("winter".into(), Year(0.25)),
+                    ("peak".into(), Year(0.25)),
+                    ("summer".into(), Year(0.25)),
+                    ("autumn".into(), Year(0.25))
                 ]
                 .into_iter()
                 .collect(),
@@ -150,28 +150,28 @@ autumn,evening,0.25"
                             season: "winter".into(),
                             time_of_day: "day".into(),
                         },
-                        Dimensionless(0.25),
+                        Year(0.25),
                     ),
                     (
                         TimeSliceID {
                             season: "peak".into(),
                             time_of_day: "night".into(),
                         },
-                        Dimensionless(0.25),
+                        Year(0.25),
                     ),
                     (
                         TimeSliceID {
                             season: "summer".into(),
                             time_of_day: "peak".into(),
                         },
-                        Dimensionless(0.25),
+                        Year(0.25),
                     ),
                     (
                         TimeSliceID {
                             season: "autumn".into(),
                             time_of_day: "evening".into(),
                         },
-                        Dimensionless(0.25),
+                        Year(0.25),
                     ),
                 ]
                 .into_iter()
