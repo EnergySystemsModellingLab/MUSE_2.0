@@ -187,7 +187,3 @@ impl_div!(Money, Activity, MoneyPerActivity);
 impl_div!(Activity, Capacity, ActivityPerCapacity);
 impl_div!(MoneyPerYear, Capacity, MoneyPerCapacityPerYear);
 impl_div!(MoneyPerActivity, EnergyPerActivity, MoneyPerEnergy);
-
-/// Represents a number of years as an integer.
-#[derive(Debug, Clone, Copy, PartialEq, derive_more::Add, derive_more::Sub)]
-pub struct IYear(pub u32);

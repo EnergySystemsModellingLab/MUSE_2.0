@@ -263,7 +263,7 @@ mod tests {
         fn demand_slice_entry(
             season: &str,
             time_of_day: &str,
-            demand: Dimensionless,
+            fraction: Dimensionless,
         ) -> ((CommodityID, RegionID, TimeSliceSelection), Dimensionless) {
             (
                 (
@@ -275,7 +275,7 @@ mod tests {
                     }
                     .into(),
                 ),
-                demand,
+                fraction,
             )
         }
         let expected = DemandSliceMap::from_iter([

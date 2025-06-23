@@ -2,7 +2,7 @@
 use super::super::*;
 use crate::agent::{AgentCostLimits, AgentCostLimitsMap, AgentID};
 use crate::id::IDCollection;
-use crate::units::{Money, MoneyPerYear};
+use crate::units::Money;
 use crate::year::parse_year_str;
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -16,7 +16,7 @@ struct AgentCostLimitsRaw {
     agent_id: String,
     years: String,
     capex_limit: Option<Money>,
-    annual_cost_limit: Option<MoneyPerYear>,
+    annual_cost_limit: Option<Money>,
 }
 
 impl AgentCostLimitsRaw {
@@ -96,7 +96,7 @@ mod tests {
         agent_id: &str,
         year: &str,
         capex_limit: Option<Money>,
-        annual_cost_limit: Option<MoneyPerYear>,
+        annual_cost_limit: Option<Money>,
     ) -> AgentCostLimitsRaw {
         AgentCostLimitsRaw {
             agent_id: agent_id.to_string(),
@@ -115,18 +115,8 @@ mod tests {
         let milestone_years = [2020, 2025];
 
         let iter = [
-            create_agent_cost_limits_raw(
-                "Agent1",
-                "all",
-                Some(Money(100.0)),
-                Some(MoneyPerYear(200.0)),
-            ),
-            create_agent_cost_limits_raw(
-                "Agent2",
-                "all",
-                Some(Money(150.0)),
-                Some(MoneyPerYear(250.0)),
-            ),
+            create_agent_cost_limits_raw("Agent1", "all", Some(Money(100.0)), Some(Money(200.0))),
+            create_agent_cost_limits_raw("Agent2", "all", Some(Money(150.0)), Some(Money(250.0))),
         ]
         .into_iter();
 
@@ -138,14 +128,14 @@ mod tests {
                 result[&AgentID::from("Agent1")][&year],
                 AgentCostLimits {
                     capex_limit: Some(Money(100.0)),
-                    annual_cost_limit: Some(MoneyPerYear(200.0)),
+                    annual_cost_limit: Some(Money(200.0)),
                 }
             );
             assert_eq!(
                 result[&AgentID::from("Agent2")][&year],
                 AgentCostLimits {
                     capex_limit: Some(Money(150.0)),
-                    annual_cost_limit: Some(MoneyPerYear(250.0)),
+                    annual_cost_limit: Some(Money(250.0)),
                 }
             );
         }
@@ -160,7 +150,7 @@ mod tests {
             "Agent1",
             "2020;2025",
             Some(Money(100.0)),
-            Some(MoneyPerYear(200.0)),
+            Some(Money(200.0)),
         )]
         .into_iter();
 
@@ -171,14 +161,14 @@ mod tests {
             result[&AgentID::from("Agent1")][&2020],
             AgentCostLimits {
                 capex_limit: Some(Money(100.0)),
-                annual_cost_limit: Some(MoneyPerYear(200.0)),
+                annual_cost_limit: Some(Money(200.0)),
             }
         );
         assert_eq!(
             result[&AgentID::from("Agent1")][&2025],
             AgentCostLimits {
                 capex_limit: Some(Money(100.0)),
-                annual_cost_limit: Some(MoneyPerYear(200.0)),
+                annual_cost_limit: Some(Money(200.0)),
             }
         );
     }
@@ -192,7 +182,7 @@ mod tests {
             "Agent1",
             "2020",
             Some(Money(100.0)),
-            Some(MoneyPerYear(200.0)),
+            Some(Money(200.0)),
         )]
         .into_iter();
 

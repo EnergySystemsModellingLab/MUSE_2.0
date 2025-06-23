@@ -123,7 +123,7 @@ fn add_commodity_balance_constraints(
                         .demand
                         .get(&(region_id.clone(), year, ts_selection.clone()))
                         .unwrap()
-                        .0
+                        .value()
                 } else {
                     0.0
                 };
