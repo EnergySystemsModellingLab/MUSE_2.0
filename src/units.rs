@@ -1,8 +1,37 @@
 //! This module defines various unit types and their conversions.
 
+use float_cmp::{ApproxEq, F64Margin};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::iter::Sum;
 use std::ops::{AddAssign, SubAssign};
+
+/// A trait encompassing most of the functionality of unit types
+pub trait UnitType:
+    fmt::Debug
+    + Copy
+    + PartialEq
+    + PartialOrd
+    + Serialize
+    + AddAssign
+    + SubAssign
+    + std::ops::Add
+    + std::ops::Sub
+    + ApproxEq<Margin = F64Margin>
+    + fmt::Display
+    + Sum
+{
+    /// Create from an f64 value
+    fn new(value: f64) -> Self;
+    /// Returns the underlying f64 value.
+    fn value(&self) -> f64;
+    /// Returns true if the value is a normal number.
+    fn is_normal(&self) -> bool;
+    /// Returns true if the value is finite.
+    fn is_finite(&self) -> bool;
+    /// Returns the absolute value of this unit.
+    fn abs(&self) -> Self;
+}
 
 macro_rules! base_unit_struct {
     ($name:ident) => {
@@ -59,6 +88,10 @@ macro_rules! base_unit_struct {
             }
         }
         impl $name {
+            /// Create from an f64 value
+            pub fn new(value: f64) -> Self {
+                $name(value)
+            }
             /// Returns the underlying f64 value.
             pub fn value(&self) -> f64 {
                 self.0
@@ -74,6 +107,28 @@ macro_rules! base_unit_struct {
             /// Returns the absolute value of this unit.
             pub fn abs(&self) -> Self {
                 $name(self.0.abs())
+            }
+        }
+        impl UnitType for $name {
+            /// Create from an f64 value
+            fn new(value: f64) -> Self {
+                Self::new(value)
+            }
+            /// Returns the underlying f64 value.
+            fn value(&self) -> f64 {
+                self.value()
+            }
+            /// Returns true if the value is a normal number.
+            fn is_normal(&self) -> bool {
+                self.is_normal()
+            }
+            /// Returns true if the value is finite.
+            fn is_finite(&self) -> bool {
+                self.is_finite()
+            }
+            /// Returns the absolute value of this unit.
+            fn abs(&self) -> Self {
+                self.abs()
             }
         }
     };
