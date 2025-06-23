@@ -158,6 +158,7 @@ fn add_activity_constraints(
         for time_slice in time_slice_info.iter_ids() {
             let var = variables.get(asset, time_slice);
             let limits = asset.get_activity_limits(time_slice);
+            let limits = limits.start().value()..=limits.end().value();
 
             problem.add_row(limits, [(var, 1.0)]);
             keys.push((asset.clone(), time_slice.clone()))

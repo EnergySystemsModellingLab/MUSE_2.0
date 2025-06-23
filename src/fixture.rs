@@ -13,8 +13,8 @@ use crate::process::{
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{
-    Capacity, Dimensionless, MoneyPerActivity, MoneyPerCapacity, MoneyPerCapacityPerYear,
-    PerCapacity,
+    ActivityPerCapacity, Capacity, Dimensionless, MoneyPerActivity, MoneyPerCapacity,
+    MoneyPerCapacityPerYear,
 };
 use indexmap::indexmap;
 use itertools::Itertools;
@@ -106,7 +106,7 @@ pub fn process_parameter_map(region_ids: HashSet<RegionID>) -> ProcessParameterM
         variable_operating_cost: MoneyPerActivity(0.0),
         lifetime: 1,
         discount_rate: Dimensionless(1.0),
-        capacity_to_activity: PerCapacity(0.0),
+        capacity_to_activity: ActivityPerCapacity(0.0),
     });
 
     region_ids

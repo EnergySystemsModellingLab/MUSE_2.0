@@ -4,7 +4,7 @@ use crate::commodity::CommodityID;
 use crate::process::{Process, ProcessFlow, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
-use crate::units::{Capacity, Dimensionless};
+use crate::units::{Activity, Capacity};
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -87,7 +87,7 @@ impl Asset {
     }
 
     /// Get the activity limits for this asset in a particular time slice
-    pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<Dimensionless> {
+    pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<Activity> {
         let limits = self
             .process
             .activity_limits
@@ -104,7 +104,7 @@ impl Asset {
     }
 
     /// Maximum activity for this asset
-    pub fn maximum_activity(&self) -> Dimensionless {
+    pub fn maximum_activity(&self) -> Activity {
         self.capacity * self.process_parameter.capacity_to_activity
     }
 
@@ -307,7 +307,10 @@ mod tests {
     use crate::process::{
         Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessParameter, ProcessParameterMap,
     };
-    use crate::units::{MoneyPerActivity, MoneyPerCapacity, MoneyPerCapacityPerYear, PerCapacity};
+    use crate::units::{
+        ActivityPerCapacity, Dimensionless, MoneyPerActivity, MoneyPerCapacity,
+        MoneyPerCapacityPerYear,
+    };
     use itertools::{assert_equal, Itertools};
     use rstest::{fixture, rstest};
     use std::collections::HashSet;
@@ -370,7 +373,7 @@ mod tests {
             variable_operating_cost: MoneyPerActivity(1.0),
             lifetime: 5,
             discount_rate: Dimensionless(0.9),
-            capacity_to_activity: PerCapacity(1.0),
+            capacity_to_activity: ActivityPerCapacity(1.0),
         });
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
@@ -415,7 +418,7 @@ mod tests {
             variable_operating_cost: MoneyPerActivity(1.0),
             lifetime: 5,
             discount_rate: Dimensionless(0.9),
-            capacity_to_activity: PerCapacity(3.0),
+            capacity_to_activity: ActivityPerCapacity(3.0),
         });
         let years = RangeInclusive::new(2010, 2020).collect_vec();
         let process_parameter_map: ProcessParameterMap = years
@@ -450,7 +453,7 @@ mod tests {
 
         assert_eq!(
             asset.get_activity_limits(&time_slice),
-            Dimensionless(6.0)..=Dimensionless(f64::INFINITY)
+            Activity(6.0)..=Activity(f64::INFINITY)
         );
     }
 
