@@ -112,17 +112,18 @@ fn add_commodity_balance_constraints(
                     // cover multiple time slices
                     for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
                         let var = variables.get(asset, time_slice);
-                        terms.push((var, flow.coeff));
+                        terms.push((var, flow.coeff.value()));
                     }
                 }
 
                 // Add constraint. For SED commodities, the RHS is zero and for SVD commodities it
                 // is the exogenous demand supplied by the user.
                 let rhs = if commodity.kind == CommodityType::ServiceDemand {
-                    *commodity
+                    commodity
                         .demand
                         .get(&(region_id.clone(), year, ts_selection.clone()))
                         .unwrap()
+                        .value()
                 } else {
                     0.0
                 };
@@ -157,6 +158,7 @@ fn add_activity_constraints(
         for time_slice in time_slice_info.iter_ids() {
             let var = variables.get(asset, time_slice);
             let limits = asset.get_activity_limits(time_slice);
+            let limits = limits.start().value()..=limits.end().value();
 
             problem.add_row(limits, [(var, 1.0)]);
             keys.push((asset.clone(), time_slice.clone()))

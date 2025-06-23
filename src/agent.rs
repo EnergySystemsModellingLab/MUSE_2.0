@@ -4,6 +4,7 @@ use crate::commodity::CommodityID;
 use crate::id::{define_id_getter, define_id_type};
 use crate::process::Process;
 use crate::region::RegionID;
+use crate::units::{Dimensionless, Money};
 use indexmap::IndexMap;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
@@ -19,7 +20,7 @@ pub type AgentMap = IndexMap<AgentID, Agent>;
 pub type AgentCostLimitsMap = HashMap<u32, AgentCostLimits>;
 
 /// A map of commodity portions for an agent, keyed by commodity and year
-pub type AgentCommodityPortionsMap = HashMap<(CommodityID, u32), f64>;
+pub type AgentCommodityPortionsMap = HashMap<(CommodityID, u32), Dimensionless>;
 
 /// A map for the agent's search space, keyed by commodity and year
 pub type AgentSearchSpaceMap = HashMap<(CommodityID, u32), Rc<Vec<Rc<Process>>>>;
@@ -56,9 +57,9 @@ define_id_getter! {Agent, AgentID}
 #[derive(Debug, Clone, PartialEq)]
 pub struct AgentCostLimits {
     /// The maximum capital cost the agent will pay.
-    pub capex_limit: Option<f64>,
+    pub capex_limit: Option<Money>,
     /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
-    pub annual_cost_limit: Option<f64>,
+    pub annual_cost_limit: Option<Money>,
 }
 
 /// The decision rule for a particular objective

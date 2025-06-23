@@ -12,6 +12,10 @@ use crate::process::{
 };
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
+use crate::units::{
+    ActivityPerCapacity, Capacity, Dimensionless, MoneyPerActivity, MoneyPerCapacity,
+    MoneyPerCapacityPerYear,
+};
 use indexmap::indexmap;
 use itertools::Itertools;
 use rstest::fixture;
@@ -76,7 +80,14 @@ pub fn asset(process: Process) -> Asset {
     let region_id: RegionID = "GBR".into();
     let agent_id = "agent1".into();
     let commission_year = 2015;
-    Asset::new(agent_id, process.into(), region_id, 2.0, commission_year).unwrap()
+    Asset::new(
+        agent_id,
+        process.into(),
+        region_id,
+        Capacity(2.0),
+        commission_year,
+    )
+    .unwrap()
 }
 
 #[fixture]
@@ -90,12 +101,12 @@ pub fn assets(asset: Asset) -> AssetPool {
 #[fixture]
 pub fn process_parameter_map(region_ids: HashSet<RegionID>) -> ProcessParameterMap {
     let parameter = Rc::new(ProcessParameter {
-        capital_cost: 0.0,
-        fixed_operating_cost: 0.0,
-        variable_operating_cost: 0.0,
+        capital_cost: MoneyPerCapacity(0.0),
+        fixed_operating_cost: MoneyPerCapacityPerYear(0.0),
+        variable_operating_cost: MoneyPerActivity(0.0),
         lifetime: 1,
-        discount_rate: 1.0,
-        capacity_to_activity: 0.0,
+        discount_rate: Dimensionless(1.0),
+        capacity_to_activity: ActivityPerCapacity(0.0),
     });
 
     region_ids
@@ -156,13 +167,13 @@ pub fn time_slice() -> TimeSliceID {
 pub fn time_slice_info() -> TimeSliceInfo {
     TimeSliceInfo {
         times_of_day: iter::once("day".into()).collect(),
-        seasons: iter::once(("winter".into(), 1.0)).collect(),
+        seasons: iter::once(("winter".into(), Dimensionless(1.0))).collect(),
         time_slices: [(
             TimeSliceID {
                 season: "winter".into(),
                 time_of_day: "day".into(),
             },
-            1.0,
+            Dimensionless(1.0),
         )]
         .into_iter()
         .collect(),
