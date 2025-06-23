@@ -135,15 +135,11 @@ unit_struct!(Capacity);
 unit_struct!(Year);
 
 // Derived quantities
-unit_struct!(EnergyPerYear);
 unit_struct!(MoneyPerYear);
 unit_struct!(MoneyPerEnergy);
 unit_struct!(MoneyPerCapacity);
-unit_struct!(EnergyPerCapacityPerYear);
 unit_struct!(MoneyPerCapacityPerYear);
-unit_struct!(MoneyPerEnergyPerYear);
 unit_struct!(MoneyPerActivity);
-unit_struct!(MoneyPerActivityPerYear);
 unit_struct!(ActivityPerCapacity);
 unit_struct!(EnergyPerActivity);
 
@@ -183,18 +179,13 @@ macro_rules! impl_div {
 }
 
 // Division rules for derived quantities
-impl_div!(Energy, Year, EnergyPerYear);
 impl_div!(Energy, Activity, EnergyPerActivity);
 impl_div!(Money, Year, MoneyPerYear);
 impl_div!(Money, Energy, MoneyPerEnergy);
 impl_div!(Money, Capacity, MoneyPerCapacity);
 impl_div!(Money, Activity, MoneyPerActivity);
 impl_div!(Activity, Capacity, ActivityPerCapacity);
-impl_div!(EnergyPerYear, Capacity, EnergyPerCapacityPerYear);
 impl_div!(MoneyPerYear, Capacity, MoneyPerCapacityPerYear);
-impl_div!(Money, EnergyPerYear, MoneyPerEnergyPerYear);
-impl_div!(MoneyPerEnergy, Year, MoneyPerEnergyPerYear);
-impl_div!(MoneyPerYear, Activity, MoneyPerActivityPerYear);
 impl_div!(MoneyPerActivity, EnergyPerActivity, MoneyPerEnergy);
 
 /// Represents a number of years as an integer.
