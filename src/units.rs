@@ -125,36 +125,13 @@ macro_rules! unit_struct {
             }
         }
     };
-    ($name:ident, Per $per_name:ident) => {
-        unit_struct!($name);
-        base_unit_struct!($per_name);
-
-        impl std::ops::Div<$name> for Dimensionless {
-            type Output = $per_name;
-            fn div(self, rhs: $name) -> $per_name {
-                $per_name(self.0 / rhs.0)
-            }
-        }
-        impl std::ops::Mul<$name> for $per_name {
-            type Output = Dimensionless;
-            fn mul(self, by: $name) -> Dimensionless {
-                Dimensionless(self.0 * by.0)
-            }
-        }
-        impl std::ops::Mul<$per_name> for $name {
-            type Output = Dimensionless;
-            fn mul(self, by: $per_name) -> Dimensionless {
-                Dimensionless(self.0 * by.0)
-            }
-        }
-    };
 }
 
 // Base quantities
 unit_struct!(Money);
 unit_struct!(Energy);
 unit_struct!(Activity);
-unit_struct!(Capacity, Per PerCapacity);
+unit_struct!(Capacity);
 unit_struct!(Year);
 
 // Derived quantities
