@@ -1,8 +1,43 @@
 //! This module defines various unit types and their conversions.
 
+use float_cmp::{ApproxEq, F64Margin};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::ops::{AddAssign, Mul, SubAssign};
+use std::iter::Sum;
+use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+
+/// A trait encompassing most of the functionality of unit types
+pub trait UnitType:
+    fmt::Debug
+    + Copy
+    + PartialEq
+    + PartialOrd
+    + Serialize
+    + Add
+    + Sub
+    + Div
+    + Mul<Dimensionless, Output = Self>
+    + AddAssign
+    + SubAssign
+    + Sum
+    + ApproxEq<Margin = F64Margin>
+    + fmt::Display
+{
+    /// Create from an f64 value
+    fn new(value: f64) -> Self;
+    /// Returns the underlying f64 value.
+    fn value(&self) -> f64;
+    /// Returns true if the value is a normal number.
+    fn is_normal(&self) -> bool;
+    /// Returns true if the value is finite.
+    fn is_finite(&self) -> bool;
+    /// Returns the absolute value of this unit.
+    fn abs(&self) -> Self;
+    /// Returns the max of two values
+    fn max(&self, other: Self) -> Self;
+    /// Returns the min of two values
+    fn min(&self, other: Self) -> Self;
+}
 
 macro_rules! base_unit_struct {
     ($name:ident) => {
@@ -53,6 +88,10 @@ macro_rules! base_unit_struct {
             }
         }
         impl $name {
+            /// Create from an f64 value
+            pub fn new(value: f64) -> Self {
+                $name(value)
+            }
             /// Returns the underlying f64 value.
             pub fn value(&self) -> f64 {
                 self.0
@@ -76,6 +115,36 @@ macro_rules! base_unit_struct {
             /// Returns the min of two values
             pub fn min(&self, other: Self) -> Self {
                 Self(self.0.min(other.0))
+            }
+        }
+        impl UnitType for $name {
+            /// Create from an f64 value
+            fn new(value: f64) -> Self {
+                Self::new(value)
+            }
+            /// Returns the underlying f64 value.
+            fn value(&self) -> f64 {
+                self.value()
+            }
+            /// Returns true if the value is a normal number.
+            fn is_normal(&self) -> bool {
+                self.is_normal()
+            }
+            /// Returns true if the value is finite.
+            fn is_finite(&self) -> bool {
+                self.is_finite()
+            }
+            /// Returns the absolute value of this unit.
+            fn abs(&self) -> Self {
+                self.abs()
+            }
+            /// Returns the max of two values
+            fn max(&self, other: Self) -> Self {
+                self.max(other)
+            }
+            /// Returns the min of two values
+            fn min(&self, other: Self) -> Self {
+                self.min(other)
             }
         }
     };
