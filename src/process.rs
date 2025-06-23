@@ -69,6 +69,8 @@ pub struct ProcessFlow {
     /// For example, cost per unit of natural gas produced. The user can apply it to any specified
     /// flow.
     pub cost: MoneyPerEnergy,
+    /// Whether this flow is the primary output for the process
+    pub is_primary_output: bool,
 }
 
 impl ProcessFlow {
@@ -309,6 +311,7 @@ mod tests {
             coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(5.0),
+            is_primary_output: false,
         }
     }
 
@@ -335,6 +338,7 @@ mod tests {
             coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(5.0),
+            is_primary_output: false,
         }
     }
 
@@ -361,6 +365,7 @@ mod tests {
             coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(5.0),
+            is_primary_output: false,
         }
     }
 
@@ -375,6 +380,7 @@ mod tests {
             coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(0.0),
+            is_primary_output: false,
         };
 
         assert_eq!(
@@ -394,6 +400,7 @@ mod tests {
             coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(0.0),
+            is_primary_output: false,
         };
 
         assert_eq!(
@@ -413,6 +420,7 @@ mod tests {
             coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(0.0),
+            is_primary_output: false,
         };
 
         assert_eq!(
@@ -428,6 +436,7 @@ mod tests {
             coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(0.0),
+            is_primary_output: false,
         };
 
         assert_eq!(
@@ -447,6 +456,7 @@ mod tests {
             coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(0.0),
+            is_primary_output: false,
         };
 
         assert_eq!(
@@ -462,6 +472,7 @@ mod tests {
             coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(0.0),
+            is_primary_output: false,
         };
 
         let different_time_slice = TimeSliceID {
@@ -486,6 +497,7 @@ mod tests {
             coeff: EnergyPerActivity(1.0), // Positive coefficient means production
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(0.0),
+            is_primary_output: false,
         };
 
         assert_eq!(
@@ -505,6 +517,7 @@ mod tests {
             coeff: EnergyPerActivity(-1.0), // Negative coefficient means consumption
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(0.0),
+            is_primary_output: false,
         };
 
         assert_eq!(
@@ -524,6 +537,7 @@ mod tests {
             coeff: EnergyPerActivity(1.0), // Positive coefficient means production
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(0.0),
+            is_primary_output: false,
         };
 
         assert_eq!(
@@ -543,6 +557,7 @@ mod tests {
             coeff: EnergyPerActivity(-1.0), // Negative coefficient means consumption
             kind: FlowType::Fixed,
             cost: MoneyPerEnergy(0.0),
+            is_primary_output: false,
         };
 
         assert_eq!(
@@ -589,32 +604,26 @@ mod tests {
 
     #[rstest]
     fn test_get_total_cost_negative_coeff(
-        flow_with_cost: ProcessFlow,
+        mut flow_with_cost: ProcessFlow,
         region_id: RegionID,
         time_slice: TimeSliceID,
     ) {
-        let flow = ProcessFlow {
-            coeff: EnergyPerActivity(-2.0),
-            ..flow_with_cost
-        };
+        flow_with_cost.coeff = EnergyPerActivity(-2.0);
         assert_eq!(
-            flow.get_total_cost(&region_id, 2020, &time_slice),
+            flow_with_cost.get_total_cost(&region_id, 2020, &time_slice),
             MoneyPerActivity(10.0)
         );
     }
 
     #[rstest]
     fn test_get_total_cost_zero_coeff(
-        flow_with_cost: ProcessFlow,
+        mut flow_with_cost: ProcessFlow,
         region_id: RegionID,
         time_slice: TimeSliceID,
     ) {
-        let flow = ProcessFlow {
-            coeff: EnergyPerActivity(0.0),
-            ..flow_with_cost
-        };
+        flow_with_cost.coeff = EnergyPerActivity(0.0);
         assert_eq!(
-            flow.get_total_cost(&region_id, 2020, &time_slice),
+            flow_with_cost.get_total_cost(&region_id, 2020, &time_slice),
             MoneyPerActivity(0.0)
         );
     }

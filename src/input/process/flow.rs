@@ -1,17 +1,22 @@
 //! Code for reading process flows file
 use super::super::*;
-use crate::commodity::CommodityMap;
-use crate::process::{FlowType, Process, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap};
-use crate::region::parse_region_str;
+use crate::commodity::{CommodityID, CommodityMap};
+use crate::process::{FlowType, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap};
+use crate::region::{parse_region_str, RegionID};
 use crate::units::{EnergyPerActivity, MoneyPerEnergy};
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
+use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 
 const PROCESS_FLOWS_FILE_NAME: &str = "process_flows.csv";
+
+type PrimaryOutputsKeys = (ProcessID, RegionID, u32);
+type PrimaryOutputsValues = Vec<(CommodityID, Option<bool>)>;
+type PrimaryOutputsMap = HashMap<PrimaryOutputsKeys, PrimaryOutputsValues>;
 
 #[derive(PartialEq, Debug, Deserialize)]
 struct ProcessFlowRaw {
@@ -24,6 +29,7 @@ struct ProcessFlowRaw {
     #[serde(rename = "type")]
     kind: FlowType,
     cost: Option<MoneyPerEnergy>,
+    is_primary_output: Option<bool>,
 }
 
 impl ProcessFlowRaw {
@@ -74,7 +80,8 @@ fn read_process_flows_from_iter<I>(
 where
     I: Iterator<Item = ProcessFlowRaw>,
 {
-    let mut map: HashMap<ProcessID, ProcessFlowsMap> = HashMap::new();
+    let mut flows_map: HashMap<ProcessID, ProcessFlowsMap> = HashMap::new();
+    let mut primary_outputs = PrimaryOutputsMap::new();
     for record in iter {
         record.validate()?;
 
@@ -105,64 +112,147 @@ where
         let process_flow = ProcessFlow {
             commodity: Rc::clone(commodity),
             coeff: record.coeff,
-            kind: record.kind,
+            kind: FlowType::Fixed,
             cost: record.cost.unwrap_or(MoneyPerEnergy(0.0)),
+            is_primary_output: false, // set to false for now and we'll fix up later
         };
 
         // Insert flow into the map
-        let region_year_map = map.entry(id.clone()).or_default();
-        for year in record_years {
-            for region in record_regions.iter() {
-                let flows_map = region_year_map.entry((region.clone(), year)).or_default();
-                let existing = flows_map
-                    .insert(commodity.id.clone(), process_flow.clone())
-                    .is_some();
-                ensure!(
-                    !existing,
-                    "Duplicate process flow entry for region {}, year {} and commodity {}",
-                    region,
-                    year,
-                    commodity.id
-                );
+        let region_year_map = flows_map.entry(id.clone()).or_default();
+        for (year, region_id) in iproduct!(record_years, record_regions.iter()) {
+            let flows_map = region_year_map
+                .entry((region_id.clone(), year))
+                .or_default();
+            let existing = flows_map
+                .insert(commodity.id.clone(), process_flow.clone())
+                .is_some();
+            ensure!(
+                !existing,
+                "Duplicate process flow entry for region {}, year {} and commodity {}",
+                region_id,
+                year,
+                commodity.id
+            );
+
+            primary_outputs
+                .entry((id.clone(), region_id.clone(), year))
+                .or_insert_with(|| Vec::with_capacity(1))
+                .push((commodity.id.clone(), record.is_primary_output))
+        }
+    }
+
+    validate_flows_and_update_primary_output(processes, &mut flows_map, &primary_outputs)?;
+
+    Ok(flows_map)
+}
+
+fn validate_flows_and_update_primary_output(
+    processes: &ProcessMap,
+    flows_map: &mut HashMap<ProcessID, ProcessFlowsMap>,
+    primary_outputs: &PrimaryOutputsMap,
+) -> Result<()> {
+    for (process_id, map) in flows_map.iter_mut() {
+        let process = processes.get(process_id).unwrap();
+        for (&year, region_id) in iproduct!(process.years.iter(), process.regions.iter()) {
+            // Check that the process has flows for this region/year
+            let Some(flows) = map.get_mut(&(region_id.clone(), year)) else {
+                bail!("Missing entry for process {process_id} in {region_id}/{year}");
+            };
+
+            let primary_outputs = primary_outputs
+                .get(&(process_id.clone(), region_id.clone(), year))
+                .unwrap();
+
+            let inferred_primary_output = validate_or_infer_primary_output(flows, primary_outputs)
+                .with_context(|| {
+                    format!(
+                    "Invalid primary output configuration for process {} (region: {}, year: {})",
+                    process_id, region_id, year
+                )
+                })?;
+
+            // The primary output was inferred (i.e. there was one output flow which wasn't assigned
+            // a value for is_primary_output). Update map.
+            if let Some(primary_output) = inferred_primary_output {
+                flows.get_mut(&primary_output).unwrap().is_primary_output = true;
             }
         }
     }
 
-    for (process_id, map) in map.iter_mut() {
-        let process = processes.get(process_id).unwrap();
-        validate_process_flows_map(process, map)?;
-    }
-
-    Ok(map)
+    Ok(())
 }
 
-/// Validate flows for a process
-fn validate_process_flows_map(process: &Process, map: &ProcessFlowsMap) -> Result<()> {
-    let process_id = process.id.clone();
-    for year in process.years.iter() {
-        for region in process.regions.iter() {
-            // Check that the process has flows for this region/year
-            ensure!(
-                map.contains_key(&(region.clone(), *year)),
-                "Missing entry for process {process_id} in {region}/{year}"
-            );
+fn validate_or_infer_primary_output(
+    flows_map: &IndexMap<CommodityID, ProcessFlow>,
+    primary_outputs: &PrimaryOutputsValues,
+) -> Result<Option<CommodityID>> {
+    let mut has_primary = false;
+    let mut output_flow = None;
+    let mut outputs_count = 0;
+    for (commodity_id, is_primary_output) in primary_outputs.iter() {
+        let is_output = flows_map.get(commodity_id).unwrap().coeff > EnergyPerActivity(0.0);
+        if is_output {
+            outputs_count += 1;
+        }
+        match *is_primary_output {
+            Some(true) => {
+                ensure!(
+                    is_output,
+                    "Commodity {commodity_id} cannot be the primary output as it is an input flow"
+                );
+                ensure!(
+                    !has_primary,
+                    "Multiple commodities designated as primary outputs"
+                );
+                has_primary = true;
+            }
+            None if is_output => {
+                output_flow = Some(commodity_id.clone());
+            }
+            _ => {}
         }
     }
-    Ok(())
+
+    // If all flows are inputs or user has designated a primary output explicitly, we're done
+    if has_primary || outputs_count == 0 {
+        return Ok(None);
+    }
+
+    ensure!(
+        output_flow.is_some(),
+        "There are one or more output flows, but is_primary_output is explicitly set to false for these");
+
+    ensure!(
+        outputs_count == 1,
+        "There is more than one output flow, so one must be explicitly designated as the primary output");
+
+    // We can infer that the one output flow is the primary output
+    Ok(output_flow)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{Commodity, CommodityLevyMap, CommodityType, DemandMap};
-    use crate::time_slice::TimeSliceLevel;
+    use crate::commodity::Commodity;
+    use crate::fixture::svd_commodity;
 
-    use rstest::fixture;
+    use rstest::rstest;
+    use std::rc::Rc;
+
+    fn flow(commodity: Rc<Commodity>, coeff: f64) -> ProcessFlow {
+        ProcessFlow {
+            commodity,
+            coeff: EnergyPerActivity(coeff),
+            kind: FlowType::Fixed,
+            cost: MoneyPerEnergy(0.0),
+            is_primary_output: false,
+        }
+    }
 
     fn create_process_flow_raw(
         coeff: EnergyPerActivity,
-        kind: FlowType,
         cost: Option<MoneyPerEnergy>,
+        is_primary_output: Option<bool>,
     ) -> ProcessFlowRaw {
         ProcessFlowRaw {
             process_id: "process".into(),
@@ -170,8 +260,9 @@ mod tests {
             years: "2020".into(),
             regions: "region".into(),
             coeff,
-            kind,
+            kind: FlowType::Fixed,
             cost,
+            is_primary_output,
         }
     }
 
@@ -180,79 +271,191 @@ mod tests {
         // Valid
         let valid = create_process_flow_raw(
             EnergyPerActivity(1.0),
-            FlowType::Fixed,
             Some(MoneyPerEnergy(0.0)),
+            Some(false),
         );
         assert!(valid.validate().is_ok());
 
         // Invalid: Bad flow value
         let invalid = create_process_flow_raw(
             EnergyPerActivity(0.0),
-            FlowType::Fixed,
             Some(MoneyPerEnergy(0.0)),
+            Some(false),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
             EnergyPerActivity(f64::NAN),
-            FlowType::Fixed,
             Some(MoneyPerEnergy(0.0)),
+            Some(false),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
             EnergyPerActivity(f64::INFINITY),
-            FlowType::Fixed,
             Some(MoneyPerEnergy(0.0)),
+            Some(false),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
             EnergyPerActivity(f64::NEG_INFINITY),
-            FlowType::Fixed,
             Some(MoneyPerEnergy(0.0)),
+            Some(false),
         );
         assert!(invalid.validate().is_err());
 
         // Invalid: Bad flow cost value
         let invalid = create_process_flow_raw(
             EnergyPerActivity(1.0),
-            FlowType::Fixed,
             Some(MoneyPerEnergy(f64::NAN)),
+            Some(false),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
             EnergyPerActivity(1.0),
-            FlowType::Fixed,
             Some(MoneyPerEnergy(f64::NEG_INFINITY)),
+            Some(false),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
             EnergyPerActivity(1.0),
-            FlowType::Fixed,
             Some(MoneyPerEnergy(f64::INFINITY)),
+            Some(false),
         );
         assert!(invalid.validate().is_err());
     }
 
-    #[fixture]
-    fn commodity1() -> Commodity {
-        Commodity {
-            id: "commodity1".into(),
-            description: "A commodity".into(),
-            kind: CommodityType::ServiceDemand,
-            demand: DemandMap::default(),
-            time_slice_level: TimeSliceLevel::Annual,
-            levies: CommodityLevyMap::default(),
-        }
+    #[rstest]
+    fn single_output_explicit_primary(#[from(svd_commodity)] commodity: Commodity) {
+        let c1 = Rc::new(commodity);
+        let mut flows = IndexMap::new();
+        flows.insert("commodity1".into(), flow(Rc::clone(&c1), 1.0));
+        let primary_outputs = vec![("commodity1".into(), Some(true))];
+        let res = validate_or_infer_primary_output(&flows, &primary_outputs).unwrap();
+        assert_eq!(res, None);
     }
 
-    #[fixture]
-    fn commodity2() -> Commodity {
-        Commodity {
-            id: "commodity2".into(),
-            description: "Another commodity".into(),
-            kind: CommodityType::ServiceDemand,
-            demand: DemandMap::default(),
-            time_slice_level: TimeSliceLevel::Annual,
-            levies: CommodityLevyMap::default(),
-        }
+    #[rstest]
+    fn multiple_outputs_one_explicit_primary(
+        #[from(svd_commodity)] commodity1: Commodity,
+        #[from(svd_commodity)] commodity2: Commodity,
+    ) {
+        let c1 = Rc::new(Commodity {
+            id: "c1".into(),
+            ..commodity1
+        });
+        let c2 = Rc::new(Commodity {
+            id: "c2".into(),
+            ..commodity2
+        });
+        let mut flows = IndexMap::new();
+        flows.insert("c1".into(), flow(Rc::clone(&c1), 1.0));
+        flows.insert("c2".into(), flow(Rc::clone(&c2), 2.0));
+        let primary_outputs = vec![("c1".into(), Some(true)), ("c2".into(), None)];
+        let res = validate_or_infer_primary_output(&flows, &primary_outputs).unwrap();
+        assert_eq!(res, None);
+    }
+
+    #[rstest]
+    fn multiple_outputs_none_explicit_should_error(
+        #[from(svd_commodity)] commodity1: Commodity,
+        #[from(svd_commodity)] commodity2: Commodity,
+    ) {
+        let c1 = Rc::new(Commodity {
+            id: "c1".into(),
+            ..commodity1
+        });
+        let c2 = Rc::new(Commodity {
+            id: "c2".into(),
+            ..commodity2
+        });
+        let mut flows = IndexMap::new();
+        flows.insert("c1".into(), flow(Rc::clone(&c1), 1.0));
+        flows.insert("c2".into(), flow(Rc::clone(&c2), 2.0));
+        let primary_outputs = vec![("c1".into(), None), ("c2".into(), None)];
+        let res = validate_or_infer_primary_output(&flows, &primary_outputs);
+        assert!(res.is_err());
+    }
+
+    #[rstest]
+    fn multiple_outputs_all_explicit_false_should_error(
+        #[from(svd_commodity)] commodity1: Commodity,
+        #[from(svd_commodity)] commodity2: Commodity,
+    ) {
+        let c1 = Rc::new(Commodity {
+            id: "c1".into(),
+            ..commodity1
+        });
+        let c2 = Rc::new(Commodity {
+            id: "c2".into(),
+            ..commodity2
+        });
+        let mut flows = IndexMap::new();
+        flows.insert("c1".into(), flow(Rc::clone(&c1), 1.0));
+        flows.insert("c2".into(), flow(Rc::clone(&c2), 2.0));
+        let primary_outputs = vec![("c1".into(), Some(false)), ("c2".into(), Some(false))];
+        let res = validate_or_infer_primary_output(&flows, &primary_outputs);
+        assert!(res.is_err());
+    }
+
+    #[rstest]
+    fn all_inputs(
+        #[from(svd_commodity)] commodity1: Commodity,
+        #[from(svd_commodity)] commodity2: Commodity,
+    ) {
+        let c1 = Rc::new(Commodity {
+            id: "c1".into(),
+            ..commodity1
+        });
+        let c2 = Rc::new(Commodity {
+            id: "c2".into(),
+            ..commodity2
+        });
+        let mut flows = IndexMap::new();
+        flows.insert("c1".into(), flow(Rc::clone(&c1), -1.0));
+        flows.insert("c2".into(), flow(Rc::clone(&c2), -2.0));
+        let primary_outputs = vec![("c1".into(), None), ("c2".into(), None)];
+        let res = validate_or_infer_primary_output(&flows, &primary_outputs).unwrap();
+        assert_eq!(res, None);
+    }
+
+    #[rstest]
+    fn multiple_outputs_multiple_explicit_primaries_should_error(
+        #[from(svd_commodity)] commodity1: Commodity,
+        #[from(svd_commodity)] commodity2: Commodity,
+    ) {
+        let c1 = Rc::new(Commodity {
+            id: "c1".into(),
+            ..commodity1
+        });
+        let c2 = Rc::new(Commodity {
+            id: "c2".into(),
+            ..commodity2
+        });
+        let mut flows = IndexMap::new();
+        flows.insert("c1".into(), flow(Rc::clone(&c1), 1.0));
+        flows.insert("c2".into(), flow(Rc::clone(&c2), 2.0));
+        let primary_outputs = vec![("c1".into(), Some(true)), ("c2".into(), Some(true))];
+        let res = validate_or_infer_primary_output(&flows, &primary_outputs);
+        assert!(res.is_err());
+    }
+
+    #[rstest]
+    fn explicit_primary_on_input_should_error(
+        #[from(svd_commodity)] commodity1: Commodity,
+        #[from(svd_commodity)] commodity2: Commodity,
+    ) {
+        let c1 = Rc::new(Commodity {
+            id: "c1".into(),
+            ..commodity1
+        });
+        let c2 = Rc::new(Commodity {
+            id: "c2".into(),
+            ..commodity2
+        });
+        let mut flows = IndexMap::new();
+        flows.insert("c1".into(), flow(Rc::clone(&c1), -1.0));
+        flows.insert("c2".into(), flow(Rc::clone(&c2), 2.0));
+        let primary_outputs = vec![("c1".into(), Some(true)), ("c2".into(), None)];
+        let res = validate_or_infer_primary_output(&flows, &primary_outputs);
+        assert!(res.is_err());
     }
 }
