@@ -4,6 +4,10 @@ use crate::commodity::{BalanceType, Commodity, CommodityID};
 use crate::id::define_id_type;
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
+use crate::units::{
+    ActivityPerCapacity, Dimensionless, EnergyPerActivity, MoneyPerActivity, MoneyPerCapacity,
+    MoneyPerCapacityPerYear, MoneyPerEnergy,
+};
 use indexmap::IndexMap;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::{HashMap, HashSet};
@@ -19,7 +23,8 @@ pub type ProcessMap = IndexMap<ProcessID, Rc<Process>>;
 ///
 /// The value is calculated as availability multiplied by time slice length. The limits are given as
 /// ranges, depending on the user-specified limit type and value for availability.
-pub type ProcessActivityLimitsMap = HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<f64>>;
+pub type ProcessActivityLimitsMap =
+    HashMap<(RegionID, u32, TimeSliceID), RangeInclusive<Dimensionless>>;
 
 /// A map of [`ProcessParameter`]s, keyed by region and year
 pub type ProcessParameterMap = HashMap<(RegionID, u32), Rc<ProcessParameter>>;
@@ -56,30 +61,40 @@ pub struct ProcessFlow {
     /// Maximum annual commodity flow quantity relative to other commodity flows.
     ///
     /// Positive value indicates flow out and negative value indicates flow in.
-    pub coeff: f64,
+    pub coeff: EnergyPerActivity,
     /// Identifies if a flow is fixed or flexible.
     pub kind: FlowType,
     /// Cost per unit flow.
     ///
     /// For example, cost per unit of natural gas produced. The user can apply it to any specified
     /// flow.
-    pub cost: f64,
+    pub cost: MoneyPerEnergy,
 }
 
 impl ProcessFlow {
     /// Get the cost for this flow with the given parameters.
     ///
     /// This includes cost per unit flow and levies/incentives, if any.
-    pub fn get_total_cost(&self, region_id: &RegionID, year: u32, time_slice: &TimeSliceID) -> f64 {
+    pub fn get_total_cost(
+        &self,
+        region_id: &RegionID,
+        year: u32,
+        time_slice: &TimeSliceID,
+    ) -> MoneyPerActivity {
         let cost_per_unit = self.cost + self.get_levy(region_id, year, time_slice);
 
         self.coeff.abs() * cost_per_unit
     }
 
     /// Get the levy/incentive for this process flow with the given parameters, if any
-    fn get_levy(&self, region_id: &RegionID, year: u32, time_slice: &TimeSliceID) -> f64 {
+    fn get_levy(
+        &self,
+        region_id: &RegionID,
+        year: u32,
+        time_slice: &TimeSliceID,
+    ) -> MoneyPerEnergy {
         if self.commodity.levies.is_empty() {
-            return 0.0;
+            return MoneyPerEnergy(0.0);
         }
 
         let levy = self
@@ -89,14 +104,14 @@ impl ProcessFlow {
             .unwrap();
         let apply_levy = match levy.balance_type {
             BalanceType::Net => true,
-            BalanceType::Consumption => self.coeff < 0.0,
-            BalanceType::Production => self.coeff > 0.0,
+            BalanceType::Consumption => self.coeff < EnergyPerActivity(0.0),
+            BalanceType::Production => self.coeff > EnergyPerActivity(0.0),
         };
 
         if apply_levy {
             levy.value
         } else {
-            0.0
+            MoneyPerEnergy(0.0)
         }
     }
 }
@@ -118,21 +133,21 @@ pub enum FlowType {
 #[derive(PartialEq, Clone, Debug)]
 pub struct ProcessParameter {
     /// Overnight capital cost per unit capacity
-    pub capital_cost: f64,
+    pub capital_cost: MoneyPerCapacity,
     /// Annual operating cost per unit capacity
-    pub fixed_operating_cost: f64,
+    pub fixed_operating_cost: MoneyPerCapacityPerYear,
     /// Annual variable operating cost per unit activity
-    pub variable_operating_cost: f64,
+    pub variable_operating_cost: MoneyPerActivity,
     /// Lifetime in years of an asset created from this process
     pub lifetime: u32,
     /// Process-specific discount rate
-    pub discount_rate: f64,
+    pub discount_rate: Dimensionless,
     /// Factor for calculating the maximum consumption/production over a year.
     ///
     /// Used for converting one unit of capacity to maximum energy of asset per year. For example,
     /// if capacity is measured in GW and energy is measured in PJ, the capacity_to_activity for the
     /// process is 31.536 because 1 GW of capacity can produce 31.536 PJ energy output in a year.
-    pub capacity_to_activity: f64,
+    pub capacity_to_activity: ActivityPerCapacity,
 }
 
 #[cfg(test)]
@@ -154,7 +169,7 @@ mod tests {
             (region_id.clone(), 2020, time_slice.clone()),
             CommodityLevy {
                 balance_type: BalanceType::Net,
-                value: 10.0,
+                value: MoneyPerEnergy(10.0),
             },
         );
         // Add levy for a different region
@@ -162,7 +177,7 @@ mod tests {
             ("USA".into(), 2020, time_slice.clone()),
             CommodityLevy {
                 balance_type: BalanceType::Net,
-                value: 5.0,
+                value: MoneyPerEnergy(5.0),
             },
         );
         // Add levy for a different year
@@ -170,7 +185,7 @@ mod tests {
             (region_id.clone(), 2030, time_slice.clone()),
             CommodityLevy {
                 balance_type: BalanceType::Net,
-                value: 7.0,
+                value: MoneyPerEnergy(7.0),
             },
         );
         // Add levy for a different time slice
@@ -185,7 +200,7 @@ mod tests {
             ),
             CommodityLevy {
                 balance_type: BalanceType::Net,
-                value: 3.0,
+                value: MoneyPerEnergy(3.0),
             },
         );
 
@@ -209,7 +224,7 @@ mod tests {
             (region_id, 2020, time_slice),
             CommodityLevy {
                 balance_type: BalanceType::Consumption,
-                value: 10.0,
+                value: MoneyPerEnergy(10.0),
             },
         );
 
@@ -233,7 +248,7 @@ mod tests {
             (region_id, 2020, time_slice),
             CommodityLevy {
                 balance_type: BalanceType::Production,
-                value: 10.0,
+                value: MoneyPerEnergy(10.0),
             },
         );
 
@@ -254,7 +269,7 @@ mod tests {
             (region_id, 2020, time_slice),
             CommodityLevy {
                 balance_type: BalanceType::Net,
-                value: -5.0,
+                value: MoneyPerEnergy(-5.0),
             },
         );
 
@@ -291,9 +306,9 @@ mod tests {
                 levies: CommodityLevyMap::new(),
                 demand: DemandMap::new(),
             }),
-            coeff: 1.0,
+            coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
-            cost: 5.0,
+            cost: MoneyPerEnergy(5.0),
         }
     }
 
@@ -304,7 +319,7 @@ mod tests {
             (region_id, 2020, time_slice),
             CommodityLevy {
                 balance_type: BalanceType::Net,
-                value: 10.0,
+                value: MoneyPerEnergy(10.0),
             },
         );
 
@@ -317,9 +332,9 @@ mod tests {
                 levies,
                 demand: DemandMap::new(),
             }),
-            coeff: 1.0,
+            coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
-            cost: 5.0,
+            cost: MoneyPerEnergy(5.0),
         }
     }
 
@@ -330,7 +345,7 @@ mod tests {
             (region_id, 2020, time_slice),
             CommodityLevy {
                 balance_type: BalanceType::Net,
-                value: -3.0,
+                value: MoneyPerEnergy(-3.0),
             },
         );
 
@@ -343,9 +358,9 @@ mod tests {
                 levies,
                 demand: DemandMap::new(),
             }),
-            coeff: 1.0,
+            coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
-            cost: 5.0,
+            cost: MoneyPerEnergy(5.0),
         }
     }
 
@@ -357,12 +372,15 @@ mod tests {
     ) {
         let flow = ProcessFlow {
             commodity: commodity_no_levies,
-            coeff: 1.0,
+            coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
-            cost: 0.0,
+            cost: MoneyPerEnergy(0.0),
         };
 
-        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 0.0);
+        assert_eq!(
+            flow.get_levy(&region_id, 2020, &time_slice),
+            MoneyPerEnergy(0.0)
+        );
     }
 
     #[rstest]
@@ -373,12 +391,15 @@ mod tests {
     ) {
         let flow = ProcessFlow {
             commodity: commodity_with_levy,
-            coeff: 1.0,
+            coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
-            cost: 0.0,
+            cost: MoneyPerEnergy(0.0),
         };
 
-        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 10.0);
+        assert_eq!(
+            flow.get_levy(&region_id, 2020, &time_slice),
+            MoneyPerEnergy(10.0)
+        );
     }
 
     #[rstest]
@@ -389,24 +410,30 @@ mod tests {
     ) {
         let flow = ProcessFlow {
             commodity: commodity_with_incentive,
-            coeff: 1.0,
+            coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
-            cost: 0.0,
+            cost: MoneyPerEnergy(0.0),
         };
 
-        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), -5.0);
+        assert_eq!(
+            flow.get_levy(&region_id, 2020, &time_slice),
+            MoneyPerEnergy(-5.0)
+        );
     }
 
     #[rstest]
     fn test_get_levy_different_region(commodity_with_levy: Rc<Commodity>, time_slice: TimeSliceID) {
         let flow = ProcessFlow {
             commodity: commodity_with_levy,
-            coeff: 1.0,
+            coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
-            cost: 0.0,
+            cost: MoneyPerEnergy(0.0),
         };
 
-        assert_eq!(flow.get_levy(&"USA".into(), 2020, &time_slice), 5.0);
+        assert_eq!(
+            flow.get_levy(&"USA".into(), 2020, &time_slice),
+            MoneyPerEnergy(5.0)
+        );
     }
 
     #[rstest]
@@ -417,21 +444,24 @@ mod tests {
     ) {
         let flow = ProcessFlow {
             commodity: commodity_with_levy,
-            coeff: 1.0,
+            coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
-            cost: 0.0,
+            cost: MoneyPerEnergy(0.0),
         };
 
-        assert_eq!(flow.get_levy(&region_id, 2030, &time_slice), 7.0);
+        assert_eq!(
+            flow.get_levy(&region_id, 2030, &time_slice),
+            MoneyPerEnergy(7.0)
+        );
     }
 
     #[rstest]
     fn test_get_levy_different_time_slice(commodity_with_levy: Rc<Commodity>, region_id: RegionID) {
         let flow = ProcessFlow {
             commodity: commodity_with_levy,
-            coeff: 1.0,
+            coeff: EnergyPerActivity(1.0),
             kind: FlowType::Fixed,
-            cost: 0.0,
+            cost: MoneyPerEnergy(0.0),
         };
 
         let different_time_slice = TimeSliceID {
@@ -439,7 +469,10 @@ mod tests {
             time_of_day: "day".into(),
         };
 
-        assert_eq!(flow.get_levy(&region_id, 2020, &different_time_slice), 3.0);
+        assert_eq!(
+            flow.get_levy(&region_id, 2020, &different_time_slice),
+            MoneyPerEnergy(3.0)
+        );
     }
 
     #[rstest]
@@ -450,12 +483,15 @@ mod tests {
     ) {
         let flow = ProcessFlow {
             commodity: commodity_with_consumption_levy,
-            coeff: 1.0, // Positive coefficient means production
+            coeff: EnergyPerActivity(1.0), // Positive coefficient means production
             kind: FlowType::Fixed,
-            cost: 0.0,
+            cost: MoneyPerEnergy(0.0),
         };
 
-        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 0.0);
+        assert_eq!(
+            flow.get_levy(&region_id, 2020, &time_slice),
+            MoneyPerEnergy(0.0)
+        );
     }
 
     #[rstest]
@@ -466,12 +502,15 @@ mod tests {
     ) {
         let flow = ProcessFlow {
             commodity: commodity_with_consumption_levy,
-            coeff: -1.0, // Negative coefficient means consumption
+            coeff: EnergyPerActivity(-1.0), // Negative coefficient means consumption
             kind: FlowType::Fixed,
-            cost: 0.0,
+            cost: MoneyPerEnergy(0.0),
         };
 
-        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 10.0);
+        assert_eq!(
+            flow.get_levy(&region_id, 2020, &time_slice),
+            MoneyPerEnergy(10.0)
+        );
     }
 
     #[rstest]
@@ -482,12 +521,15 @@ mod tests {
     ) {
         let flow = ProcessFlow {
             commodity: commodity_with_production_levy,
-            coeff: 1.0, // Positive coefficient means production
+            coeff: EnergyPerActivity(1.0), // Positive coefficient means production
             kind: FlowType::Fixed,
-            cost: 0.0,
+            cost: MoneyPerEnergy(0.0),
         };
 
-        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 10.0);
+        assert_eq!(
+            flow.get_levy(&region_id, 2020, &time_slice),
+            MoneyPerEnergy(10.0)
+        );
     }
 
     #[rstest]
@@ -498,12 +540,15 @@ mod tests {
     ) {
         let flow = ProcessFlow {
             commodity: commodity_with_production_levy,
-            coeff: -1.0, // Negative coefficient means consumption
+            coeff: EnergyPerActivity(-1.0), // Negative coefficient means consumption
             kind: FlowType::Fixed,
-            cost: 0.0,
+            cost: MoneyPerEnergy(0.0),
         };
 
-        assert_eq!(flow.get_levy(&region_id, 2020, &time_slice), 0.0);
+        assert_eq!(
+            flow.get_levy(&region_id, 2020, &time_slice),
+            MoneyPerEnergy(0.0)
+        );
     }
 
     #[rstest]
@@ -514,7 +559,7 @@ mod tests {
     ) {
         assert_eq!(
             flow_with_cost.get_total_cost(&region_id, 2020, &time_slice),
-            5.0
+            MoneyPerActivity(5.0)
         );
     }
 
@@ -526,7 +571,7 @@ mod tests {
     ) {
         assert_eq!(
             flow_with_cost_and_levy.get_total_cost(&region_id, 2020, &time_slice),
-            15.0
+            MoneyPerActivity(15.0)
         );
     }
 
@@ -538,7 +583,7 @@ mod tests {
     ) {
         assert_eq!(
             flow_with_cost_and_incentive.get_total_cost(&region_id, 2020, &time_slice),
-            2.0
+            MoneyPerActivity(2.0)
         );
     }
 
@@ -549,10 +594,13 @@ mod tests {
         time_slice: TimeSliceID,
     ) {
         let flow = ProcessFlow {
-            coeff: -2.0,
+            coeff: EnergyPerActivity(-2.0),
             ..flow_with_cost
         };
-        assert_eq!(flow.get_total_cost(&region_id, 2020, &time_slice), 10.0);
+        assert_eq!(
+            flow.get_total_cost(&region_id, 2020, &time_slice),
+            MoneyPerActivity(10.0)
+        );
     }
 
     #[rstest]
@@ -562,9 +610,12 @@ mod tests {
         time_slice: TimeSliceID,
     ) {
         let flow = ProcessFlow {
-            coeff: 0.0,
+            coeff: EnergyPerActivity(0.0),
             ..flow_with_cost
         };
-        assert_eq!(flow.get_total_cost(&region_id, 2020, &time_slice), 0.0);
+        assert_eq!(
+            flow.get_total_cost(&region_id, 2020, &time_slice),
+            MoneyPerActivity(0.0)
+        );
     }
 }

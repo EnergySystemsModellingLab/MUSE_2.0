@@ -7,6 +7,7 @@ use crate::region::RegionID;
 use crate::simulation::optimisation::{FlowMap, Solution};
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
+use crate::units::{Energy, MoneyPerEnergy};
 use anyhow::{Context, Result};
 use csv;
 use serde::{Deserialize, Serialize};
@@ -98,7 +99,7 @@ struct CommodityFlowRow {
     asset_id: AssetID,
     commodity_id: CommodityID,
     time_slice: TimeSliceID,
-    flow: f64,
+    flow: Energy,
 }
 
 /// Represents a row in the commodity prices CSV file
@@ -108,7 +109,7 @@ struct CommodityPriceRow {
     commodity_id: CommodityID,
     region_id: RegionID,
     time_slice: TimeSliceID,
-    price: f64,
+    price: MoneyPerEnergy,
 }
 
 /// Represents the activity duals data in a row of the activity duals CSV file
@@ -356,7 +357,7 @@ mod tests {
         let milestone_year = 2020;
         let asset = assets.iter().next().unwrap();
         let flow_map = indexmap! {
-            (asset.clone(), commodity_id.clone(), time_slice.clone()) => 42.0
+            (asset.clone(), commodity_id.clone(), time_slice.clone()) => Energy(42.0)
         };
 
         // Write a flow
@@ -373,7 +374,7 @@ mod tests {
             asset_id: asset.id.unwrap(),
             commodity_id,
             time_slice,
-            flow: 42.0,
+            flow: Energy(42.0),
         };
         let records: Vec<CommodityFlowRow> =
             csv::Reader::from_path(dir.path().join(COMMODITY_FLOWS_FILE_NAME))
@@ -387,7 +388,7 @@ mod tests {
     #[rstest]
     fn test_write_prices(commodity_id: CommodityID, region_id: RegionID, time_slice: TimeSliceID) {
         let milestone_year = 2020;
-        let price = 42.0;
+        let price = MoneyPerEnergy(42.0);
         let mut prices = CommodityPrices::default();
         prices.insert(&commodity_id, &region_id, &time_slice, price);
 
