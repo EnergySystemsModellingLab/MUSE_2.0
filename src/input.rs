@@ -126,13 +126,14 @@ where
 }
 
 /// Check that fractions sum to (approximately) one
-fn check_fractions_sum_to_one<I>(fractions: I) -> Result<()>
+fn check_fractions_sum_to_one<I, T>(fractions: I) -> Result<()>
 where
-    I: Iterator<Item = Dimensionless>,
+    T: UnitType,
+    I: Iterator<Item = T>,
 {
     let sum = fractions.sum();
     ensure!(
-        approx_eq!(Dimensionless, sum, Dimensionless(1.0), epsilon = 1e-5),
+        approx_eq!(T, sum, T::new(1.0), epsilon = 1e-5),
         "Sum of fractions does not equal one (actual: {})",
         sum
     );
