@@ -3,7 +3,7 @@ use super::super::*;
 use crate::process::{ProcessActivityLimitsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
 use crate::time_slice::TimeSliceInfo;
-use crate::units::{Dimensionless, Year};
+use crate::units::{Dimensionless, PerYear, Year};
 use crate::year::parse_year_str;
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -22,14 +22,14 @@ struct ProcessAvailabilityRaw {
     years: String,
     time_slice: String,
     limit_type: LimitType,
-    value: Dimensionless,
+    value: PerYear,
 }
 
 impl ProcessAvailabilityRaw {
     fn validate(&self) -> Result<()> {
         // Check availability value
         ensure!(
-            self.value >= Dimensionless(0.0) && self.value <= Dimensionless(1.0),
+            self.value >= PerYear(0.0) && self.value <= PerYear(1.0),
             "Value for availability must be between 0 and 1 inclusive"
         );
 
@@ -41,8 +41,7 @@ impl ProcessAvailabilityRaw {
     /// The resulting limits are max/min energy produced/consumed in each timeslice per
     /// `capacity_to_activity` units of capacity.
     fn to_bounds(&self, ts_length: Year) -> RangeInclusive<Dimensionless> {
-        // **YUCK:** Circumvent units check. Do we need to reconsider return type?
-        let value = Dimensionless(self.value.value() * ts_length.value());
+        let value = self.value * ts_length;
         match self.limit_type {
             LimitType::LowerBound => value..=Dimensionless(f64::INFINITY),
             LimitType::UpperBound => Dimensionless(0.0)..=value,
@@ -184,7 +183,7 @@ mod tests {
 
     fn create_process_availability_raw(
         limit_type: LimitType,
-        value: Dimensionless,
+        value: PerYear,
     ) -> ProcessAvailabilityRaw {
         ProcessAvailabilityRaw {
             process_id: "process".into(),
@@ -199,36 +198,33 @@ mod tests {
     #[test]
     fn test_validate() {
         // Valid
-        let valid = create_process_availability_raw(LimitType::LowerBound, Dimensionless(0.5));
+        let valid = create_process_availability_raw(LimitType::LowerBound, PerYear(0.5));
         assert!(valid.validate().is_ok());
-        let valid = create_process_availability_raw(LimitType::LowerBound, Dimensionless(0.0));
+        let valid = create_process_availability_raw(LimitType::LowerBound, PerYear(0.0));
         assert!(valid.validate().is_ok());
-        let valid = create_process_availability_raw(LimitType::LowerBound, Dimensionless(1.0));
+        let valid = create_process_availability_raw(LimitType::LowerBound, PerYear(1.0));
         assert!(valid.validate().is_ok());
 
         // Invalid: negative value
-        let invalid = create_process_availability_raw(LimitType::LowerBound, Dimensionless(-0.5));
+        let invalid = create_process_availability_raw(LimitType::LowerBound, PerYear(-0.5));
         assert!(invalid.validate().is_err());
 
         // Invalid: value greater than 1
-        let invalid = create_process_availability_raw(LimitType::LowerBound, Dimensionless(1.5));
+        let invalid = create_process_availability_raw(LimitType::LowerBound, PerYear(1.5));
         assert!(invalid.validate().is_err());
 
         // Invalid: infinity value
         let invalid =
-            create_process_availability_raw(LimitType::LowerBound, Dimensionless(f64::INFINITY));
+            create_process_availability_raw(LimitType::LowerBound, PerYear(f64::INFINITY));
         assert!(invalid.validate().is_err());
 
         // Invalid: negative infinity value
-        let invalid = create_process_availability_raw(
-            LimitType::LowerBound,
-            Dimensionless(f64::NEG_INFINITY),
-        );
+        let invalid =
+            create_process_availability_raw(LimitType::LowerBound, PerYear(f64::NEG_INFINITY));
         assert!(invalid.validate().is_err());
 
         // Invalid: NaN value
-        let invalid =
-            create_process_availability_raw(LimitType::LowerBound, Dimensionless(f64::NAN));
+        let invalid = create_process_availability_raw(LimitType::LowerBound, PerYear(f64::NAN));
         assert!(invalid.validate().is_err());
     }
 
@@ -237,17 +233,17 @@ mod tests {
         let ts_length = Year(0.1);
 
         // Lower bound
-        let raw = create_process_availability_raw(LimitType::LowerBound, Dimensionless(0.5));
+        let raw = create_process_availability_raw(LimitType::LowerBound, PerYear(0.5));
         let bounds = raw.to_bounds(ts_length);
         assert_eq!(bounds, Dimensionless(0.05)..=Dimensionless(f64::INFINITY));
 
         // Upper bound
-        let raw = create_process_availability_raw(LimitType::UpperBound, Dimensionless(0.5));
+        let raw = create_process_availability_raw(LimitType::UpperBound, PerYear(0.5));
         let bounds = raw.to_bounds(ts_length);
         assert_eq!(bounds, Dimensionless(0.0)..=Dimensionless(0.05));
 
         // Equality
-        let raw = create_process_availability_raw(LimitType::Equality, Dimensionless(0.5));
+        let raw = create_process_availability_raw(LimitType::Equality, PerYear(0.5));
         let bounds = raw.to_bounds(ts_length);
         assert_eq!(bounds, Dimensionless(0.05)..=Dimensionless(0.05));
     }
