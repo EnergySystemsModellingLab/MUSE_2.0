@@ -27,9 +27,9 @@ macro_rules! base_unit_struct {
             }
         }
         impl std::ops::Div<$name> for $name {
-            type Output = $name;
-            fn div(self, rhs: $name) -> $name {
-                $name(self.0 / rhs.0)
+            type Output = Dimensionless;
+            fn div(self, rhs: $name) -> Dimensionless {
+                Dimensionless(self.0 / rhs.0)
             }
         }
         impl std::iter::Sum for $name {
@@ -60,19 +60,19 @@ macro_rules! base_unit_struct {
         }
         impl $name {
             /// Returns the underlying f64 value.
-            pub fn value(self) -> f64 {
+            pub fn value(&self) -> f64 {
                 self.0
             }
             /// Returns true if the value is a normal number.
-            pub fn is_normal(self) -> bool {
+            pub fn is_normal(&self) -> bool {
                 self.0.is_normal()
             }
             /// Returns true if the value is finite.
-            pub fn is_finite(self) -> bool {
+            pub fn is_finite(&self) -> bool {
                 self.0.is_finite()
             }
             /// Returns the absolute value of this unit.
-            pub fn abs(self) -> Self {
+            pub fn abs(&self) -> Self {
                 $name(self.0.abs())
             }
         }
