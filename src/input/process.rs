@@ -6,7 +6,7 @@ use crate::process::{
 };
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
-use crate::units::EnergyPerActivity;
+use crate::units::{Energy, EnergyPerActivity};
 use anyhow::{ensure, Context, Ok, Result};
 use itertools::iproduct;
 use serde::Deserialize;
@@ -266,7 +266,7 @@ fn validate_svd_commodity(
         .demand
         .get(&(region_id.clone(), year, ts_selection.clone()))
         .unwrap();
-    if demand <= Dimensionless(0.0) {
+    if demand <= Energy(0.0) {
         return Ok(());
     }
 
@@ -398,7 +398,7 @@ mod tests {
     #[fixture]
     fn commodity_svd(time_slice: TimeSliceID) -> Commodity {
         let demand =
-            DemandMap::from_iter([(("GBR".into(), 2010, time_slice.into()), Dimensionless(10.0))]);
+            DemandMap::from_iter([(("GBR".into(), 2010, time_slice.into()), Energy(10.0))]);
 
         Commodity {
             id: "commodity_svd".into(),

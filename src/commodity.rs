@@ -2,7 +2,7 @@
 use crate::id::{define_id_getter, define_id_type};
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel, TimeSliceSelection};
-use crate::units::{Dimensionless, MoneyPerEnergy};
+use crate::units::{Energy, MoneyPerEnergy};
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -18,7 +18,7 @@ pub type CommodityMap = IndexMap<CommodityID, Rc<Commodity>>;
 pub type CommodityLevyMap = HashMap<(RegionID, u32, TimeSliceID), CommodityLevy>;
 
 /// A map of demand values, keyed by region ID, year and time slice selection
-pub type DemandMap = HashMap<(RegionID, u32, TimeSliceSelection), Dimensionless>;
+pub type DemandMap = HashMap<(RegionID, u32, TimeSliceSelection), Energy>;
 
 /// A commodity within the simulation.
 ///
@@ -105,7 +105,7 @@ mod tests {
             season: "all-year".into(),
             time_of_day: "all-day".into(),
         });
-        let value = Dimensionless(0.25);
+        let value = Energy(0.25);
         let mut map = DemandMap::new();
         map.insert(("North".into(), 2020, ts_selection.clone()), value);
 
