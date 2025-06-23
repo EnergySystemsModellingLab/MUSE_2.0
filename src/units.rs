@@ -27,9 +27,9 @@ macro_rules! base_unit_struct {
             }
         }
         impl std::ops::Div<$name> for $name {
-            type Output = $name;
-            fn div(self, rhs: $name) -> $name {
-                $name(self.0 / rhs.0)
+            type Output = Dimensionless;
+            fn div(self, rhs: $name) -> Dimensionless {
+                Dimensionless(self.0 / rhs.0)
             }
         }
         impl std::iter::Sum for $name {
