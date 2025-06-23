@@ -80,7 +80,7 @@ pub fn handle_run_command(
     debug_model: bool,
 ) -> Result<()> {
     // Load program settings
-    let mut settings = Settings::from_path(model_path).context("Failed to load settings.")?;
+    let mut settings = Settings::load().context("Failed to load settings.")?;
 
     // This setting can be overridden by command-line argument
     if debug_model {
