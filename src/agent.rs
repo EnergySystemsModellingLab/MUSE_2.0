@@ -4,7 +4,7 @@ use crate::commodity::CommodityID;
 use crate::id::{define_id_getter, define_id_type};
 use crate::process::Process;
 use crate::region::RegionID;
-use crate::units::Dimensionless;
+use crate::units::{Dimensionless, MoneyPerYear};
 use indexmap::IndexMap;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
@@ -59,7 +59,7 @@ pub struct AgentCostLimits {
     /// The maximum capital cost the agent will pay.
     pub capex_limit: Option<Dimensionless>,
     /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
-    pub annual_cost_limit: Option<Dimensionless>,
+    pub annual_cost_limit: Option<MoneyPerYear>,
 }
 
 /// The decision rule for a particular objective

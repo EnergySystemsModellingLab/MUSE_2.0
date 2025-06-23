@@ -3,7 +3,7 @@ use super::super::*;
 use crate::commodity::CommodityMap;
 use crate::process::{FlowType, Process, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
-use crate::units::Dimensionless;
+use crate::units::{EnergyPerActivity, MoneyPerEnergy};
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -19,11 +19,11 @@ struct ProcessFlowRaw {
     commodity_id: String,
     years: String,
     regions: String,
-    coeff: Dimensionless,
+    coeff: EnergyPerActivity,
     #[serde(default)]
     #[serde(rename = "type")]
     kind: FlowType,
-    cost: Option<Dimensionless>,
+    cost: Option<MoneyPerEnergy>,
 }
 
 impl ProcessFlowRaw {
@@ -106,7 +106,7 @@ where
             commodity: Rc::clone(commodity),
             coeff: record.coeff,
             kind: record.kind,
-            cost: record.cost.unwrap_or(Dimensionless(0.0)),
+            cost: record.cost.unwrap_or(MoneyPerEnergy(0.0)),
         };
 
         // Insert flow into the map
@@ -160,9 +160,9 @@ mod tests {
     use rstest::fixture;
 
     fn create_process_flow_raw(
-        coeff: Dimensionless,
+        coeff: EnergyPerActivity,
         kind: FlowType,
-        cost: Option<Dimensionless>,
+        cost: Option<MoneyPerEnergy>,
     ) -> ProcessFlowRaw {
         ProcessFlowRaw {
             process_id: "process".into(),
@@ -179,55 +179,55 @@ mod tests {
     fn test_validate_flow_raw() {
         // Valid
         let valid = create_process_flow_raw(
-            Dimensionless(1.0),
+            EnergyPerActivity(1.0),
             FlowType::Fixed,
-            Some(Dimensionless(0.0)),
+            Some(MoneyPerEnergy(0.0)),
         );
         assert!(valid.validate().is_ok());
 
         // Invalid: Bad flow value
         let invalid = create_process_flow_raw(
-            Dimensionless(0.0),
+            EnergyPerActivity(0.0),
             FlowType::Fixed,
-            Some(Dimensionless(0.0)),
+            Some(MoneyPerEnergy(0.0)),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
-            Dimensionless(f64::NAN),
+            EnergyPerActivity(f64::NAN),
             FlowType::Fixed,
-            Some(Dimensionless(0.0)),
+            Some(MoneyPerEnergy(0.0)),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
-            Dimensionless(f64::INFINITY),
+            EnergyPerActivity(f64::INFINITY),
             FlowType::Fixed,
-            Some(Dimensionless(0.0)),
+            Some(MoneyPerEnergy(0.0)),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
-            Dimensionless(f64::NEG_INFINITY),
+            EnergyPerActivity(f64::NEG_INFINITY),
             FlowType::Fixed,
-            Some(Dimensionless(0.0)),
+            Some(MoneyPerEnergy(0.0)),
         );
         assert!(invalid.validate().is_err());
 
         // Invalid: Bad flow cost value
         let invalid = create_process_flow_raw(
-            Dimensionless(1.0),
+            EnergyPerActivity(1.0),
             FlowType::Fixed,
-            Some(Dimensionless(f64::NAN)),
+            Some(MoneyPerEnergy(f64::NAN)),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
-            Dimensionless(1.0),
+            EnergyPerActivity(1.0),
             FlowType::Fixed,
-            Some(Dimensionless(f64::NEG_INFINITY)),
+            Some(MoneyPerEnergy(f64::NEG_INFINITY)),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
-            Dimensionless(1.0),
+            EnergyPerActivity(1.0),
             FlowType::Fixed,
-            Some(Dimensionless(f64::INFINITY)),
+            Some(MoneyPerEnergy(f64::INFINITY)),
         );
         assert!(invalid.validate().is_err());
     }

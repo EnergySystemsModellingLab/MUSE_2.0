@@ -6,7 +6,7 @@ use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::Dimensionless;
+use crate::units::{Activity, Energy, MoneyPerActivity};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
@@ -15,7 +15,7 @@ mod constraints;
 use constraints::{add_asset_constraints, ConstraintKeys};
 
 /// A map of commodity flows calculated during the optimisation
-pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), Dimensionless>;
+pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), Energy>;
 
 /// A decision variable in the optimisation
 ///
@@ -70,7 +70,7 @@ impl Solution<'_> {
         {
             for flow in asset.iter_flows() {
                 let flow_key = (asset.clone(), flow.commodity.id.clone(), time_slice.clone());
-                let flow_value = Dimensionless(*activity) * flow.coeff;
+                let flow_value = Activity(*activity) * flow.coeff;
                 flows.insert(flow_key, flow_value);
             }
         }
@@ -202,9 +202,13 @@ fn add_variables(
 }
 
 /// Calculate the cost coefficient for a decision variable
-fn calculate_cost_coefficient(asset: &Asset, year: u32, time_slice: &TimeSliceID) -> Dimensionless {
+fn calculate_cost_coefficient(
+    asset: &Asset,
+    year: u32,
+    time_slice: &TimeSliceID,
+) -> MoneyPerActivity {
     // The cost for all commodity flows (including levies/incentives)
-    let flows_cost: Dimensionless = asset
+    let flows_cost: MoneyPerActivity = asset
         .iter_flows()
         .map(|flow| flow.get_total_cost(&asset.region_id, year, time_slice))
         .sum();

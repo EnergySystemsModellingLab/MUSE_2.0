@@ -6,6 +6,7 @@ use crate::process::{
 };
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
+use crate::units::EnergyPerActivity;
 use anyhow::{ensure, Context, Ok, Result};
 use itertools::iproduct;
 use serde::Deserialize;
@@ -199,7 +200,7 @@ fn validate_other_commodity(
     let mut is_producer = None;
     for flows in flows.values().flat_map(|flows| flows.values()) {
         if let Some(flow) = flows.get(commodity_id) {
-            let cur_is_producer = flow.coeff > Dimensionless(0.0);
+            let cur_is_producer = flow.coeff > EnergyPerActivity(0.0);
             if let Some(is_producer) = is_producer {
                 ensure!(
                     is_producer == cur_is_producer,
@@ -232,9 +233,9 @@ fn validate_sed_commodity(
     for flows in flows.values() {
         let flows = flows.get(&(region_id.clone(), year)).unwrap();
         if let Some(flow) = flows.get(&commodity_id.clone()) {
-            if flow.coeff > Dimensionless(0.0) {
+            if flow.coeff > EnergyPerActivity(0.0) {
                 has_producer = true;
-            } else if flow.coeff < Dimensionless(0.0) {
+            } else if flow.coeff < EnergyPerActivity(0.0) {
                 has_consumer = true;
             }
         }
@@ -278,7 +279,7 @@ fn validate_svd_commodity(
             continue;
         };
         ensure!(
-            flow.coeff > Dimensionless(0.0),
+            flow.coeff > EnergyPerActivity(0.0),
             "SVD commodity {} is consumed by process {}. \
             SVD commodities can only be produced, not consumed.",
             commodity.id,
@@ -314,6 +315,7 @@ mod tests {
     use crate::fixture::{assert_error, time_slice, time_slice_info};
     use crate::process::{FlowType, ProcessFlow};
     use crate::time_slice::{TimeSliceID, TimeSliceLevel};
+    use crate::units::{Dimensionless, EnergyPerActivity, MoneyPerEnergy};
     use indexmap::indexmap;
     use rstest::{fixture, rstest};
     use std::iter;
@@ -336,9 +338,9 @@ mod tests {
             ("GBR".into(), 2010),
             indexmap! { commodity_sed.id.clone() => ProcessFlow {
                 commodity: commodity_sed.into(),
-                coeff: Dimensionless(-10.0),
+                coeff: EnergyPerActivity(-10.0),
                 kind: FlowType::Fixed,
-                cost: Dimensionless(1.0),
+                cost: MoneyPerEnergy(1.0),
             }},
         )])
     }
@@ -349,9 +351,9 @@ mod tests {
             ("GBR".into(), 2010),
             indexmap! {commodity_sed.id.clone()=>ProcessFlow {
                 commodity: commodity_sed.into(),
-                coeff: Dimensionless(10.0),
+                coeff: EnergyPerActivity(10.0),
                 kind: FlowType::Fixed,
-                cost: Dimensionless(1.0),
+                cost: MoneyPerEnergy(1.0),
             }},
         )])
     }
@@ -416,9 +418,9 @@ mod tests {
                 ("GBR".into(), 2010),
                 indexmap! { commodity_svd.id.clone() => ProcessFlow {
                     commodity: commodity_svd.into(),
-                    coeff: Dimensionless(10.0),
+                    coeff: EnergyPerActivity(10.0),
                     kind: FlowType::Fixed,
-                    cost: Dimensionless(1.0),
+                    cost: MoneyPerEnergy(1.0),
                 }},
             )]),
         )])
@@ -500,9 +502,9 @@ mod tests {
             ("GBR".into(), 2010),
             indexmap! { commodity_other.id.clone() => ProcessFlow {
                 commodity: commodity_other.into(),
-                coeff: Dimensionless(10.0),
+                coeff: EnergyPerActivity(10.0),
                 kind: FlowType::Fixed,
-                cost: Dimensionless(1.0)
+                cost: MoneyPerEnergy(1.0)
             }},
         )])
     }
@@ -513,9 +515,9 @@ mod tests {
             ("GBR".into(), 2010),
             indexmap! { commodity_other.id.clone() => ProcessFlow {
                 commodity: commodity_other.into(),
-                coeff: Dimensionless(-10.0),
+                coeff: EnergyPerActivity(-10.0),
                 kind: FlowType::Fixed,
-                cost: Dimensionless(1.0)
+                cost: MoneyPerEnergy(1.0)
             }},
         )])
     }
@@ -589,9 +591,9 @@ mod tests {
                 (region_id.clone(), 2010),
                 indexmap! { commodity_svd.id.clone() => ProcessFlow {
                     commodity: Rc::clone(&commodity_svd),
-                    coeff: Dimensionless(-10.0),
+                    coeff: EnergyPerActivity(-10.0),
                     kind: FlowType::Fixed,
-                    cost: Dimensionless(1.0)
+                    cost: MoneyPerEnergy(1.0)
                 }},
             )]),
         )));

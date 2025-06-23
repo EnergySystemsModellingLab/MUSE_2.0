@@ -2,7 +2,9 @@
 use super::super::*;
 use crate::process::{ProcessID, ProcessMap, ProcessParameter, ProcessParameterMap};
 use crate::region::parse_region_str;
-use crate::units::{Dimensionless, MoneyPerCapacity, PerCapacity};
+use crate::units::{
+    Dimensionless, MoneyPerActivity, MoneyPerCapacity, MoneyPerCapacityPerYear, PerCapacity,
+};
 use crate::year::parse_year_str;
 use ::log::warn;
 use anyhow::{ensure, Context, Result};
@@ -19,8 +21,8 @@ struct ProcessParameterRaw {
     regions: String,
     years: String,
     capital_cost: MoneyPerCapacity,
-    fixed_operating_cost: Dimensionless,
-    variable_operating_cost: Dimensionless,
+    fixed_operating_cost: MoneyPerCapacityPerYear,
+    variable_operating_cost: MoneyPerActivity,
     lifetime: u32,
     discount_rate: Option<Dimensionless>,
     capacity_to_activity: Option<PerCapacity>,
@@ -178,8 +180,8 @@ mod tests {
         ProcessParameterRaw {
             process_id: "id".to_string(),
             capital_cost: MoneyPerCapacity(0.0),
-            fixed_operating_cost: Dimensionless(0.0),
-            variable_operating_cost: Dimensionless(0.0),
+            fixed_operating_cost: MoneyPerCapacityPerYear(0.0),
+            variable_operating_cost: MoneyPerActivity(0.0),
             lifetime,
             discount_rate,
             capacity_to_activity,
@@ -194,8 +196,8 @@ mod tests {
     ) -> ProcessParameter {
         ProcessParameter {
             capital_cost: MoneyPerCapacity(0.0),
-            fixed_operating_cost: Dimensionless(0.0),
-            variable_operating_cost: Dimensionless(0.0),
+            fixed_operating_cost: MoneyPerCapacityPerYear(0.0),
+            variable_operating_cost: MoneyPerActivity(0.0),
             lifetime: 1,
             discount_rate,
             capacity_to_activity,

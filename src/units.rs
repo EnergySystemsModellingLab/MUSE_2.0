@@ -168,6 +168,7 @@ unit_struct!(MoneyPerEnergyPerYear);
 unit_struct!(MoneyPerActivity);
 unit_struct!(MoneyPerActivityPerYear);
 unit_struct!(ActivityPerCapacity);
+unit_struct!(EnergyPerActivity);
 
 macro_rules! impl_div {
     ($Lhs:ident, $Rhs:ident, $Out:ident) => {
@@ -206,6 +207,7 @@ macro_rules! impl_div {
 
 // Division rules for derived quantities
 impl_div!(Energy, Year, EnergyPerYear);
+impl_div!(Energy, Activity, EnergyPerActivity);
 impl_div!(Money, Year, MoneyPerYear);
 impl_div!(Money, Energy, MoneyPerEnergy);
 impl_div!(Money, Capacity, MoneyPerCapacity);
@@ -216,6 +218,8 @@ impl_div!(MoneyPerYear, Capacity, MoneyPerCapacityPerYear);
 impl_div!(Money, EnergyPerYear, MoneyPerEnergyPerYear);
 impl_div!(MoneyPerEnergy, Year, MoneyPerEnergyPerYear);
 impl_div!(MoneyPerYear, Activity, MoneyPerActivityPerYear);
+impl_div!(MoneyPerActivity, EnergyPerActivity, MoneyPerEnergy);
+
 /// Represents a number of years as an integer.
 #[derive(Debug, Clone, Copy, PartialEq, derive_more::Add, derive_more::Sub)]
 pub struct IYear(pub u32);

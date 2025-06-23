@@ -12,7 +12,10 @@ use crate::process::{
 };
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::{Capacity, Dimensionless, MoneyPerCapacity, PerCapacity};
+use crate::units::{
+    Capacity, Dimensionless, MoneyPerActivity, MoneyPerCapacity, MoneyPerCapacityPerYear,
+    PerCapacity,
+};
 use indexmap::indexmap;
 use itertools::Itertools;
 use rstest::fixture;
@@ -99,8 +102,8 @@ pub fn assets(asset: Asset) -> AssetPool {
 pub fn process_parameter_map(region_ids: HashSet<RegionID>) -> ProcessParameterMap {
     let parameter = Rc::new(ProcessParameter {
         capital_cost: MoneyPerCapacity(0.0),
-        fixed_operating_cost: Dimensionless(0.0),
-        variable_operating_cost: Dimensionless(0.0),
+        fixed_operating_cost: MoneyPerCapacityPerYear(0.0),
+        variable_operating_cost: MoneyPerActivity(0.0),
         lifetime: 1,
         discount_rate: Dimensionless(1.0),
         capacity_to_activity: PerCapacity(0.0),

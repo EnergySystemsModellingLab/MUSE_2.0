@@ -2,7 +2,7 @@
 use crate::id::{define_id_getter, define_id_type};
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel, TimeSliceSelection};
-use crate::units::Dimensionless;
+use crate::units::{Dimensionless, MoneyPerEnergy};
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -75,7 +75,7 @@ pub struct CommodityLevy {
     /// Type of balance for application of cost
     pub balance_type: BalanceType,
     /// Cost per unit commodity
-    pub value: Dimensionless,
+    pub value: MoneyPerEnergy,
 }
 
 /// Commodity balance type
@@ -123,7 +123,7 @@ mod tests {
         };
         let value = CommodityLevy {
             balance_type: BalanceType::Consumption,
-            value: Dimensionless(0.5),
+            value: MoneyPerEnergy(0.5),
         };
         let mut map = CommodityLevyMap::new();
         assert!(map
