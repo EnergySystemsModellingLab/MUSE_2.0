@@ -85,12 +85,12 @@ fn deserialise_proportion_nonzero<'de, D>(deserialiser: D) -> Result<Dimensionle
 where
     D: Deserializer<'de>,
 {
-    let value = Deserialize::deserialize(deserialiser)?;
-    if !(value > Dimensionless(0.0) && value <= Dimensionless(1.0)) {
+    let value = f64::deserialize(deserialiser)?;
+    if !(value > 0.0 && value <= 1.0) {
         Err(serde::de::Error::custom("Value must be > 0 and <= 1"))?
     }
 
-    Ok(value)
+    Ok(Dimensionless(value))
 }
 
 /// Format an error message to include the file path. To be used with `anyhow::Context`.
