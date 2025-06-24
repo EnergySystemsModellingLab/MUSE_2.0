@@ -341,6 +341,7 @@ mod tests {
                 coeff: EnergyPerActivity(-10.0),
                 kind: FlowType::Fixed,
                 cost: MoneyPerEnergy(1.0),
+                is_primary_output: false,
             }},
         )])
     }
@@ -354,6 +355,7 @@ mod tests {
                 coeff: EnergyPerActivity(10.0),
                 kind: FlowType::Fixed,
                 cost: MoneyPerEnergy(1.0),
+                is_primary_output: false,
             }},
         )])
     }
@@ -421,6 +423,7 @@ mod tests {
                     coeff: EnergyPerActivity(10.0),
                     kind: FlowType::Fixed,
                     cost: MoneyPerEnergy(1.0),
+                    is_primary_output: false,
                 }},
             )]),
         )])
@@ -504,7 +507,8 @@ mod tests {
                 commodity: commodity_other.into(),
                 coeff: EnergyPerActivity(10.0),
                 kind: FlowType::Fixed,
-                cost: MoneyPerEnergy(1.0)
+                cost: MoneyPerEnergy(1.0),
+                is_primary_output: false,
             }},
         )])
     }
@@ -517,7 +521,8 @@ mod tests {
                 commodity: commodity_other.into(),
                 coeff: EnergyPerActivity(-10.0),
                 kind: FlowType::Fixed,
-                cost: MoneyPerEnergy(1.0)
+                cost: MoneyPerEnergy(1.0),
+                is_primary_output: false,
             }},
         )])
     }
@@ -593,7 +598,8 @@ mod tests {
                     commodity: Rc::clone(&commodity_svd),
                     coeff: EnergyPerActivity(-10.0),
                     kind: FlowType::Fixed,
-                    cost: MoneyPerEnergy(1.0)
+                    cost: MoneyPerEnergy(1.0),
+                    is_primary_output: false,
                 }},
             )]),
         )));
