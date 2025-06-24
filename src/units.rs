@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::ops::{AddAssign, SubAssign};
+use std::ops::{AddAssign, Mul, SubAssign};
 
 macro_rules! base_unit_struct {
     ($name:ident) => {
@@ -20,12 +20,6 @@ macro_rules! base_unit_struct {
         )]
         pub struct $name(pub f64);
 
-        impl std::ops::Mul<$name> for $name {
-            type Output = $name;
-            fn mul(self, rhs: $name) -> $name {
-                $name(self.0 * rhs.0)
-            }
-        }
         impl std::ops::Div<$name> for $name {
             type Output = Dimensionless;
             fn div(self, rhs: $name) -> Dimensionless {
@@ -94,6 +88,14 @@ impl From<Dimensionless> for f64 {
     }
 }
 
+impl Mul for Dimensionless {
+    type Output = Dimensionless;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Dimensionless(self.0 * rhs.0)
+    }
+}
+
 impl Dimensionless {
     /// Raises this dimensionless number to the power of `rhs`.
     pub fn powi(self, rhs: i32) -> Self {
@@ -129,19 +131,19 @@ macro_rules! unit_struct {
 
 // Base quantities
 unit_struct!(Money);
-unit_struct!(Energy);
+unit_struct!(Flow);
 unit_struct!(Activity);
 unit_struct!(Capacity);
 unit_struct!(Year);
 
 // Derived quantities
 unit_struct!(MoneyPerYear);
-unit_struct!(MoneyPerEnergy);
+unit_struct!(MoneyPerFlow);
 unit_struct!(MoneyPerCapacity);
 unit_struct!(MoneyPerCapacityPerYear);
 unit_struct!(MoneyPerActivity);
 unit_struct!(ActivityPerCapacity);
-unit_struct!(EnergyPerActivity);
+unit_struct!(FlowPerActivity);
 
 macro_rules! impl_div {
     ($Lhs:ident, $Rhs:ident, $Out:ident) => {
@@ -179,11 +181,11 @@ macro_rules! impl_div {
 }
 
 // Division rules for derived quantities
-impl_div!(Energy, Activity, EnergyPerActivity);
+impl_div!(Flow, Activity, FlowPerActivity);
 impl_div!(Money, Year, MoneyPerYear);
-impl_div!(Money, Energy, MoneyPerEnergy);
+impl_div!(Money, Flow, MoneyPerFlow);
 impl_div!(Money, Capacity, MoneyPerCapacity);
 impl_div!(Money, Activity, MoneyPerActivity);
 impl_div!(Activity, Capacity, ActivityPerCapacity);
 impl_div!(MoneyPerYear, Capacity, MoneyPerCapacityPerYear);
-impl_div!(MoneyPerActivity, EnergyPerActivity, MoneyPerEnergy);
+impl_div!(MoneyPerActivity, FlowPerActivity, MoneyPerFlow);

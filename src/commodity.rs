@@ -2,7 +2,7 @@
 use crate::id::{define_id_getter, define_id_type};
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceLevel, TimeSliceSelection};
-use crate::units::{Energy, MoneyPerEnergy};
+use crate::units::{Flow, MoneyPerFlow};
 use indexmap::IndexMap;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
@@ -18,7 +18,7 @@ pub type CommodityMap = IndexMap<CommodityID, Rc<Commodity>>;
 pub type CommodityLevyMap = HashMap<(RegionID, u32, TimeSliceID), CommodityLevy>;
 
 /// A map of demand values, keyed by region ID, year and time slice selection
-pub type DemandMap = HashMap<(RegionID, u32, TimeSliceSelection), Energy>;
+pub type DemandMap = HashMap<(RegionID, u32, TimeSliceSelection), Flow>;
 
 /// A commodity within the simulation.
 ///
@@ -75,7 +75,7 @@ pub struct CommodityLevy {
     /// Type of balance for application of cost
     pub balance_type: BalanceType,
     /// Cost per unit commodity
-    pub value: MoneyPerEnergy,
+    pub value: MoneyPerFlow,
 }
 
 /// Commodity balance type
@@ -105,7 +105,7 @@ mod tests {
             season: "all-year".into(),
             time_of_day: "all-day".into(),
         });
-        let value = Energy(0.25);
+        let value = Flow(0.25);
         let mut map = DemandMap::new();
         map.insert(("North".into(), 2020, ts_selection.clone()), value);
 
@@ -123,7 +123,7 @@ mod tests {
         };
         let value = CommodityLevy {
             balance_type: BalanceType::Consumption,
-            value: MoneyPerEnergy(0.5),
+            value: MoneyPerFlow(0.5),
         };
         let mut map = CommodityLevyMap::new();
         assert!(map

@@ -4,7 +4,7 @@ use crate::commodity::{BalanceType, CommodityID, CommodityLevy, CommodityLevyMap
 use crate::id::IDCollection;
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::TimeSliceInfo;
-use crate::units::MoneyPerEnergy;
+use crate::units::MoneyPerFlow;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
@@ -27,7 +27,7 @@ struct CommodityLevyRaw {
     /// The time slice to which the cost applies.
     time_slice: String,
     /// Cost per unit commodity
-    value: MoneyPerEnergy,
+    value: MoneyPerFlow,
 }
 
 /// Read costs associated with each commodity from levies CSV file.
@@ -163,7 +163,7 @@ mod tests {
     fn cost_map(time_slice: TimeSliceID) -> CommodityLevyMap {
         let cost = CommodityLevy {
             balance_type: BalanceType::Net,
-            value: MoneyPerEnergy(1.0),
+            value: MoneyPerFlow(1.0),
         };
 
         let mut map = CommodityLevyMap::new();

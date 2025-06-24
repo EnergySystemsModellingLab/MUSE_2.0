@@ -3,7 +3,7 @@ use super::super::*;
 use crate::commodity::{CommodityID, CommodityMap};
 use crate::process::{FlowType, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap};
 use crate::region::{parse_region_str, RegionID};
-use crate::units::{EnergyPerActivity, MoneyPerEnergy};
+use crate::units::{FlowPerActivity, MoneyPerFlow};
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use itertools::iproduct;
@@ -24,11 +24,11 @@ struct ProcessFlowRaw {
     commodity_id: String,
     years: String,
     regions: String,
-    coeff: EnergyPerActivity,
+    coeff: FlowPerActivity,
     #[serde(default)]
     #[serde(rename = "type")]
     kind: FlowType,
-    cost: Option<MoneyPerEnergy>,
+    cost: Option<MoneyPerFlow>,
     is_primary_output: Option<bool>,
 }
 
@@ -113,7 +113,7 @@ where
             commodity: Rc::clone(commodity),
             coeff: record.coeff,
             kind: FlowType::Fixed,
-            cost: record.cost.unwrap_or(MoneyPerEnergy(0.0)),
+            cost: record.cost.unwrap_or(MoneyPerFlow(0.0)),
             is_primary_output: false, // set to false for now and we'll fix up later
         };
 
@@ -190,7 +190,7 @@ fn validate_or_infer_primary_output(
     let mut output_flow = None;
     let mut outputs_count = 0;
     for (commodity_id, is_primary_output) in primary_outputs.iter() {
-        let is_output = flows_map.get(commodity_id).unwrap().coeff > EnergyPerActivity(0.0);
+        let is_output = flows_map.get(commodity_id).unwrap().coeff > FlowPerActivity(0.0);
         if is_output {
             outputs_count += 1;
         }
@@ -242,16 +242,16 @@ mod tests {
     fn flow(commodity: Rc<Commodity>, coeff: f64) -> ProcessFlow {
         ProcessFlow {
             commodity,
-            coeff: EnergyPerActivity(coeff),
+            coeff: FlowPerActivity(coeff),
             kind: FlowType::Fixed,
-            cost: MoneyPerEnergy(0.0),
+            cost: MoneyPerFlow(0.0),
             is_primary_output: false,
         }
     }
 
     fn create_process_flow_raw(
-        coeff: EnergyPerActivity,
-        cost: Option<MoneyPerEnergy>,
+        coeff: FlowPerActivity,
+        cost: Option<MoneyPerFlow>,
         is_primary_output: Option<bool>,
     ) -> ProcessFlowRaw {
         ProcessFlowRaw {
@@ -269,55 +269,49 @@ mod tests {
     #[test]
     fn test_validate_flow_raw() {
         // Valid
-        let valid = create_process_flow_raw(
-            EnergyPerActivity(1.0),
-            Some(MoneyPerEnergy(0.0)),
-            Some(false),
-        );
+        let valid =
+            create_process_flow_raw(FlowPerActivity(1.0), Some(MoneyPerFlow(0.0)), Some(false));
         assert!(valid.validate().is_ok());
 
         // Invalid: Bad flow value
+        let invalid =
+            create_process_flow_raw(FlowPerActivity(0.0), Some(MoneyPerFlow(0.0)), Some(false));
+        assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
-            EnergyPerActivity(0.0),
-            Some(MoneyPerEnergy(0.0)),
+            FlowPerActivity(f64::NAN),
+            Some(MoneyPerFlow(0.0)),
             Some(false),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
-            EnergyPerActivity(f64::NAN),
-            Some(MoneyPerEnergy(0.0)),
+            FlowPerActivity(f64::INFINITY),
+            Some(MoneyPerFlow(0.0)),
             Some(false),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
-            EnergyPerActivity(f64::INFINITY),
-            Some(MoneyPerEnergy(0.0)),
-            Some(false),
-        );
-        assert!(invalid.validate().is_err());
-        let invalid = create_process_flow_raw(
-            EnergyPerActivity(f64::NEG_INFINITY),
-            Some(MoneyPerEnergy(0.0)),
+            FlowPerActivity(f64::NEG_INFINITY),
+            Some(MoneyPerFlow(0.0)),
             Some(false),
         );
         assert!(invalid.validate().is_err());
 
         // Invalid: Bad flow cost value
         let invalid = create_process_flow_raw(
-            EnergyPerActivity(1.0),
-            Some(MoneyPerEnergy(f64::NAN)),
+            FlowPerActivity(1.0),
+            Some(MoneyPerFlow(f64::NAN)),
             Some(false),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
-            EnergyPerActivity(1.0),
-            Some(MoneyPerEnergy(f64::NEG_INFINITY)),
+            FlowPerActivity(1.0),
+            Some(MoneyPerFlow(f64::NEG_INFINITY)),
             Some(false),
         );
         assert!(invalid.validate().is_err());
         let invalid = create_process_flow_raw(
-            EnergyPerActivity(1.0),
-            Some(MoneyPerEnergy(f64::INFINITY)),
+            FlowPerActivity(1.0),
+            Some(MoneyPerFlow(f64::INFINITY)),
             Some(false),
         );
         assert!(invalid.validate().is_err());

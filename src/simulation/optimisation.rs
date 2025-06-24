@@ -6,7 +6,7 @@ use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{Activity, Energy, MoneyPerActivity};
+use crate::units::{Activity, Flow, MoneyPerActivity};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
@@ -15,7 +15,7 @@ mod constraints;
 use constraints::{add_asset_constraints, ConstraintKeys};
 
 /// A map of commodity flows calculated during the optimisation
-pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), Energy>;
+pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), Flow>;
 
 /// A decision variable in the optimisation
 ///
