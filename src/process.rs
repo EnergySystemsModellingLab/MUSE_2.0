@@ -101,8 +101,8 @@ impl ProcessFlow {
             .unwrap();
         let apply_levy = match levy.balance_type {
             BalanceType::Net => true,
-            BalanceType::Consumption => self.coeff < FlowPerActivity(0.0),
-            BalanceType::Production => self.coeff > FlowPerActivity(0.0),
+            BalanceType::Consumption => self.is_input(),
+            BalanceType::Production => self.is_output(),
         };
 
         if apply_levy {
@@ -110,6 +110,16 @@ impl ProcessFlow {
         } else {
             MoneyPerFlow(0.0)
         }
+    }
+
+    /// Returns true if this flow is an input (i.e., coeff < 0)
+    pub fn is_input(&self) -> bool {
+        self.coeff < FlowPerActivity(0.0)
+    }
+
+    /// Returns true if this flow is an output (i.e., coeff > 0)
+    pub fn is_output(&self) -> bool {
+        self.coeff > FlowPerActivity(0.0)
     }
 }
 
@@ -621,5 +631,46 @@ mod tests {
             flow_with_cost.get_total_cost(&region_id, 2020, &time_slice),
             MoneyPerActivity(0.0)
         );
+    }
+
+    #[test]
+    fn test_is_input_and_is_output() {
+        let commodity = Rc::new(Commodity {
+            id: "test_commodity".into(),
+            description: "Test commodity".into(),
+            kind: CommodityType::ServiceDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            levies: CommodityLevyMap::new(),
+            demand: DemandMap::new(),
+        });
+
+        let flow_in = ProcessFlow {
+            commodity: Rc::clone(&commodity),
+            coeff: FlowPerActivity(-1.0),
+            kind: FlowType::Fixed,
+            cost: MoneyPerFlow(0.0),
+            is_primary_output: false,
+        };
+        let flow_out = ProcessFlow {
+            commodity: Rc::clone(&commodity),
+            coeff: FlowPerActivity(1.0),
+            kind: FlowType::Fixed,
+            cost: MoneyPerFlow(0.0),
+            is_primary_output: false,
+        };
+        let flow_zero = ProcessFlow {
+            commodity: Rc::clone(&commodity),
+            coeff: FlowPerActivity(0.0),
+            kind: FlowType::Fixed,
+            cost: MoneyPerFlow(0.0),
+            is_primary_output: false,
+        };
+
+        assert!(flow_in.is_input());
+        assert!(!flow_in.is_output());
+        assert!(flow_out.is_output());
+        assert!(!flow_out.is_input());
+        assert!(!flow_zero.is_input());
+        assert!(!flow_zero.is_output());
     }
 }

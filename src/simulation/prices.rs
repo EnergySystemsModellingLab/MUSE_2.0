@@ -4,7 +4,7 @@ use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{FlowPerActivity, MoneyPerFlow};
+use crate::units::MoneyPerFlow;
 use log::warn;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -53,10 +53,7 @@ impl CommodityPrices {
         let mut highest_duals = HashMap::new();
         for (asset, time_slice, dual) in solution.iter_activity_duals() {
             // Iterate over all output flows
-            for flow in asset
-                .iter_flows()
-                .filter(|flow| flow.coeff > FlowPerActivity(0.0))
-            {
+            for flow in asset.iter_flows().filter(|flow| flow.is_output()) {
                 // Update the highest dual for this commodity/timeslice
                 highest_duals
                     .entry((
