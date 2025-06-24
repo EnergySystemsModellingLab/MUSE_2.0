@@ -190,7 +190,7 @@ fn validate_or_infer_primary_output(
     let mut output_flow = None;
     let mut outputs_count = 0;
     for (commodity_id, is_primary_output) in primary_outputs.iter() {
-        let is_output = flows_map.get(commodity_id).unwrap().coeff > FlowPerActivity(0.0);
+        let is_output = flows_map.get(commodity_id).unwrap().is_output();
         if is_output {
             outputs_count += 1;
         }

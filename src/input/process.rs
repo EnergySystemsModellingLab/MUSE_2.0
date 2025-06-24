@@ -6,7 +6,7 @@ use crate::process::{
 };
 use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
-use crate::units::{Flow, FlowPerActivity};
+use crate::units::Flow;
 use anyhow::{ensure, Context, Ok, Result};
 use itertools::iproduct;
 use serde::Deserialize;
@@ -200,7 +200,7 @@ fn validate_other_commodity(
     let mut is_producer = None;
     for flows in flows.values().flat_map(|flows| flows.values()) {
         if let Some(flow) = flows.get(commodity_id) {
-            let cur_is_producer = flow.coeff > FlowPerActivity(0.0);
+            let cur_is_producer = flow.is_output();
             if let Some(is_producer) = is_producer {
                 ensure!(
                     is_producer == cur_is_producer,
@@ -233,9 +233,9 @@ fn validate_sed_commodity(
     for flows in flows.values() {
         let flows = flows.get(&(region_id.clone(), year)).unwrap();
         if let Some(flow) = flows.get(&commodity_id.clone()) {
-            if flow.coeff > FlowPerActivity(0.0) {
+            if flow.is_output() {
                 has_producer = true;
-            } else if flow.coeff < FlowPerActivity(0.0) {
+            } else if flow.is_input() {
                 has_consumer = true;
             }
         }
@@ -279,7 +279,7 @@ fn validate_svd_commodity(
             continue;
         };
         ensure!(
-            flow.coeff > FlowPerActivity(0.0),
+            flow.is_output(),
             "SVD commodity {} is consumed by process {}. \
             SVD commodities can only be produced, not consumed.",
             commodity.id,
