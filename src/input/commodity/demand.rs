@@ -6,7 +6,7 @@ use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
 use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel};
-use crate::units::Energy;
+use crate::units::Flow;
 use anyhow::{ensure, Result};
 use itertools::iproduct;
 use serde::Deserialize;
@@ -25,11 +25,11 @@ struct Demand {
     /// The year of the demand entry
     year: u32,
     /// Annual demand quantity
-    demand: Energy,
+    demand: Flow,
 }
 
 /// A map relating commodity, region and year to annual demand
-pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), (TimeSliceLevel, Energy)>;
+pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), (TimeSliceLevel, Flow)>;
 
 /// A map containing a references to commodities
 pub type BorrowedCommodityMap<'a> = HashMap<CommodityID, &'a Commodity>;
@@ -133,7 +133,7 @@ where
         );
 
         ensure!(
-            demand.demand.is_normal() && demand.demand > Energy(0.0),
+            demand.demand.is_normal() && demand.demand > Flow(0.0),
             "Demand must be a valid number greater than zero"
         );
 
@@ -232,13 +232,13 @@ mod tests {
                 year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: Energy(10.0),
+                demand: Flow(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: Energy(11.0),
+                demand: Flow(11.0),
             },
         ];
 
@@ -261,13 +261,13 @@ mod tests {
                 year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity2".to_string(),
-                demand: Energy(10.0),
+                demand: Flow(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: Energy(11.0),
+                demand: Flow(11.0),
             },
         ];
         assert_error!(
@@ -288,13 +288,13 @@ mod tests {
                 year: 2020,
                 region_id: "FRA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: Energy(10.0),
+                demand: Flow(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: Energy(11.0),
+                demand: Flow(11.0),
             },
         ];
         assert_error!(
@@ -315,13 +315,13 @@ mod tests {
                 year: 2010,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: Energy(10.0),
+                demand: Flow(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: Energy(11.0),
+                demand: Flow(11.0),
             },
         ];
         assert_error!(
@@ -348,7 +348,7 @@ mod tests {
             year: 2020,
             region_id: "GBR".to_string(),
             commodity_id: "commodity1".to_string(),
-            demand: Energy(quantity),
+            demand: Flow(quantity),
         }];
         assert_error!(
             read_demand_from_iter(demand.into_iter(), &svd_commodities, &region_ids, &[2020],),
@@ -368,19 +368,19 @@ mod tests {
                 year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: Energy(10.0),
+                demand: Flow(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "GBR".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: Energy(10.0),
+                demand: Flow(10.0),
             },
             Demand {
                 year: 2020,
                 region_id: "USA".to_string(),
                 commodity_id: "commodity1".to_string(),
-                demand: Energy(11.0),
+                demand: Flow(11.0),
             },
         ];
         assert_error!(
@@ -400,7 +400,7 @@ mod tests {
             year: 2020,
             region_id: "GBR".to_string(),
             commodity_id: "commodity1".to_string(),
-            demand: Energy(10.0),
+            demand: Flow(10.0),
         };
         assert!(read_demand_from_iter(
             std::iter::once(demand),
@@ -433,11 +433,11 @@ mod tests {
         let expected = AnnualDemandMap::from_iter([
             (
                 ("commodity1".into(), "GBR".into(), 2020),
-                (TimeSliceLevel::DayNight, Energy(10.0)),
+                (TimeSliceLevel::DayNight, Flow(10.0)),
             ),
             (
                 ("commodity1".into(), "USA".into(), 2020),
-                (TimeSliceLevel::DayNight, Energy(11.0)),
+                (TimeSliceLevel::DayNight, Flow(11.0)),
             ),
         ]);
         let demand =

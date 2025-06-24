@@ -131,19 +131,19 @@ macro_rules! unit_struct {
 
 // Base quantities
 unit_struct!(Money);
-unit_struct!(Energy);
+unit_struct!(Flow);
 unit_struct!(Activity);
 unit_struct!(Capacity);
 unit_struct!(Year);
 
 // Derived quantities
 unit_struct!(MoneyPerYear);
-unit_struct!(MoneyPerEnergy);
+unit_struct!(MoneyPerFlow);
 unit_struct!(MoneyPerCapacity);
 unit_struct!(MoneyPerCapacityPerYear);
 unit_struct!(MoneyPerActivity);
 unit_struct!(ActivityPerCapacity);
-unit_struct!(EnergyPerActivity);
+unit_struct!(FlowPerActivity);
 
 macro_rules! impl_div {
     ($Lhs:ident, $Rhs:ident, $Out:ident) => {
@@ -181,11 +181,11 @@ macro_rules! impl_div {
 }
 
 // Division rules for derived quantities
-impl_div!(Energy, Activity, EnergyPerActivity);
+impl_div!(Flow, Activity, FlowPerActivity);
 impl_div!(Money, Year, MoneyPerYear);
-impl_div!(Money, Energy, MoneyPerEnergy);
+impl_div!(Money, Flow, MoneyPerFlow);
 impl_div!(Money, Capacity, MoneyPerCapacity);
 impl_div!(Money, Activity, MoneyPerActivity);
 impl_div!(Activity, Capacity, ActivityPerCapacity);
 impl_div!(MoneyPerYear, Capacity, MoneyPerCapacityPerYear);
-impl_div!(MoneyPerActivity, EnergyPerActivity, MoneyPerEnergy);
+impl_div!(MoneyPerActivity, FlowPerActivity, MoneyPerFlow);
