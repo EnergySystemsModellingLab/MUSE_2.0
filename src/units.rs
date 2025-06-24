@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::ops::{AddAssign, SubAssign};
+use std::ops::{AddAssign, Mul, SubAssign};
 
 macro_rules! base_unit_struct {
     ($name:ident) => {
@@ -20,12 +20,6 @@ macro_rules! base_unit_struct {
         )]
         pub struct $name(pub f64);
 
-        impl std::ops::Mul<$name> for $name {
-            type Output = $name;
-            fn mul(self, rhs: $name) -> $name {
-                $name(self.0 * rhs.0)
-            }
-        }
         impl std::ops::Div<$name> for $name {
             type Output = Dimensionless;
             fn div(self, rhs: $name) -> Dimensionless {
@@ -91,6 +85,14 @@ impl From<f64> for Dimensionless {
 impl From<Dimensionless> for f64 {
     fn from(val: Dimensionless) -> Self {
         val.0
+    }
+}
+
+impl Mul for Dimensionless {
+    type Output = Dimensionless;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Dimensionless(self.0 * rhs.0)
     }
 }
 
