@@ -3,7 +3,7 @@
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
 use crate::id::{define_id_type, IDCollection};
-use crate::units::Dimensionless;
+use crate::units::{Dimensionless, UnitType};
 use anyhow::{bail, Context, Result};
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
@@ -373,12 +373,12 @@ impl TimeSliceInfo {
     /// # Returns
     ///
     /// An iterator of time slices along with a fraction of `value`.
-    pub fn calculate_share<'a>(
+    pub fn calculate_share<'a, T: UnitType>(
         &'a self,
         selection: &'a TimeSliceSelection,
         level: TimeSliceLevel,
-        value: Dimensionless,
-    ) -> Option<impl Iterator<Item = (TimeSliceSelection, Dimensionless)>> {
+        value: T,
+    ) -> Option<impl Iterator<Item = (TimeSliceSelection, T)>> {
         let iter = self
             .iter_selection_share(selection, level)?
             .map(move |(selection, share)| (selection, value * share));
