@@ -8,9 +8,10 @@ use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel};
 use crate::units::Flow;
 use anyhow::{ensure, Result};
+use indexmap::IndexSet;
 use itertools::iproduct;
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 
 const DEMAND_FILE_NAME: &str = "demand.csv";
@@ -50,7 +51,7 @@ pub type BorrowedCommodityMap<'a> = HashMap<CommodityID, &'a Commodity>;
 pub fn read_demand(
     model_dir: &Path,
     commodities: &IndexMap<CommodityID, Commodity>,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<HashMap<CommodityID, DemandMap>> {
@@ -82,7 +83,7 @@ pub fn read_demand(
 fn read_demand_file(
     model_dir: &Path,
     svd_commodities: &BorrowedCommodityMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<AnnualDemandMap> {
     let file_path = model_dir.join(DEMAND_FILE_NAME);
@@ -107,7 +108,7 @@ fn read_demand_file(
 fn read_demand_from_iter<I>(
     iter: I,
     svd_commodities: &BorrowedCommodityMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<AnnualDemandMap>
 where
@@ -225,7 +226,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[rstest]
-    fn test_read_demand_from_iter(svd_commodity: Commodity, region_ids: HashSet<RegionID>) {
+    fn test_read_demand_from_iter(svd_commodity: Commodity, region_ids: IndexSet<RegionID>) {
         let svd_commodities = get_svd_map(&svd_commodity);
         let demand = [
             Demand {
@@ -252,7 +253,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_from_iter_bad_commodity_id(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         // Bad commodity ID
         let svd_commodities = get_svd_map(&svd_commodity);
@@ -279,7 +280,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_from_iter_bad_region_id(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         // Bad region ID
         let svd_commodities = get_svd_map(&svd_commodity);
@@ -306,7 +307,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_from_iter_bad_year(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         // Bad year
         let svd_commodities = get_svd_map(&svd_commodity);
@@ -339,7 +340,7 @@ mod tests {
     #[case(f64::INFINITY)]
     fn test_read_demand_from_iter_bad_demand(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
         #[case] quantity: f64,
     ) {
         // Bad demand quantity
@@ -359,7 +360,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_from_iter_multiple_entries(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         // Multiple entries for same commodity and region
         let svd_commodities = get_svd_map(&svd_commodity);
@@ -392,7 +393,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_from_iter_missing_year(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         // Missing entry for a milestone year
         let svd_commodities = get_svd_map(&svd_commodity);
@@ -425,7 +426,7 @@ mod tests {
     }
 
     #[rstest]
-    fn test_read_demand_file(svd_commodity: Commodity, region_ids: HashSet<RegionID>) {
+    fn test_read_demand_file(svd_commodity: Commodity, region_ids: IndexSet<RegionID>) {
         let svd_commodities = get_svd_map(&svd_commodity);
         let dir = tempdir().unwrap();
         create_demand_file(dir.path());

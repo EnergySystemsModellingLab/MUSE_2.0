@@ -4,7 +4,7 @@ use crate::commodity::{Commodity, CommodityID, CommodityMap};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;
 use anyhow::Result;
-use std::collections::HashSet;
+use indexmap::IndexSet;
 use std::path::Path;
 
 mod levy;
@@ -29,7 +29,7 @@ const COMMODITY_FILE_NAME: &str = "commodities.csv";
 /// A map containing commodities, grouped by commodity ID or an error.
 pub fn read_commodities(
     model_dir: &Path,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<CommodityMap> {

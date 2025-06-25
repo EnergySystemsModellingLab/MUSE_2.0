@@ -7,8 +7,9 @@ use crate::time_slice::TimeSliceInfo;
 use crate::units::MoneyPerFlow;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 
 const COMMODITY_LEVIES_FILE_NAME: &str = "commodity_levies.csv";
@@ -45,8 +46,8 @@ struct CommodityLevyRaw {
 /// A map containing levies, grouped by commodity ID.
 pub fn read_commodity_levies(
     model_dir: &Path,
-    commodity_ids: &HashSet<CommodityID>,
-    region_ids: &HashSet<RegionID>,
+    commodity_ids: &IndexSet<CommodityID>,
+    region_ids: &IndexSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<HashMap<CommodityID, CommodityLevyMap>> {
@@ -64,8 +65,8 @@ pub fn read_commodity_levies(
 
 fn read_commodity_levies_iter<I>(
     iter: I,
-    commodity_ids: &HashSet<CommodityID>,
-    region_ids: &HashSet<RegionID>,
+    commodity_ids: &IndexSet<CommodityID>,
+    region_ids: &IndexSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<HashMap<CommodityID, CommodityLevyMap>>
@@ -76,7 +77,7 @@ where
 
     // Keep track of commodity/region combinations specified. We will check that all years and
     // time slices are covered for each commodity/region combination.
-    let mut commodity_regions: HashMap<CommodityID, HashSet<RegionID>> = HashMap::new();
+    let mut commodity_regions: HashMap<CommodityID, IndexSet<RegionID>> = HashMap::new();
 
     for cost in iter {
         let commodity_id = commodity_ids.get_id(&cost.commodity_id)?;
@@ -124,7 +125,7 @@ where
 
 fn validate_commodity_levy_map(
     map: &CommodityLevyMap,
-    regions: &HashSet<RegionID>,
+    regions: &IndexSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
@@ -147,16 +148,14 @@ fn validate_commodity_levy_map(
 
 #[cfg(test)]
 mod tests {
-    use std::iter;
-
     use super::*;
     use crate::fixture::{assert_error, region_id, time_slice, time_slice_info};
     use crate::time_slice::TimeSliceID;
     use rstest::{fixture, rstest};
 
     #[fixture]
-    fn region_ids(region_id: RegionID) -> HashSet<RegionID> {
-        iter::once(region_id).collect()
+    fn region_ids(region_id: RegionID) -> IndexSet<RegionID> {
+        IndexSet::from([region_id])
     }
 
     #[fixture]
@@ -175,7 +174,7 @@ mod tests {
     fn test_validate_commodity_levies_map_valid(
         cost_map: CommodityLevyMap,
         time_slice_info: TimeSliceInfo,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         // Valid map
         assert!(
@@ -189,7 +188,7 @@ mod tests {
         time_slice_info: TimeSliceInfo,
     ) {
         // Missing region
-        let region_ids = HashSet::from(["GBR".into(), "FRA".into()]);
+        let region_ids = IndexSet::from(["GBR".into(), "FRA".into()]);
         assert_error!(
             validate_commodity_levy_map(&cost_map, &region_ids, &[2020], &time_slice_info),
             "Missing cost for region FRA, year 2020, time slice winter.day"
@@ -200,7 +199,7 @@ mod tests {
     fn test_validate_commodity_levies_map_invalid_missing_year(
         cost_map: CommodityLevyMap,
         time_slice_info: TimeSliceInfo,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         // Missing year
         assert_error!(
@@ -212,7 +211,7 @@ mod tests {
     #[rstest]
     fn test_validate_commodity_levies_map_invalid(
         cost_map: CommodityLevyMap,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         // Missing time slice
         let time_slice = TimeSliceID {

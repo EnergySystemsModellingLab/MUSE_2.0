@@ -8,9 +8,10 @@ use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use crate::units::Flow;
 use anyhow::{ensure, Context, Ok, Result};
+use indexmap::IndexSet;
 use itertools::iproduct;
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -50,7 +51,7 @@ define_id_getter! {ProcessRaw, ProcessID}
 pub fn read_processes(
     model_dir: &Path,
     commodities: &CommodityMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<ProcessMap> {
@@ -90,7 +91,7 @@ pub fn read_processes(
 fn read_processes_file(
     model_dir: &Path,
     milestone_years: &[u32],
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
 ) -> Result<ProcessMap> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let processes_csv = read_csv(&file_path)?;
@@ -101,7 +102,7 @@ fn read_processes_file(
 fn read_processes_file_from_iter<I>(
     iter: I,
     milestone_years: &[u32],
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
 ) -> Result<ProcessMap>
 where
     I: Iterator<Item = ProcessRaw>,
@@ -154,7 +155,7 @@ fn validate_commodities(
     commodities: &CommodityMap,
     flows: &HashMap<ProcessID, ProcessFlowsMap>,
     availabilities: &HashMap<ProcessID, ProcessActivityLimitsMap>,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {

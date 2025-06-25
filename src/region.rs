@@ -1,9 +1,8 @@
 //! Regions represent different geographical areas in which agents, processes, etc. are active.
 use crate::id::{define_id_getter, define_id_type, IDCollection};
 use anyhow::{ensure, Result};
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use serde::Deserialize;
-use std::collections::HashSet;
 
 define_id_type! {RegionID}
 
@@ -24,7 +23,7 @@ define_id_getter! {Region, RegionID}
 ///
 /// The string can be either "all" (case-insensitive), a single region, or a semicolon-separated
 /// list of regions (e.g. "GBR;FRA;USA" or "GBR; FRA; USA")
-pub fn parse_region_str(s: &str, region_ids: &HashSet<RegionID>) -> Result<HashSet<RegionID>> {
+pub fn parse_region_str(s: &str, region_ids: &IndexSet<RegionID>) -> Result<IndexSet<RegionID>> {
     let s = s.trim();
     ensure!(!s.is_empty(), "No regions provided");
 
@@ -43,7 +42,7 @@ mod tests {
 
     #[test]
     fn test_parse_region_str() {
-        let region_ids: HashSet<RegionID> = ["GBR".into(), "USA".into()].into_iter().collect();
+        let region_ids: IndexSet<RegionID> = ["GBR".into(), "USA".into()].into_iter().collect();
 
         // List of regions
         let parsed = parse_region_str("GBR;USA", &region_ids).unwrap();

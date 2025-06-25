@@ -338,9 +338,9 @@ mod tests {
         ActivityPerCapacity, Dimensionless, MoneyPerActivity, MoneyPerCapacity,
         MoneyPerCapacityPerYear,
     };
+    use indexmap::IndexSet;
     use itertools::{assert_equal, Itertools};
     use rstest::{fixture, rstest};
-    use std::collections::HashSet;
     use std::iter;
     use std::ops::RangeInclusive;
 
@@ -414,7 +414,7 @@ mod tests {
             activity_limits: ProcessActivityLimitsMap::new(),
             flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
-            regions: HashSet::from(["GBR".into()]),
+            regions: IndexSet::from(["GBR".into()]),
         });
         let future = [2020, 2010]
             .map(|year| {
@@ -467,7 +467,7 @@ mod tests {
             activity_limits,
             flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
-            regions: HashSet::from(["GBR".into()]),
+            regions: IndexSet::from(["GBR".into()]),
         });
         let asset = Asset::new(
             "agent1".into(),

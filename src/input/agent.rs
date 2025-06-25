@@ -8,8 +8,8 @@ use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
 use crate::region::{parse_region_str, RegionID};
 use anyhow::{bail, ensure, Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
-use std::collections::HashSet;
 use std::path::Path;
 
 mod objective;
@@ -54,7 +54,7 @@ pub fn read_agents(
     model_dir: &Path,
     commodities: &CommodityMap,
     processes: &ProcessMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<AgentMap> {
     let mut agents = read_agents_file(model_dir, region_ids)?;
@@ -105,14 +105,14 @@ pub fn read_agents(
 /// # Returns
 ///
 /// A map of Agents, with the agent ID as the key
-fn read_agents_file(model_dir: &Path, region_ids: &HashSet<RegionID>) -> Result<AgentMap> {
+fn read_agents_file(model_dir: &Path, region_ids: &IndexSet<RegionID>) -> Result<AgentMap> {
     let file_path = model_dir.join(AGENT_FILE_NAME);
     let agents_csv = read_csv(&file_path)?;
     read_agents_file_from_iter(agents_csv, region_ids).with_context(|| input_err_msg(&file_path))
 }
 
 /// Read agents info from an iterator.
-fn read_agents_file_from_iter<I>(iter: I, region_ids: &HashSet<RegionID>) -> Result<AgentMap>
+fn read_agents_file_from_iter<I>(iter: I, region_ids: &IndexSet<RegionID>) -> Result<AgentMap>
 where
     I: Iterator<Item = AgentRaw>,
 {
@@ -173,7 +173,7 @@ mod tests {
     #[test]
     fn test_read_agents_file_from_iter() {
         // Valid case
-        let region_ids = HashSet::from(["GBR".into()]);
+        let region_ids = IndexSet::from(["GBR".into()]);
         let agent = AgentRaw {
             id: "agent".into(),
             description: "".into(),
@@ -188,7 +188,7 @@ mod tests {
             search_space: AgentSearchSpaceMap::new(),
             decision_rule: DecisionRule::Single,
             cost_limits: AgentCostLimitsMap::new(),
-            regions: HashSet::from(["GBR".into()]),
+            regions: IndexSet::from(["GBR".into()]),
             objectives: AgentObjectiveMap::new(),
         };
         let expected = AgentMap::from_iter(iter::once(("agent".into(), agent_out)));
