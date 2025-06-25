@@ -129,8 +129,8 @@ where
             })?;
 
         // Get regions
-        let process_regions = process.regions.clone();
-        let parameter_regions = parse_region_str(&param_raw.regions, &process_regions)
+        let process_regions = &process.regions;
+        let parameter_regions = parse_region_str(&param_raw.regions, process_regions)
             .with_context(|| {
                 format!("Invalid region for process {id}. Valid regions are {process_regions:?}")
             })?;
