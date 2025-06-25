@@ -7,6 +7,7 @@ use crate::region::RegionID;
 use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -39,7 +40,7 @@ pub fn read_agent_commodity_portions(
     model_dir: &Path,
     agents: &AgentMap,
     commodities: &CommodityMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, AgentCommodityPortionsMap>> {
     let file_path = model_dir.join(AGENT_COMMODITIES_FILE_NAME);
@@ -58,7 +59,7 @@ fn read_agent_commodity_portions_from_iter<I>(
     iter: I,
     agents: &AgentMap,
     commodities: &CommodityMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<HashMap<AgentID, AgentCommodityPortionsMap>>
 where
@@ -103,7 +104,7 @@ fn validate_agent_commodity_portions(
     agent_commodity_portions: &HashMap<AgentID, AgentCommodityPortionsMap>,
     agents: &AgentMap,
     commodities: &CommodityMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<()> {
     // CHECK 1: Each specified commodity must have data for all years
@@ -201,7 +202,7 @@ mod tests {
 
     #[test]
     fn test_validate_agent_commodity_portions() {
-        let region_ids = HashSet::from([RegionID::new("region1"), RegionID::new("region2")]);
+        let region_ids = IndexSet::from([RegionID::new("region1"), RegionID::new("region2")]);
         let milestone_years = [2020];
         let agents = IndexMap::from([(
             AgentID::new("agent1"),

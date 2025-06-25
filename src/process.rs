@@ -8,9 +8,9 @@ use crate::units::{
     ActivityPerCapacity, Dimensionless, FlowPerActivity, MoneyPerActivity, MoneyPerCapacity,
     MoneyPerCapacityPerYear, MoneyPerFlow,
 };
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use serde_string_enum::DeserializeLabeledStringEnum;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -50,7 +50,7 @@ pub struct Process {
     /// Additional parameters for this process
     pub parameters: ProcessParameterMap,
     /// The regions in which this process can operate
-    pub regions: HashSet<RegionID>,
+    pub regions: IndexSet<RegionID>,
 }
 
 /// Represents a maximum annual commodity coeff for a given process

@@ -7,9 +7,10 @@ use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use crate::units::Dimensionless;
 use anyhow::{ensure, Context, Result};
+use indexmap::IndexSet;
 use itertools::{iproduct, Itertools};
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 
 const DEMAND_SLICING_FILE_NAME: &str = "demand_slicing.csv";
@@ -38,7 +39,7 @@ pub type DemandSliceMap = HashMap<(CommodityID, RegionID, TimeSliceSelection), D
 pub fn read_demand_slices(
     model_dir: &Path,
     svd_commodities: &BorrowedCommodityMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap> {
     let file_path = model_dir.join(DEMAND_SLICING_FILE_NAME);
@@ -56,7 +57,7 @@ pub fn read_demand_slices(
 fn read_demand_slices_from_iter<I>(
     iter: I,
     svd_commodities: &BorrowedCommodityMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap>
 where
@@ -123,7 +124,7 @@ where
 /// * The demand fractions for all entries related to a commodity + region pair sum to one
 fn validate_demand_slices(
     svd_commodities: &BorrowedCommodityMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
     demand_slices: &DemandSliceMap,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
@@ -162,14 +163,14 @@ mod tests {
     use std::iter;
 
     #[fixture]
-    pub fn region_ids() -> HashSet<RegionID> {
-        iter::once("GBR".into()).collect()
+    pub fn region_ids() -> IndexSet<RegionID> {
+        IndexSet::from(["GBR".into()])
     }
 
     #[rstest]
     fn test_read_demand_slices_from_iter_valid(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Valid
@@ -200,7 +201,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_slices_from_iter_valid_multiple_time_slices(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         // Valid, multiple time slices
         let svd_commodities = get_svd_map(&svd_commodity);
@@ -300,7 +301,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_empty_file(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Empty CSV file
@@ -319,7 +320,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_bad_commodity(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Bad commodity
@@ -344,7 +345,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_bad_region(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Bad region
@@ -369,7 +370,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_bad_time_slice(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Bad time slice selection
@@ -394,7 +395,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_missing_time_slices(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         // Some time slices uncovered
         let svd_commodities = get_svd_map(&svd_commodity);
@@ -445,7 +446,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_duplicate_time_slice(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Same time slice twice
@@ -471,7 +472,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_season_time_slice_conflict(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Whole season and single time slice conflicting
@@ -503,7 +504,7 @@ mod tests {
     #[rstest]
     fn test_read_demand_slices_from_iter_invalid_bad_fractions(
         svd_commodity: Commodity,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
         time_slice_info: TimeSliceInfo,
     ) {
         // Fractions don't sum to one

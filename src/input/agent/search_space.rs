@@ -161,11 +161,12 @@ mod tests {
         ProcessActivityLimitsMap, ProcessFlowsMap, ProcessID, ProcessParameterMap,
     };
     use crate::region::RegionID;
+    use indexmap::IndexSet;
     use rstest::{fixture, rstest};
     use std::iter;
 
     #[fixture]
-    pub fn processes(region_ids: HashSet<RegionID>) -> ProcessMap {
+    pub fn processes(region_ids: IndexSet<RegionID>) -> ProcessMap {
         ["A", "B", "C"]
             .map(|id| {
                 let id: ProcessID = id.into();

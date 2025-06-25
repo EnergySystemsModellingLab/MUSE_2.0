@@ -17,9 +17,10 @@ use crate::units::{
     MoneyPerCapacityPerYear,
 };
 use indexmap::indexmap;
+use indexmap::IndexSet;
 use itertools::Itertools;
 use rstest::fixture;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::iter;
 use std::rc::Rc;
 
@@ -40,12 +41,12 @@ pub fn region_id() -> RegionID {
 }
 
 #[fixture]
-pub fn commodity_ids() -> HashSet<CommodityID> {
-    iter::once("commodity1".into()).collect()
+pub fn commodity_ids() -> IndexSet<CommodityID> {
+    IndexSet::from(["commodity1".into()])
 }
 
 #[fixture]
-pub fn region_ids() -> HashSet<RegionID> {
+pub fn region_ids() -> IndexSet<RegionID> {
     ["GBR".into(), "USA".into()].into_iter().collect()
 }
 
@@ -99,7 +100,7 @@ pub fn assets(asset: Asset) -> AssetPool {
 }
 
 #[fixture]
-pub fn process_parameter_map(region_ids: HashSet<RegionID>) -> ProcessParameterMap {
+pub fn process_parameter_map(region_ids: IndexSet<RegionID>) -> ProcessParameterMap {
     let parameter = Rc::new(ProcessParameter {
         capital_cost: MoneyPerCapacity(0.0),
         fixed_operating_cost: MoneyPerCapacityPerYear(0.0),
@@ -118,7 +119,7 @@ pub fn process_parameter_map(region_ids: HashSet<RegionID>) -> ProcessParameterM
 
 #[fixture]
 pub fn process(
-    region_ids: HashSet<RegionID>,
+    region_ids: IndexSet<RegionID>,
     process_parameter_map: ProcessParameterMap,
 ) -> Process {
     Process {
@@ -148,7 +149,7 @@ pub fn agents() -> AgentMap {
             search_space: AgentSearchSpaceMap::new(),
             decision_rule: DecisionRule::Single,
             cost_limits: AgentCostLimitsMap::new(),
-            regions: HashSet::new(),
+            regions: IndexSet::new(),
             objectives: AgentObjectiveMap::new(),
         },
     ))

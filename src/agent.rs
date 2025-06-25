@@ -5,10 +5,9 @@ use crate::id::{define_id_getter, define_id_type};
 use crate::process::Process;
 use crate::region::RegionID;
 use crate::units::{Dimensionless, Money};
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::rc::Rc;
 
 define_id_type! {AgentID}
@@ -47,7 +46,7 @@ pub struct Agent {
     /// Cost limits (e.g. capital cost, annual operating cost)
     pub cost_limits: AgentCostLimitsMap,
     /// The regions in which this agent operates.
-    pub regions: HashSet<RegionID>,
+    pub regions: IndexSet<RegionID>,
     /// The agent's objectives.
     pub objectives: AgentObjectiveMap,
 }

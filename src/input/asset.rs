@@ -7,9 +7,9 @@ use crate::process::ProcessMap;
 use crate::region::RegionID;
 use crate::units::Capacity;
 use anyhow::{Context, Result};
+use indexmap::IndexSet;
 use itertools::Itertools;
 use serde::Deserialize;
-use std::collections::HashSet;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -38,9 +38,9 @@ struct AssetRaw {
 /// A `HashMap` containing assets grouped by agent ID.
 pub fn read_assets(
     model_dir: &Path,
-    agent_ids: &HashSet<AgentID>,
+    agent_ids: &IndexSet<AgentID>,
     processes: &ProcessMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
 ) -> Result<Vec<Asset>> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
     let assets_csv = read_csv(&file_path)?;
@@ -62,9 +62,9 @@ pub fn read_assets(
 /// A [`Vec`] of [`Asset`]s or an error.
 fn read_assets_from_iter<I>(
     iter: I,
-    agent_ids: &HashSet<AgentID>,
+    agent_ids: &IndexSet<AgentID>,
     processes: &ProcessMap,
-    region_ids: &HashSet<RegionID>,
+    region_ids: &IndexSet<RegionID>,
 ) -> Result<Vec<Asset>>
 where
     I: Iterator<Item = AssetRaw>,
@@ -97,15 +97,15 @@ mod tests {
     use std::iter;
 
     #[fixture]
-    fn agent_ids() -> HashSet<AgentID> {
-        iter::once("agent1".into()).collect()
+    fn agent_ids() -> IndexSet<AgentID> {
+        IndexSet::from(["agent1".into()])
     }
 
     #[rstest]
     fn test_read_assets_from_iter_valid(
-        agent_ids: HashSet<AgentID>,
+        agent_ids: IndexSet<AgentID>,
         processes: ProcessMap,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         let asset_in = AssetRaw {
             agent_id: "agent1".into(),
@@ -153,9 +153,9 @@ mod tests {
         })]
     fn test_read_assets_from_iter_invalid(
         #[case] asset: AssetRaw,
-        agent_ids: HashSet<AgentID>,
+        agent_ids: IndexSet<AgentID>,
         processes: ProcessMap,
-        region_ids: HashSet<RegionID>,
+        region_ids: IndexSet<RegionID>,
     ) {
         assert!(
             read_assets_from_iter(iter::once(asset), &agent_ids, &processes, &region_ids).is_err()
