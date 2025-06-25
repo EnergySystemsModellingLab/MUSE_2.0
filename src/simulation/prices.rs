@@ -61,7 +61,7 @@ impl CommodityPrices {
         for (commodity_id, region_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
             let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
             let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
-            self.insert(commodity_id, region_id, time_slice, MoneyPerFlow(price));
+            self.0.insert(key, MoneyPerFlow(price));
         }
     }
 
