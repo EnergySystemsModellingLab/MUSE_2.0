@@ -1,7 +1,9 @@
 //! Functionality for running the MUSE 2.0 simulation.
-use crate::asset::AssetPool;
+use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::model::Model;
 use crate::output::DataWriter;
+use crate::process::ProcessMap;
+use crate::units::Capacity;
 use anyhow::Result;
 use log::info;
 use std::path::Path;
@@ -30,7 +32,7 @@ pub fn run(
     let mut writer = DataWriter::create(output_path, &model.model_path, debug_model)?;
 
     // Iterate over milestone years
-    let mut year_iter = model.iter_years();
+    let mut year_iter = model.iter_years().peekable();
     let year = year_iter.next().unwrap(); // NB: There will be at least one year
 
     info!("Milestone year: {year}");
@@ -42,7 +44,13 @@ pub fn run(
     assets.commission_new(year);
 
     // Dispatch optimisation
-    let solution = perform_dispatch_optimisation(&model, &assets, &[], year)?;
+    let candidates = if let Some(next_year) = year_iter.peek() {
+        candidate_assets_for_year(&model.processes, *next_year)
+    } else {
+        // If there is only one milestone year, there are no candidates for next year
+        Vec::new()
+    };
+    let solution = perform_dispatch_optimisation(&model, &assets, &candidates, year)?;
     let flow_map = solution.create_flow_map();
     let prices = CommodityPrices::calculate(&model, &solution, year);
 
@@ -72,4 +80,29 @@ pub fn run(
     writer.flush()?;
 
     Ok(())
+}
+
+/// Get all candidate assets for a specified year
+fn candidate_assets_for_year(processes: &ProcessMap, year: u32) -> Vec<AssetRef> {
+    let mut candidates = Vec::new();
+    for process in processes
+        .values()
+        .filter(move |process| process.active_for_year(year))
+    {
+        for region_id in process.regions.iter() {
+            candidates.push(
+                Asset::new(
+                    None,
+                    process.clone(),
+                    region_id.clone(),
+                    Capacity(0.0),
+                    year,
+                )
+                .unwrap()
+                .into(),
+            );
+        }
+    }
+
+    candidates
 }
