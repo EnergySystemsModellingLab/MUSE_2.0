@@ -1,10 +1,10 @@
 //! Code for adding constraints to the dispatch optimisation problem.
 use super::VariableMap;
-use crate::asset::{AssetPool, AssetRef};
+use crate::asset::{AssetIterator, AssetRef};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
+use crate::time_slice::{TimeSliceID, TimeSliceSelection};
 use highs::RowProblem as Problem;
 
 /// Corresponding variables for a constraint along with the row offset in the solution
@@ -55,23 +55,25 @@ pub struct ConstraintKeys {
 /// # Returns
 ///
 /// Keys for the different constraints.
-pub fn add_asset_constraints(
+pub fn add_asset_constraints<'a, I>(
     problem: &mut Problem,
     variables: &VariableMap,
-    model: &Model,
-    assets: &AssetPool,
+    model: &'a Model,
+    assets: I,
     year: u32,
-) -> ConstraintKeys {
+) -> ConstraintKeys
+where
+    I: Iterator<Item = &'a AssetRef> + Clone + 'a,
+{
     let commodity_balance_keys =
-        add_commodity_balance_constraints(problem, variables, model, assets, year);
+        add_commodity_balance_constraints(problem, variables, model, assets.clone(), year);
 
-    let capacity_keys =
-        add_activity_constraints(problem, variables, &model.time_slice_info, assets);
+    let activity_keys = add_activity_constraints(problem, variables);
 
     // Return constraint keys
     ConstraintKeys {
         commodity_balance_keys,
-        activity_keys: capacity_keys,
+        activity_keys,
     }
 }
 
@@ -82,13 +84,16 @@ pub fn add_asset_constraints(
 /// See description in [the dispatch optimisation documentation][1].
 ///
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#commodity-balance-constraints
-fn add_commodity_balance_constraints(
+fn add_commodity_balance_constraints<'a, I>(
     problem: &mut Problem,
     variables: &VariableMap,
-    model: &Model,
-    assets: &AssetPool,
+    model: &'a Model,
+    assets: I,
     year: u32,
-) -> CommodityBalanceKeys {
+) -> CommodityBalanceKeys
+where
+    I: Iterator<Item = &'a AssetRef> + Clone + 'a,
+{
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
@@ -107,7 +112,11 @@ fn add_commodity_balance_constraints(
                 .time_slice_info
                 .iter_selections_at_level(commodity.time_slice_level)
             {
-                for (asset, flow) in assets.iter_for_region_and_commodity(region_id, commodity_id) {
+                for (asset, flow) in assets
+                    .clone()
+                    .filter_region(region_id)
+                    .flows_for_commodity(commodity_id)
+                {
                     // If the commodity has a time slice level of season/annual, the constraint will
                     // cover multiple time slices
                     for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
@@ -144,25 +153,17 @@ fn add_commodity_balance_constraints(
 ///
 /// This ensures that assets do not exceed their specified capacity and availability for each time
 /// slice.
-fn add_activity_constraints(
-    problem: &mut Problem,
-    variables: &VariableMap,
-    time_slice_info: &TimeSliceInfo,
-    assets: &AssetPool,
-) -> ActivityKeys {
+fn add_activity_constraints(problem: &mut Problem, variables: &VariableMap) -> ActivityKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
     let mut keys = Vec::new();
-    for asset in assets.iter() {
-        for time_slice in time_slice_info.iter_ids() {
-            let var = variables.get(asset, time_slice);
-            let limits = asset.get_activity_limits(time_slice);
-            let limits = limits.start().value()..=limits.end().value();
+    for (asset, time_slice, var) in variables.iter() {
+        let limits = asset.get_activity_limits(time_slice);
+        let limits = limits.start().value()..=limits.end().value();
 
-            problem.add_row(limits, [(var, 1.0)]);
-            keys.push((asset.clone(), time_slice.clone()))
-        }
+        problem.add_row(limits, [(var, 1.0)]);
+        keys.push((asset.clone(), time_slice.clone()))
     }
 
     ActivityKeys { offset, keys }

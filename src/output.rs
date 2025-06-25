@@ -116,7 +116,7 @@ struct CommodityPriceRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ActivityDualsRow {
     milestone_year: u32,
-    asset_id: AssetID,
+    asset_id: Option<AssetID>,
     time_slice: TimeSliceID,
     value: f64,
 }
@@ -173,7 +173,7 @@ impl DebugDataWriter {
         for (asset, time_slice, value) in iter {
             let row = ActivityDualsRow {
                 milestone_year,
-                asset_id: asset.id.unwrap(),
+                asset_id: asset.id,
                 time_slice: time_slice.clone(),
                 value,
             };
@@ -476,7 +476,7 @@ mod tests {
         // Read back and compare
         let expected = ActivityDualsRow {
             milestone_year,
-            asset_id: asset.id.unwrap(),
+            asset_id: asset.id,
             time_slice,
             value,
         };

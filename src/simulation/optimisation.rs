@@ -10,6 +10,8 @@ use crate::units::{Activity, Flow, MoneyPerActivity};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
+use itertools::{chain, iproduct};
+use std::ops::Range;
 
 mod constraints;
 use constraints::{add_asset_constraints, ConstraintKeys};
@@ -37,8 +39,6 @@ pub struct VariableMap(IndexMap<(AssetRef, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
-    // **TODO:** Remove line below when we're using this
-    #[allow(dead_code)]
     fn get(&self, asset: &AssetRef, time_slice: &TimeSliceID) -> Variable {
         let key = (asset.clone(), time_slice.clone());
 
@@ -47,12 +47,21 @@ impl VariableMap {
             .get(&key)
             .expect("No variable found for given params")
     }
+
+    /// Iterate over the variable map
+    fn iter(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Variable)> {
+        self.0
+            .iter()
+            .map(|((asset, time_slice), var)| (asset, time_slice, *var))
+    }
 }
 
 /// The solution to the dispatch optimisation problem
 pub struct Solution<'a> {
     solution: highs::Solution,
     variables: VariableMap,
+    active_asset_var_idx: Range<usize>,
+    candidate_asset_var_idx: Range<usize>,
     time_slice_info: &'a TimeSliceInfo,
     constraint_keys: ConstraintKeys,
 }
@@ -66,16 +75,27 @@ impl Solution<'_> {
         // The decision variables represent assets' activity levels, not commodity flows. We
         // multiply this value by the flow coeffs to get commodity flows.
         let mut flows = FlowMap::new();
-        for ((asset, time_slice), activity) in self.variables.0.keys().zip(self.solution.columns())
-        {
+        for (asset, time_slice, activity) in self.iter_activity_for_active() {
             for flow in asset.iter_flows() {
                 let flow_key = (asset.clone(), flow.commodity.id.clone(), time_slice.clone());
-                let flow_value = Activity(*activity) * flow.coeff;
+                let flow_value = Activity(activity) * flow.coeff;
                 flows.insert(flow_key, flow_value);
             }
         }
 
         flows
+    }
+
+    /// Activity for each active asset
+    fn iter_activity_for_active(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, f64)> {
+        self.zip_var_keys_with_output(&self.active_asset_var_idx, self.solution.columns())
+    }
+
+    /// Reduced costs for candidate assets
+    pub fn iter_reduced_costs_for_candidates(
+        &self,
+    ) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, f64)> {
+        self.zip_var_keys_with_output(&self.candidate_asset_var_idx, self.solution.dual_columns())
     }
 
     /// Keys and dual values for commodity balance constraints.
@@ -102,6 +122,25 @@ impl Solution<'_> {
             .zip_duals(self.solution.dual_rows())
             .map(|((asset, time_slice), dual)| (asset, time_slice, dual))
     }
+
+    /// Zip a subset of keys in the variable map with a subset of the given output variable.
+    ///
+    /// # Arguments
+    ///
+    /// * `variable_idx` - The subset of variables to look at
+    /// * `output` - The output variable of interest
+    fn zip_var_keys_with_output<'a>(
+        &'a self,
+        variable_idx: &Range<usize>,
+        output: &'a [f64],
+    ) -> impl Iterator<Item = (&'a AssetRef, &'a TimeSliceID, f64)> {
+        assert!(variable_idx.end <= output.len());
+        self.variables
+            .0
+            .keys()
+            .zip(output[variable_idx.clone()].iter())
+            .map(|((asset, time_slice), value)| (asset, time_slice, *value))
+    }
 }
 
 /// Perform the dispatch optimisation.
@@ -113,7 +152,8 @@ impl Solution<'_> {
 /// # Arguments
 ///
 /// * `model` - The model
-/// * `assets` - The asset pool
+/// * `asset_pool` - The asset pool
+/// * `candidate_assets` - Candidate assets for inclusion in active pool
 /// * `year` - Current milestone year
 ///
 /// # Returns
@@ -121,15 +161,31 @@ impl Solution<'_> {
 /// A solution containing new commodity flows for assets and prices for (some) commodities.
 pub fn perform_dispatch_optimisation<'a>(
     model: &'a Model,
-    assets: &AssetPool,
+    asset_pool: &AssetPool,
+    candidate_assets: &[AssetRef],
     year: u32,
 ) -> Result<Solution<'a>> {
     // Set up problem
     let mut problem = Problem::default();
-    let variables = add_variables(&mut problem, model, assets, year);
+    let mut variables = VariableMap::default();
+    let active_asset_var_idx = add_variables(
+        &mut problem,
+        &mut variables,
+        &model.time_slice_info,
+        asset_pool.as_slice(),
+        year,
+    );
+    let candidate_asset_var_idx = add_variables(
+        &mut problem,
+        &mut variables,
+        &model.time_slice_info,
+        candidate_assets,
+        year,
+    );
 
     // Add constraints
-    let constraint_keys = add_asset_constraints(&mut problem, &variables, model, assets, year);
+    let all_assets = chain(asset_pool.iter(), candidate_assets.iter());
+    let constraint_keys = add_asset_constraints(&mut problem, &variables, model, all_assets, year);
 
     // Solve problem
     let mut highs_model = problem.optimise(Sense::Minimise);
@@ -148,6 +204,8 @@ pub fn perform_dispatch_optimisation<'a>(
         HighsModelStatus::Optimal => Ok(Solution {
             solution: solution.get_solution(),
             variables,
+            active_asset_var_idx,
+            candidate_asset_var_idx,
             time_slice_info: &model.time_slice_info,
             constraint_keys,
         }),
@@ -173,32 +231,29 @@ fn enable_highs_logging(model: &mut highs::Model) {
 /// # Arguments
 ///
 /// * `problem` - The optimisation problem
-/// * `model` - The model
-/// * `assets` - The asset pool
+/// * `variables` - The variable map
+/// * `time_slice_info` - Information about assets
+/// * `assets` - Assets to include
 /// * `year` - Current milestone year
-///
-/// # Returns
-///
-/// A [`VariableMap`] with the problem's variables as values.
 fn add_variables(
     problem: &mut Problem,
-    model: &Model,
-    assets: &AssetPool,
+    variables: &mut VariableMap,
+    time_slice_info: &TimeSliceInfo,
+    assets: &[AssetRef],
     year: u32,
-) -> VariableMap {
-    let mut variables = VariableMap::default();
+) -> Range<usize> {
+    // This line **must** come before we add more variables
+    let start = problem.num_cols();
 
-    for asset in assets.iter() {
-        for time_slice in model.time_slice_info.iter_ids() {
-            let coeff = calculate_cost_coefficient(asset, year, time_slice);
-            let var = problem.add_column(coeff.value(), 0.0..);
-            let key = (asset.clone(), time_slice.clone());
-            let existing = variables.0.insert(key, var).is_some();
-            assert!(!existing, "Duplicate entry for var");
-        }
+    for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
+        let coeff = calculate_cost_coefficient(asset, year, time_slice);
+        let var = problem.add_column(coeff.value(), 0.0..);
+        let key = (asset.clone(), time_slice.clone());
+        let existing = variables.0.insert(key, var).is_some();
+        assert!(!existing, "Duplicate entry for var");
     }
 
-    variables
+    start..problem.num_cols()
 }
 
 /// Calculate the cost coefficient for a decision variable

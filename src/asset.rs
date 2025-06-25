@@ -129,17 +129,15 @@ impl Asset {
 
 /// A wrapper around [`Asset`] for storing references in maps.
 ///
-/// An [`AssetRef`] is guaranteed to have been commissioned at some point, though it may
-/// subsequently have been decommissioned.
+/// If the asset has been commissioned, then comparison and hashing is done based on the asset ID,
+/// otherwise a combination of other parameters is used.
 ///
-/// [`AssetRef`]s must be created from `Rc<Asset>`s. If the asset has not been commissioned, this
-/// will panic.
+/// [`Ord`] is implemented for [`AssetRef`], but it will panic for non-commissioned assets.
 #[derive(Clone, Debug)]
 pub struct AssetRef(Rc<Asset>);
 
 impl From<Rc<Asset>> for AssetRef {
     fn from(value: Rc<Asset>) -> Self {
-        assert!(value.id.is_some());
         Self(value)
     }
 }
@@ -166,7 +164,15 @@ impl Deref for AssetRef {
 
 impl PartialEq for AssetRef {
     fn eq(&self, other: &Self) -> bool {
-        self.0.id == other.0.id
+        if self.0.id.is_some() {
+            self.0.id == other.0.id
+        } else {
+            other.0.id.is_none()
+                && self.0.agent_id == other.0.agent_id
+                && Rc::ptr_eq(&self.0.process, &other.0.process)
+                && self.0.region_id == other.0.region_id
+                && self.0.commission_year == other.0.commission_year
+        }
     }
 }
 
@@ -175,7 +181,14 @@ impl Eq for AssetRef {}
 impl Hash for AssetRef {
     /// Hash asset based purely on its ID
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.id.unwrap().hash(state);
+        if let Some(id) = self.0.id {
+            id.hash(state);
+        } else {
+            self.0.agent_id.hash(state);
+            self.0.process.id.hash(state);
+            self.0.region_id.hash(state);
+            self.0.commission_year.hash(state);
+        }
     }
 }
 
@@ -212,6 +225,11 @@ impl AssetPool {
             future: assets,
             next_id: 0,
         }
+    }
+
+    /// Get the active pool as a slice of [`AssetRef`]s
+    pub fn as_slice(&self) -> &[AssetRef] {
+        &self.active
     }
 
     /// Commission new assets for the specified milestone year from the input data
@@ -253,27 +271,8 @@ impl AssetPool {
     }
 
     /// Iterate over active assets
-    pub fn iter(&self) -> impl Iterator<Item = &AssetRef> {
+    pub fn iter(&self) -> std::slice::Iter<AssetRef> {
         self.active.iter()
-    }
-
-    /// Iterate over active assets for a particular region
-    pub fn iter_for_region<'a>(
-        &'a self,
-        region_id: &'a RegionID,
-    ) -> impl Iterator<Item = &'a AssetRef> {
-        self.iter().filter(|asset| asset.region_id == *region_id)
-    }
-
-    /// Iterate over the active assets in a given region that produce/consume a commodity with the
-    /// associated process flow
-    pub fn iter_for_region_and_commodity<'a>(
-        &'a self,
-        region_id: &'a RegionID,
-        commodity_id: &'a CommodityID,
-    ) -> impl Iterator<Item = (&'a AssetRef, &'a ProcessFlow)> {
-        self.iter_for_region(region_id)
-            .filter_map(|asset| Some((asset, asset.get_flow(commodity_id)?)))
     }
 
     /// Replace the active pool with new and/or already commissioned assets
@@ -297,6 +296,34 @@ impl AssetPool {
 
         // New pool may not have been sorted, but active needs to be sorted by ID
         self.active.sort();
+    }
+}
+
+/// Additional methods for iterating over assets
+pub trait AssetIterator<'a> {
+    /// Filter the assets by region
+    fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a;
+
+    /// Iterate over process flows affecting the given commodity
+    fn flows_for_commodity(
+        self,
+        commodity_id: &'a CommodityID,
+    ) -> impl Iterator<Item = (&'a AssetRef, &'a ProcessFlow)> + 'a;
+}
+
+impl<'a, I> AssetIterator<'a> for I
+where
+    I: Iterator<Item = &'a AssetRef> + 'a,
+{
+    fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a {
+        self.filter(move |asset| asset.region_id == *region_id)
+    }
+
+    fn flows_for_commodity(
+        self,
+        commodity_id: &'a CommodityID,
+    ) -> impl Iterator<Item = (&'a AssetRef, &'a ProcessFlow)> + 'a {
+        self.filter_map(|asset| Some((asset, asset.get_flow(commodity_id)?)))
     }
 }
 
