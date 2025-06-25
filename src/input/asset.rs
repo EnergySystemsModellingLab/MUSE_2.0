@@ -76,6 +76,11 @@ where
             .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
         let region_id = region_ids.get_id(&asset.region_id)?;
 
+        ensure!(
+            asset.capacity.is_finite() && asset.capacity > Capacity(0.0),
+            "Capacity must be a finite, positive number"
+        );
+
         Asset::new(
             Some(agent_id.clone()),
             Rc::clone(process),
