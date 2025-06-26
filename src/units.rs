@@ -69,6 +69,14 @@ macro_rules! base_unit_struct {
             pub fn abs(&self) -> Self {
                 $name(self.0.abs())
             }
+            /// Returns the max of two values
+            pub fn max(&self, other: Self) -> Self {
+                Self(self.0.max(other.0))
+            }
+            /// Returns the min of two values
+            pub fn min(&self, other: Self) -> Self {
+                Self(self.0.min(other.0))
+            }
         }
     };
 }

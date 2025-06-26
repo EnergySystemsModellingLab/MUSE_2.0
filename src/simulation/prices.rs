@@ -3,38 +3,30 @@ use super::optimisation::Solution;
 use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::time_slice::TimeSliceID;
 use crate::units::MoneyPerFlow;
-use log::warn;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use itertools::iproduct;
+use std::collections::{BTreeMap, HashMap};
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
 #[derive(Default)]
 pub struct CommodityPrices(BTreeMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>);
 
 impl CommodityPrices {
-    /// Calculate commodity prices based on the result of the dispatch optimisation
-    pub fn from_model_and_solution(model: &Model, solution: &Solution) -> Self {
+    /// Calculate commodity prices based on the result of the dispatch optimisation and input data.
+    ///
+    /// Note that it is possible that there will still be commodities without specified prices, if
+    /// they were not included in the dispatch optimisation and no levies were specified by the
+    /// user.
+    pub fn calculate(model: &Model, solution: &Solution, year: u32) -> Self {
         let mut prices = CommodityPrices::default();
-        let commodity_regions_updated = prices.add_from_solution(solution);
-
-        // Find commodity/region combinations not updated in last step
-        let mut remaining_commodity_regions = HashSet::new();
-        for commodity_id in model.commodities.keys() {
-            for region_id in model.regions.keys() {
-                let key = (commodity_id.clone(), region_id.clone());
-                if !commodity_regions_updated.contains(&key) {
-                    remaining_commodity_regions.insert(key);
-                }
-            }
-        }
-
-        prices.add_remaining(remaining_commodity_regions.iter(), &model.time_slice_info);
+        prices.add_from_duals(solution);
+        prices.add_from_levies(model, year);
 
         prices
     }
 
-    /// Add commodity prices for which there are values in the solution
+    /// Add commodity prices using activity and commodity balance duals.
     ///
     /// Commodity prices are calculated as the sum of the commodity balance duals and the highest
     /// activity dual for each commodity/timeslice.
@@ -42,13 +34,7 @@ impl CommodityPrices {
     /// # Arguments
     ///
     /// * `solution` - The solution to the dispatch optimisation
-    ///
-    /// # Returns
-    ///
-    /// The set of commodity/region pairs for which prices were added.
-    fn add_from_solution(&mut self, solution: &Solution) -> HashSet<(CommodityID, RegionID)> {
-        let mut commodity_regions_updated = HashSet::new();
-
+    fn add_from_duals(&mut self, solution: &Solution) {
         // Calculate highest activity dual for each commodity/region/timeslice
         let mut highest_duals = HashMap::new();
         for (asset, time_slice, dual) in solution.iter_activity_duals() {
@@ -75,27 +61,32 @@ impl CommodityPrices {
         for (commodity_id, region_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
             let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
             let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
-            self.insert(commodity_id, region_id, time_slice, MoneyPerFlow(price));
-            commodity_regions_updated.insert((commodity_id.clone(), region_id.clone()));
+            self.0.insert(key, MoneyPerFlow(price));
         }
-
-        commodity_regions_updated
     }
 
-    /// Add prices for any commodity not updated by the dispatch step.
+    /// Add prices based on levies/incentives.
+    ///
+    /// If a commodity already has a price based on the previous dual-based calculation, we choose
+    /// the higher of the two.
     ///
     /// # Arguments
     ///
-    /// * `commodity_regions` - Commodity/region pairs to update
-    /// * `time_slice_info` - Information about time slices
-    fn add_remaining<'a, I>(&mut self, commodity_regions: I, time_slice_info: &TimeSliceInfo)
-    where
-        I: Iterator<Item = &'a (CommodityID, RegionID)>,
-    {
-        for (commodity_id, region_id) in commodity_regions {
-            warn!("No prices calculated for commodity {commodity_id} in region {region_id}; setting to NaN");
-            for time_slice in time_slice_info.iter_ids() {
-                self.insert(commodity_id, region_id, time_slice, MoneyPerFlow(f64::NAN));
+    /// * `model` - The model
+    /// * `year` - The milestone year of interest
+    fn add_from_levies(&mut self, model: &Model, year: u32) {
+        for (region_id, time_slice) in
+            iproduct!(model.iter_regions(), model.time_slice_info.iter_ids())
+        {
+            let levy_key = (region_id.clone(), year, time_slice.clone());
+            for commodity in model.commodities.values() {
+                if let Some(levy) = commodity.levies.get(&levy_key) {
+                    let key = (commodity.id.clone(), region_id.clone(), time_slice.clone());
+                    self.0
+                        .entry(key)
+                        .and_modify(|price| *price = price.max(levy.value))
+                        .or_insert(levy.value);
+                }
             }
         }
     }
