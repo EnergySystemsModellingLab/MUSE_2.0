@@ -98,20 +98,32 @@ fn do_something_with_demand_tranches(
 ) {
     for ((commodity_id, region_id), &peak_load) in peak_load.iter() {
         let tranche_width = peak_load / Dimensionless(num_tranches as f64);
-        // let tranche_bottom = (Dimensionless(tranche_num as f64)) * tranche_width;
-        let tranche_top = Dimensionless((tranche_num + 1) as f64) * tranche_width;
+        let tranche_bottom = (Dimensionless(tranche_num as f64)) * tranche_width;
+        // let tranche_top = Dimensionless((tranche_num + 1) as f64) * tranche_width;
         // let tranche_top = Flow(4.0);
 
-        let mut sum_load = Flow(0.0);
-        for time_slice in time_slice_info.iter_ids() {
-            let load = load
+        // Load factor is equal to lengths of time slices during which tranche is active in this
+        // case. We need to divide by total time, but in our case this is always 1.0.
+        let mut load_factor = Dimensionless(0.0);
+        for (time_slice, ts_length) in time_slice_info.iter() {
+            let load = *load
                 .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
-                .unwrap()
-                .min(tranche_top);
-            sum_load += load;
+                .unwrap();
+            if load >= tranche_bottom {
+                load_factor += ts_length;
+            }
         }
-        let mean_load = sum_load / Dimensionless(time_slice_info.time_slices.len() as f64);
-        let load_factor = mean_load / tranche_top;
+
+        // let mut sum_load = Flow(0.0);
+        // for time_slice in time_slice_info.iter_ids() {
+        //     let load = load
+        //         .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+        //         .unwrap()
+        //         .min(tranche_top);
+        //     sum_load += load;
+        // }
+        // let mean_load = sum_load / Dimensionless(time_slice_info.time_slices.len() as f64);
+        // let load_factor = mean_load / tranche_top;
 
         info!(
             "Tranche {}: LF for {}: {}",
