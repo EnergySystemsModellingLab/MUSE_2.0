@@ -177,7 +177,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let time_slice_info = read_time_slice_info(model_dir.as_ref())?;
     let regions = read_regions(model_dir.as_ref())?;
     let region_ids = regions.keys().cloned().collect();
-    let years = &model_file.milestone_years.years;
+    let years = &model_file.milestone_years;
 
     let commodities = read_commodities(model_dir.as_ref(), &region_ids, &time_slice_info, years)?;
     let processes = read_processes(
@@ -203,7 +203,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
         .context("Could not parse path to model")?;
     let model = Model {
         model_path,
-        milestone_years: model_file.milestone_years.years,
+        milestone_years: model_file.milestone_years,
         agents,
         commodities,
         processes,
