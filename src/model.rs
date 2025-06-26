@@ -6,10 +6,13 @@ use crate::process::ProcessMap;
 use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
+use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
 const MODEL_FILE_NAME: &str = "model.toml";
+const DEFAULT_NUM_DEMAND_TRANCHES: u32 = 2;
+const VALID_NUM_DEMAND_TRANCHES_VALUES: RangeInclusive<u32> = 2..=6;
 
 /// Model definition
 pub struct Model {
@@ -17,6 +20,8 @@ pub struct Model {
     pub model_path: PathBuf,
     /// Milestone years for the simulation. Sorted.
     pub milestone_years: Vec<u32>,
+    /// Number of demand tranches
+    pub num_demand_tranches: u32,
     /// Agents for the simulation
     pub agents: AgentMap,
     /// Commodities for the simulation
@@ -32,8 +37,38 @@ pub struct Model {
 /// Represents the contents of the entire model file.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct ModelFile {
+    /// Number of demand tranches to use
+    #[serde(
+        default = "default_num_demand_tranches",
+        deserialize_with = "parse_num_demand_tranches"
+    )]
+    pub num_demand_tranches: u32,
     /// Milestone years
     pub milestone_years: Vec<u32>,
+}
+
+fn default_num_demand_tranches() -> u32 {
+    assert!(VALID_NUM_DEMAND_TRANCHES_VALUES.contains(&DEFAULT_NUM_DEMAND_TRANCHES));
+    DEFAULT_NUM_DEMAND_TRANCHES
+}
+
+/// Parse the number of demand tranches field
+fn parse_num_demand_tranches<'de, D>(deserialiser: D) -> Result<u32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    assert!(VALID_NUM_DEMAND_TRANCHES_VALUES.contains(&DEFAULT_NUM_DEMAND_TRANCHES));
+
+    let num = u32::deserialize(deserialiser)?;
+    if !VALID_NUM_DEMAND_TRANCHES_VALUES.contains(&num) {
+        Err(serde::de::Error::custom(format!(
+            "num_demand_tranches must be between {} and {}",
+            VALID_NUM_DEMAND_TRANCHES_VALUES.start(),
+            VALID_NUM_DEMAND_TRANCHES_VALUES.end()
+        )))?
+    }
+
+    Ok(num)
 }
 
 /// Check that the milestone years parameter is valid
@@ -69,6 +104,14 @@ impl ModelFile {
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelFile> {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path)?;
+
+        ensure!(
+            VALID_NUM_DEMAND_TRANCHES_VALUES.contains(&model_file.num_demand_tranches),
+            "num_demand_tranches must be between {} and {}",
+            VALID_NUM_DEMAND_TRANCHES_VALUES.start(),
+            VALID_NUM_DEMAND_TRANCHES_VALUES.end()
+        );
+
         check_milestone_years(&model_file.milestone_years)
             .with_context(|| input_err_msg(file_path))?;
 
