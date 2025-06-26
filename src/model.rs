@@ -32,15 +32,8 @@ pub struct Model {
 /// Represents the contents of the entire model file.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct ModelFile {
-    /// Milestone years section of model file
-    pub milestone_years: MilestoneYears,
-}
-
-/// Represents the "milestone_years" section of the model file.
-#[derive(Debug, Deserialize, PartialEq)]
-pub struct MilestoneYears {
     /// Milestone years
-    pub years: Vec<u32>,
+    pub milestone_years: Vec<u32>,
 }
 
 /// Check that the milestone years parameter is valid
@@ -76,7 +69,7 @@ impl ModelFile {
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelFile> {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path)?;
-        check_milestone_years(&model_file.milestone_years.years)
+        check_milestone_years(&model_file.milestone_years)
             .with_context(|| input_err_msg(file_path))?;
 
         Ok(model_file)
@@ -119,10 +112,10 @@ mod tests {
         let dir = tempdir().unwrap();
         {
             let mut file = File::create(dir.path().join(MODEL_FILE_NAME)).unwrap();
-            writeln!(file, "[milestone_years]\nyears = [2020, 2100]").unwrap();
+            writeln!(file, "milestone_years = [2020, 2100]").unwrap();
         }
 
         let model_file = ModelFile::from_path(dir.path()).unwrap();
-        assert_eq!(model_file.milestone_years.years, [2020, 2100]);
+        assert_eq!(model_file.milestone_years, [2020, 2100]);
     }
 }
