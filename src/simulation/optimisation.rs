@@ -261,7 +261,7 @@ fn add_variables(
 }
 
 /// Calculate the cost coefficient for a decision variable
-fn calculate_cost_coefficient(
+pub fn calculate_cost_coefficient(
     asset: &Asset,
     year: u32,
     time_slice: &TimeSliceID,
