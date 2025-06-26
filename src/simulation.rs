@@ -14,6 +14,7 @@ pub mod investment;
 use investment::perform_agent_investment;
 pub mod prices;
 pub use prices::CommodityPrices;
+pub mod demand;
 
 /// Run the simulation.
 ///
