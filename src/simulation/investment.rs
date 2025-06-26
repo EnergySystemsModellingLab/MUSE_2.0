@@ -5,10 +5,14 @@ use crate::asset::AssetPool;
 use crate::commodity::{CommodityID, CommodityMap, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
-use crate::time_slice::TimeSliceID;
-use crate::units::Flow;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::units::{Dimensionless, Flow, FlowPerYear};
+use indexmap::IndexMap;
 use log::info;
 use std::collections::HashMap;
+use std::ops::Range;
+
+type DemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
@@ -26,18 +30,37 @@ pub fn perform_agent_investment(
 ) {
     info!("Performing agent investment...");
 
-    let _demand = calculate_svd_demand_profile(&model.commodities, flow_map);
+    let demand = calculate_svd_demand_profile(&model.commodities, flow_map);
+
+    for (commodity_id, commodity) in model.commodities.iter() {
+        if commodity.kind != CommodityType::ServiceDemand {
+            // We only consider SVD commodities first
+            continue;
+        }
+
+        for region_id in model.iter_regions() {
+            let (load_map, peak) =
+                calculate_load(&model.time_slice_info, commodity_id, region_id, &demand);
+            let tranches = get_tranches(peak, model.num_demand_tranches);
+            info!("{}: {:?}", commodity_id, tranches);
+
+            for (i, tranche) in tranches.iter().enumerate() {
+                let tranche_load = calculate_load_in_tranche(&load_map, tranche);
+                info!("{:?}", tranche_load.values());
+                let load_factor =
+                    calculate_load_factor(tranche_load.values().copied(), tranche.end);
+                info!("Tranche {i}: LF: {load_factor}");
+            }
+        }
+    }
 
     // **TODO:** Perform agent investment. For now, let's just leave the pool unmodified.
     // assets.replace_active_pool(new_pool);
 }
 
 /// Get demand per time slice for SVD commodities
-pub fn calculate_svd_demand_profile(
-    commodities: &CommodityMap,
-    flow_map: &FlowMap,
-) -> HashMap<(CommodityID, RegionID, TimeSliceID), Flow> {
-    let mut map = HashMap::new();
+pub fn calculate_svd_demand_profile(commodities: &CommodityMap, flow_map: &FlowMap) -> DemandMap {
+    let mut map = DemandMap::new();
     for ((asset, commodity_id, time_slice), &flow) in flow_map.iter() {
         let commodity = commodities.get(commodity_id).unwrap();
         if commodity.kind != CommodityType::ServiceDemand {
@@ -54,4 +77,68 @@ pub fn calculate_svd_demand_profile(
     }
 
     map
+}
+
+/// NB: USING INDEXMAP FOR EASE OF DEBUGGING
+fn calculate_load(
+    time_slice_info: &TimeSliceInfo,
+    commodity_id: &CommodityID,
+    region_id: &RegionID,
+    demand: &DemandMap,
+) -> (IndexMap<TimeSliceID, FlowPerYear>, FlowPerYear) {
+    let mut load = IndexMap::new();
+    let mut peak_load = FlowPerYear(0.0);
+
+    for (time_slice, ts_length) in time_slice_info.iter() {
+        // NB: This **should** be in units of FlowPerYear
+        let demand = demand
+            .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+            .unwrap();
+        let power = *demand / ts_length;
+        load.insert(time_slice.clone(), power);
+
+        peak_load = peak_load.max(power);
+    }
+
+    (load, peak_load)
+}
+
+fn get_tranches(peak: FlowPerYear, num_tranches: u32) -> Vec<Range<FlowPerYear>> {
+    let tranche_width = peak / Dimensionless(num_tranches as f64);
+
+    (0..num_tranches)
+        .map(|i| {
+            let lower = Dimensionless(i as f64) * tranche_width;
+            lower..lower + tranche_width
+        })
+        .collect()
+}
+
+/// NB: USING INDEXMAP FOR EASE OF DEBUGGING
+fn calculate_load_in_tranche(
+    load: &IndexMap<TimeSliceID, FlowPerYear>,
+    tranche: &Range<FlowPerYear>,
+) -> IndexMap<TimeSliceID, FlowPerYear> {
+    load.iter()
+        .map(|(time_slice, &power)| {
+            // SHOULD BOUNDS BE RANGEINCLUSIVE?!
+            let load_in_tranche = if power >= tranche.start {
+                power.min(tranche.end) - tranche.start
+            } else {
+                FlowPerYear(0.0)
+            };
+
+            (time_slice.clone(), load_in_tranche)
+        })
+        .collect()
+}
+
+fn calculate_load_factor<I>(loads: I, peak_load: FlowPerYear) -> Dimensionless
+where
+    I: ExactSizeIterator<Item = FlowPerYear>,
+{
+    let len = loads.len();
+    let mean_load = loads.sum::<FlowPerYear>() / Dimensionless(len as f64);
+    dbg!(mean_load);
+    mean_load / peak_load
 }
