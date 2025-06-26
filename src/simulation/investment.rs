@@ -5,6 +5,7 @@ use super::prices::{reduced_costs_for_candidates_without_scarcity, reduced_costs
 use super::CommodityPrices;
 use crate::asset::AssetPool;
 use crate::model::Model;
+use crate::simulation::demand::calculate_svd_demand_profile;
 use log::info;
 use std::collections::HashMap;
 
@@ -22,7 +23,7 @@ use std::collections::HashMap;
 pub fn perform_agent_investment(
     model: &Model,
     solution: &Solution,
-    _flow_map: &FlowMap,
+    flow_map: &FlowMap,
     adjusted_prices: &CommodityPrices,
     unadjusted_prices: &CommodityPrices,
     assets: &AssetPool,
@@ -39,6 +40,8 @@ pub fn perform_agent_investment(
         adjusted_prices,
         year,
     ));
+
+    let _demand = calculate_svd_demand_profile(&model.commodities, flow_map);
 
     // **TODO:** Perform agent investment. For now, let's just leave the pool unmodified.
     // assets.replace_active_pool(new_pool);
