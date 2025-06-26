@@ -1,15 +1,17 @@
 //! Code for updating the simulation state.
-use crate::asset::AssetRef;
+use super::optimisation::{calculate_cost_coefficient, Solution};
+use crate::asset::{AssetPool, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
+use crate::process::ProcessFlow;
 use crate::region::RegionID;
-use crate::time_slice::TimeSliceID;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{MoneyPerActivity, MoneyPerFlow};
 use itertools::iproduct;
 use std::collections::{BTreeMap, HashMap};
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct CommodityPrices(BTreeMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>);
 
 impl CommodityPrices {
@@ -153,4 +155,71 @@ where
     }
 
     highest_duals
+}
+
+/// Calculate reduced costs for candidate assets by removing scarcity adjustment.
+pub fn reduced_costs_for_candidates_without_scarcity<'a>(
+    solution: &'a Solution,
+    adjusted_prices: &'a CommodityPrices,
+    unadjusted_prices: &'a CommodityPrices,
+) -> impl Iterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)> + 'a {
+    solution
+        .iter_reduced_costs_for_candidates()
+        .map(|(asset, time_slice, mut cost)| {
+            cost += asset
+                .iter_flows()
+                .map(|flow| {
+                    get_scarcity_adjustment(
+                        flow,
+                        &asset.region_id,
+                        time_slice,
+                        adjusted_prices,
+                        unadjusted_prices,
+                    )
+                })
+                .sum();
+
+            ((asset.clone(), time_slice.clone()), cost)
+        })
+}
+
+/// Get the scarcity adjustment for the given flow/region/time slice combination.
+///
+/// The return value may be negative.
+fn get_scarcity_adjustment(
+    flow: &ProcessFlow,
+    region_id: &RegionID,
+    time_slice: &TimeSliceID,
+    adjusted_prices: &CommodityPrices,
+    unadjusted_prices: &CommodityPrices,
+) -> MoneyPerActivity {
+    let adjusted = adjusted_prices
+        .get(&flow.commodity.id, region_id, time_slice)
+        .expect("No adjusted price found");
+    let unadjusted = unadjusted_prices
+        .get(&flow.commodity.id, region_id, time_slice)
+        .expect("No unadjusted price found");
+    flow.coeff * (unadjusted - adjusted)
+}
+
+/// Calculate reduced costs for existing assets
+pub fn reduced_costs_for_existing<'a>(
+    time_slice_info: &'a TimeSliceInfo,
+    assets: &'a AssetPool,
+    prices: &'a CommodityPrices,
+    year: u32,
+) -> impl Iterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)> + 'a {
+    iproduct!(assets.iter(), time_slice_info.iter_ids()).map(move |(asset, time_slice)| {
+        let cost = calculate_cost_coefficient(asset, year, time_slice)
+            - asset
+                .iter_flows()
+                .map(|flow| {
+                    flow.coeff
+                        * prices
+                            .get(&flow.commodity.id, &asset.region_id, time_slice)
+                            .unwrap()
+                })
+                .sum();
+        ((asset.clone(), time_slice.clone()), cost)
+    })
 }

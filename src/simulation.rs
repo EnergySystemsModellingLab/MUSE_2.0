@@ -52,12 +52,18 @@ pub fn run(
     };
     let solution = perform_dispatch_optimisation(&model, &assets, &candidates, year)?;
     let flow_map = solution.create_flow_map();
-    let prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals())
+
+    // Calculate prices. We need to know the scarcity-adjusted prices as well as unadjusted. Note
+    // that the order of operations is important.
+    let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
+    let adjusted_prices = shadow_prices
+        .clone()
         .without_scarcity_pricing(solution.iter_activity_duals())
         .with_levies(&model, year);
+    let unadjusted_prices = shadow_prices.with_levies(&model, year);
 
     // Write active assets and results of dispatch optimisation to file
-    writer.write(year, &solution, &assets, &flow_map, &prices)?;
+    writer.write(year, &solution, &assets, &flow_map, &adjusted_prices)?;
 
     for year in year_iter {
         info!("Milestone year: {year}");
@@ -69,7 +75,15 @@ pub fn run(
 
         // NB: Agent investment will actually be in a loop with more calls to
         // `perform_dispatch_optimisation`, but let's leave this as a placeholder for now
-        perform_agent_investment(&model, &flow_map, &prices, &mut assets);
+        perform_agent_investment(
+            &model,
+            &solution,
+            &flow_map,
+            &adjusted_prices,
+            &unadjusted_prices,
+            &assets,
+            year,
+        );
 
         // Newly commissioned assets will be included in optimisation for at least one milestone
         // year before agents have the option of decommissioning them
