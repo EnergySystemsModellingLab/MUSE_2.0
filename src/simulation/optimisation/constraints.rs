@@ -5,6 +5,7 @@ use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceSelection};
+use crate::units::UnitType;
 use highs::RowProblem as Problem;
 
 /// Corresponding variables for a constraint along with the row offset in the solution
@@ -15,13 +16,18 @@ pub struct KeysWithOffset<T> {
 
 impl<T> KeysWithOffset<T> {
     /// Zip the keys with the corresponding dual values in the solution, accounting for the offset
-    pub fn zip_duals<'a>(&'a self, duals: &'a [f64]) -> impl Iterator<Item = (&'a T, f64)> {
+    pub fn zip_duals<'a, U>(&'a self, duals: &'a [f64]) -> impl Iterator<Item = (&'a T, U)>
+    where
+        U: UnitType,
+    {
         assert!(
             self.offset + self.keys.len() <= duals.len(),
             "Bad constraint keys: dual rows out of range"
         );
 
-        self.keys.iter().zip(duals[self.offset..].iter().copied())
+        self.keys
+            .iter()
+            .zip(duals[self.offset..].iter().copied().map(U::new))
     }
 }
 
