@@ -123,4 +123,16 @@ impl CommodityPrices {
             .iter()
             .map(|((commodity_id, region_id, ts), price)| (commodity_id, region_id, ts, *price))
     }
+
+    /// Get the price for the specified commodity for a given region and time slice
+    pub fn get(
+        &self,
+        commodity_id: &CommodityID,
+        region_id: &RegionID,
+        time_slice: &TimeSliceID,
+    ) -> Option<MoneyPerFlow> {
+        self.0
+            .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+            .copied()
+    }
 }
