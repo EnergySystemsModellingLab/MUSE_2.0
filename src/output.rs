@@ -7,7 +7,7 @@ use crate::region::RegionID;
 use crate::simulation::optimisation::{FlowMap, Solution};
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
-use crate::units::{Flow, MoneyPerFlow};
+use crate::units::{Flow, MoneyPerActivity, MoneyPerFlow};
 use anyhow::{Context, Result};
 use csv;
 use serde::{Deserialize, Serialize};
@@ -118,7 +118,7 @@ struct ActivityDualsRow {
     milestone_year: u32,
     asset_id: Option<AssetID>,
     time_slice: TimeSliceID,
-    value: f64,
+    value: MoneyPerActivity,
 }
 
 /// Represents the commodity balance duals data in a row of the commodity balance duals CSV file
@@ -128,7 +128,7 @@ struct CommodityBalanceDualsRow {
     commodity_id: CommodityID,
     region_id: RegionID,
     time_slice: TimeSliceID,
-    value: f64,
+    value: MoneyPerFlow,
 }
 
 /// For writing extra debug information about the model
@@ -168,7 +168,7 @@ impl DebugDataWriter {
     /// Write activity duals to file
     fn write_activity_duals<'a, I>(&mut self, milestone_year: u32, iter: I) -> Result<()>
     where
-        I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, f64)>,
+        I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, MoneyPerActivity)>,
     {
         for (asset, time_slice, value) in iter {
             let row = ActivityDualsRow {
@@ -186,7 +186,7 @@ impl DebugDataWriter {
     /// Write commodity balance duals to file
     fn write_commodity_balance_duals<'a, I>(&mut self, milestone_year: u32, iter: I) -> Result<()>
     where
-        I: Iterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, f64)>,
+        I: Iterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, MoneyPerFlow)>,
     {
         for (commodity_id, region_id, time_slice, value) in iter {
             let row = CommodityBalanceDualsRow {
@@ -436,7 +436,7 @@ mod tests {
         time_slice: TimeSliceID,
     ) {
         let milestone_year = 2020;
-        let value = 0.5;
+        let value = MoneyPerFlow(0.5);
         let dir = tempdir().unwrap();
 
         // Write commodity balance dual
@@ -471,7 +471,7 @@ mod tests {
     #[rstest]
     fn test_write_activity_duals(assets: AssetPool, time_slice: TimeSliceID) {
         let milestone_year = 2020;
-        let value = 0.5;
+        let value = MoneyPerActivity(0.5);
         let dir = tempdir().unwrap();
         let asset = assets.iter().next().unwrap();
 
