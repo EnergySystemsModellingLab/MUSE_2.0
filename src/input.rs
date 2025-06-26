@@ -206,6 +206,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let model = Model {
         model_path,
         milestone_years: model_file.milestone_years,
+        num_demand_tranches: model_file.num_demand_tranches,
         agents,
         commodities,
         processes,
