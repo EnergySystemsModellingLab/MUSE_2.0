@@ -4,8 +4,14 @@ use super::optimisation::Solution;
 use super::prices::{reduced_costs_for_candidates_without_scarcity, reduced_costs_for_existing};
 use super::CommodityPrices;
 use crate::asset::AssetPool;
+use crate::commodity::CommodityType;
 use crate::model::Model;
-use crate::simulation::demand::calculate_svd_demand_profile;
+use crate::simulation::demand::{
+    calculate_load, calculate_load_factor, calculate_load_in_tranche, calculate_svd_demand_profile,
+    get_tranches, load_to_demand,
+};
+use indexmap::IndexMap;
+use itertools::Itertools;
 use log::info;
 use std::collections::HashMap;
 
@@ -41,7 +47,37 @@ pub fn perform_agent_investment(
         year,
     ));
 
-    let _demand = calculate_svd_demand_profile(&model.commodities, flow_map);
+    let demand = calculate_svd_demand_profile(&model.commodities, flow_map);
+
+    for (commodity_id, commodity) in model.commodities.iter() {
+        if commodity.kind != CommodityType::ServiceDemand {
+            // We only consider SVD commodities first
+            continue;
+        }
+
+        for region_id in model.iter_regions() {
+            let (load_map, peak) =
+                calculate_load(&model.time_slice_info, commodity_id, region_id, &demand);
+            let tranches = get_tranches(peak, model.num_demand_tranches);
+
+            let tranches = tranches.collect_vec();
+            info!("{}: {:?}", commodity_id, tranches);
+
+            // We want to consider the tranche with the highest load factor first, but in our case
+            // that will always be the first
+            for (i, tranche) in tranches.into_iter().enumerate() {
+                let tranche_load = calculate_load_in_tranche(&load_map, &tranche);
+                info!("{:?}", tranche_load.values());
+                let load_factor =
+                    calculate_load_factor(tranche_load.values().copied(), *tranche.end());
+                info!("Tranche {i}: LF: {load_factor}");
+
+                let tranche_demand: IndexMap<_, _> =
+                    load_to_demand(&model.time_slice_info, &tranche_load).collect();
+                info!("Tranche demand: {:?}", tranche_demand);
+            }
+        }
+    }
 
     // **TODO:** Perform agent investment. For now, let's just leave the pool unmodified.
     // assets.replace_active_pool(new_pool);
