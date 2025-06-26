@@ -8,11 +8,14 @@ use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
 use crate::units::Capacity;
 use anyhow::{ensure, Context, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
+use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
 const MODEL_FILE_NAME: &str = "model.toml";
 const DEFAULT_CANDIDATE_ASSET_CAPACITY: Capacity = Capacity(0.0001);
+const DEFAULT_NUM_DEMAND_TRANCHES: u32 = 2;
+const VALID_NUM_DEMAND_TRANCHES_VALUES: RangeInclusive<u32> = 2..=6;
 
 /// Model definition
 pub struct Model {
@@ -35,6 +38,12 @@ pub struct Model {
 /// Represents the contents of the entire model file.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct ModelFile {
+    /// Number of demand tranches to use
+    #[serde(
+        default = "default_num_demand_tranches",
+        deserialize_with = "parse_num_demand_tranches"
+    )]
+    pub num_demand_tranches: u32,
     /// Milestone years
     pub milestone_years: Vec<u32>,
     /// The (small) value of capacity given to candidate assets.
@@ -46,6 +55,30 @@ pub struct ModelFile {
 
 fn default_candidate_asset_capacity() -> Capacity {
     DEFAULT_CANDIDATE_ASSET_CAPACITY
+}
+
+fn default_num_demand_tranches() -> u32 {
+    assert!(VALID_NUM_DEMAND_TRANCHES_VALUES.contains(&DEFAULT_NUM_DEMAND_TRANCHES));
+    DEFAULT_NUM_DEMAND_TRANCHES
+}
+
+/// Parse the number of demand tranches field
+fn parse_num_demand_tranches<'de, D>(deserialiser: D) -> Result<u32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    assert!(VALID_NUM_DEMAND_TRANCHES_VALUES.contains(&DEFAULT_NUM_DEMAND_TRANCHES));
+
+    let num = u32::deserialize(deserialiser)?;
+    if !VALID_NUM_DEMAND_TRANCHES_VALUES.contains(&num) {
+        Err(serde::de::Error::custom(format!(
+            "num_demand_tranches must be between {} and {}",
+            VALID_NUM_DEMAND_TRANCHES_VALUES.start(),
+            VALID_NUM_DEMAND_TRANCHES_VALUES.end()
+        )))?
+    }
+
+    Ok(num)
 }
 
 /// Check that the milestone years parameter is valid
@@ -86,6 +119,12 @@ impl ModelFile {
             check_milestone_years(&model_file.milestone_years)?;
             check_capacity_valid_for_asset(model_file.candidate_asset_capacity)
                 .context("Invalid value for candidate_asset_capacity")?;
+            ensure!(
+                VALID_NUM_DEMAND_TRANCHES_VALUES.contains(&model_file.num_demand_tranches),
+                "num_demand_tranches must be between {} and {}",
+                VALID_NUM_DEMAND_TRANCHES_VALUES.start(),
+                VALID_NUM_DEMAND_TRANCHES_VALUES.end()
+            );
 
             Ok(())
         };

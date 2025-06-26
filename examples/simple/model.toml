@@ -1,1 +1,4 @@
+# Model configuration file
+
+# num_demand_tranches = 2
 milestone_years = [2020, 2030]
