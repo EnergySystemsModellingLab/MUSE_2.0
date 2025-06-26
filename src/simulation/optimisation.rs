@@ -6,7 +6,7 @@ use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{Activity, Flow, MoneyPerActivity, UnitType};
+use crate::units::{Activity, Flow, MoneyPerActivity, MoneyPerFlow, UnitType};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
@@ -103,7 +103,7 @@ impl Solution<'_> {
     /// Keys and dual values for commodity balance constraints.
     pub fn iter_commodity_balance_duals(
         &self,
-    ) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, f64)> {
+    ) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, MoneyPerFlow)> {
         // Each commodity balance constraint applies to a particular time slice
         // selection (depending on time slice level). Where this covers multiple timeslices,
         // we return the same dual for each individual timeslice.
@@ -118,7 +118,9 @@ impl Solution<'_> {
     }
 
     /// Keys and dual values for activity constraints.
-    pub fn iter_activity_duals(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, f64)> {
+    pub fn iter_activity_duals(
+        &self,
+    ) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, MoneyPerActivity)> {
         self.constraint_keys
             .activity_keys
             .zip_duals(self.solution.dual_rows())

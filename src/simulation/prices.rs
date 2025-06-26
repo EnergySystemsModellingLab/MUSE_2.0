@@ -58,10 +58,18 @@ impl CommodityPrices {
 
         // Add the highest activity dual for each commodity/region/timeslice to each commodity
         // balance dual
-        for (commodity_id, region_id, time_slice, dual) in solution.iter_commodity_balance_duals() {
+        for (commodity_id, region_id, time_slice, mut price) in
+            solution.iter_commodity_balance_duals()
+        {
             let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
-            let price = dual + highest_duals.get(&key).unwrap_or(&0.0);
-            self.0.insert(key, MoneyPerFlow(price));
+            if let Some(highest) = highest_duals.get(&key) {
+                // **HACK:** The units are mismatched here. We probably need to multiply by a flow
+                // coeff.
+                //
+                // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/663
+                price += MoneyPerFlow(highest.value());
+            }
+            self.0.insert(key, price);
         }
     }
 
