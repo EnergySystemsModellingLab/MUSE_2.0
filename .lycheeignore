@@ -3,3 +3,6 @@
 
 # Times out on GitHub runner
 ^http://www.adobe.com
+
+# Often times out
+^https://iea-etsap.org
