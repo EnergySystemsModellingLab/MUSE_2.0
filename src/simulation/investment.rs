@@ -13,8 +13,6 @@ use std::collections::HashMap;
 use std::ops::Range;
 
 type DemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
-type LoadMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
-type PeakLoadMap = HashMap<(CommodityID, RegionID), Flow>;
 
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
@@ -33,7 +31,6 @@ pub fn perform_agent_investment(
     info!("Performing agent investment...");
 
     let demand = calculate_svd_demand_profile(&model.commodities, flow_map);
-    let (_load, peak_load) = calculate_load(&model.time_slice_info, &demand);
 
     for (commodity_id, commodity) in model.commodities.iter() {
         if commodity.kind != CommodityType::ServiceDemand {
@@ -42,9 +39,8 @@ pub fn perform_agent_investment(
         }
 
         for region_id in model.iter_regions() {
-            let peak = *peak_load
-                .get(&(commodity_id.clone(), region_id.clone()))
-                .unwrap();
+            let (_load_map, peak) =
+                calculate_load(&model.time_slice_info, commodity_id, region_id, &demand);
             let tranches = get_tranches(peak, model.num_demand_tranches);
             info!("{}: {:?}", commodity_id, tranches);
         }
@@ -75,22 +71,24 @@ pub fn calculate_svd_demand_profile(commodities: &CommodityMap, flow_map: &FlowM
     map
 }
 
-fn calculate_load(time_slice_info: &TimeSliceInfo, demand: &DemandMap) -> (LoadMap, PeakLoadMap) {
+fn calculate_load(
+    time_slice_info: &TimeSliceInfo,
+    commodity_id: &CommodityID,
+    region_id: &RegionID,
+    demand: &DemandMap,
+) -> (HashMap<TimeSliceID, Flow>, Flow) {
     let mut load = HashMap::new();
-    let mut peak_load = HashMap::new();
+    let mut peak_load = Flow(0.0);
 
-    for ((commodity_id, region_id, time_slice), demand) in demand.iter() {
+    for (time_slice, ts_length) in time_slice_info.iter() {
         // NB: This **should** be in units of FlowPerYear
-        let power = *demand / *time_slice_info.time_slices.get(time_slice).unwrap();
-        load.insert(
-            (commodity_id.clone(), region_id.clone(), time_slice.clone()),
-            power,
-        );
+        let demand = demand
+            .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+            .unwrap();
+        let power = *demand / ts_length;
+        load.insert(time_slice.clone(), power);
 
-        peak_load
-            .entry((commodity_id.clone(), region_id.clone()))
-            .and_modify(|value: &mut Flow| *value = value.max(power))
-            .or_insert(power);
+        peak_load = peak_load.max(power);
     }
 
     (load, peak_load)
