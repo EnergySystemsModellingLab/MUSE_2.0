@@ -7,8 +7,10 @@ use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Dimensionless, Flow};
+use itertools::Itertools;
 use log::info;
 use std::collections::HashMap;
+use std::ops::Range;
 
 type DemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 type LoadMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
@@ -31,16 +33,21 @@ pub fn perform_agent_investment(
     info!("Performing agent investment...");
 
     let demand = calculate_svd_demand_profile(&model.commodities, flow_map);
-    let (load, peak_load) = calculate_load(&model.time_slice_info, &demand);
+    let (_load, peak_load) = calculate_load(&model.time_slice_info, &demand);
 
-    for tranche_num in 0..model.num_demand_tranches {
-        do_something_with_demand_tranches(
-            &model.time_slice_info,
-            &load,
-            &peak_load,
-            tranche_num,
-            model.num_demand_tranches,
-        );
+    for (commodity_id, commodity) in model.commodities.iter() {
+        if commodity.kind != CommodityType::ServiceDemand {
+            // We only consider SVD commodities first
+            continue;
+        }
+
+        for region_id in model.iter_regions() {
+            let peak = *peak_load
+                .get(&(commodity_id.clone(), region_id.clone()))
+                .unwrap();
+            let tranches = get_tranches(peak, model.num_demand_tranches);
+            info!("{}: {:?}", commodity_id, tranches);
+        }
     }
 
     // **TODO:** Perform agent investment. For now, let's just leave the pool unmodified.
@@ -89,99 +96,19 @@ fn calculate_load(time_slice_info: &TimeSliceInfo, demand: &DemandMap) -> (LoadM
     (load, peak_load)
 }
 
-fn do_something_with_demand_tranches(
-    time_slice_info: &TimeSliceInfo,
-    load: &LoadMap,
-    peak_load: &PeakLoadMap,
-    tranche_num: u32,
-    num_tranches: u32,
-) {
-    for ((commodity_id, region_id), &peak_load) in peak_load.iter() {
-        let tranche_width = peak_load / Dimensionless(num_tranches as f64);
-        let tranche_bottom = (Dimensionless(tranche_num as f64)) * tranche_width;
-        // let tranche_top = Dimensionless((tranche_num + 1) as f64) * tranche_width;
-        // let tranche_top = Flow(4.0);
+fn get_tranches(peak: Flow, num_tranches: u32) -> Vec<Range<Flow>> {
+    let tranche_width = peak / Dimensionless(num_tranches as f64);
+    let tranche_bottom = |i| Dimensionless(i as f64) * tranche_width;
+    let mut tranches = (0..num_tranches - 1)
+        .map(|i| {
+            let lower = tranche_bottom(i);
+            lower..lower + tranche_width
+        })
+        .collect_vec();
 
-        // Load factor is equal to lengths of time slices during which tranche is active in this
-        // case. We need to divide by total time, but in our case this is always 1.0.
-        let mut load_factor = Dimensionless(0.0);
-        for (time_slice, ts_length) in time_slice_info.iter() {
-            let load = *load
-                .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
-                .unwrap();
-            if load >= tranche_bottom {
-                load_factor += ts_length;
-            }
-        }
+    // Set the upper bound of highest tranche to infinity so we include time slices where value is
+    // *equal* to peak
+    tranches.push(tranche_bottom(num_tranches - 1)..Flow(f64::INFINITY));
 
-        // let mut sum_load = Flow(0.0);
-        // for time_slice in time_slice_info.iter_ids() {
-        //     let load = load
-        //         .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
-        //         .unwrap()
-        //         .min(tranche_top);
-        //     sum_load += load;
-        // }
-        // let mean_load = sum_load / Dimensionless(time_slice_info.time_slices.len() as f64);
-        // let load_factor = mean_load / tranche_top;
-
-        info!(
-            "Tranche {}: LF for {}: {}",
-            tranche_num, commodity_id, load_factor
-        );
-
-        // return load_factor;
-    }
-
-    // unreachable!()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::fixture::{commodity_id, region_id};
-    use crate::time_slice::{Season, TimeOfDay, TimeSliceInfo};
-    // use float_cmp::assert_approx_eq;
-    use indexmap::IndexSet;
-    use rstest::rstest;
-    use std::iter;
-
-    #[rstest]
-    fn test_tranches(commodity_id: CommodityID, region_id: RegionID) {
-        let season: Season = "season1".into();
-        let times_of_day: IndexSet<TimeOfDay> = (1..=3).map(|i| format!("ts{i}").into()).collect();
-        let time_slices = times_of_day
-            .iter()
-            .zip([0.2, 0.3, 0.5])
-            .map(|(tod, dur): (_, f64)| {
-                (
-                    TimeSliceID {
-                        season: season.clone(),
-                        time_of_day: tod.clone(),
-                    },
-                    Dimensionless(dur),
-                )
-            })
-            .collect();
-        let time_slice_info = TimeSliceInfo {
-            times_of_day,
-            seasons: iter::once((season, Dimensionless(1.0))).collect(),
-            time_slices,
-        };
-
-        let demand = time_slice_info
-            .iter_ids()
-            .map(|time_slice| {
-                (
-                    (commodity_id.clone(), region_id.clone(), time_slice.clone()),
-                    Flow(2.0),
-                )
-            })
-            .collect();
-        let (load, peak_load) = calculate_load(&time_slice_info, &demand);
-        let _load_factor =
-            do_something_with_demand_tranches(&time_slice_info, &load, &peak_load, 0, 2);
-
-        // assert_approx_eq!(Dimensionless, load_factor, Dimensionless(1.0));
-    }
+    tranches
 }
