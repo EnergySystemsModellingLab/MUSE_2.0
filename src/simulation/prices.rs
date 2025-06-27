@@ -133,3 +133,23 @@ impl CommodityPrices {
             .copied()
     }
 }
+
+impl<'a> FromIterator<(&'a CommodityID, &'a RegionID, &'a TimeSliceID, MoneyPerFlow)>
+    for CommodityPrices
+{
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, MoneyPerFlow)>,
+    {
+        let map = iter
+            .into_iter()
+            .map(|(commodity_id, region_id, time_slice, price)| {
+                (
+                    (commodity_id.clone(), region_id.clone(), time_slice.clone()),
+                    price,
+                )
+            })
+            .collect();
+        CommodityPrices(map)
+    }
+}
