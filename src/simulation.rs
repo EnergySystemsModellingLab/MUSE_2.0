@@ -7,6 +7,7 @@ use crate::units::Capacity;
 use anyhow::Result;
 use log::info;
 use std::path::Path;
+use std::rc::Rc;
 
 pub mod optimisation;
 use optimisation::perform_dispatch_optimisation;
@@ -93,7 +94,7 @@ fn candidate_assets_for_year(processes: &ProcessMap, year: u32) -> Vec<AssetRef>
             candidates.push(
                 Asset::new(
                     None,
-                    process.clone(),
+                    Rc::clone(process),
                     region_id.clone(),
                     Capacity(0.0),
                     year,
