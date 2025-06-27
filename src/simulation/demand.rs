@@ -70,38 +70,36 @@ pub fn get_tranches(
     })
 }
 
-/// NB: USING INDEXMAP FOR EASE OF DEBUGGING
-pub fn calculate_load_in_tranche(
-    load: &IndexMap<TimeSliceID, FlowPerYear>,
-    tranche: &RangeInclusive<FlowPerYear>,
-) -> IndexMap<TimeSliceID, FlowPerYear> {
-    load.iter()
-        .map(|(time_slice, &power)| {
-            let load_capped = power.min(*tranche.end());
-            let load_in_tranche = (load_capped - *tranche.start()).max(FlowPerYear(0.0));
-
-            (time_slice.clone(), load_in_tranche)
-        })
-        .collect()
-}
-
-pub fn calculate_load_factor<I>(loads: I, peak_load: FlowPerYear) -> Dimensionless
-where
-    I: ExactSizeIterator<Item = FlowPerYear>,
-{
-    let len = loads.len();
-    let mean_load = loads.sum::<FlowPerYear>() / Dimensionless(len as f64);
-    dbg!(mean_load);
-    mean_load / peak_load
-}
-
-pub fn load_to_demand<'a>(
+pub fn calculate_demand_in_tranche<'a>(
     time_slice_info: &'a TimeSliceInfo,
     load: &'a IndexMap<TimeSliceID, FlowPerYear>,
+    tranche: &'a RangeInclusive<FlowPerYear>,
 ) -> impl Iterator<Item = (TimeSliceID, Flow)> + 'a {
-    time_slice_info.iter().map(|(time_slice, ts_length)| {
-        let load = *load.get(time_slice).unwrap();
+    let load_in_tranche = calculate_load_in_tranche(load, tranche);
+    load_to_demand(time_slice_info, load_in_tranche)
+}
 
+fn calculate_load_in_tranche<'a>(
+    load: &'a IndexMap<TimeSliceID, FlowPerYear>,
+    tranche: &'a RangeInclusive<FlowPerYear>,
+) -> impl Iterator<Item = (TimeSliceID, FlowPerYear)> + 'a {
+    load.iter().map(|(time_slice, &power)| {
+        let load_capped = power.min(*tranche.end());
+        let load_in_tranche = (load_capped - *tranche.start()).max(FlowPerYear(0.0));
+
+        (time_slice.clone(), load_in_tranche)
+    })
+}
+
+fn load_to_demand<'a, I>(
+    time_slice_info: &'a TimeSliceInfo,
+    load: I,
+) -> impl Iterator<Item = (TimeSliceID, Flow)> + 'a
+where
+    I: Iterator<Item = (TimeSliceID, FlowPerYear)> + 'a,
+{
+    load.map(|(time_slice, load)| {
+        let ts_length = *time_slice_info.time_slices.get(&time_slice).unwrap();
         (time_slice.clone(), load * ts_length)
     })
 }

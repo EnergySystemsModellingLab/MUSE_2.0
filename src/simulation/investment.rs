@@ -7,8 +7,7 @@ use crate::asset::AssetPool;
 use crate::commodity::CommodityType;
 use crate::model::Model;
 use crate::simulation::demand::{
-    calculate_load, calculate_load_factor, calculate_load_in_tranche, calculate_svd_demand_profile,
-    get_tranches, load_to_demand,
+    calculate_demand_in_tranche, calculate_load, calculate_svd_demand_profile, get_tranches,
 };
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -66,15 +65,10 @@ pub fn perform_agent_investment(
             // We want to consider the tranche with the highest load factor first, but in our case
             // that will always be the first
             for (i, tranche) in tranches.into_iter().enumerate() {
-                let tranche_load = calculate_load_in_tranche(&load_map, &tranche);
-                info!("{:?}", tranche_load.values());
-                let load_factor =
-                    calculate_load_factor(tranche_load.values().copied(), *tranche.end());
-                info!("Tranche {i}: LF: {load_factor}");
-
                 let tranche_demand: IndexMap<_, _> =
-                    load_to_demand(&model.time_slice_info, &tranche_load).collect();
-                info!("Tranche demand: {:?}", tranche_demand);
+                    calculate_demand_in_tranche(&model.time_slice_info, &load_map, &tranche)
+                        .collect();
+                info!("Tranche {i}: Demand: {tranche_demand:?}");
             }
         }
     }
