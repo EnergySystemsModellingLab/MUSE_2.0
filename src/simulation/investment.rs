@@ -10,7 +10,7 @@ use crate::units::{Dimensionless, Flow, FlowPerYear};
 use indexmap::IndexMap;
 use log::info;
 use std::collections::HashMap;
-use std::ops::Range;
+use std::ops::RangeInclusive;
 
 type DemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 
@@ -48,7 +48,7 @@ pub fn perform_agent_investment(
                 let tranche_load = calculate_load_in_tranche(&load_map, tranche);
                 info!("{:?}", tranche_load.values());
                 let load_factor =
-                    calculate_load_factor(tranche_load.values().copied(), tranche.end);
+                    calculate_load_factor(tranche_load.values().copied(), *tranche.end());
                 info!("Tranche {i}: LF: {load_factor}");
             }
         }
@@ -103,13 +103,13 @@ fn calculate_load(
     (load, peak_load)
 }
 
-fn get_tranches(peak: FlowPerYear, num_tranches: u32) -> Vec<Range<FlowPerYear>> {
+fn get_tranches(peak: FlowPerYear, num_tranches: u32) -> Vec<RangeInclusive<FlowPerYear>> {
     let tranche_width = peak / Dimensionless(num_tranches as f64);
 
     (0..num_tranches)
         .map(|i| {
             let lower = Dimensionless(i as f64) * tranche_width;
-            lower..lower + tranche_width
+            lower..=lower + tranche_width
         })
         .collect()
 }
@@ -117,13 +117,12 @@ fn get_tranches(peak: FlowPerYear, num_tranches: u32) -> Vec<Range<FlowPerYear>>
 /// NB: USING INDEXMAP FOR EASE OF DEBUGGING
 fn calculate_load_in_tranche(
     load: &IndexMap<TimeSliceID, FlowPerYear>,
-    tranche: &Range<FlowPerYear>,
+    tranche: &RangeInclusive<FlowPerYear>,
 ) -> IndexMap<TimeSliceID, FlowPerYear> {
     load.iter()
         .map(|(time_slice, &power)| {
-            // SHOULD BOUNDS BE RANGEINCLUSIVE?!
-            let load_in_tranche = if power >= tranche.start {
-                power.min(tranche.end) - tranche.start
+            let load_in_tranche = if power >= *tranche.start() {
+                power.min(*tranche.end()) - *tranche.start()
             } else {
                 FlowPerYear(0.0)
             };
