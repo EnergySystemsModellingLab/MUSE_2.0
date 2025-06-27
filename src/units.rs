@@ -37,6 +37,8 @@ pub trait UnitType:
     fn max(&self, other: Self) -> Self;
     /// Returns the min of two values
     fn min(&self, other: Self) -> Self;
+    /// Restrict value within interval
+    fn clamp(&self, min: Self, max: Self) -> Self;
 }
 
 macro_rules! base_unit_struct {
@@ -116,6 +118,10 @@ macro_rules! base_unit_struct {
             pub fn min(&self, other: Self) -> Self {
                 Self(self.0.min(other.0))
             }
+            /// Restrict value within interval
+            pub fn clamp(&self, min: Self, max: Self) -> Self {
+                Self(self.0.clamp(min.0, max.0))
+            }
         }
         impl UnitType for $name {
             /// Create from an f64 value
@@ -145,6 +151,10 @@ macro_rules! base_unit_struct {
             /// Returns the min of two values
             fn min(&self, other: Self) -> Self {
                 self.min(other)
+            }
+            /// Restrict value within interval
+            fn clamp(&self, min: Self, max: Self) -> Self {
+                self.clamp(min, max)
             }
         }
     };
