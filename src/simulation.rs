@@ -52,7 +52,9 @@ pub fn run(
     };
     let solution = perform_dispatch_optimisation(&model, &assets, &candidates, year)?;
     let flow_map = solution.create_flow_map();
-    let prices = CommodityPrices::calculate(&model, &solution, year);
+    let prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals())
+        .without_scarcity_pricing(solution.iter_activity_duals())
+        .with_levies(&model, year);
 
     // Write active assets and results of dispatch optimisation to file
     writer.write(year, &solution, &assets, &flow_map, &prices)?;
