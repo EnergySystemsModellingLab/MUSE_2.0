@@ -41,7 +41,9 @@ pub struct Process {
     pub id: ProcessID,
     /// A human-readable description for the process (e.g. dry gas extraction)
     pub description: String,
-    /// The years in which this process is available for investment
+    /// The years in which this process is available for investment.
+    ///
+    /// These years must be sorted and unique, else it's a logic error.
     pub years: Vec<u32>,
     /// Limits on activity for each time slice (as a fraction of maximum)
     pub activity_limits: ProcessActivityLimitsMap,
@@ -51,6 +53,13 @@ pub struct Process {
     pub parameters: ProcessParameterMap,
     /// The regions in which this process can operate
     pub regions: IndexSet<RegionID>,
+}
+
+impl Process {
+    /// Whether the process can be commissioned in a given year
+    pub fn active_for_year(&self, year: u32) -> bool {
+        self.years.binary_search(&year).is_ok()
+    }
 }
 
 /// Represents a maximum annual commodity coeff for a given process

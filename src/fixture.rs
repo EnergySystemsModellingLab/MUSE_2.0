@@ -79,7 +79,7 @@ pub fn get_svd_map(commodity: &Commodity) -> HashMap<CommodityID, &Commodity> {
 #[fixture]
 pub fn asset(process: Process) -> Asset {
     let region_id: RegionID = "GBR".into();
-    let agent_id = "agent1".into();
+    let agent_id = Some("agent1".into());
     let commission_year = 2015;
     Asset::new(
         agent_id,
