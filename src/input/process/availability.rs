@@ -3,7 +3,7 @@ use super::super::*;
 use crate::process::{ProcessActivityLimitsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
 use crate::time_slice::TimeSliceInfo;
-use crate::units::Dimensionless;
+use crate::units::{Dimensionless, Year};
 use crate::year::parse_year_str;
 use anyhow::{Context, Result};
 use serde::Deserialize;
@@ -40,8 +40,10 @@ impl ProcessAvailabilityRaw {
     ///
     /// The resulting limits are max/min energy produced/consumed in each timeslice per
     /// `capacity_to_activity` units of capacity.
-    fn to_bounds(&self, ts_length: Dimensionless) -> RangeInclusive<Dimensionless> {
-        let value = self.value * ts_length;
+    fn to_bounds(&self, ts_length: Year) -> RangeInclusive<Dimensionless> {
+        // Circumvent unit type check. We know ts_length also represents a fraction of a year, so
+        // this is ok.
+        let value = Dimensionless(self.value.value() * ts_length.value());
         match self.limit_type {
             LimitType::LowerBound => value..=Dimensionless(f64::INFINITY),
             LimitType::UpperBound => Dimensionless(0.0)..=value,
@@ -233,7 +235,7 @@ mod tests {
 
     #[test]
     fn test_to_bounds() {
-        let ts_length = Dimensionless(0.1);
+        let ts_length = Year(0.1);
 
         // Lower bound
         let raw = create_process_availability_raw(LimitType::LowerBound, Dimensionless(0.5));
