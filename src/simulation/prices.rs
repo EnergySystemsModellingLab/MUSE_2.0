@@ -1,10 +1,10 @@
 //! Code for updating the simulation state.
-use super::optimisation::Solution;
+use crate::asset::AssetRef;
 use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
-use crate::units::MoneyPerFlow;
+use crate::units::{MoneyPerActivity, MoneyPerFlow};
 use itertools::iproduct;
 use std::collections::{BTreeMap, HashMap};
 
@@ -13,63 +13,6 @@ use std::collections::{BTreeMap, HashMap};
 pub struct CommodityPrices(BTreeMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>);
 
 impl CommodityPrices {
-    /// Calculate commodity prices based on the result of the dispatch optimisation and input data.
-    ///
-    /// Note that it is possible that there will still be commodities without specified prices, if
-    /// they were not included in the dispatch optimisation and no levies were specified by the
-    /// user.
-    pub fn calculate(model: &Model, solution: &Solution, year: u32) -> Self {
-        let mut prices = CommodityPrices::default();
-        prices.add_from_duals(solution);
-        prices.add_from_levies(model, year);
-
-        prices
-    }
-
-    /// Add commodity prices using activity and commodity balance duals.
-    ///
-    /// Commodity prices are calculated as the sum of the commodity balance duals and the highest
-    /// activity dual for each commodity/timeslice.
-    ///
-    /// # Arguments
-    ///
-    /// * `solution` - The solution to the dispatch optimisation
-    fn add_from_duals(&mut self, solution: &Solution) {
-        // Calculate highest activity dual for each commodity/region/timeslice
-        let mut highest_duals = HashMap::new();
-        for (asset, time_slice, dual) in solution.iter_activity_duals() {
-            // Iterate over all output flows
-            for flow in asset.iter_flows().filter(|flow| flow.is_output()) {
-                // Update the highest dual for this commodity/timeslice
-                highest_duals
-                    .entry((
-                        flow.commodity.id.clone(),
-                        asset.region_id.clone(),
-                        time_slice.clone(),
-                    ))
-                    .and_modify(|current_dual| {
-                        if dual > *current_dual {
-                            *current_dual = dual;
-                        }
-                    })
-                    .or_insert(dual);
-            }
-        }
-
-        // Add the highest activity dual for each commodity/region/timeslice to each commodity
-        // balance dual
-        for (commodity_id, region_id, time_slice, mut price) in
-            solution.iter_commodity_balance_duals()
-        {
-            let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
-            if let Some(highest) = highest_duals.get(&key) {
-                // highest is in units of MoneyPerActivity, but this is correct according to Adam
-                price += MoneyPerFlow(highest.value());
-            }
-            self.0.insert(key, price);
-        }
-    }
-
     /// Add prices based on levies/incentives.
     ///
     /// If a commodity already has a price based on the previous dual-based calculation, we choose
@@ -79,7 +22,7 @@ impl CommodityPrices {
     ///
     /// * `model` - The model
     /// * `year` - The milestone year of interest
-    fn add_from_levies(&mut self, model: &Model, year: u32) {
+    pub fn with_levies(mut self, model: &Model, year: u32) -> Self {
         for (region_id, time_slice) in
             iproduct!(model.iter_regions(), model.time_slice_info.iter_ids())
         {
@@ -94,6 +37,31 @@ impl CommodityPrices {
                 }
             }
         }
+
+        self
+    }
+
+    /// Remove the impact of scarcity on prices.
+    ///
+    /// # Arguments
+    ///
+    /// * `activity_duals` - Value of activity duals from solution
+    pub fn without_scarcity_pricing<'a, I>(mut self, activity_duals: I) -> Self
+    where
+        I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, MoneyPerActivity)>,
+    {
+        let highest_duals = get_highest_activity_duals(activity_duals);
+
+        // Add the highest activity dual for each commodity/region/timeslice to each commodity
+        // balance dual
+        for (key, highest) in highest_duals.iter() {
+            if let Some(price) = self.0.get_mut(key) {
+                // highest is in units of MoneyPerActivity, but this is correct according to Adam
+                *price += MoneyPerFlow(highest.value());
+            }
+        }
+
+        self
     }
 
     /// Insert a price for the given commodity, region and time slice
@@ -152,4 +120,34 @@ impl<'a> FromIterator<(&'a CommodityID, &'a RegionID, &'a TimeSliceID, MoneyPerF
             .collect();
         CommodityPrices(map)
     }
+}
+
+fn get_highest_activity_duals<'a, I>(
+    activity_duals: I,
+) -> HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerActivity>
+where
+    I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, MoneyPerActivity)>,
+{
+    // Calculate highest activity dual for each commodity/region/timeslice
+    let mut highest_duals = HashMap::new();
+    for (asset, time_slice, dual) in activity_duals {
+        // Iterate over all output flows
+        for flow in asset.iter_flows().filter(|flow| flow.is_output()) {
+            // Update the highest dual for this commodity/timeslice
+            highest_duals
+                .entry((
+                    flow.commodity.id.clone(),
+                    asset.region_id.clone(),
+                    time_slice.clone(),
+                ))
+                .and_modify(|current_dual| {
+                    if dual > *current_dual {
+                        *current_dual = dual;
+                    }
+                })
+                .or_insert(dual);
+        }
+    }
+
+    highest_duals
 }
