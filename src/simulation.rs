@@ -45,16 +45,16 @@ pub fn run(
     assets.commission_new(year);
 
     // Dispatch optimisation
-    let candidates = if let Some(next_year) = year_iter.peek() {
-        candidate_assets_for_year(
-            &model.processes,
-            *next_year,
-            model.parameters.candidate_asset_capacity,
-        )
-    } else {
-        // If there is only one milestone year, there are no candidates for next year
-        Vec::new()
-    };
+    let candidates = year_iter
+        .peek()
+        .map(|next_year| {
+            candidate_assets_for_year(
+                &model.processes,
+                *next_year,
+                model.parameters.candidate_asset_capacity,
+            )
+        })
+        .unwrap_or_default();
     let solution = perform_dispatch_optimisation(&model, &assets, &candidates, year)?;
     let flow_map = solution.create_flow_map();
     let prices = CommodityPrices::calculate(&model, &solution, year);
