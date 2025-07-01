@@ -1,4 +1,5 @@
 //! Code for performing agent investment.
+use super::lcox::calculate_lcox;
 use super::optimisation::FlowMap;
 use super::optimisation::Solution;
 use super::prices::{reduced_costs_for_candidates_without_scarcity, reduced_costs_for_existing};
@@ -9,6 +10,8 @@ use crate::model::Model;
 use crate::simulation::demand::{
     calculate_demand_in_tranche, calculate_load, calculate_svd_demand_profile, get_tranches,
 };
+use crate::time_slice::TimeSliceID;
+use crate::units::Flow;
 use log::info;
 use std::collections::HashMap;
 
@@ -34,10 +37,10 @@ pub fn perform_agent_investment(
 ) {
     info!("Performing agent investment...");
 
-    let mut _reduced_costs: HashMap<_, _> =
+    let mut reduced_costs: HashMap<_, _> =
         reduced_costs_for_candidates_without_scarcity(solution, adjusted_prices, unadjusted_prices)
             .collect();
-    _reduced_costs.extend(reduced_costs_for_existing(
+    reduced_costs.extend(reduced_costs_for_existing(
         &model.time_slice_info,
         assets,
         adjusted_prices,
@@ -55,15 +58,30 @@ pub fn perform_agent_investment(
         for region_id in model.iter_regions() {
             let (load_map, peak) =
                 calculate_load(&model.time_slice_info, commodity_id, region_id, &demand);
-            let tranches = get_tranches(peak, model.num_demand_tranches);
 
             // We want to consider the tranche with the highest load factor first, but in our case
             // that will always be the first
-            for (i, tranche) in tranches.enumerate() {
-                let tranche_demand: HashMap<_, _> =
-                    calculate_demand_in_tranche(&model.time_slice_info, &load_map, &tranche)
-                        .collect();
-                info!("Tranche {i}: Demand: {tranche_demand:?}");
+            let mut unmet_demand: Option<HashMap<TimeSliceID, Flow>> = None;
+            for tranche in get_tranches(peak, model.num_demand_tranches) {
+                let demand_iter =
+                    calculate_demand_in_tranche(&model.time_slice_info, &load_map, &tranche);
+
+                // Get demand for current tranche
+                let tranche_demand = if let Some(unmet_demand) = unmet_demand {
+                    demand_iter
+                        .map(|(ts, demand)| {
+                            let unmet = *unmet_demand.get(&ts).unwrap();
+                            (ts, demand + unmet)
+                        })
+                        .collect()
+                } else {
+                    demand_iter.collect()
+                };
+
+                // **TODO:** Choose appraisal method based on agent objective
+                let (_cost_index, cur_unmet_demand) =
+                    calculate_lcox(&reduced_costs, &tranche_demand);
+                unmet_demand = Some(cur_unmet_demand);
             }
         }
     }
