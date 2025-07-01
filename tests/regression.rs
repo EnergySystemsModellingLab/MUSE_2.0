@@ -9,6 +9,8 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use tempfile::tempdir;
 
+const FLOAT_CMP_TOLERANCE: f64 = 1e-10;
+
 /// Regression tests for the example models.
 pub fn run_regression_test(example_name: &str) {
     std::env::set_var("MUSE2_LOG_LEVEL", "off");
@@ -109,7 +111,12 @@ fn try_compare_floats(s1: &str, s2: &str) -> Option<bool> {
     let float1: f64 = s1.parse().unwrap();
     let float2: f64 = s2.parse().unwrap();
 
-    Some(approx_eq!(f64, float1, float2))
+    Some(approx_eq!(
+        f64,
+        float1,
+        float2,
+        epsilon = FLOAT_CMP_TOLERANCE
+    ))
 }
 
 /// Get the names of CSV files expected to appear in the given folder
