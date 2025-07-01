@@ -67,10 +67,7 @@ where
             .or_insert_with(AgentObjectiveMap::new);
         for year in parse_year_str(&objective.years, milestone_years)? {
             try_insert(agent_objectives, year, objective.objective_type).with_context(|| {
-                format!(
-                    "Duplicate agent objective entry for agent {} and year {}",
-                    id, year
-                )
+                format!("Duplicate agent objective entry for agent {id} and year {year}")
             })?;
         }
     }
@@ -79,7 +76,7 @@ where
     for agent_id in agents.keys() {
         let agent_objectives = all_objectives
             .get(agent_id)
-            .with_context(|| format!("Agent {} has no objectives", agent_id))?;
+            .with_context(|| format!("Agent {agent_id} has no objectives"))?;
 
         let missing_years = milestone_years
             .iter()

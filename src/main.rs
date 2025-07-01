@@ -38,7 +38,7 @@ fn execute_cli_command(command: Option<Commands>) -> Result<()> {
     let Some(command) = command else {
         // Output program help in markdown format
         let help_str = Cli::command().render_long_help().to_string();
-        println!("{}", help_str);
+        println!("{help_str}");
         return Ok(());
     };
 

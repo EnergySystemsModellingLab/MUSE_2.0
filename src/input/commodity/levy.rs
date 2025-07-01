@@ -118,7 +118,7 @@ where
     for (commodity_id, regions) in commodity_regions.iter() {
         let map = map.get(commodity_id).unwrap();
         validate_commodity_levy_map(map, regions, milestone_years, time_slice_info)
-            .with_context(|| format!("Missing costs for commodity {}", commodity_id))?;
+            .with_context(|| format!("Missing costs for commodity {commodity_id}"))?;
     }
     Ok(map)
 }

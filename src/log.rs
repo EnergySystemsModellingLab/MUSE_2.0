@@ -137,10 +137,7 @@ pub fn init(log_level_from_settings: Option<&str>, output_path: &Path) -> Result
 fn write_log<T: Display>(out: FormatCallback, level: T, target: &str, message: &Arguments) {
     let timestamp = Local::now().format("%H:%M:%S");
 
-    out.finish(format_args!(
-        "[{} {} {}] {}",
-        timestamp, level, target, message
-    ));
+    out.finish(format_args!("[{timestamp} {level} {target}] {message}"));
 }
 
 /// Write to the log with no colours
