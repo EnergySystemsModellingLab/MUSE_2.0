@@ -9,7 +9,6 @@ use crate::model::Model;
 use crate::simulation::demand::{
     calculate_demand_in_tranche, calculate_load, calculate_svd_demand_profile, get_tranches,
 };
-use indexmap::IndexMap;
 use log::info;
 use std::collections::HashMap;
 
@@ -61,7 +60,7 @@ pub fn perform_agent_investment(
             // We want to consider the tranche with the highest load factor first, but in our case
             // that will always be the first
             for (i, tranche) in tranches.enumerate() {
-                let tranche_demand: IndexMap<_, _> =
+                let tranche_demand: HashMap<_, _> =
                     calculate_demand_in_tranche(&model.time_slice_info, &load_map, &tranche)
                         .collect();
                 info!("Tranche {i}: Demand: {tranche_demand:?}");

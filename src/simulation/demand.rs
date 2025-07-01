@@ -4,7 +4,6 @@ use crate::commodity::{CommodityID, CommodityMap, CommodityType};
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Dimensionless, Flow, FlowPerYear};
-use indexmap::IndexMap;
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 
@@ -34,14 +33,14 @@ pub fn calculate_svd_demand_profile(
     map
 }
 
-/// NB: USING INDEXMAP FOR EASE OF DEBUGGING
+/// Calculate load per time slice and peak load for a given commodity/region pair
 pub fn calculate_load(
     time_slice_info: &TimeSliceInfo,
     commodity_id: &CommodityID,
     region_id: &RegionID,
     demand: &DemandMap,
-) -> (IndexMap<TimeSliceID, FlowPerYear>, FlowPerYear) {
-    let mut load = IndexMap::new();
+) -> (HashMap<TimeSliceID, FlowPerYear>, FlowPerYear) {
+    let mut load = HashMap::new();
     let mut peak_load = FlowPerYear(0.0);
 
     for (time_slice, ts_length) in time_slice_info.iter() {
@@ -58,6 +57,7 @@ pub fn calculate_load(
     (load, peak_load)
 }
 
+/// Get the boundaries for each demand tranche
 pub fn get_tranches(
     peak: FlowPerYear,
     num_tranches: u32,
@@ -70,17 +70,19 @@ pub fn get_tranches(
     })
 }
 
+/// Calculate the demand for a given tranche
 pub fn calculate_demand_in_tranche<'a>(
     time_slice_info: &'a TimeSliceInfo,
-    load: &'a IndexMap<TimeSliceID, FlowPerYear>,
+    load: &'a HashMap<TimeSliceID, FlowPerYear>,
     tranche: &'a RangeInclusive<FlowPerYear>,
 ) -> impl Iterator<Item = (TimeSliceID, Flow)> + 'a {
     let load_in_tranche = calculate_load_in_tranche(load, tranche);
     load_to_demand(time_slice_info, load_in_tranche)
 }
 
+/// Calculate the load (power) for a given tranche
 fn calculate_load_in_tranche<'a>(
-    load: &'a IndexMap<TimeSliceID, FlowPerYear>,
+    load: &'a HashMap<TimeSliceID, FlowPerYear>,
     tranche: &'a RangeInclusive<FlowPerYear>,
 ) -> impl Iterator<Item = (TimeSliceID, FlowPerYear)> + 'a {
     load.iter().map(|(time_slice, &power)| {
@@ -91,6 +93,7 @@ fn calculate_load_in_tranche<'a>(
     })
 }
 
+/// Convert load (power) to demand flow (energy)
 fn load_to_demand<'a, I>(
     time_slice_info: &'a TimeSliceInfo,
     load: I,
