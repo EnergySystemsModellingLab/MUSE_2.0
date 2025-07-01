@@ -125,6 +125,13 @@ where
                     }
                 }
 
+                // It is possible that a commodity may not be produced or consumed by anything in a
+                // given milestone year, in which case it doesn't make sense to add a commodity
+                // balance constraint
+                if terms.is_empty() {
+                    continue;
+                }
+
                 // Add constraint. For SED commodities, the RHS is zero and for SVD commodities it
                 // is the exogenous demand supplied by the user.
                 let rhs = if commodity.kind == CommodityType::ServiceDemand {
