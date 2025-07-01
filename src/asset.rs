@@ -68,8 +68,8 @@ impl Asset {
             .clone();
 
         ensure!(
-            capacity.is_finite() && capacity >= Capacity(0.0),
-            "Capacity must be a finite number >= 0"
+            capacity.is_finite() && capacity > Capacity(0.0),
+            "Capacity must be a finite, positive number"
         );
 
         Ok(Self {
@@ -347,7 +347,6 @@ mod tests {
     use std::ops::RangeInclusive;
 
     #[rstest]
-    #[case(Capacity(0.0))]
     #[case(Capacity(0.01))]
     #[case(Capacity(0.5))]
     #[case(Capacity(1.0))]
@@ -360,6 +359,7 @@ mod tests {
     }
 
     #[rstest]
+    #[case(Capacity(0.0))]
     #[case(Capacity(-0.01))]
     #[case(Capacity(-1.0))]
     #[case(Capacity(f64::NAN))]
@@ -370,7 +370,7 @@ mod tests {
         let region_id = RegionID("GBR".into());
         assert_error!(
             Asset::new(agent_id, process.into(), region_id, capacity, 2015),
-            "Capacity must be a finite number >= 0"
+            "Capacity must be a finite, positive number"
         );
     }
 
