@@ -1,12 +1,14 @@
 //! Calculations related to demand, including demand profile and tranching
-
 use super::optimisation::FlowMap;
 use crate::commodity::CommodityID;
 use crate::region::RegionID;
-use crate::time_slice::TimeSliceID;
-use crate::units::Flow;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::units::{Dimensionless, Flow, FlowPerYear};
 use indexmap::IndexSet;
 use std::collections::HashMap;
+use std::ops::RangeInclusive;
+
+type DemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 
 /// Get demand per time slice for specified commodities
 pub fn get_demand_profile(
@@ -27,4 +29,77 @@ pub fn get_demand_profile(
     }
 
     map
+}
+
+/// Calculate load per time slice and peak load for a given commodity/region pair
+pub fn calculate_load(
+    time_slice_info: &TimeSliceInfo,
+    commodity_id: &CommodityID,
+    region_id: &RegionID,
+    demand: &DemandMap,
+) -> (HashMap<TimeSliceID, FlowPerYear>, FlowPerYear) {
+    let mut load = HashMap::new();
+    let mut peak_load = FlowPerYear(0.0);
+
+    for (time_slice, ts_length) in time_slice_info.iter() {
+        let demand = demand
+            .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+            .unwrap();
+        let power = *demand / ts_length;
+        load.insert(time_slice.clone(), power);
+
+        peak_load = peak_load.max(power);
+    }
+
+    (load, peak_load)
+}
+
+/// Get the boundaries for each demand tranche
+pub fn get_tranches(
+    peak: FlowPerYear,
+    num_tranches: u32,
+) -> impl Iterator<Item = RangeInclusive<FlowPerYear>> {
+    let tranche_width = peak / Dimensionless(num_tranches as f64);
+
+    (0..num_tranches).map(move |i| {
+        let lower = Dimensionless(i as f64) * tranche_width;
+        lower..=lower + tranche_width
+    })
+}
+
+/// Calculate the demand for a given tranche
+pub fn calculate_demand_in_tranche<'a>(
+    time_slice_info: &'a TimeSliceInfo,
+    load: &'a HashMap<TimeSliceID, FlowPerYear>,
+    tranche: &'a RangeInclusive<FlowPerYear>,
+) -> impl Iterator<Item = (TimeSliceID, Flow)> + 'a {
+    let load_in_tranche = calculate_load_in_tranche(load, tranche);
+    load_to_demand(time_slice_info, load_in_tranche)
+}
+
+/// Calculate the load (power) for a given tranche
+fn calculate_load_in_tranche<'a>(
+    load: &'a HashMap<TimeSliceID, FlowPerYear>,
+    tranche: &'a RangeInclusive<FlowPerYear>,
+) -> impl Iterator<Item = (TimeSliceID, FlowPerYear)> + 'a {
+    load.iter().map(|(time_slice, &power)| {
+        let load_capped = power.min(*tranche.end());
+        let load_in_tranche = (load_capped - *tranche.start()).max(FlowPerYear(0.0));
+
+        (time_slice.clone(), load_in_tranche)
+    })
+}
+
+/// Convert load (power) to demand flow (energy)
+fn load_to_demand<'a, I>(
+    time_slice_info: &'a TimeSliceInfo,
+    load: I,
+) -> impl Iterator<Item = (TimeSliceID, Flow)> + 'a
+where
+    I: Iterator<Item = (TimeSliceID, FlowPerYear)> + 'a,
+{
+    load.map(|(time_slice, load)| {
+        let ts_length = *time_slice_info.time_slices.get(&time_slice).unwrap();
+        (time_slice.clone(), load * ts_length)
+    })
 }
