@@ -3,6 +3,7 @@ use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
+use crate::settings::Settings;
 use crate::units::Capacity;
 use anyhow::Result;
 use log::info;
@@ -23,14 +24,14 @@ pub use prices::CommodityPrices;
 /// * `model` - The model to run
 /// * `assets` - The asset pool
 /// * `output_path` - The folder to which output files will be written
-/// * `debug_model` - Whether to write additional information (e.g. duals) to output files
+/// * `settings` - Program settings
 pub fn run(
     model: Model,
     mut assets: AssetPool,
     output_path: &Path,
-    debug_model: bool,
+    settings: Settings,
 ) -> Result<()> {
-    let mut writer = DataWriter::create(output_path, &model.model_path, debug_model)?;
+    let mut writer = DataWriter::create(output_path, &model.model_path, settings.debug_model)?;
 
     // Iterate over milestone years
     let mut year_iter = model.iter_years().peekable();
