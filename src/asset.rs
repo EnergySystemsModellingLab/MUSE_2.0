@@ -310,6 +310,9 @@ impl AssetPool {
 
 /// Additional methods for iterating over assets
 pub trait AssetIterator<'a> {
+    /// Filter the assets by the agent that owns them
+    fn filter_agent(self, agent_id: &'a AgentID) -> impl Iterator<Item = &'a AssetRef> + 'a;
+
     /// Filter the assets by region
     fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a;
 
@@ -324,6 +327,11 @@ impl<'a, I> AssetIterator<'a> for I
 where
     I: Iterator<Item = &'a AssetRef> + 'a,
 {
+    fn filter_agent(self, agent_id: &'a AgentID) -> impl Iterator<Item = &'a AssetRef> + 'a {
+        let agent_id = Some(agent_id.clone());
+        self.filter(move |asset| asset.agent_id == agent_id)
+    }
+
     fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a {
         self.filter(move |asset| asset.region_id == *region_id)
     }
