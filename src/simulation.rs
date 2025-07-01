@@ -14,9 +14,6 @@ pub mod investment;
 use investment::perform_agent_investment;
 pub mod prices;
 pub use prices::CommodityPrices;
-
-// TODO: REMOVE!
-#[allow(missing_docs)]
 pub mod demand;
 
 /// Run the simulation.

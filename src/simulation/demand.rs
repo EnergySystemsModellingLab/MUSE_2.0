@@ -44,7 +44,6 @@ pub fn calculate_load(
     let mut peak_load = FlowPerYear(0.0);
 
     for (time_slice, ts_length) in time_slice_info.iter() {
-        // NB: This **should** be in units of FlowPerYear
         let demand = demand
             .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
             .unwrap();
