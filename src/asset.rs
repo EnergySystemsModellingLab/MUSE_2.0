@@ -329,6 +329,12 @@ pub trait AssetIterator<'a>: Iterator<Item = &'a AssetRef> + Sized
 where
     Self: 'a,
 {
+    /// Filter assets by the agent that owns them
+    fn filter_agent(self, agent_id: &'a AgentID) -> impl Iterator<Item = &'a AssetRef> + 'a {
+        let agent_id = Some(agent_id.clone());
+        self.filter(move |asset| asset.agent_id == agent_id)
+    }
+
     /// Filter the assets by region
     fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a {
         self.filter(move |asset| asset.region_id == *region_id)
