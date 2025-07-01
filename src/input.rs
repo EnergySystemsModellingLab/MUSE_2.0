@@ -203,7 +203,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
         .context("Could not parse path to model")?;
     let model = Model {
         model_path,
-        milestone_years: model_file.milestone_years,
+        parameters: model_file,
         agents,
         commodities,
         processes,

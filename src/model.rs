@@ -15,8 +15,8 @@ const MODEL_FILE_NAME: &str = "model.toml";
 pub struct Model {
     /// Path to model folder
     pub model_path: PathBuf,
-    /// Milestone years for the simulation. Sorted.
-    pub milestone_years: Vec<u32>,
+    /// Parameters from the model TOML file
+    pub parameters: ModelFile,
     /// Agents for the simulation
     pub agents: AgentMap,
     /// Commodities for the simulation
@@ -79,7 +79,7 @@ impl ModelFile {
 impl Model {
     /// Iterate over the model's milestone years.
     pub fn iter_years(&self) -> impl Iterator<Item = u32> + '_ {
-        self.milestone_years.iter().copied()
+        self.parameters.milestone_years.iter().copied()
     }
 
     /// Iterate over the model's regions (region IDs).
