@@ -1,16 +1,21 @@
 //! Code for performing agent investment.
+use super::lcox::calculate_lcox;
 use super::optimisation::FlowMap;
 use super::prices::ReducedCosts;
-use super::CommodityPrices;
-use crate::asset::AssetPool;
+use crate::agent::{Agent, ObjectiveType};
+use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
-use crate::time_slice::TimeSliceID;
-use crate::units::Flow;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::units::{Capacity, Flow};
 use indexmap::IndexSet;
+use itertools::{chain, Itertools};
 use log::info;
 use std::collections::HashMap;
+
+/// Demand for a given combination of commodity, region and time slice
+type DemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
@@ -18,16 +23,15 @@ use std::collections::HashMap;
 ///
 /// * `model` - The model
 /// * `flow_map` - Map of commodity flows
-/// * `prices` - Commodity prices
+/// * `reduced_costs` - Reduced costs for assets
 /// * `assets` - The asset pool
 /// * `year` - Current milestone year
 pub fn perform_agent_investment(
     model: &Model,
     flow_map: &FlowMap,
-    _prices: &CommodityPrices,
-    _reduced_costs: &ReducedCosts,
-    _assets: &AssetPool,
-    _year: u32,
+    reduced_costs: &ReducedCosts,
+    assets: &AssetPool,
+    year: u32,
 ) {
     info!("Performing agent investment...");
 
@@ -38,17 +42,46 @@ pub fn perform_agent_investment(
         .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
         .map(|(id, _)| id.clone())
         .collect();
-    let _demand = get_demand_profile(&commodities_of_interest, flow_map);
+    let demand = get_demand_profile(&commodities_of_interest, flow_map);
+
+    for commodity_id in commodities_of_interest.iter() {
+        for agent in get_responsible_agents(model.agents.values(), commodity_id, year) {
+            let objective_type = agent.objectives.get(&year).unwrap();
+
+            for region_id in agent.regions.iter() {
+                // Maximum capacity for candidate assets
+                let max_capacity =
+                    get_maximum_candidate_capacity(model, &demand, commodity_id, region_id);
+
+                // Existing and candidate assets from which to choose
+                let opt_assets =
+                    get_asset_options(assets, agent, commodity_id, region_id, year, max_capacity)
+                        .collect_vec();
+
+                let demand_for_commodity = get_demand_for_commodity(
+                    &model.time_slice_info,
+                    &demand,
+                    commodity_id,
+                    region_id,
+                );
+
+                // Choose assets from among existing pool and candidates
+                let _best_assets = select_best_assets(
+                    reduced_costs,
+                    &opt_assets,
+                    &demand_for_commodity,
+                    objective_type,
+                );
+            }
+        }
+    }
 
     // **TODO:** Perform agent investment. For now, let's just leave the pool unmodified.
     // assets.replace_active_pool(new_pool);
 }
 
 /// Get demand per time slice for specified commodities
-fn get_demand_profile(
-    commodities: &IndexSet<CommodityID>,
-    flow_map: &FlowMap,
-) -> HashMap<(CommodityID, RegionID, TimeSliceID), Flow> {
+fn get_demand_profile(commodities: &IndexSet<CommodityID>, flow_map: &FlowMap) -> DemandMap {
     let mut map = HashMap::new();
     for ((asset, commodity_id, time_slice), &flow) in flow_map.iter() {
         if commodities.contains(commodity_id) && flow > Flow(0.0) {
@@ -63,6 +96,162 @@ fn get_demand_profile(
     }
 
     map
+}
+
+/// Get part of the demand profile for this commodity and region
+fn get_demand_for_commodity(
+    time_slice_info: &TimeSliceInfo,
+    demand: &DemandMap,
+    commodity_id: &CommodityID,
+    region_id: &RegionID,
+) -> HashMap<TimeSliceID, Flow> {
+    time_slice_info
+        .iter_ids()
+        .map(|time_slice| {
+            (
+                time_slice.clone(),
+                *demand
+                    .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+                    .unwrap(),
+            )
+        })
+        .collect()
+}
+
+/// Get the agents responsible for a given commodity in a given year
+fn get_responsible_agents<'a, I>(
+    agents: I,
+    commodity_id: &'a CommodityID,
+    year: u32,
+) -> impl Iterator<Item = &'a Agent>
+where
+    I: Iterator<Item = &'a Agent>,
+{
+    agents.filter(move |agent| {
+        agent
+            .commodity_portions
+            .contains_key(&(commodity_id.clone(), year))
+    })
+}
+
+/// Get the maximum candidate asset capacity
+fn get_maximum_candidate_capacity(
+    model: &Model,
+    demand: &DemandMap,
+    commodity_id: &CommodityID,
+    region_id: &RegionID,
+) -> Capacity {
+    model.parameters.capacity_limit_factor
+        * get_peak_demand(&model.time_slice_info, demand, commodity_id, region_id)
+}
+
+/// Get the peak demand for this commodity
+fn get_peak_demand(
+    time_slice_info: &TimeSliceInfo,
+    demand: &DemandMap,
+    commodity_id: &CommodityID,
+    region_id: &RegionID,
+) -> Flow {
+    *time_slice_info
+        .iter_ids()
+        .map(|time_slice| {
+            demand
+                .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+                .unwrap()
+        })
+        .max_by(|a, b| a.total_cmp(b))
+        .unwrap()
+}
+
+/// Get options from existing and potential assets for the given parameters
+fn get_asset_options<'a>(
+    assets: &'a AssetPool,
+    agent: &'a Agent,
+    commodity_id: &'a CommodityID,
+    region_id: &'a RegionID,
+    year: u32,
+    candidate_asset_capacity: Capacity,
+) -> impl Iterator<Item = AssetRef> + 'a {
+    // Get existing assets which produce the commodity of interest
+    let existing_assets = assets
+        .iter()
+        .filter_agent(&agent.id)
+        .filter_region(region_id)
+        .filter_primary_producers_of(commodity_id)
+        .cloned();
+
+    // Get candidates assets which produce the commodity of interest
+    let candidate_assets = get_candidate_assets(
+        agent,
+        region_id,
+        commodity_id,
+        year,
+        candidate_asset_capacity,
+    );
+
+    chain(existing_assets, candidate_assets)
+}
+
+/// Get candidate assets which produce a particular commodity for a given agent
+fn get_candidate_assets<'a>(
+    agent: &'a Agent,
+    region_id: &'a RegionID,
+    commodity_id: &'a CommodityID,
+    year: u32,
+    candidate_asset_capacity: Capacity,
+) -> impl Iterator<Item = AssetRef> + 'a {
+    let flows_key = (region_id.clone(), year);
+
+    // Get all the processes which produce the commodity in this year
+    let producers = agent
+        .search_space
+        .get(&(commodity_id.clone(), year))
+        .unwrap()
+        .iter()
+        .filter(move |process| {
+            process
+                .flows
+                .get(&flows_key)
+                .unwrap()
+                .get(commodity_id)
+                .unwrap()
+                .is_output()
+        });
+
+    producers.map(move |process| {
+        Asset::new(
+            Some(agent.id.clone()),
+            process.clone(),
+            region_id.clone(),
+            candidate_asset_capacity,
+            year,
+        )
+        .unwrap()
+        .into()
+    })
+}
+
+/// Get the best assets for meeting demand for the given commodity
+fn select_best_assets(
+    reduced_costs: &ReducedCosts,
+    opt_assets: &[AssetRef],
+    demand: &HashMap<TimeSliceID, Flow>,
+    objective_type: &ObjectiveType,
+) -> impl Iterator<Item = AssetRef> {
+    let appraise_investment = move |asset, reduced_costs, demand| match objective_type {
+        ObjectiveType::LevelisedCostOfX => calculate_lcox(asset, reduced_costs, demand),
+    };
+
+    // **TODO:** Loop while demand is unmet
+    for asset in opt_assets.iter() {
+        // Investment appraisal
+        let _output = appraise_investment(asset, reduced_costs, demand);
+
+        // **TODO:** Choose based on output
+    }
+
+    // **PLACEHOLDER**
+    std::iter::empty()
 }
 
 #[cfg(test)]
