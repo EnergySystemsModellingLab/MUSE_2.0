@@ -46,7 +46,11 @@ pub fn run(
 
     // Dispatch optimisation
     let candidates = if let Some(next_year) = year_iter.peek() {
-        candidate_assets_for_year(&model.processes, *next_year)
+        candidate_assets_for_year(
+            &model.processes,
+            *next_year,
+            model.parameters.candidate_asset_capacity,
+        )
     } else {
         // If there is only one milestone year, there are no candidates for next year
         Vec::new()
@@ -84,7 +88,11 @@ pub fn run(
 }
 
 /// Get all candidate assets for a specified year
-fn candidate_assets_for_year(processes: &ProcessMap, year: u32) -> Vec<AssetRef> {
+fn candidate_assets_for_year(
+    processes: &ProcessMap,
+    year: u32,
+    candidate_asset_capacity: Capacity,
+) -> Vec<AssetRef> {
     let mut candidates = Vec::new();
     for process in processes
         .values()
@@ -96,7 +104,7 @@ fn candidate_assets_for_year(processes: &ProcessMap, year: u32) -> Vec<AssetRef>
                     None,
                     Rc::clone(process),
                     region_id.clone(),
-                    Capacity(0.0001),
+                    candidate_asset_capacity,
                     year,
                 )
                 .unwrap()

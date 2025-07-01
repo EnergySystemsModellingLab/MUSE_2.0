@@ -1,15 +1,18 @@
 //! The model represents the static input data provided by the user.
 use crate::agent::AgentMap;
+use crate::asset::check_capacity_valid_for_asset;
 use crate::commodity::CommodityMap;
 use crate::input::{input_err_msg, is_sorted_and_unique, read_toml};
 use crate::process::ProcessMap;
 use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
+use crate::units::Capacity;
 use anyhow::{ensure, Context, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
 const MODEL_FILE_NAME: &str = "model.toml";
+const DEFAULT_CANDIDATE_ASSET_CAPACITY: Capacity = Capacity(0.0001);
 
 /// Model definition
 pub struct Model {
@@ -34,6 +37,15 @@ pub struct Model {
 pub struct ModelFile {
     /// Milestone years
     pub milestone_years: Vec<u32>,
+    /// The (small) value of capacity given to candidate assets.
+    ///
+    /// Don't change unless you know what you're doing.
+    #[serde(default = "default_candidate_asset_capacity")]
+    pub candidate_asset_capacity: Capacity,
+}
+
+fn default_candidate_asset_capacity() -> Capacity {
+    DEFAULT_CANDIDATE_ASSET_CAPACITY
 }
 
 /// Check that the milestone years parameter is valid
@@ -69,8 +81,15 @@ impl ModelFile {
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelFile> {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path)?;
-        check_milestone_years(&model_file.milestone_years)
-            .with_context(|| input_err_msg(file_path))?;
+
+        let validate = || -> Result<()> {
+            check_milestone_years(&model_file.milestone_years)?;
+            check_capacity_valid_for_asset(model_file.candidate_asset_capacity)
+                .context("Invalid value for candidate_asset_capacity")?;
+
+            Ok(())
+        };
+        validate().with_context(|| input_err_msg(file_path))?;
 
         Ok(model_file)
     }
