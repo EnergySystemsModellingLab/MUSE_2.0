@@ -2,7 +2,7 @@
 use crate::asset::AssetPool;
 use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
-use crate::units::Dimensionless;
+use crate::units::{Dimensionless, UnitType};
 use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
@@ -81,8 +81,9 @@ pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
 }
 
 /// Read a Dimensionless float, checking that it is between 0 and 1
-fn deserialise_proportion_nonzero<'de, D>(deserialiser: D) -> Result<Dimensionless, D::Error>
+fn deserialise_proportion_nonzero<'de, D, T>(deserialiser: D) -> Result<T, D::Error>
 where
+    T: UnitType,
     D: Deserializer<'de>,
 {
     let value = f64::deserialize(deserialiser)?;
@@ -90,7 +91,7 @@ where
         Err(serde::de::Error::custom("Value must be > 0 and <= 1"))?
     }
 
-    Ok(Dimensionless(value))
+    Ok(T::new(value))
 }
 
 /// Format an error message to include the file path. To be used with `anyhow::Context`.
@@ -125,13 +126,14 @@ where
 }
 
 /// Check that fractions sum to (approximately) one
-fn check_fractions_sum_to_one<I>(fractions: I) -> Result<()>
+fn check_fractions_sum_to_one<I, T>(fractions: I) -> Result<()>
 where
-    I: Iterator<Item = Dimensionless>,
+    T: UnitType,
+    I: Iterator<Item = T>,
 {
     let sum = fractions.sum();
     ensure!(
-        approx_eq!(Dimensionless, sum, Dimensionless(1.0), epsilon = 1e-5),
+        approx_eq!(T, sum, T::new(1.0), epsilon = 1e-5),
         "Sum of fractions does not equal one (actual: {})",
         sum
     );
