@@ -94,7 +94,9 @@ pub fn perform_agent_investment(
                 // We want to consider the tranche with the highest load factor first, but in our case
                 // that will always be the first
                 let mut unmet_demand: Option<HashMap<TimeSliceID, Flow>> = None;
-                for tranche in get_tranches(peak, model.parameters.num_demand_tranches) {
+                for (tranche_num, tranche) in
+                    get_tranches(peak, model.parameters.num_demand_tranches).enumerate()
+                {
                     let demand_iter =
                         calculate_demand_in_tranche(&model.time_slice_info, &load_map, &tranche);
 
@@ -112,6 +114,12 @@ pub fn perform_agent_investment(
                     };
 
                     // Investment appraisal
+                    let asset_process_ids = opt_assets.iter().map(|a| &a.process.id).collect_vec();
+                    info!(
+                        "Tranche {}: Running investment appraisal for commodity {} and agent {}. \
+                        Assets under consideration: {:?}",
+                        tranche_num, commodity_id, &agent.id, asset_process_ids
+                    );
                     let (_cost_index, cur_unmet_demand) = match objective_type {
                         ObjectiveType::LevelisedCostOfX => {
                             calculate_lcox(&opt_assets, &reduced_costs, &tranche_demand)
