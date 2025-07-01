@@ -63,8 +63,7 @@ fn compare_lines(
     for (num, (line1, line2)) in lines1.into_iter().zip(lines2).enumerate() {
         if !compare_line(num, &line1, &line2, file_name, errors) {
             errors.push(format!(
-                "{}: line {}:\n    + \"{}\"\n    - \"{}\"",
-                file_name, num, line1, line2
+                "{file_name}: line {num}:\n    + \"{line1}\"\n    - \"{line2}\""
             ))
         }
     }
