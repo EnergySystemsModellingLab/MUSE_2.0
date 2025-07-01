@@ -67,10 +67,7 @@ impl Asset {
             })?
             .clone();
 
-        ensure!(
-            capacity.is_finite() && capacity > Capacity(0.0),
-            "Capacity must be a finite, positive number"
-        );
+        check_capacity_valid_for_asset(capacity)?;
 
         Ok(Self {
             id: None,
@@ -127,6 +124,16 @@ impl Asset {
     pub fn iter_flows(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.get_flows_map().values()
     }
+}
+
+/// Whether the specified value is a valid capacity for an asset
+pub fn check_capacity_valid_for_asset(capacity: Capacity) -> Result<()> {
+    ensure!(
+        capacity.is_finite() && capacity > Capacity(0.0),
+        "Capacity must be a finite, positive number"
+    );
+
+    Ok(())
 }
 
 /// A wrapper around [`Asset`] for storing references in maps.
