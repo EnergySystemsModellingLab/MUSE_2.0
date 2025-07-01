@@ -245,7 +245,7 @@ mod tests {
     fn create_csv_file(dir_path: &Path, contents: &str) -> PathBuf {
         let file_path = dir_path.join("test.csv");
         let mut file = File::create(&file_path).unwrap();
-        writeln!(file, "{}", contents).unwrap();
+        writeln!(file, "{contents}").unwrap();
         file_path
     }
 

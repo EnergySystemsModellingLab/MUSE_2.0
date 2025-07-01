@@ -85,7 +85,7 @@ pub fn read_agents(
         }
         agent.commodity_portions = agent_commodities
             .remove(id)
-            .with_context(|| format!("Missing commodity portions for agent {}", id))?;
+            .with_context(|| format!("Missing commodity portions for agent {id}"))?;
         if let Some(cost_limits) = cost_limits.remove(id) {
             agent.cost_limits = cost_limits;
         }
