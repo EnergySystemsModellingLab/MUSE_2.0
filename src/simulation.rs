@@ -96,7 +96,7 @@ fn candidate_assets_for_year(processes: &ProcessMap, year: u32) -> Vec<AssetRef>
                     None,
                     Rc::clone(process),
                     region_id.clone(),
-                    Capacity(0.0),
+                    Capacity(0.0001),
                     year,
                 )
                 .unwrap()
