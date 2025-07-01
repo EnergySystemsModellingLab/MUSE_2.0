@@ -316,6 +316,12 @@ pub trait AssetIterator<'a> {
     /// Filter the assets by region
     fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a;
 
+    /// Filter only the producers of the specified commodity
+    fn filter_producers_of(
+        self,
+        commodity_id: &'a CommodityID,
+    ) -> impl Iterator<Item = &'a AssetRef> + 'a;
+
     /// Iterate over process flows affecting the given commodity
     fn flows_for_commodity(
         self,
@@ -330,6 +336,19 @@ where
     fn filter_agent(self, agent_id: &'a AgentID) -> impl Iterator<Item = &'a AssetRef> + 'a {
         let agent_id = Some(agent_id.clone());
         self.filter(move |asset| asset.agent_id == agent_id)
+    }
+
+    fn filter_producers_of(
+        self,
+        commodity_id: &'a CommodityID,
+    ) -> impl Iterator<Item = &'a AssetRef> + 'a {
+        self.filter(|asset| {
+            if let Some(flow) = asset.get_flow(commodity_id) {
+                flow.is_output()
+            } else {
+                false
+            }
+        })
     }
 
     fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a {
