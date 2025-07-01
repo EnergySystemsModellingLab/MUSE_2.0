@@ -370,6 +370,18 @@ where
         self.filter(move |asset| asset.agent_id.as_ref() == Some(agent_id))
     }
 
+    /// Iterate over assets that have the given commodity as a primary output
+    fn filter_primary_producers_of(
+        self,
+        commodity_id: &'a CommodityID,
+    ) -> impl Iterator<Item = &'a AssetRef> + 'a {
+        self.filter(move |asset| {
+            asset
+                .primary_output()
+                .is_some_and(|flow| &flow.commodity.id == commodity_id)
+        })
+    }
+
     /// Filter the assets by region
     fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a {
         self.filter(move |asset| asset.region_id == *region_id)
