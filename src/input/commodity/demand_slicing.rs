@@ -1,8 +1,7 @@
 //! Demand slicing determines how annual demand is distributed across the year.
 use super::super::*;
-use crate::commodity::CommodityID;
+use crate::commodity::{CommodityID, CommodityMap};
 use crate::id::IDCollection;
-use crate::input::commodity::demand::BorrowedCommodityMap;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use crate::units::Dimensionless;
@@ -38,7 +37,7 @@ pub type DemandSliceMap = HashMap<(CommodityID, RegionID, TimeSliceSelection), D
 /// * `time_slice_info` - Information about seasons and times of day
 pub fn read_demand_slices(
     model_dir: &Path,
-    svd_commodities: &BorrowedCommodityMap,
+    svd_commodities: &CommodityMap,
     region_ids: &IndexSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap> {
@@ -56,7 +55,7 @@ pub fn read_demand_slices(
 /// Read demand slices from an iterator
 fn read_demand_slices_from_iter<I>(
     iter: I,
-    svd_commodities: &BorrowedCommodityMap,
+    svd_commodities: &CommodityMap,
     region_ids: &IndexSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<DemandSliceMap>
@@ -123,7 +122,7 @@ where
 /// * For every commodity + region pair, there must be entries covering every time slice
 /// * The demand fractions for all entries related to a commodity + region pair sum to one
 fn validate_demand_slices(
-    svd_commodities: &BorrowedCommodityMap,
+    svd_commodities: &CommodityMap,
     region_ids: &IndexSet<RegionID>,
     demand_slices: &DemandSliceMap,
     time_slice_info: &TimeSliceInfo,

@@ -5,7 +5,7 @@ use crate::agent::{
     AgentSearchSpaceMap, DecisionRule,
 };
 use crate::asset::{Asset, AssetPool};
-use crate::commodity::{Commodity, CommodityID, CommodityLevyMap, CommodityType, DemandMap};
+use crate::commodity::{Commodity, CommodityID, CommodityLevyMap, CommodityMap, CommodityType, DemandMap};
 use crate::process::{
     Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessMap, ProcessParameter,
     ProcessParameterMap,
@@ -20,7 +20,6 @@ use indexmap::indexmap;
 use indexmap::IndexSet;
 use itertools::Itertools;
 use rstest::fixture;
-use std::collections::HashMap;
 use std::iter;
 use std::rc::Rc;
 
@@ -72,8 +71,8 @@ pub fn svd_commodity() -> Commodity {
     }
 }
 
-pub fn get_svd_map(commodity: &Commodity) -> HashMap<CommodityID, &Commodity> {
-    iter::once((commodity.id.clone(), commodity)).collect()
+pub fn get_svd_map(commodity: &Commodity) -> CommodityMap {
+    iter::once((commodity.id.clone(), std::rc::Rc::new(commodity.clone()))).collect()
 }
 
 #[fixture]
