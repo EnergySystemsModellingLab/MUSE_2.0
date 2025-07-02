@@ -76,7 +76,7 @@ At a high level, the user defines:
     base time period (i.e. assets) and possible future processes that
     could be adopted in future milestone time periods.
 
-5) The agents that choose between technologies by applying search
+5) The agents that choose between processes by applying search
     spaces, objectives and decision rules. Portions of demand for each
     commodity must be assigned to an agent, and the sum of these
     portions must be one.
