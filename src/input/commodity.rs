@@ -33,8 +33,8 @@ pub fn read_commodities(
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<CommodityMap> {
-    let commodities =
-        read_csv_id_file::<Commodity, CommodityID>(&model_dir.join(COMMODITY_FILE_NAME))?;
+    let mut commodities =
+        read_csv_id_file_rc::<Commodity, CommodityID>(&model_dir.join(COMMODITY_FILE_NAME))?;
     let commodity_ids = commodities.keys().cloned().collect();
     let mut costs = read_commodity_levies(
         model_dir,
@@ -52,18 +52,16 @@ pub fn read_commodities(
         milestone_years,
     )?;
 
-    // Populate maps for each Commodity
-    Ok(commodities
-        .into_iter()
-        .map(|(id, mut commodity)| {
-            if let Some(costs) = costs.remove(&id) {
-                commodity.levies = costs;
-            }
-            if let Some(demand) = demand.remove(&id) {
-                commodity.demand = demand;
-            }
+    // Populate maps for each Commodity using Rc::make_mut
+    for (id, commodity_rc) in commodities.iter_mut() {
+        let commodity = std::rc::Rc::make_mut(commodity_rc);
+        if let Some(costs) = costs.remove(id) {
+            commodity.levies = costs;
+        }
+        if let Some(demand_map) = demand.remove(id) {
+            commodity.demand = demand_map;
+        }
+    }
 
-            (id, commodity.into())
-        })
-        .collect())
+    Ok(commodities)
 }

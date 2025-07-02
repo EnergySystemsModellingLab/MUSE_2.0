@@ -125,6 +125,32 @@ where
     fill_and_validate_map(file_path).with_context(|| input_err_msg(file_path))
 }
 
+/// Read a CSV file of items with IDs, wrapped in Rc.
+///
+/// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
+/// the IDs for a given type), we use an ordered map to maintain the order in the input files.
+fn read_csv_id_file_rc<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, std::rc::Rc<T>>>
+where
+    T: HasID<ID> + DeserializeOwned,
+{
+    fn fill_and_validate_map<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, std::rc::Rc<T>>>
+    where
+        T: HasID<ID> + DeserializeOwned,
+    {
+        let mut map = IndexMap::new();
+        for record in read_csv::<T>(file_path)? {
+            let id = record.get_id().clone();
+            let existing = map.insert(id.clone(), std::rc::Rc::new(record)).is_some();
+            ensure!(!existing, "Duplicate ID found: {id}");
+        }
+        ensure!(!map.is_empty(), "CSV file is empty");
+
+        Ok(map)
+    }
+
+    fill_and_validate_map(file_path).with_context(|| input_err_msg(file_path))
+}
+
 /// Check that fractions sum to (approximately) one
 fn check_values_sum_to_one_approx<I, T>(fractions: I) -> Result<()>
 where

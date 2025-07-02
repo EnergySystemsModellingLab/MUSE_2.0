@@ -8,11 +8,12 @@ use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel};
 use crate::units::Flow;
 use anyhow::{ensure, Result};
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
+use std::rc::Rc;
 
 const DEMAND_FILE_NAME: &str = "demand.csv";
 
@@ -40,7 +41,7 @@ pub type BorrowedCommodityMap<'a> = HashMap<CommodityID, &'a Commodity>;
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
-/// * `commodity_ids` - All possible IDs of commodities
+/// * `commodities` - Map of commodities
 /// * `region_ids` - All possible IDs for regions
 /// * `time_slice_info` - Information about seasons and times of day
 /// * `milestone_years` - All milestone years
@@ -50,7 +51,7 @@ pub type BorrowedCommodityMap<'a> = HashMap<CommodityID, &'a Commodity>;
 /// This function returns [`DemandMap`]s grouped by commodity ID.
 pub fn read_demand(
     model_dir: &Path,
-    commodities: &IndexMap<CommodityID, Commodity>,
+    commodities: &IndexMap<CommodityID, Rc<Commodity>>,
     region_ids: &IndexSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
@@ -59,7 +60,7 @@ pub fn read_demand(
     let svd_commodities = commodities
         .iter()
         .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
-        .map(|(id, commodity)| (id.clone(), commodity))
+        .map(|(id, commodity)| (id.clone(), commodity.as_ref()))
         .collect();
 
     let demand = read_demand_file(model_dir, &svd_commodities, region_ids, milestone_years)?;
