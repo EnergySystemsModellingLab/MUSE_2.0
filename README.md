@@ -16,7 +16,7 @@ existing MUSE framework, and to implement the framework in the high-performance 
 :construction: **Please note that this code is under heavy development and is not yet suitable for
 end users. Watch this space!** :construction:
 
-## Model overview
+## Model Overview
 
 MUSE is an [Integrated Assessment Modelling] framework that is designed to enable users to create
 and apply an agent-based model to simulate a market equilibrium on a set of user-defined
