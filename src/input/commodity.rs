@@ -52,9 +52,9 @@ pub fn read_commodities(
         milestone_years,
     )?;
 
-    // Populate maps for each Commodity using Rc::make_mut
+    // Populate maps for each Commodity using Rc::get_mut
     for (id, commodity_rc) in commodities.iter_mut() {
-        let commodity = std::rc::Rc::make_mut(commodity_rc);
+        let commodity = std::rc::Rc::get_mut(commodity_rc).unwrap();
         if let Some(costs) = costs.remove(id) {
             commodity.levies = costs;
         }
