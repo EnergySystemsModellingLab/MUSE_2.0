@@ -166,8 +166,7 @@ fn validate_flows_and_update_primary_output(
             let inferred_primary_output = validate_or_infer_primary_output(flows, primary_outputs)
                 .with_context(|| {
                     format!(
-                    "Invalid primary output configuration for process {} (region: {}, year: {})",
-                    process_id, region_id, year
+                    "Invalid primary output configuration for process {process_id} (region: {region_id}, year: {year})"
                 )
                 })?;
 

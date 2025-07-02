@@ -54,8 +54,7 @@ impl<'de> Deserialize<'de> for TimeSliceID {
         let s: &str = Deserialize::deserialize(deserialiser)?;
         let (season, time_of_day) = s.split(".").collect_tuple().ok_or_else(|| {
             D::Error::custom(format!(
-                "Invalid input '{}': Should be in form season.time_of_day",
-                s
+                "Invalid input '{s}': Should be in form season.time_of_day"
             ))
         })?;
         Ok(Self {
@@ -246,11 +245,11 @@ impl TimeSliceInfo {
         let season = self
             .seasons
             .get_id(season)
-            .with_context(|| format!("{} is not a known season", season))?;
+            .with_context(|| format!("{season} is not a known season"))?;
         let time_of_day = self
             .times_of_day
             .get_id(time_of_day)
-            .with_context(|| format!("{} is not a known time of day", time_of_day))?;
+            .with_context(|| format!("{time_of_day} is not a known time of day"))?;
 
         Ok(TimeSliceID {
             season: season.clone(),
