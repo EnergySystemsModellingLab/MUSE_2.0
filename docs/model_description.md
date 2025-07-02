@@ -9,10 +9,9 @@
 
 ### Model Purpose
 
-This Software Requirements Specification (SRS) describes MUSE 2.0 (**M**od**U**lar energy systems
-**S**imulation **E**nvironment).
-The purpose of MUSE is to provide users with a framework to simulate pathways of energy system
-transition, usually in the context of climate change mitigation.
+The purpose of MUSE 2.0 (**M**od**U**lar energy systems **S**imulation **E**nvironment) is to
+provide users with a framework to simulate pathways of energy system transition, usually in the
+context of climate change mitigation.
 
 ### Model Scope
 
