@@ -60,11 +60,11 @@ It is designed as a recursive dynamic model with imperfect foresight.
 The workflow is structured as follows:
 
 1. **Dispatch is executed for a calibrated base year.** Dispatch is executed using the formulation
-   shown in Part 1. All existing assets are included, and all candidate assets for the
-   \\( MSY_{next} \\) are included with capacities set to zero. This ensures that all commodity
-   shadow prices and reduced costs for candidate asset are generated for use in the
-   \\( MSY_{next} \\). \\( VoLL \\) load shedding variables should be zero after completion, and
-   if they are non-zero then throw an error as the model is not properly calibrated.
+   shown in [Dispatch Optimisation Formulation]. All existing assets are included, and all candidate
+   assets for the \\( MSY_{next} \\) are included with capacities set to zero. This ensures that all
+   commodity shadow prices and reduced costs for candidate asset are generated for use in the \\(
+   MSY_{next} \\). \\( VoLL \\) load shedding variables should be zero after completion, and if they
+   are non-zero then throw an error as the model is not properly calibrated.
 
 2. **Time-travel loop:** Move to the next milestone year (\\( MSY \\)).
 
@@ -93,12 +93,13 @@ The workflow is structured as follows:
          invested/chosen in the last iteration (layer) of this loop.
 
       2. **Dispatch to determine commodity of interest demand profile.** Dispatch is executed using
-         the formulation shown in Part 1, but only including system elements downstream of the
-         commodities of interest. Commodity prices for upstream/unknown inputs/outputs from assets
-         serving the commodities of interest and assets downstream of the commodities of interest
-         with unknown commodity prices (if any) are assumed to take on commodity prices from the
-         previous MSY. Care must be taken to avoid any double-counting of prices and e.g. commodity
-         levies. Demand profiles for commodities of interest are recorded (\\( D[c,r,t] \\)).
+         the formulation shown in [Dispatch Optimisation Formulation], but only including system
+         elements downstream of the commodities of interest. Commodity prices for upstream/unknown
+         inputs/outputs from assets serving the commodities of interest and assets downstream of the
+         commodities of interest with unknown commodity prices (if any) are assumed to take on
+         commodity prices from the previous MSY. Care must be taken to avoid any double-counting of
+         prices and e.g. commodity levies. Demand profiles for commodities of interest are recorded
+         (\\( D[c,r,t] \\)).
 
       3. **Run investment appraisal tools for each commodity of interest.** The investment appraisal
          tools shown in part 2 are applied to determine portfolios of existing and new assets to
@@ -115,9 +116,9 @@ The workflow is structured as follows:
 
    4. **Ironing-out loop**, with iteration limit \\( k_{max} \\). For each \\( k \\):
 
-      1. Execute dispatch as per Part 1 formulation with the complete system, with all candidate
-         assets for the \\( MSY_{next} \\) included with capacities set to zero to generate
-         prices and reduced costs for the \\( MSY_{next} \\).
+      1. Execute dispatch as per [Dispatch Optimisation Formulation] with the complete system, with
+         all candidate assets for the \\( MSY_{next} \\) included with capacities set to zero to
+         generate prices and reduced costs for the \\( MSY_{next} \\).
 
       2. Check if load-weighted average prices for any SED commodity has changed (or changed more
          than a tolerance) since the last loop (also, possibly check if the 95th percentile of price
@@ -133,3 +134,5 @@ The workflow is structured as follows:
          the price instability.
 
 3. **Outer loop ends when no further milestone years exist.**
+
+[Dispatch Optimisation Formulation]: ./dispatch_optimisation.md
