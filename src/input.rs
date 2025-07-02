@@ -103,7 +103,18 @@ pub fn input_err_msg<P: AsRef<Path>>(file_path: P) -> String {
 ///
 /// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
 /// the IDs for a given type), we use an ordered map to maintain the order in the input files.
-fn read_csv_id_file<T, U, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, U>>
+fn read_csv_id_file<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, T>>
+where
+    T: HasID<ID> + DeserializeOwned,
+{
+    read_csv_id_file_generic::<T, T, ID>(file_path)
+}
+
+/// Read a CSV file of items with IDs (generic version).
+///
+/// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
+/// the IDs for a given type), we use an ordered map to maintain the order in the input files.
+fn read_csv_id_file_generic<T, U, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, U>>
 where
     T: HasID<ID> + DeserializeOwned + Into<U>,
 {
@@ -133,7 +144,7 @@ fn read_csv_id_file_rc<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, s
 where
     T: HasID<ID> + DeserializeOwned,
 {
-    read_csv_id_file::<T, std::rc::Rc<T>, ID>(file_path)
+    read_csv_id_file_generic::<T, std::rc::Rc<T>, ID>(file_path)
 }
 
 /// Check that fractions sum to (approximately) one
