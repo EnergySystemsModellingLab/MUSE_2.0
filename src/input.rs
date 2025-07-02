@@ -107,14 +107,27 @@ fn read_csv_id_file<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, T>>
 where
     T: HasID<ID> + DeserializeOwned,
 {
-    fn fill_and_validate_map<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, T>>
+    read_csv_id_file_generic(file_path, |record| record)
+}
+
+/// Read a CSV file of items with IDs, applying a transformation function to each record.
+///
+/// As this function is only ever used for top-level CSV files (i.e. the ones which actually define
+/// the IDs for a given type), we use an ordered map to maintain the order in the input files.
+fn read_csv_id_file_generic<T, U, ID: IDLike, F>(file_path: &Path, transform: F) -> Result<IndexMap<ID, U>>
+where
+    T: HasID<ID> + DeserializeOwned,
+    F: Fn(T) -> U,
+{
+    fn fill_and_validate_map<T, U, ID: IDLike, F>(file_path: &Path, transform: F) -> Result<IndexMap<ID, U>>
     where
         T: HasID<ID> + DeserializeOwned,
+        F: Fn(T) -> U,
     {
         let mut map = IndexMap::new();
         for record in read_csv::<T>(file_path)? {
             let id = record.get_id().clone();
-            let existing = map.insert(id.clone(), record).is_some();
+            let existing = map.insert(id.clone(), transform(record)).is_some();
             ensure!(!existing, "Duplicate ID found: {id}");
         }
         ensure!(!map.is_empty(), "CSV file is empty");
@@ -122,7 +135,7 @@ where
         Ok(map)
     }
 
-    fill_and_validate_map(file_path).with_context(|| input_err_msg(file_path))
+    fill_and_validate_map(file_path, transform).with_context(|| input_err_msg(file_path))
 }
 
 /// Read a CSV file of items with IDs, wrapped in Rc.
@@ -133,22 +146,7 @@ fn read_csv_id_file_rc<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, s
 where
     T: HasID<ID> + DeserializeOwned,
 {
-    fn fill_and_validate_map<T, ID: IDLike>(file_path: &Path) -> Result<IndexMap<ID, std::rc::Rc<T>>>
-    where
-        T: HasID<ID> + DeserializeOwned,
-    {
-        let mut map = IndexMap::new();
-        for record in read_csv::<T>(file_path)? {
-            let id = record.get_id().clone();
-            let existing = map.insert(id.clone(), std::rc::Rc::new(record)).is_some();
-            ensure!(!existing, "Duplicate ID found: {id}");
-        }
-        ensure!(!map.is_empty(), "CSV file is empty");
-
-        Ok(map)
-    }
-
-    fill_and_validate_map(file_path).with_context(|| input_err_msg(file_path))
+    read_csv_id_file_generic(file_path, std::rc::Rc::new)
 }
 
 /// Check that fractions sum to (approximately) one
