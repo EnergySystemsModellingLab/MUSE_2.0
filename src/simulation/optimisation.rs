@@ -6,11 +6,13 @@ use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{Activity, Flow, MoneyPerActivity};
+use crate::units::{Activity, Flow, Money, MoneyPerActivity};
 use anyhow::{anyhow, Result};
-use highs::{HighsModelStatus, RowProblem as Problem, Sense};
+use highs::{RowProblem as Problem, Sense, SolvedModel};
+use highs_sys;
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
+use log::info;
 use std::ops::Range;
 
 mod constraints;
@@ -199,18 +201,21 @@ pub fn perform_dispatch_optimisation<'a>(
     enable_highs_logging(&mut highs_model);
 
     // Solve model
-    let solution = highs_model.solve();
-    match solution.status() {
-        HighsModelStatus::Optimal => Ok(Solution {
-            solution: solution.get_solution(),
-            variables,
-            active_asset_var_idx,
-            candidate_asset_var_idx,
-            time_slice_info: &model.time_slice_info,
-            constraint_keys,
-        }),
-        status => Err(anyhow!("Could not solve: {status:?}")),
-    }
+    let solution = highs_model
+        .try_solve()
+        .map_err(|err| anyhow!("Could not solve: {err:?}"))?;
+
+    let objective_value = get_objective_value(&solution);
+    info!("Objective value: {objective_value}");
+
+    Ok(Solution {
+        solution: solution.get_solution(),
+        variables,
+        active_asset_var_idx,
+        candidate_asset_var_idx,
+        time_slice_info: &model.time_slice_info,
+        constraint_keys,
+    })
 }
 
 /// Enable logging for the HiGHS solver
@@ -224,6 +229,16 @@ fn enable_highs_logging(model: &mut highs::Model) {
 
     model.set_option("log_to_console", true);
     model.set_option("output_flag", true);
+}
+
+/// Get the objective value of the solution.
+///
+/// This is the same value you would get from passing the optimal values (as found in the solution)
+/// into the objective function.
+fn get_objective_value(model: &SolvedModel) -> Money {
+    let value = unsafe { highs_sys::Highs_getObjectiveValue(model.as_ptr()) };
+
+    Money(value)
 }
 
 /// Add variables to the optimisation problem.
