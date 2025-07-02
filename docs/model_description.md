@@ -5,43 +5,11 @@
 
 # Model Description
 
-## Introduction
-
-### Model Purpose
-
 The purpose of MUSE 2.0 (**M**od**U**lar energy systems **S**imulation **E**nvironment) is to
 provide users with a framework to simulate pathways of energy system transition, usually in the
 context of climate change mitigation.
 
-### Model Scope
-
-MUSE is an [Integrated Assessment
-Modelling](https://unfccc.int/topics/mitigation/workstreams/response-measures/modelling-tools-to-assess-the-impact-of-the-implementation-of-response-measures/integrated-assessment-models-iams-and-energy-environment-economy-e3-models)
-framework that is designed to enable users to create and apply an agent-based model that simulates a
-market equilibrium on a set of user-defined commodities, over a user-defined time period, for a
-user-specified region or set of regions. MUSE was developed to simulate approaches to climate change
-mitigation over a long time horizon (e.g. 5-year steps to 2050 or 2100), but the framework is
-generalised and can therefore simulate any market equilibrium.
-
-## Overall Description
-
-### Overview
-
-MUSE 2.0 is the successor to MUSE. The original MUSE framework is open-source software [available on
-GitHub](https://github.com/EnergySystemsModellingLab/MUSE_OS), coded in Python. MUSE 2.0 is
-implemented following re-design of MUSE to address a range of legacy issues that are challenging to
-address via upgrades to the existing MUSE framework, and to implement the framework in the
-high-performance Rust language.
-
-MUSE is classified as a recursive dynamic modelling framework in the sense that it iterates on a
-single time period to find a market equilibrium, and then moves to the next time period. Agents in
-MUSE have limited foresight, reacting only to information available in the current time period. This
-is distinct from intertemporal optimisation modelling frameworks (such as
-[TIMES](https://iea-etsap.org/index.php/etsap-tools/model-generators/times) and
-[MESSAGEix](https://docs.messageix.org/en/latest/)) which have perfect foresight over the whole
-modelled time horizon.
-
-### Model Concept
+## Model Concept
 
 MUSE 2.0 is a bottom-up engineering-economic modelling framework that computes a price-induced
 supply-demand equilibrium on a set of user-defined commodities.
