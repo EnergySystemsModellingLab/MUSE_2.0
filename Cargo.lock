@@ -814,6 +814,7 @@ dependencies = [
  "fern",
  "float-cmp",
  "highs",
+ "highs-sys",
  "human-panic",
  "include_dir",
  "indexmap",
