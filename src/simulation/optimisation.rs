@@ -7,11 +7,12 @@ use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{Activity, Flow, MoneyPerActivity, MoneyPerFlow, UnitType};
+use crate::units::{Activity, Flow, Money, MoneyPerActivity, MoneyPerFlow, UnitType};
 use anyhow::{anyhow, Result};
-use highs::{HighsModelStatus, RowProblem as Problem, Sense};
+use highs::{RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
+use log::info;
 use std::ops::Range;
 
 mod constraints;
@@ -231,18 +232,21 @@ fn perform_dispatch_optimisation_no_save<'a>(
     enable_highs_logging(&mut highs_model);
 
     // Solve model
-    let solution = highs_model.solve();
-    match solution.status() {
-        HighsModelStatus::Optimal => Ok(Solution {
-            solution: solution.get_solution(),
-            variables,
-            active_asset_var_idx,
-            candidate_asset_var_idx,
-            time_slice_info: &model.time_slice_info,
-            constraint_keys,
-        }),
-        status => Err(anyhow!("Could not solve: {status:?}")),
-    }
+    let solution = highs_model
+        .try_solve()
+        .map_err(|err| anyhow!("Could not solve: {err:?}"))?;
+
+    let objective_value = Money(solution.objective_value());
+    info!("Objective value: {objective_value}");
+
+    Ok(Solution {
+        solution: solution.get_solution(),
+        variables,
+        active_asset_var_idx,
+        candidate_asset_var_idx,
+        time_slice_info: &model.time_slice_info,
+        constraint_keys,
+    })
 }
 
 /// Enable logging for the HiGHS solver
