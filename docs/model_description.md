@@ -51,11 +51,11 @@ The model framework is designed to operate sequentially across several distinct 
 economically-driven) and guides new capacity investments. The overarching objective is to simulate
 agent decision-making to serve commodity (and service) demand.
 
-A fundamental premise for the investment appraisal is that prices for balanced commodities (SEDs)
-from the previous milestone year (\\( \pi_{prevMSY} \\)) are considered reliable for economic
-evaluations. Service demand commodity (SVD) prices from \\( MSY_{prev} \\) may or may not be
-reliable (as defined by the user), guiding the choice of appraisal method for assets producing them.
-It is designed as a recursive dynamic model with imperfect foresight.
+A fundamental premise for the investment appraisal is that prices for balanced commodities (Supply
+Equals Demand: SED) from the previous milestone year (\\( \pi_{prevMSY} \\)) are considered reliable
+for economic evaluations. Service demand commodity (SVD) prices from \\( MSY_{prev} \\) may or may
+not be reliable (as defined by the user), guiding the choice of appraisal method for assets
+producing them. It is designed as a recursive dynamic model with imperfect foresight.
 
 The workflow is structured as follows:
 
