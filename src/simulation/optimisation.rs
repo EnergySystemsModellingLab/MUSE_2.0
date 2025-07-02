@@ -12,7 +12,6 @@ use highs::{RowProblem as Problem, Sense, SolvedModel};
 use highs_sys;
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
-use log::info;
 use std::ops::Range;
 
 mod constraints;
@@ -66,6 +65,8 @@ pub struct Solution<'a> {
     candidate_asset_var_idx: Range<usize>,
     time_slice_info: &'a TimeSliceInfo,
     constraint_keys: ConstraintKeys,
+    /// The objective value for the solution
+    pub objective_value: Money,
 }
 
 impl Solution<'_> {
@@ -195,9 +196,6 @@ pub fn perform_dispatch_optimisation<'a>(
         .try_solve()
         .map_err(|err| anyhow!("Could not solve: {err:?}"))?;
 
-    let objective_value = get_objective_value(&solution);
-    info!("Objective value: {objective_value}");
-
     Ok(Solution {
         solution: solution.get_solution(),
         variables,
@@ -205,6 +203,7 @@ pub fn perform_dispatch_optimisation<'a>(
         candidate_asset_var_idx,
         time_slice_info: &model.time_slice_info,
         constraint_keys,
+        objective_value: get_objective_value(&solution),
     })
 }
 
