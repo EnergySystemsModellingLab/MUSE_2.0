@@ -7,7 +7,7 @@ use crate::region::RegionID;
 use crate::simulation::optimisation::{FlowMap, Solution};
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
-use crate::units::{Activity, Flow, MoneyPerActivity, MoneyPerFlow};
+use crate::units::{Activity, Flow, Money, MoneyPerActivity, MoneyPerFlow};
 use anyhow::{Context, Result};
 use csv;
 use itertools::Itertools;
@@ -39,6 +39,9 @@ const COMMODITY_BALANCE_DUALS_FILE_NAME: &str = "debug_commodity_balance_duals.c
 
 /// The output file name for activity duals
 const ACTIVITY_DUALS_FILE_NAME: &str = "debug_activity_duals.csv";
+
+/// The output file name for extra solver output values
+const SOLVER_VALUES_FILE_NAME: &str = "debug_solver.csv";
 
 /// Get the model name from the specified directory path
 pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
@@ -147,11 +150,20 @@ struct CommodityBalanceDualsRow {
     value: MoneyPerFlow,
 }
 
+/// Represents solver output values
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct SolverValuesRow {
+    milestone_year: u32,
+    run_number: u32,
+    objective_value: Money,
+}
+
 /// For writing extra debug information about the model
 struct DebugDataWriter {
     activity_writer: csv::Writer<File>,
     commodity_balance_duals_writer: csv::Writer<File>,
     activity_duals_writer: csv::Writer<File>,
+    solver_values_writer: csv::Writer<File>,
 }
 
 impl DebugDataWriter {
@@ -170,6 +182,7 @@ impl DebugDataWriter {
             activity_writer: new_writer(ACTIVITY_FILE_NAME)?,
             commodity_balance_duals_writer: new_writer(COMMODITY_BALANCE_DUALS_FILE_NAME)?,
             activity_duals_writer: new_writer(ACTIVITY_DUALS_FILE_NAME)?,
+            solver_values_writer: new_writer(SOLVER_VALUES_FILE_NAME)?,
         })
     }
 
@@ -187,6 +200,7 @@ impl DebugDataWriter {
             run_number,
             solution.iter_commodity_balance_duals(),
         )?;
+        self.write_solver_values(milestone_year, run_number, solution.objective_value)?;
         Ok(())
     }
 
@@ -254,6 +268,23 @@ impl DebugDataWriter {
             };
             self.commodity_balance_duals_writer.serialize(row)?;
         }
+
+        Ok(())
+    }
+
+    /// Write additional solver output values to file
+    fn write_solver_values(
+        &mut self,
+        milestone_year: u32,
+        run_number: u32,
+        objective_value: Money,
+    ) -> Result<()> {
+        let row = SolverValuesRow {
+            milestone_year,
+            run_number,
+            objective_value,
+        };
+        self.solver_values_writer.serialize(row)?;
 
         Ok(())
     }
