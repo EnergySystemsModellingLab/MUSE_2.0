@@ -77,7 +77,7 @@ where
         let region_id = region_ids.get_id(&asset.region_id)?;
 
         Asset::new(
-            agent_id.clone(),
+            Some(agent_id.clone()),
             Rc::clone(process),
             region_id.clone(),
             asset.capacity,
@@ -115,7 +115,7 @@ mod tests {
             commission_year: 2010,
         };
         let asset_out = Asset::new(
-            "agent1".into(),
+            Some("agent1".into()),
             Rc::clone(processes.values().next().unwrap()),
             "GBR".into(),
             Capacity(1.0),

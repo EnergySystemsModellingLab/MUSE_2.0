@@ -21,8 +21,10 @@ pub struct AssetID(u32);
 pub struct Asset {
     /// A unique identifier for the asset
     pub id: Option<AssetID>,
-    /// A unique identifier for the agent
-    pub agent_id: AgentID,
+    /// A unique identifier for the agent.
+    ///
+    /// Candidate assets may not have an agent ID.
+    pub agent_id: Option<AgentID>,
     /// The [`Process`] that this asset corresponds to
     pub process: Rc<Process>,
     /// The [`ProcessParameter`] corresponding to the asset's region and commission year
@@ -41,7 +43,7 @@ impl Asset {
     /// The `id` field is initially set to `None`, but is changed to a unique value when the asset
     /// is stored in an [`AssetPool`].
     pub fn new(
-        agent_id: AgentID,
+        agent_id: Option<AgentID>,
         process: Rc<Process>,
         region_id: RegionID,
         capacity: Capacity,
@@ -65,10 +67,7 @@ impl Asset {
             })?
             .clone();
 
-        ensure!(
-            capacity.is_finite() && capacity > Capacity(0.0),
-            "Capacity must be a finite, positive number"
-        );
+        check_capacity_valid_for_asset(capacity)?;
 
         Ok(Self {
             id: None,
@@ -125,6 +124,16 @@ impl Asset {
     pub fn iter_flows(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.get_flows_map().values()
     }
+}
+
+/// Whether the specified value is a valid capacity for an asset
+pub fn check_capacity_valid_for_asset(capacity: Capacity) -> Result<()> {
+    ensure!(
+        capacity.is_finite() && capacity > Capacity(0.0),
+        "Capacity must be a finite, positive number"
+    );
+
+    Ok(())
 }
 
 /// A wrapper around [`Asset`] for storing references in maps.
@@ -350,7 +359,7 @@ mod tests {
     #[case(Capacity(1.0))]
     #[case(Capacity(100.0))]
     fn test_asset_new_valid(process: Process, #[case] capacity: Capacity) {
-        let agent_id = AgentID("agent1".into());
+        let agent_id = Some(AgentID("agent1".into()));
         let region_id = RegionID("GBR".into());
         let asset = Asset::new(agent_id, process.into(), region_id, capacity, 2015).unwrap();
         assert!(asset.id.is_none());
@@ -364,7 +373,7 @@ mod tests {
     #[case(Capacity(f64::INFINITY))]
     #[case(Capacity(f64::NEG_INFINITY))]
     fn test_asset_new_invalid_capacity(process: Process, #[case] capacity: Capacity) {
-        let agent_id = AgentID("agent1".into());
+        let agent_id = Some(AgentID("agent1".into()));
         let region_id = RegionID("GBR".into());
         assert_error!(
             Asset::new(agent_id, process.into(), region_id, capacity, 2015),
@@ -374,7 +383,7 @@ mod tests {
 
     #[rstest]
     fn test_asset_new_invalid_commission_year(process: Process) {
-        let agent_id = AgentID("agent1".into());
+        let agent_id = Some(AgentID("agent1".into()));
         let region_id = RegionID("GBR".into());
         assert_error!(
             Asset::new(agent_id, process.into(), region_id, Capacity(1.0), 2009),
@@ -384,7 +393,7 @@ mod tests {
 
     #[rstest]
     fn test_asset_new_invalid_region(process: Process) {
-        let agent_id = AgentID("agent1".into());
+        let agent_id = Some(AgentID("agent1".into()));
         let region_id = RegionID("FRA".into());
         assert_error!(
             Asset::new(agent_id, process.into(), region_id, Capacity(1.0), 2015),
@@ -419,7 +428,7 @@ mod tests {
         let future = [2020, 2010]
             .map(|year| {
                 Asset::new(
-                    "agent1".into(),
+                    Some("agent1".into()),
                     Rc::clone(&process),
                     "GBR".into(),
                     Capacity(1.0),
@@ -470,7 +479,7 @@ mod tests {
             regions: IndexSet::from(["GBR".into()]),
         });
         let asset = Asset::new(
-            "agent1".into(),
+            Some("agent1".into()),
             Rc::clone(&process),
             "GBR".into(),
             Capacity(2.0),
@@ -547,7 +556,7 @@ mod tests {
     #[rstest]
     fn test_asset_pool_replace_active_pool_new_asset(mut asset_pool: AssetPool, process: Process) {
         let asset = Asset::new(
-            "some_other_agent".into(),
+            Some("some_other_agent".into()),
             process.into(),
             "GBR".into(),
             Capacity(2.0),
@@ -560,7 +569,10 @@ mod tests {
         asset_pool.replace_active_pool(iter::once(asset.into()));
         assert_eq!(asset_pool.active.len(), 1);
         assert_eq!(asset_pool.active[0].id, Some(AssetID(2)));
-        assert_eq!(asset_pool.active[0].agent_id, "some_other_agent".into());
+        assert_eq!(
+            asset_pool.active[0].agent_id,
+            Some("some_other_agent".into())
+        );
     }
 
     #[rstest]
@@ -569,7 +581,7 @@ mod tests {
         process: Process,
     ) {
         let new_asset = Asset::new(
-            "some_other_agent".into(),
+            Some("some_other_agent".into()),
             process.into(),
             "GBR".into(),
             Capacity(2.0),
@@ -589,6 +601,9 @@ mod tests {
         asset_pool.replace_active_pool(new_pool);
         assert_equal(asset_pool.iter().map(|asset| asset.id.unwrap().0), 0..3);
         assert_eq!(asset_pool.active[2].id, Some(AssetID(2)));
-        assert_eq!(asset_pool.active[2].agent_id, "some_other_agent".into());
+        assert_eq!(
+            asset_pool.active[2].agent_id,
+            Some("some_other_agent".into())
+        );
     }
 }
