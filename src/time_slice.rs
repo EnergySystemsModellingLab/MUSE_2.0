@@ -136,13 +136,13 @@ impl TimeSliceSelection {
                     ts_info
                         .seasons
                         .iter()
-                        .map(|(season, fraction)| (season.clone().into(), *fraction)),
+                        .map(|(season, duration)| (season.clone().into(), *duration)),
                 ),
                 TimeSliceLevel::DayNight => Box::new(
                     ts_info
                         .time_slices
                         .iter()
-                        .map(|(ts, fraction)| (ts.clone().into(), *fraction)),
+                        .map(|(ts, duration)| (ts.clone().into(), *duration)),
                 ),
             },
             Self::Season(season) => match level {
@@ -155,7 +155,7 @@ impl TimeSliceSelection {
                         .time_slices
                         .iter()
                         .filter(move |(ts, _)| &ts.season == season)
-                        .map(|(ts, fraction)| (ts.clone().into(), *fraction)),
+                        .map(|(ts, duration)| (ts.clone().into(), *duration)),
                 ),
                 _ => unreachable!(),
             },
@@ -205,7 +205,7 @@ pub enum TimeSliceLevel {
     Annual,
 }
 
-/// Information about the time slices in the simulation, including names and fractions
+/// Information about the time slices in the simulation, including names and durations
 #[derive(PartialEq, Debug)]
 pub struct TimeSliceInfo {
     /// Names of times of day (e.g. "evening")
@@ -223,12 +223,12 @@ impl Default for TimeSliceInfo {
             season: "all-year".into(),
             time_of_day: "all-day".into(),
         };
-        let fractions = [(id.clone(), Year(1.0))].into_iter().collect();
+        let time_slices = [(id.clone(), Year(1.0))].into_iter().collect();
 
         Self {
             seasons: iter::once((id.season, Year(1.0))).collect(),
             times_of_day: iter::once(id.time_of_day).collect(),
-            time_slices: fractions,
+            time_slices,
         }
     }
 }
@@ -285,7 +285,7 @@ impl TimeSliceInfo {
     pub fn iter(&self) -> impl Iterator<Item = (&TimeSliceID, Year)> {
         self.time_slices
             .iter()
-            .map(|(ts, fraction)| (ts, *fraction))
+            .map(|(ts, duration)| (ts, *duration))
     }
 
     /// Iterate over the different time slice selections for a given time slice level.
@@ -309,8 +309,7 @@ impl TimeSliceInfo {
 
     /// Iterate over a subset of time slices calculating the relative duration of each.
     ///
-    /// The relative duration is specified as a fraction of the total time (proportion of year)
-    /// covered by `selection`.
+    /// The relative duration is specified as a fraction of the total time covered by `selection`.
     ///
     /// # Arguments
     ///
@@ -327,13 +326,13 @@ impl TimeSliceInfo {
         // Store selections as we have to iterate twice
         let selections = selection.iter_at_level(self, level)?.collect_vec();
 
-        // Total fraction of year covered by selection
-        let time_total: Year = selections.iter().map(|(_, fraction)| *fraction).sum();
+        // Total duration covered by selection
+        let total_duration: Year = selections.iter().map(|(_, duration)| *duration).sum();
 
         // Calculate share
         let iter = selections
             .into_iter()
-            .map(move |(selection, time_fraction)| (selection, time_fraction / time_total));
+            .map(move |(selection, duration)| (selection, duration / total_duration));
         Some(iter)
     }
 

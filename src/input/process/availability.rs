@@ -43,7 +43,7 @@ impl ProcessAvailabilityRaw {
     fn to_bounds(&self, ts_length: Year) -> RangeInclusive<Dimensionless> {
         // Circumvent unit type check. We know ts_length also represents a fraction of a year, so
         // this is ok.
-        let value = Dimensionless(self.value.value() * ts_length.value());
+        let value = self.value * Dimensionless(ts_length.value());
         match self.limit_type {
             LimitType::LowerBound => value..=Dimensionless(f64::INFINITY),
             LimitType::UpperBound => Dimensionless(0.0)..=value,

@@ -40,7 +40,7 @@ where
 {
     let mut times_of_day = IndexSet::new();
     let mut seasons = IndexMap::new();
-    let mut fractions = IndexMap::new();
+    let mut time_slices = IndexMap::new();
     for time_slice in iter {
         let time_of_day = get_or_insert(time_slice.time_of_day, &mut times_of_day);
         let season = match seasons.entry(time_slice.season) {
@@ -60,19 +60,21 @@ where
         };
 
         ensure!(
-            fractions.insert(id.clone(), time_slice.fraction).is_none(),
+            time_slices
+                .insert(id.clone(), time_slice.fraction)
+                .is_none(),
             "Duplicate time slice entry for {id}",
         );
     }
 
     // Validate data
-    check_values_sum_to_one_approx(fractions.values().cloned())
+    check_values_sum_to_one_approx(time_slices.values().cloned())
         .context("Invalid time slice fractions")?;
 
     Ok(TimeSliceInfo {
         times_of_day,
         seasons,
-        time_slices: fractions,
+        time_slices,
     })
 }
 
