@@ -151,6 +151,7 @@ mod tests {
     use super::*;
     use crate::fixture::{assert_error, region_id, time_slice, time_slice_info};
     use crate::time_slice::TimeSliceID;
+    use crate::units::Year;
     use rstest::{fixture, rstest};
 
     #[fixture]
@@ -219,11 +220,11 @@ mod tests {
             time_of_day: "night".into(),
         };
         let time_slice_info = TimeSliceInfo {
-            seasons: [("winter".into(), Dimensionless(1.0))].into(),
+            seasons: [("winter".into(), Year(1.0))].into(),
             times_of_day: ["day".into(), "night".into()].into(),
             time_slices: [
-                (time_slice.clone(), Dimensionless(0.5)),
-                (time_slice.clone(), Dimensionless(0.5)),
+                (time_slice.clone(), Year(0.5)),
+                (time_slice.clone(), Year(0.5)),
             ]
             .into(),
         };

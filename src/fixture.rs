@@ -14,7 +14,7 @@ use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{
     ActivityPerCapacity, Capacity, Dimensionless, MoneyPerActivity, MoneyPerCapacity,
-    MoneyPerCapacityPerYear,
+    MoneyPerCapacityPerYear, Year,
 };
 use indexmap::indexmap;
 use indexmap::IndexSet;
@@ -168,13 +168,13 @@ pub fn time_slice() -> TimeSliceID {
 pub fn time_slice_info() -> TimeSliceInfo {
     TimeSliceInfo {
         times_of_day: iter::once("day".into()).collect(),
-        seasons: iter::once(("winter".into(), Dimensionless(1.0))).collect(),
+        seasons: iter::once(("winter".into(), Year(1.0))).collect(),
         time_slices: [(
             TimeSliceID {
                 season: "winter".into(),
                 time_of_day: "day".into(),
             },
-            Dimensionless(1.0),
+            Year(1.0),
         )]
         .into_iter()
         .collect(),

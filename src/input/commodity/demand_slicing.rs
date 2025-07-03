@@ -146,7 +146,7 @@ fn validate_demand_slices(
                     })
             })
             .process_results(|iter| {
-                check_fractions_sum_to_one(iter.copied()).context("Invalid demand fractions")
+                check_values_sum_to_one_approx(iter.copied()).context("Invalid demand fractions")
             })??;
     }
 
@@ -159,6 +159,7 @@ mod tests {
     use crate::commodity::Commodity;
     use crate::fixture::{assert_error, get_svd_map, svd_commodity, time_slice_info};
     use crate::time_slice::TimeSliceID;
+    use crate::units::Year;
     use rstest::{fixture, rstest};
     use std::iter;
 
@@ -206,12 +207,9 @@ mod tests {
         // Valid, multiple time slices
         let svd_commodities = get_svd_map(&svd_commodity);
         let time_slice_info = TimeSliceInfo {
-            seasons: [
-                ("winter".into(), Dimensionless(0.5)),
-                ("summer".into(), Dimensionless(0.5)),
-            ]
-            .into_iter()
-            .collect(),
+            seasons: [("winter".into(), Year(0.5)), ("summer".into(), Year(0.5))]
+                .into_iter()
+                .collect(),
             times_of_day: ["day".into(), "night".into()].into_iter().collect(),
             time_slices: [
                 (
@@ -219,28 +217,28 @@ mod tests {
                         season: "summer".into(),
                         time_of_day: "day".into(),
                     },
-                    Dimensionless(3.0 / 16.0),
+                    Year(3.0 / 16.0),
                 ),
                 (
                     TimeSliceID {
                         season: "summer".into(),
                         time_of_day: "night".into(),
                     },
-                    Dimensionless(5.0 / 16.0),
+                    Year(5.0 / 16.0),
                 ),
                 (
                     TimeSliceID {
                         season: "winter".into(),
                         time_of_day: "day".into(),
                     },
-                    Dimensionless(3.0 / 16.0),
+                    Year(3.0 / 16.0),
                 ),
                 (
                     TimeSliceID {
                         season: "winter".into(),
                         time_of_day: "night".into(),
                     },
-                    Dimensionless(5.0 / 16.0),
+                    Year(5.0 / 16.0),
                 ),
             ]
             .into_iter()
@@ -400,12 +398,9 @@ mod tests {
         // Some time slices uncovered
         let svd_commodities = get_svd_map(&svd_commodity);
         let time_slice_info = TimeSliceInfo {
-            seasons: [
-                ("winter".into(), Dimensionless(0.5)),
-                ("summer".into(), Dimensionless(0.5)),
-            ]
-            .into_iter()
-            .collect(),
+            seasons: [("winter".into(), Year(0.5)), ("summer".into(), Year(0.5))]
+                .into_iter()
+                .collect(),
             times_of_day: iter::once("day".into()).collect(),
             time_slices: [
                 (
@@ -413,14 +408,14 @@ mod tests {
                         season: "winter".into(),
                         time_of_day: "day".into(),
                     },
-                    Dimensionless(0.5),
+                    Year(0.5),
                 ),
                 (
                     TimeSliceID {
                         season: "summer".into(),
                         time_of_day: "day".into(),
                     },
-                    Dimensionless(0.5),
+                    Year(0.5),
                 ),
             ]
             .into_iter()
