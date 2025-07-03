@@ -126,7 +126,7 @@ where
 }
 
 /// Check that fractions sum to (approximately) one
-fn check_fractions_sum_to_one<I, T>(fractions: I) -> Result<()>
+fn check_values_sum_to_one_approx<I, T>(fractions: I) -> Result<()>
 where
     T: UnitType,
     I: Iterator<Item = T>,
@@ -324,28 +324,30 @@ mod tests {
     }
 
     #[test]
-    fn test_check_fractions_sum_to_one() {
+    fn test_check_values_sum_to_one_approx() {
         // Single input, valid
-        assert!(check_fractions_sum_to_one([Dimensionless(1.0)].into_iter()).is_ok());
+        assert!(check_values_sum_to_one_approx([Dimensionless(1.0)].into_iter()).is_ok());
 
         // Multiple inputs, valid
-        assert!(
-            check_fractions_sum_to_one([Dimensionless(0.4), Dimensionless(0.6)].into_iter())
-                .is_ok()
-        );
+        assert!(check_values_sum_to_one_approx(
+            [Dimensionless(0.4), Dimensionless(0.6)].into_iter()
+        )
+        .is_ok());
 
         // Single input, invalid
-        assert!(check_fractions_sum_to_one([Dimensionless(0.5)].into_iter()).is_err());
+        assert!(check_values_sum_to_one_approx([Dimensionless(0.5)].into_iter()).is_err());
 
         // Multiple inputs, invalid
-        assert!(
-            check_fractions_sum_to_one([Dimensionless(0.4), Dimensionless(0.3)].into_iter())
-                .is_err()
-        );
+        assert!(check_values_sum_to_one_approx(
+            [Dimensionless(0.4), Dimensionless(0.3)].into_iter()
+        )
+        .is_err());
 
         // Edge cases
-        assert!(check_fractions_sum_to_one([Dimensionless(f64::INFINITY)].into_iter()).is_err());
-        assert!(check_fractions_sum_to_one([Dimensionless(f64::NAN)].into_iter()).is_err());
+        assert!(
+            check_values_sum_to_one_approx([Dimensionless(f64::INFINITY)].into_iter()).is_err()
+        );
+        assert!(check_values_sum_to_one_approx([Dimensionless(f64::NAN)].into_iter()).is_err());
     }
 
     #[rstest]

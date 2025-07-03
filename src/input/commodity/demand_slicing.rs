@@ -146,7 +146,7 @@ fn validate_demand_slices(
                     })
             })
             .process_results(|iter| {
-                check_fractions_sum_to_one(iter.copied()).context("Invalid demand fractions")
+                check_values_sum_to_one_approx(iter.copied()).context("Invalid demand fractions")
             })??;
     }
 

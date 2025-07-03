@@ -66,7 +66,7 @@ where
     }
 
     // Validate data
-    check_fractions_sum_to_one(fractions.values().cloned())
+    check_values_sum_to_one_approx(fractions.values().cloned())
         .context("Invalid time slice fractions")?;
 
     Ok(TimeSliceInfo {
