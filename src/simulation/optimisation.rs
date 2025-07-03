@@ -6,7 +6,7 @@ use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{Activity, Flow, MoneyPerActivity};
+use crate::units::{Activity, Flow, MoneyPerActivity, MoneyPerFlow, UnitType};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
@@ -78,7 +78,7 @@ impl Solution<'_> {
         for (asset, time_slice, activity) in self.iter_activity_for_active() {
             for flow in asset.iter_flows() {
                 let flow_key = (asset.clone(), flow.commodity.id.clone(), time_slice.clone());
-                let flow_value = Activity(activity) * flow.coeff;
+                let flow_value = activity * flow.coeff;
                 flows.insert(flow_key, flow_value);
             }
         }
@@ -87,21 +87,23 @@ impl Solution<'_> {
     }
 
     /// Activity for each active asset
-    fn iter_activity_for_active(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, f64)> {
+    fn iter_activity_for_active(
+        &self,
+    ) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Activity)> {
         self.zip_var_keys_with_output(&self.active_asset_var_idx, self.solution.columns())
     }
 
     /// Reduced costs for candidate assets
     pub fn iter_reduced_costs_for_candidates(
         &self,
-    ) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, f64)> {
+    ) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, MoneyPerActivity)> {
         self.zip_var_keys_with_output(&self.candidate_asset_var_idx, self.solution.dual_columns())
     }
 
     /// Keys and dual values for commodity balance constraints.
     pub fn iter_commodity_balance_duals(
         &self,
-    ) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, f64)> {
+    ) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, MoneyPerFlow)> {
         // Each commodity balance constraint applies to a particular time slice
         // selection (depending on time slice level). Where this covers multiple timeslices,
         // we return the same dual for each individual timeslice.
@@ -116,7 +118,9 @@ impl Solution<'_> {
     }
 
     /// Keys and dual values for activity constraints.
-    pub fn iter_activity_duals(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, f64)> {
+    pub fn iter_activity_duals(
+        &self,
+    ) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, MoneyPerActivity)> {
         self.constraint_keys
             .activity_keys
             .zip_duals(self.solution.dual_rows())
@@ -129,17 +133,17 @@ impl Solution<'_> {
     ///
     /// * `variable_idx` - The subset of variables to look at
     /// * `output` - The output variable of interest
-    fn zip_var_keys_with_output<'a>(
+    fn zip_var_keys_with_output<'a, T: UnitType>(
         &'a self,
         variable_idx: &Range<usize>,
         output: &'a [f64],
-    ) -> impl Iterator<Item = (&'a AssetRef, &'a TimeSliceID, f64)> {
+    ) -> impl Iterator<Item = (&'a AssetRef, &'a TimeSliceID, T)> {
         assert!(variable_idx.end <= output.len());
         self.variables
             .0
             .keys()
             .zip(output[variable_idx.clone()].iter())
-            .map(|((asset, time_slice), value)| (asset, time_slice, *value))
+            .map(|((asset, time_slice), value)| (asset, time_slice, T::new(*value)))
     }
 }
 
