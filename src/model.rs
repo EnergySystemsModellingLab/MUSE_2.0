@@ -42,6 +42,9 @@ pub struct ModelFile {
     /// Don't change unless you know what you're doing.
     #[serde(default = "default_candidate_asset_capacity")]
     pub candidate_asset_capacity: Capacity,
+    /// If set to false, removes the effect of scarcity on commodity prices.
+    #[serde(default)]
+    pub scarcity_pricing: bool,
 }
 
 fn default_candidate_asset_capacity() -> Capacity {

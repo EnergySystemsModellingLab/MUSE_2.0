@@ -64,17 +64,25 @@ pub fn run(
         .transpose()?;
     let solution = solution_candidates.unwrap_or(solution_existing);
 
-    // Calculate prices. We need to know the scarcity-adjusted prices as well as unadjusted. Note
-    // that the order of operations is important.
+    // Calculate prices. We need to know the scarcity-adjusted prices as well as unadjusted, if the
+    // user has enabled this option. Note that the order of operations is important.
     let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
-    let adjusted_prices = shadow_prices
-        .clone()
-        .without_scarcity_pricing(solution.iter_activity_duals())
-        .with_levies(&model, year);
+    let adjusted_prices = (!model.parameters.scarcity_pricing).then(|| {
+        shadow_prices
+            .clone()
+            .without_scarcity_pricing(solution.iter_activity_duals())
+            .with_levies(&model, year)
+    });
     let unadjusted_prices = shadow_prices.with_levies(&model, year);
 
     // Write active assets and results of dispatch optimisation to file
-    writer.write(year, &solution, &assets, &flow_map, &adjusted_prices)?;
+    writer.write(
+        year,
+        &solution,
+        &assets,
+        &flow_map,
+        adjusted_prices.as_ref().unwrap_or(&unadjusted_prices),
+    )?;
 
     for year in year_iter {
         info!("Milestone year: {year}");
@@ -90,7 +98,7 @@ pub fn run(
             &model,
             &solution,
             &flow_map,
-            &adjusted_prices,
+            adjusted_prices.as_ref(),
             &unadjusted_prices,
             &assets,
             year,

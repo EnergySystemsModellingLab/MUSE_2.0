@@ -25,7 +25,7 @@ pub fn perform_agent_investment(
     model: &Model,
     solution: &Solution,
     _flow_map: &FlowMap,
-    adjusted_prices: &CommodityPrices,
+    adjusted_prices: Option<&CommodityPrices>,
     unadjusted_prices: &CommodityPrices,
     assets: &AssetPool,
     year: u32,
@@ -37,17 +37,19 @@ pub fn perform_agent_investment(
         .iter_reduced_costs_for_candidates()
         .map(|(asset, time_slice, cost)| ((asset.clone(), time_slice.clone()), cost))
         .collect();
-    remove_scarcity_influence_from_candidate_reduced_costs(
-        &mut _reduced_costs,
-        adjusted_prices,
-        unadjusted_prices,
-    );
+    if let Some(adjusted_prices) = adjusted_prices {
+        remove_scarcity_influence_from_candidate_reduced_costs(
+            &mut _reduced_costs,
+            adjusted_prices,
+            unadjusted_prices,
+        );
+    }
 
     // Reduced costs for existing assets
     _reduced_costs.extend(reduced_costs_for_existing(
         &model.time_slice_info,
         assets,
-        adjusted_prices,
+        adjusted_prices.unwrap_or(unadjusted_prices),
         year,
     ));
 
