@@ -1,7 +1,9 @@
 //! Code for performing agent investment.
 use super::optimisation::FlowMap;
 use super::optimisation::Solution;
-use super::prices::{reduced_costs_for_candidates_without_scarcity, reduced_costs_for_existing};
+use super::prices::{
+    reduced_costs_for_existing, remove_scarcity_influence_from_candidate_reduced_costs,
+};
 use super::CommodityPrices;
 use crate::asset::AssetPool;
 use crate::model::Model;
@@ -30,9 +32,18 @@ pub fn perform_agent_investment(
 ) {
     info!("Performing agent investment...");
 
-    let mut _reduced_costs: HashMap<_, _> =
-        reduced_costs_for_candidates_without_scarcity(solution, adjusted_prices, unadjusted_prices)
-            .collect();
+    // Reduced costs for candidate assets
+    let mut _reduced_costs: HashMap<_, _> = solution
+        .iter_reduced_costs_for_candidates()
+        .map(|(asset, time_slice, cost)| ((asset.clone(), time_slice.clone()), cost))
+        .collect();
+    remove_scarcity_influence_from_candidate_reduced_costs(
+        &mut _reduced_costs,
+        adjusted_prices,
+        unadjusted_prices,
+    );
+
+    // Reduced costs for existing assets
     _reduced_costs.extend(reduced_costs_for_existing(
         &model.time_slice_info,
         assets,

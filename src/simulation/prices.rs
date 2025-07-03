@@ -1,5 +1,5 @@
 //! Code for updating the simulation state.
-use super::optimisation::{calculate_cost_coefficient, Solution};
+use super::optimisation::calculate_cost_coefficient;
 use crate::asset::{AssetPool, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
@@ -154,30 +154,26 @@ where
     highest_duals
 }
 
-/// Calculate reduced costs for candidate assets by removing scarcity adjustment.
-pub fn reduced_costs_for_candidates_without_scarcity<'a>(
-    solution: &'a Solution,
-    adjusted_prices: &'a CommodityPrices,
-    unadjusted_prices: &'a CommodityPrices,
-) -> impl Iterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)> + 'a {
-    solution
-        .iter_reduced_costs_for_candidates()
-        .map(|(asset, time_slice, mut cost)| {
-            cost += asset
-                .iter_flows()
-                .map(|flow| {
-                    get_scarcity_adjustment(
-                        flow,
-                        &asset.region_id,
-                        time_slice,
-                        adjusted_prices,
-                        unadjusted_prices,
-                    )
-                })
-                .sum();
-
-            ((asset.clone(), time_slice.clone()), cost)
-        })
+/// Remove the effect of scarcity on candidate assets' reduced costs
+pub fn remove_scarcity_influence_from_candidate_reduced_costs(
+    reduced_costs: &mut HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>,
+    adjusted_prices: &CommodityPrices,
+    unadjusted_prices: &CommodityPrices,
+) {
+    for ((asset, time_slice), cost) in reduced_costs.iter_mut() {
+        *cost += asset
+            .iter_flows()
+            .map(|flow| {
+                get_scarcity_adjustment(
+                    flow,
+                    &asset.region_id,
+                    time_slice,
+                    adjusted_prices,
+                    unadjusted_prices,
+                )
+            })
+            .sum();
+    }
 }
 
 /// Get the scarcity adjustment for the given flow/region/time slice combination.
