@@ -8,6 +8,7 @@ use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
 use crate::units::Capacity;
 use anyhow::{ensure, Context, Result};
+use log::warn;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
@@ -43,12 +44,21 @@ pub struct ModelFile {
     #[serde(default = "default_candidate_asset_capacity")]
     pub candidate_asset_capacity: Capacity,
     /// If set to false, removes the effect of scarcity on commodity prices.
-    #[serde(default)]
+    ///
+    /// Don't disable unless you know what you're doing.
+    #[serde(default = "return_true")]
     pub scarcity_pricing: bool,
 }
 
-fn default_candidate_asset_capacity() -> Capacity {
+const fn default_candidate_asset_capacity() -> Capacity {
     DEFAULT_CANDIDATE_ASSET_CAPACITY
+}
+
+/// A function which always returns true.
+///
+/// Used for setting options to default to "on".
+const fn return_true() -> bool {
+    true
 }
 
 /// Check that the milestone years parameter is valid
@@ -84,6 +94,14 @@ impl ModelFile {
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelFile> {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path)?;
+
+        if !model_file.scarcity_pricing {
+            warn!(
+                "Scarcity pricing option is disabled. Commodity prices may be incorrect if \
+                assets have more than one output commodity. See: {}/issues/677",
+                env!("CARGO_PKG_REPOSITORY")
+            );
+        }
 
         let validate = || -> Result<()> {
             check_milestone_years(&model_file.milestone_years)?;
