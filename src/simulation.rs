@@ -44,19 +44,27 @@ pub fn run(
     // Commission assets for baseline year
     assets.commission_new(year);
 
-    // Dispatch optimisation
-    let candidates = year_iter
+    // Dispatch optimisation with existing assets only
+    let solution_existing = perform_dispatch_optimisation(&model, &assets, &[], year)?;
+    let flow_map = solution_existing.create_flow_map();
+
+    // Perform a separate dispatch run with existing assets and candidates from next year (skip if
+    // only one milestone year)
+    let solution_candidates = year_iter
         .peek()
         .map(|next_year| {
-            candidate_assets_for_year(
+            let candidates = candidate_assets_for_year(
                 &model.processes,
                 *next_year,
                 model.parameters.candidate_asset_capacity,
-            )
+            );
+
+            perform_dispatch_optimisation(&model, &assets, &candidates, year)
         })
-        .unwrap_or_default();
-    let solution = perform_dispatch_optimisation(&model, &assets, &candidates, year)?;
-    let flow_map = solution.create_flow_map();
+        .transpose()?;
+    let solution = solution_candidates.unwrap_or(solution_existing);
+
+    // Prices to be used in next milestone year
     let prices = CommodityPrices::calculate(&model, &solution, year);
 
     // Write active assets and results of dispatch optimisation to file
