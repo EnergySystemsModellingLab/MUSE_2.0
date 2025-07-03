@@ -33,20 +33,20 @@ pub fn perform_agent_investment(
     info!("Performing agent investment...");
 
     // Reduced costs for candidate assets
-    let mut _reduced_costs: HashMap<_, _> = solution
+    let mut reduced_costs: HashMap<_, _> = solution
         .iter_reduced_costs_for_candidates()
         .map(|(asset, time_slice, cost)| ((asset.clone(), time_slice.clone()), cost))
         .collect();
     if let Some(adjusted_prices) = adjusted_prices {
         remove_scarcity_influence_from_candidate_reduced_costs(
-            &mut _reduced_costs,
+            &mut reduced_costs,
             adjusted_prices,
             unadjusted_prices,
         );
     }
 
     // Reduced costs for existing assets
-    _reduced_costs.extend(reduced_costs_for_existing(
+    reduced_costs.extend(reduced_costs_for_existing(
         &model.time_slice_info,
         assets,
         adjusted_prices.unwrap_or(unadjusted_prices),
