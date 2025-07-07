@@ -86,7 +86,7 @@ impl Asset {
     }
 
     /// Get the activity limits for this asset in a particular time slice
-    pub fn get_activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<Activity> {
+    pub fn activity_limits(&self, time_slice: &TimeSliceID) -> RangeInclusive<Activity> {
         let limits = self
             .process
             .activity_limits
@@ -443,7 +443,7 @@ mod tests {
     }
 
     #[test]
-    fn test_asset_get_activity_limits() {
+    fn test_asset_activity_limits() {
         let time_slice = TimeSliceID {
             season: "winter".into(),
             time_of_day: "day".into(),
@@ -488,7 +488,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            asset.get_activity_limits(&time_slice),
+            asset.activity_limits(&time_slice),
             Activity(6.0)..=Activity(f64::INFINITY)
         );
     }

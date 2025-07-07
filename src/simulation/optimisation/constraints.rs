@@ -177,7 +177,7 @@ fn add_activity_constraints(problem: &mut Problem, variables: &VariableMap) -> A
 
     let mut keys = Vec::new();
     for (asset, time_slice, var) in variables.iter() {
-        let limits = asset.get_activity_limits(time_slice);
+        let limits = asset.activity_limits(time_slice);
         let limits = limits.start().value()..=limits.end().value();
 
         problem.add_row(limits, [(var, 1.0)]);
