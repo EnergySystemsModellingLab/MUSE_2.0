@@ -1,5 +1,4 @@
 //! Code for updating the simulation state.
-use super::optimisation::calculate_cost_coefficient;
 use crate::asset::{AssetPool, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
@@ -203,7 +202,7 @@ pub fn reduced_costs_for_existing<'a>(
     year: u32,
 ) -> impl Iterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)> + 'a {
     iproduct!(assets.iter(), time_slice_info.iter_ids()).map(move |(asset, time_slice)| {
-        let cost = calculate_cost_coefficient(asset, year, time_slice)
+        let cost = asset.get_operating_cost(year, time_slice)
             - asset
                 .iter_flows()
                 .map(|flow| {

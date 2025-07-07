@@ -4,7 +4,7 @@ use crate::commodity::CommodityID;
 use crate::process::{Process, ProcessFlow, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
-use crate::units::{Activity, Capacity};
+use crate::units::{Activity, Capacity, MoneyPerActivity};
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -100,6 +100,17 @@ impl Asset {
 
         // limits in real units (which are user defined)
         (max_act * *limits.start())..=(max_act * *limits.end())
+    }
+
+    /// Get the operating cost for this asset in a given year and time slice
+    pub fn get_operating_cost(&self, year: u32, time_slice: &TimeSliceID) -> MoneyPerActivity {
+        // The cost for all commodity flows (including levies/incentives)
+        let flows_cost: MoneyPerActivity = self
+            .iter_flows()
+            .map(|flow| flow.get_total_cost(&self.region_id, year, time_slice))
+            .sum();
+
+        self.process_parameter.variable_operating_cost + flows_cost
     }
 
     /// Maximum activity for this asset
