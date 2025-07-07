@@ -41,8 +41,7 @@ impl ProcessAvailabilityRaw {
     /// The resulting limits are max/min energy produced/consumed in each timeslice per
     /// `capacity_to_activity` units of capacity.
     fn to_bounds(&self, ts_length: Year) -> RangeInclusive<Dimensionless> {
-        // Circumvent unit type check. We know ts_length also represents a fraction of a year, so
-        // this is ok.
+        // We know ts_length also represents a fraction of a year, so this is ok.
         let value = self.value * ts_length / Year(1.0);
         match self.limit_type {
             LimitType::LowerBound => value..=Dimensionless(f64::INFINITY),
