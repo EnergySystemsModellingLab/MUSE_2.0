@@ -1,33 +1,31 @@
 //! Calculations related to demand, including demand profile and tranching
 use super::optimisation::FlowMap;
-use crate::commodity::{CommodityID, CommodityMap, CommodityType};
+use crate::commodity::CommodityID;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Dimensionless, Flow, FlowPerYear};
+use indexmap::IndexSet;
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 
 type DemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 
-/// Get demand per time slice for SVD commodities
-pub fn calculate_svd_demand_profile(
-    commodities: &CommodityMap,
+/// Get demand per time slice for specified commodities
+pub fn get_demand_profile(
+    commodities: &IndexSet<CommodityID>,
     flow_map: &FlowMap,
 ) -> HashMap<(CommodityID, RegionID, TimeSliceID), Flow> {
     let mut map = HashMap::new();
     for ((asset, commodity_id, time_slice), &flow) in flow_map.iter() {
-        let commodity = commodities.get(commodity_id).unwrap();
-        if commodity.kind != CommodityType::ServiceDemand {
-            continue;
+        if commodities.contains(commodity_id) && flow > Flow(0.0) {
+            map.entry((
+                commodity_id.clone(),
+                asset.region_id.clone(),
+                time_slice.clone(),
+            ))
+            .and_modify(|value| *value += flow)
+            .or_insert(flow);
         }
-
-        map.entry((
-            commodity_id.clone(),
-            asset.region_id.clone(),
-            time_slice.clone(),
-        ))
-        .and_modify(|value| *value += flow)
-        .or_insert(flow);
     }
 
     map

@@ -9,7 +9,7 @@ use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::simulation::demand::{
-    calculate_demand_in_tranche, calculate_load, calculate_svd_demand_profile, get_tranches,
+    calculate_demand_in_tranche, calculate_load, get_demand_profile, get_tranches,
 };
 use crate::time_slice::TimeSliceID;
 use crate::units::{Capacity, Flow};
@@ -49,14 +49,16 @@ pub fn perform_agent_investment(
         year,
     ));
 
-    let demand = calculate_svd_demand_profile(&model.commodities, flow_map);
+    // We consider SVD commodities first
+    let commodities_of_interest = model
+        .commodities
+        .iter()
+        .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
+        .map(|(id, _)| id.clone())
+        .collect();
+    let demand = get_demand_profile(&commodities_of_interest, flow_map);
 
-    for (commodity_id, commodity) in model.commodities.iter() {
-        if commodity.kind != CommodityType::ServiceDemand {
-            // We only consider SVD commodities first
-            continue;
-        }
-
+    for commodity_id in commodities_of_interest.iter() {
         for agent in get_responsible_agents(model.agents.values(), commodity_id, year) {
             let objective_type = agent.objectives.get(&year).unwrap();
 
