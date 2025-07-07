@@ -319,6 +319,18 @@ where
         self.filter(move |asset| asset.agent_id == agent_id)
     }
 
+    /// Filter only consumers of the given commodity
+    fn filter_consumers_of(
+        self,
+        commodity_id: &'a CommodityID,
+    ) -> impl Iterator<Item = &'a AssetRef> + 'a {
+        self.filter(|asset| {
+            asset
+                .get_flow(commodity_id)
+                .is_some_and(|flow| flow.is_input())
+        })
+    }
+
     /// Filter only producers of the given commodity
     fn filter_producers_of(
         self,
