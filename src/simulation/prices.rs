@@ -202,16 +202,18 @@ pub fn reduced_costs_for_existing<'a>(
     year: u32,
 ) -> impl Iterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)> + 'a {
     iproduct!(assets.iter(), time_slice_info.iter_ids()).map(move |(asset, time_slice)| {
-        let cost = asset.get_operating_cost(year, time_slice)
-            - asset
-                .iter_flows()
-                .map(|flow| {
-                    flow.coeff
-                        * prices
-                            .get(&flow.commodity.id, &asset.region_id, time_slice)
-                            .unwrap()
-                })
-                .sum();
-        ((asset.clone(), time_slice.clone()), cost)
+        let operating_cost = asset.get_operating_cost(year, time_slice);
+        let revenue_from_flows = asset
+            .iter_flows()
+            .map(|flow| {
+                flow.coeff
+                    * prices
+                        .get(&flow.commodity.id, &asset.region_id, time_slice)
+                        .unwrap()
+            })
+            .sum();
+        let reduced_cost = operating_cost - revenue_from_flows;
+
+        ((asset.clone(), time_slice.clone()), reduced_cost)
     })
 }
