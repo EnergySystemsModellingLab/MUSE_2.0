@@ -70,7 +70,7 @@ pub fn run(
     let adjusted_prices = (!model.parameters.scarcity_pricing).then(|| {
         shadow_prices
             .clone()
-            .without_scarcity_pricing(solution.iter_activity_duals())
+            .with_scarcity_adjustment(solution.iter_activity_duals())
             .with_levies(&model, year)
     });
     let unadjusted_prices = shadow_prices.with_levies(&model, year);

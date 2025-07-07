@@ -48,7 +48,7 @@ impl CommodityPrices {
     /// # Arguments
     ///
     /// * `activity_duals` - Value of activity duals from solution
-    pub fn without_scarcity_pricing<'a, I>(mut self, activity_duals: I) -> Self
+    pub fn with_scarcity_adjustment<'a, I>(mut self, activity_duals: I) -> Self
     where
         I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, MoneyPerActivity)>,
     {
