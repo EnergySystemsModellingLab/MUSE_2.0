@@ -120,6 +120,11 @@ impl Asset {
             .unwrap()
     }
 
+    /// Whether this asset has been commissioned
+    pub fn is_commissioned(&self) -> bool {
+        self.id.is_some()
+    }
+
     /// Iterate over the asset's flows
     pub fn iter_flows(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.get_flows_map().values()
