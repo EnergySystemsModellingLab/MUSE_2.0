@@ -354,25 +354,16 @@ impl AssetPool {
 }
 
 /// Additional methods for iterating over assets
-pub trait AssetIterator<'a> {
-    /// Filter the assets by region
-    fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a;
-
-    /// Iterate over process flows affecting the given commodity
-    fn flows_for_commodity(
-        self,
-        commodity_id: &'a CommodityID,
-    ) -> impl Iterator<Item = (&'a AssetRef, &'a ProcessFlow)> + 'a;
-}
-
-impl<'a, I> AssetIterator<'a> for I
+pub trait AssetIterator<'a>: Iterator<Item = &'a AssetRef> + Sized
 where
-    I: Iterator<Item = &'a AssetRef> + 'a,
+    Self: 'a,
 {
+    /// Filter the assets by region
     fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a {
         self.filter(move |asset| asset.region_id == *region_id)
     }
 
+    /// Iterate over process flows affecting the given commodity
     fn flows_for_commodity(
         self,
         commodity_id: &'a CommodityID,
@@ -380,6 +371,8 @@ where
         self.filter_map(|asset| Some((asset, asset.get_flow(commodity_id)?)))
     }
 }
+
+impl<'a, I> AssetIterator<'a> for I where I: Iterator<Item = &'a AssetRef> + Sized + 'a {}
 
 #[cfg(test)]
 mod tests {
