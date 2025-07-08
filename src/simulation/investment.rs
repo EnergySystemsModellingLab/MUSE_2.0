@@ -13,7 +13,7 @@ use crate::simulation::demand::{
 };
 use crate::time_slice::TimeSliceID;
 use crate::units::{Capacity, Flow};
-use itertools::Itertools;
+use itertools::{iproduct, Itertools};
 use log::info;
 use std::collections::HashMap;
 
@@ -58,77 +58,75 @@ pub fn perform_agent_investment(
         .collect();
     let demand = get_demand_profile(&commodities_of_interest, flow_map);
 
-    for commodity_id in commodities_of_interest.iter() {
-        for agent in get_responsible_agents(model.agents.values(), commodity_id, year) {
-            let objective_type = agent.objectives.get(&year).unwrap();
+    for (region_id, commodity_id) in iproduct!(model.iter_regions(), commodities_of_interest.iter())
+    {
+        for agent in get_responsible_agents(model.agents.values(), region_id, commodity_id, year) {
+            // Get existing assets which produce the commodity of interest
+            let existing_assets = assets
+                .iter()
+                .filter_agent(&agent.id)
+                .filter_region(region_id)
+                .filter_producers_of(commodity_id)
+                .cloned();
+            let mut opt_assets = existing_assets.collect_vec();
 
-            for region_id in agent.regions.iter() {
-                // Get existing assets which produce the commodity of interest
-                let existing_assets = assets
-                    .iter()
-                    .filter_agent(&agent.id)
-                    .filter_region(region_id)
-                    .filter_producers_of(commodity_id)
-                    .cloned();
-                let mut opt_assets = existing_assets.collect_vec();
+            // Get candidates assets which produce the commodity of interest
+            let candidate_assets = get_candidate_assets(
+                agent,
+                commodity_id,
+                region_id,
+                year,
+                model.parameters.candidate_asset_capacity,
+            );
+            if let Some(candidate_assets) = candidate_assets {
+                opt_assets.extend(candidate_assets);
+            }
 
-                // Get candidates assets which produce the commodity of interest
-                let candidate_assets = get_candidate_assets(
-                    agent,
-                    commodity_id,
-                    region_id,
-                    year,
-                    model.parameters.candidate_asset_capacity,
-                );
-                if let Some(candidate_assets) = candidate_assets {
-                    opt_assets.extend(candidate_assets);
-                }
+            // No producers of this commodity for this agent
+            if opt_assets.is_empty() {
+                continue;
+            }
 
-                // No producers of this commodity for this agent
-                if opt_assets.is_empty() {
-                    continue;
-                }
+            // Calculate load for every time slice and peak load
+            let (load_map, peak) =
+                calculate_load(&model.time_slice_info, commodity_id, region_id, &demand);
 
-                // Calculate load for every time slice and peak load
-                let (load_map, peak) =
-                    calculate_load(&model.time_slice_info, commodity_id, region_id, &demand);
+            // We want to consider the tranche with the highest load factor first, but in our case
+            // that will always be the first
+            let mut unmet_demand: Option<HashMap<TimeSliceID, Flow>> = None;
+            for (tranche_num, tranche) in
+                get_tranches(peak, model.parameters.num_demand_tranches).enumerate()
+            {
+                let demand_iter =
+                    calculate_demand_in_tranche(&model.time_slice_info, &load_map, &tranche);
 
-                // We want to consider the tranche with the highest load factor first, but in our case
-                // that will always be the first
-                let mut unmet_demand: Option<HashMap<TimeSliceID, Flow>> = None;
-                for (tranche_num, tranche) in
-                    get_tranches(peak, model.parameters.num_demand_tranches).enumerate()
-                {
-                    let demand_iter =
-                        calculate_demand_in_tranche(&model.time_slice_info, &load_map, &tranche);
+                // Get demand for current tranche
+                let tranche_demand = if let Some(unmet_demand) = unmet_demand {
+                    // If there is unmet demand from the previous tranche, we include it here
+                    demand_iter
+                        .map(|(ts, demand)| {
+                            let unmet = *unmet_demand.get(&ts).unwrap();
+                            (ts, demand + unmet)
+                        })
+                        .collect()
+                } else {
+                    demand_iter.collect()
+                };
 
-                    // Get demand for current tranche
-                    let tranche_demand = if let Some(unmet_demand) = unmet_demand {
-                        // If there is unmet demand from the previous tranche, we include it here
-                        demand_iter
-                            .map(|(ts, demand)| {
-                                let unmet = *unmet_demand.get(&ts).unwrap();
-                                (ts, demand + unmet)
-                            })
-                            .collect()
-                    } else {
-                        demand_iter.collect()
-                    };
-
-                    // Investment appraisal
-                    let asset_process_ids = opt_assets.iter().map(|a| &a.process.id).collect_vec();
-                    info!(
-                        "Tranche {}: Running investment appraisal for commodity {} and agent {}. \
+                // Investment appraisal
+                let asset_process_ids = opt_assets.iter().map(|a| &a.process.id).collect_vec();
+                info!(
+                    "Tranche {}: Running investment appraisal for commodity {} and agent {}. \
                         Assets under consideration: {:?}",
-                        tranche_num, commodity_id, &agent.id, asset_process_ids
-                    );
-                    let (_cost_index, cur_unmet_demand) = match objective_type {
-                        ObjectiveType::LevelisedCostOfX => {
-                            calculate_lcox(&opt_assets, &reduced_costs, &tranche_demand)
-                        }
-                    };
-                    unmet_demand = Some(cur_unmet_demand);
-                }
+                    tranche_num, commodity_id, &agent.id, asset_process_ids
+                );
+                let objective_type = agent.objectives.get(&year).unwrap();
+                let (_cost_index, cur_unmet_demand) = match objective_type {
+                    ObjectiveType::LevelisedCostOfX => {
+                        calculate_lcox(&opt_assets, &reduced_costs, &tranche_demand)
+                    }
+                };
+                unmet_demand = Some(cur_unmet_demand);
             }
         }
     }
@@ -140,6 +138,7 @@ pub fn perform_agent_investment(
 /// Get the agents responsible for a given commodity in a given year
 fn get_responsible_agents<'a, I>(
     agents: I,
+    region_id: &'a RegionID,
     commodity_id: &'a CommodityID,
     year: u32,
 ) -> impl Iterator<Item = &'a Agent>
@@ -147,9 +146,10 @@ where
     I: Iterator<Item = &'a Agent>,
 {
     agents.filter(move |agent| {
-        agent
-            .commodity_portions
-            .contains_key(&(commodity_id.clone(), year))
+        agent.regions.contains(region_id)
+            && agent
+                .commodity_portions
+                .contains_key(&(commodity_id.clone(), year))
     })
 }
 
