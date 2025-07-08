@@ -60,6 +60,20 @@ pub fn read_agents(
     let mut agents = read_agents_file(model_dir, region_ids)?;
     let agent_ids = agents.keys().cloned().collect();
 
+    // We read commodity portions first as they are required by `read_agent_search_space`
+    let mut agent_commodities = read_agent_commodity_portions(
+        model_dir,
+        &agents,
+        commodities,
+        region_ids,
+        milestone_years,
+    )?;
+    for (id, agent) in agents.iter_mut() {
+        agent.commodity_portions = agent_commodities
+            .remove(id)
+            .with_context(|| format!("Missing commodity portions for agent {id}"))?;
+    }
+
     let mut objectives = read_agent_objectives(model_dir, &agents, milestone_years)?;
     let commodity_ids = commodities.keys().cloned().collect();
     let mut search_spaces = read_agent_search_space(
@@ -69,13 +83,6 @@ pub fn read_agents(
         &commodity_ids,
         milestone_years,
     )?;
-    let mut agent_commodities = read_agent_commodity_portions(
-        model_dir,
-        &agents,
-        commodities,
-        region_ids,
-        milestone_years,
-    )?;
     let mut cost_limits = read_agent_cost_limits(model_dir, &agent_ids, milestone_years)?;
 
     for (id, agent) in agents.iter_mut() {
@@ -83,9 +90,6 @@ pub fn read_agents(
         if let Some(search_space) = search_spaces.remove(id) {
             agent.search_space = search_space;
         }
-        agent.commodity_portions = agent_commodities
-            .remove(id)
-            .with_context(|| format!("Missing commodity portions for agent {id}"))?;
         if let Some(cost_limits) = cost_limits.remove(id) {
             agent.cost_limits = cost_limits;
         }
