@@ -1,5 +1,5 @@
 //! Code for performing agent investment.
-use super::lcox::calculate_lcox;
+use super::lcox::{calculate_lcox, AppraisalOutput};
 use super::optimisation::{FlowMap, Solution};
 use super::prices::{reduced_costs_for_candidates_without_scarcity, reduced_costs_for_existing};
 use super::CommodityPrices;
@@ -12,7 +12,7 @@ use crate::simulation::demand::{
     calculate_demand_in_tranche, calculate_load, calculate_svd_demand_profile, get_tranches,
 };
 use crate::time_slice::TimeSliceID;
-use crate::units::{Capacity, Flow, FlowPerYear, MoneyPerActivity};
+use crate::units::{Capacity, Flow, FlowPerYear};
 use itertools::Itertools;
 use log::info;
 use std::collections::HashMap;
@@ -185,13 +185,7 @@ fn perform_appraisal_for_tranches<F>(
     peak_load: FlowPerYear,
     appraisal_func: F,
 ) where
-    F: Fn(
-        &HashMap<TimeSliceID, Flow>,
-    ) -> (
-        MoneyPerActivity,
-        Option<Capacity>,
-        HashMap<TimeSliceID, Flow>,
-    ),
+    F: Fn(&HashMap<TimeSliceID, Flow>) -> AppraisalOutput,
 {
     // We want to consider the tranche with the highest load factor first, but in our case
     // that will always be the first
@@ -213,7 +207,7 @@ fn perform_appraisal_for_tranches<F>(
         };
 
         // Investment appraisal
-        let (_cost_index, _new_capacity, cur_unmet_demand) = appraisal_func(&tranche_demand);
-        unmet_demand = Some(cur_unmet_demand);
+        let appraisal_output = appraisal_func(&tranche_demand);
+        unmet_demand = Some(appraisal_output.unmet_demand);
     }
 }
