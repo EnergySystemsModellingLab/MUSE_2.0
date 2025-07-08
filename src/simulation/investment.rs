@@ -71,21 +71,18 @@ pub fn perform_agent_investment(
                     model.parameters.candidate_asset_capacity,
                 );
 
-                // No producers of this commodity for this agent
-                if opt_assets.is_empty() {
-                    continue;
-                }
-
                 // Calculate load for every time slice and peak load
                 let (load_map, peak_load) =
                     calculate_load(&model.time_slice_info, commodity_id, region_id, &demand);
 
-                let appraisal_func = |tranche_demand: &HashMap<_, _>| match objective_type {
-                    ObjectiveType::LevelisedCostOfX => {
-                        calculate_lcox(&opt_assets, &reduced_costs, tranche_demand)
-                    }
-                };
-                perform_appraisal_for_tranches(model, &load_map, peak_load, appraisal_func);
+                for asset in opt_assets {
+                    let appraisal_func = |tranche_demand: &HashMap<_, _>| match objective_type {
+                        ObjectiveType::LevelisedCostOfX => {
+                            calculate_lcox(&asset, &reduced_costs, tranche_demand)
+                        }
+                    };
+                    perform_appraisal_for_tranches(model, &load_map, peak_load, appraisal_func);
+                }
             }
         }
     }
