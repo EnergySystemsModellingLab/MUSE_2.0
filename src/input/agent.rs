@@ -87,9 +87,7 @@ pub fn read_agents(
 
     for (id, agent) in agents.iter_mut() {
         agent.objectives = objectives.remove(id).unwrap();
-        if let Some(search_space) = search_spaces.remove(id) {
-            agent.search_space = search_space;
-        }
+        agent.search_space = search_spaces.remove(id).unwrap();
         if let Some(cost_limits) = cost_limits.remove(id) {
             agent.cost_limits = cost_limits;
         }
