@@ -7,6 +7,16 @@ use crate::time_slice::TimeSliceID;
 use crate::units::{Capacity, Flow, MoneyPerActivity};
 use std::collections::HashMap;
 
+/// Output of investment appraisal functions
+pub struct AppraisalOutput {
+    /// Cost index for this asset/commodity combination
+    pub cost_index: MoneyPerActivity,
+    /// The required capacity, if a candidate asset
+    pub capacity: Option<Capacity>,
+    /// Leftover demand
+    pub unmet_demand: HashMap<TimeSliceID, Flow>,
+}
+
 /// Calculate LCOX based on the specified reduced costs and demand for a particular tranche.
 ///
 /// # Returns
@@ -17,15 +27,16 @@ pub fn calculate_lcox(
     asset: &AssetRef,
     _reduced_costs: &HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>,
     demand: &HashMap<TimeSliceID, Flow>,
-) -> (
-    MoneyPerActivity,
-    Option<Capacity>,
-    HashMap<TimeSliceID, Flow>,
-) {
+) -> AppraisalOutput {
     // **TODO:** Add LCOX calculation.
     // See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/171
-    let unmet = demand.keys().cloned().map(|ts| (ts, Flow(0.0))).collect();
+    let cost_index = MoneyPerActivity(42.0);
+    let capacity = asset.is_commissioned().then_some(Capacity(43.0));
+    let unmet_demand = demand.keys().cloned().map(|ts| (ts, Flow(0.0))).collect();
 
-    let new_capacity = asset.is_commissioned().then_some(Capacity(43.0));
-    (MoneyPerActivity(42.0), new_capacity, unmet)
+    AppraisalOutput {
+        cost_index,
+        capacity,
+        unmet_demand,
+    }
 }
