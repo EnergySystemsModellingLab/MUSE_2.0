@@ -190,27 +190,28 @@ fn perform_appraisal_for_tranches<F>(
 ) where
     F: Fn(&HashMap<TimeSliceID, Flow>) -> (MoneyPerActivity, HashMap<TimeSliceID, Flow>),
 {
-    // We want to consider the tranche with the highest load factor first, but in our case
-    // that will always be the first
-    let mut unmet_demand: Option<HashMap<TimeSliceID, Flow>> = None;
-    for tranche in get_tranches(peak_load, model.parameters.num_demand_tranches) {
-        let demand_iter = calculate_demand_in_tranche(&model.time_slice_info, load_map, &tranche);
+    let mut tranche_iter = get_tranches(peak_load, model.parameters.num_demand_tranches);
 
-        // Get demand for current tranche
-        let tranche_demand = if let Some(unmet_demand) = unmet_demand {
-            // If there is unmet demand from the previous tranche, we include it here
-            demand_iter
+    // Perform appraisal for first tranche
+    let tranche = tranche_iter.next().unwrap();
+    let tranche_demand =
+        calculate_demand_in_tranche(&model.time_slice_info, load_map, &tranche).collect();
+    let (_cost_index, mut unmet_demand) = appraisal_func(&tranche_demand);
+
+    for tranche in tranche_iter {
+        // Include any unmet demand from the previous tranche
+        let tranche_demand =
+            calculate_demand_in_tranche(&model.time_slice_info, load_map, &tranche)
                 .map(|(ts, demand)| {
                     let unmet = *unmet_demand.get(&ts).unwrap();
                     (ts, demand + unmet)
                 })
-                .collect()
-        } else {
-            demand_iter.collect()
-        };
+                .collect();
 
         // Investment appraisal
         let (_cost_index, cur_unmet_demand) = appraisal_func(&tranche_demand);
-        unmet_demand = Some(cur_unmet_demand);
+        unmet_demand = cur_unmet_demand;
     }
+
+    // **TODO:** Do something with appraisal results
 }
