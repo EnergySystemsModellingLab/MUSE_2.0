@@ -61,26 +61,15 @@ pub fn perform_agent_investment(
             let objective_type = agent.objectives.get(&year).unwrap();
 
             for region_id in agent.regions.iter() {
-                // Get existing assets which produce the commodity of interest
-                let existing_assets = assets
-                    .iter()
-                    .filter_agent(&agent.id)
-                    .filter_region(region_id)
-                    .filter_producers_of(commodity_id)
-                    .cloned();
-                let mut opt_assets = existing_assets.collect_vec();
-
-                // Get candidates assets which produce the commodity of interest
-                let candidate_assets = get_candidate_assets(
+                // Existing and candidate assets from which to choose
+                let opt_assets = get_asset_options(
+                    assets,
                     agent,
-                    commodity_id,
                     region_id,
+                    commodity_id,
                     year,
                     model.parameters.candidate_asset_capacity,
                 );
-                if let Some(candidate_assets) = candidate_assets {
-                    opt_assets.extend(candidate_assets);
-                }
 
                 // No producers of this commodity for this agent
                 if opt_assets.is_empty() {
@@ -149,6 +138,39 @@ where
             .commodity_portions
             .contains_key(&(commodity_id.clone(), year))
     })
+}
+
+/// Get options from existing and potential assets for the given parameters
+fn get_asset_options(
+    assets: &AssetPool,
+    agent: &Agent,
+    region_id: &RegionID,
+    commodity_id: &CommodityID,
+    year: u32,
+    candidate_asset_capacity: Capacity,
+) -> Vec<AssetRef> {
+    // Get existing assets which produce the commodity of interest
+    let existing_assets = assets
+        .iter()
+        .filter_agent(&agent.id)
+        .filter_region(region_id)
+        .filter_producers_of(commodity_id)
+        .cloned();
+    let mut opt_assets = existing_assets.collect_vec();
+
+    // Get candidates assets which produce the commodity of interest
+    let candidate_assets = get_candidate_assets(
+        agent,
+        commodity_id,
+        region_id,
+        year,
+        candidate_asset_capacity,
+    );
+    if let Some(candidate_assets) = candidate_assets {
+        opt_assets.extend(candidate_assets);
+    }
+
+    opt_assets
 }
 
 /// Get candidate assets which produce a particular commodity for a given agent
