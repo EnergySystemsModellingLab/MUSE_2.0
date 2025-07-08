@@ -12,7 +12,7 @@ use crate::simulation::demand::{
     calculate_demand_in_tranche, calculate_load, calculate_svd_demand_profile, get_tranches,
 };
 use crate::time_slice::TimeSliceID;
-use crate::units::{Capacity, Flow};
+use crate::units::{Capacity, Flow, FlowPerYear, MoneyPerActivity};
 use itertools::Itertools;
 use log::info;
 use std::collections::HashMap;
@@ -77,45 +77,15 @@ pub fn perform_agent_investment(
                 }
 
                 // Calculate load for every time slice and peak load
-                let (load_map, peak) =
+                let (load_map, peak_load) =
                     calculate_load(&model.time_slice_info, commodity_id, region_id, &demand);
 
-                // We want to consider the tranche with the highest load factor first, but in our case
-                // that will always be the first
-                let mut unmet_demand: Option<HashMap<TimeSliceID, Flow>> = None;
-                for (tranche_num, tranche) in
-                    get_tranches(peak, model.parameters.num_demand_tranches).enumerate()
-                {
-                    let demand_iter =
-                        calculate_demand_in_tranche(&model.time_slice_info, &load_map, &tranche);
-
-                    // Get demand for current tranche
-                    let tranche_demand = if let Some(unmet_demand) = unmet_demand {
-                        // If there is unmet demand from the previous tranche, we include it here
-                        demand_iter
-                            .map(|(ts, demand)| {
-                                let unmet = *unmet_demand.get(&ts).unwrap();
-                                (ts, demand + unmet)
-                            })
-                            .collect()
-                    } else {
-                        demand_iter.collect()
-                    };
-
-                    // Investment appraisal
-                    let asset_process_ids = opt_assets.iter().map(|a| &a.process.id).collect_vec();
-                    info!(
-                        "Tranche {}: Running investment appraisal for commodity {} and agent {}. \
-                        Assets under consideration: {:?}",
-                        tranche_num, commodity_id, &agent.id, asset_process_ids
-                    );
-                    let (_cost_index, cur_unmet_demand) = match objective_type {
-                        ObjectiveType::LevelisedCostOfX => {
-                            calculate_lcox(&opt_assets, &reduced_costs, &tranche_demand)
-                        }
-                    };
-                    unmet_demand = Some(cur_unmet_demand);
-                }
+                let appraisal_func = |tranche_demand: &HashMap<_, _>| match objective_type {
+                    ObjectiveType::LevelisedCostOfX => {
+                        calculate_lcox(&opt_assets, &reduced_costs, tranche_demand)
+                    }
+                };
+                perform_appraisal_for_tranches(model, &load_map, peak_load, appraisal_func);
             }
         }
     }
@@ -209,4 +179,38 @@ fn get_candidate_assets<'a>(
     });
 
     Some(assets)
+}
+
+/// Divide demand into tranches and perform appraisal over each in turn
+fn perform_appraisal_for_tranches<F>(
+    model: &Model,
+    load_map: &HashMap<TimeSliceID, FlowPerYear>,
+    peak_load: FlowPerYear,
+    appraisal_func: F,
+) where
+    F: Fn(&HashMap<TimeSliceID, Flow>) -> (MoneyPerActivity, HashMap<TimeSliceID, Flow>),
+{
+    // We want to consider the tranche with the highest load factor first, but in our case
+    // that will always be the first
+    let mut unmet_demand: Option<HashMap<TimeSliceID, Flow>> = None;
+    for tranche in get_tranches(peak_load, model.parameters.num_demand_tranches) {
+        let demand_iter = calculate_demand_in_tranche(&model.time_slice_info, load_map, &tranche);
+
+        // Get demand for current tranche
+        let tranche_demand = if let Some(unmet_demand) = unmet_demand {
+            // If there is unmet demand from the previous tranche, we include it here
+            demand_iter
+                .map(|(ts, demand)| {
+                    let unmet = *unmet_demand.get(&ts).unwrap();
+                    (ts, demand + unmet)
+                })
+                .collect()
+        } else {
+            demand_iter.collect()
+        };
+
+        // Investment appraisal
+        let (_cost_index, cur_unmet_demand) = appraisal_func(&tranche_demand);
+        unmet_demand = Some(cur_unmet_demand);
+    }
 }
