@@ -185,7 +185,13 @@ fn perform_appraisal_for_tranches<F>(
     peak_load: FlowPerYear,
     appraisal_func: F,
 ) where
-    F: Fn(&HashMap<TimeSliceID, Flow>) -> (MoneyPerActivity, HashMap<TimeSliceID, Flow>),
+    F: Fn(
+        &HashMap<TimeSliceID, Flow>,
+    ) -> (
+        MoneyPerActivity,
+        Option<Capacity>,
+        HashMap<TimeSliceID, Flow>,
+    ),
 {
     // We want to consider the tranche with the highest load factor first, but in our case
     // that will always be the first
@@ -207,7 +213,7 @@ fn perform_appraisal_for_tranches<F>(
         };
 
         // Investment appraisal
-        let (_cost_index, cur_unmet_demand) = appraisal_func(&tranche_demand);
+        let (_cost_index, _new_capacity, cur_unmet_demand) = appraisal_func(&tranche_demand);
         unmet_demand = Some(cur_unmet_demand);
     }
 }
