@@ -10,6 +10,7 @@ use crate::units::Capacity;
 use anyhow::{ensure, Context, Result};
 use log::warn;
 use serde::Deserialize;
+use serde_string_enum::DeserializeLabeledStringEnum;
 use std::path::{Path, PathBuf};
 
 const MODEL_FILE_NAME: &str = "model.toml";
@@ -46,19 +47,24 @@ pub struct ModelFile {
     /// If set to false, removes the effect of scarcity on commodity prices.
     ///
     /// Don't disable unless you know what you're doing.
-    #[serde(default = "return_true")]
-    pub scarcity_pricing: bool,
+    #[serde(default)]
+    pub pricing_strategy: PricingStrategy,
+}
+
+/// The strategy used for calculating commodity prices
+#[derive(DeserializeLabeledStringEnum, Debug, PartialEq, Default)]
+pub enum PricingStrategy {
+    /// Take commodity prices directly from the shadow prices
+    #[default]
+    #[string = "shadow_prices"]
+    ShadowPrices,
+    /// Adjust shadow prices for scarcity
+    #[string = "scarcity_adjusted"]
+    ScarcityAdjusted,
 }
 
 const fn default_candidate_asset_capacity() -> Capacity {
     DEFAULT_CANDIDATE_ASSET_CAPACITY
-}
-
-/// A function which always returns true.
-///
-/// Used for setting options to default to "on".
-const fn return_true() -> bool {
-    true
 }
 
 /// Check that the milestone years parameter is valid
@@ -95,10 +101,10 @@ impl ModelFile {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path)?;
 
-        if !model_file.scarcity_pricing {
+        if model_file.pricing_strategy == PricingStrategy::ScarcityAdjusted {
             warn!(
-                "Scarcity pricing option is disabled. Commodity prices may be incorrect if \
-                assets have more than one output commodity. See: {}/issues/677",
+                "The pricing strategy is set to 'scarcity_adjusted'. Commodity prices may be \
+                incorrect if assets have more than one output commodity. See: {}/issues/677",
                 env!("CARGO_PKG_REPOSITORY")
             );
         }

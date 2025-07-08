@@ -1,6 +1,6 @@
 //! Functionality for running the MUSE 2.0 simulation.
 use crate::asset::{Asset, AssetPool, AssetRef};
-use crate::model::Model;
+use crate::model::{Model, PricingStrategy};
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
 use crate::units::Capacity;
@@ -67,12 +67,13 @@ pub fn run(
     // Calculate prices. We need to know the scarcity-adjusted prices as well as unadjusted, if the
     // user has enabled this option. Note that the order of operations is important.
     let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
-    let adjusted_prices = (!model.parameters.scarcity_pricing).then(|| {
-        shadow_prices
-            .clone()
-            .with_scarcity_adjustment(solution.iter_activity_duals())
-            .with_levies(&model, year)
-    });
+    let adjusted_prices = (model.parameters.pricing_strategy == PricingStrategy::ScarcityAdjusted)
+        .then(|| {
+            shadow_prices
+                .clone()
+                .with_scarcity_adjustment(solution.iter_activity_duals())
+                .with_levies(&model, year)
+        });
     let unadjusted_prices = shadow_prices.with_levies(&model, year);
 
     // Write active assets and results of dispatch optimisation to file
