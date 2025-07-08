@@ -1,13 +1,71 @@
 //! Code for updating the simulation state.
 use crate::asset::{AssetPool, AssetRef};
 use crate::commodity::CommodityID;
-use crate::model::Model;
+use crate::model::{Model, PricingStrategy};
 use crate::process::ProcessFlow;
 use crate::region::RegionID;
+use crate::simulation::optimisation::Solution;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{MoneyPerActivity, MoneyPerFlow};
 use itertools::iproduct;
 use std::collections::{BTreeMap, HashMap};
+
+/// A map of reduced costs for different assets in different time slices
+pub type ReducedCosts = HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
+
+/// Get commodity prices and reduced costs for assets
+///
+/// Note that the behaviour will be different depending on the [`PricingStrategy`] the user has
+/// selected.
+pub fn get_prices_and_reduced_costs(
+    model: &Model,
+    solution: &Solution,
+    assets: &AssetPool,
+    year: u32,
+) -> (CommodityPrices, ReducedCosts) {
+    let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
+    let reduced_costs_for_candidates: HashMap<_, _> = solution
+        .iter_reduced_costs_for_candidates()
+        .map(|(asset, time_slice, cost)| ((asset.clone(), time_slice.clone()), cost))
+        .collect();
+
+    let (prices, reduced_costs_for_candidates) = match model.parameters.pricing_strategy {
+        // Use raw shadow prices and reduced costs
+        PricingStrategy::ShadowPrices => (
+            shadow_prices.with_levies(model, year),
+            reduced_costs_for_candidates,
+        ),
+        // Adjust prices for scarcity and then remove this adjustment from reduced costs
+        PricingStrategy::ScarcityAdjusted => {
+            let adjusted_prices = shadow_prices
+                .clone()
+                .with_scarcity_adjustment(solution.iter_activity_duals())
+                .with_levies(model, year);
+            let unadjusted_prices = shadow_prices.with_levies(model, year);
+            let mut reduced_costs_for_candidates = reduced_costs_for_candidates;
+
+            // Remove adjustment
+            remove_scarcity_influence_from_candidate_reduced_costs(
+                &mut reduced_costs_for_candidates,
+                &adjusted_prices,
+                &unadjusted_prices,
+            );
+
+            (adjusted_prices, reduced_costs_for_candidates)
+        }
+    };
+
+    // Add reduced costs for existing assets
+    let mut reduced_costs = reduced_costs_for_candidates;
+    reduced_costs.extend(reduced_costs_for_existing(
+        &model.time_slice_info,
+        assets,
+        &prices,
+        year,
+    ));
+
+    (prices, reduced_costs)
+}
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
 #[derive(Default, Clone)]
@@ -23,7 +81,7 @@ impl CommodityPrices {
     ///
     /// * `model` - The model
     /// * `year` - The milestone year of interest
-    pub fn with_levies(mut self, model: &Model, year: u32) -> Self {
+    fn with_levies(mut self, model: &Model, year: u32) -> Self {
         for (region_id, time_slice) in
             iproduct!(model.iter_regions(), model.time_slice_info.iter_ids())
         {
@@ -47,7 +105,7 @@ impl CommodityPrices {
     /// # Arguments
     ///
     /// * `activity_duals` - Value of activity duals from solution
-    pub fn with_scarcity_adjustment<'a, I>(mut self, activity_duals: I) -> Self
+    fn with_scarcity_adjustment<'a, I>(mut self, activity_duals: I) -> Self
     where
         I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, MoneyPerActivity)>,
     {
@@ -154,8 +212,8 @@ where
 }
 
 /// Remove the effect of scarcity on candidate assets' reduced costs
-pub fn remove_scarcity_influence_from_candidate_reduced_costs(
-    reduced_costs: &mut HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>,
+fn remove_scarcity_influence_from_candidate_reduced_costs(
+    reduced_costs: &mut ReducedCosts,
     adjusted_prices: &CommodityPrices,
     unadjusted_prices: &CommodityPrices,
 ) {
@@ -195,7 +253,7 @@ fn get_scarcity_adjustment(
 }
 
 /// Calculate reduced costs for existing assets
-pub fn reduced_costs_for_existing<'a>(
+fn reduced_costs_for_existing<'a>(
     time_slice_info: &'a TimeSliceInfo,
     assets: &'a AssetPool,
     prices: &'a CommodityPrices,

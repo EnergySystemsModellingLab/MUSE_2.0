@@ -1,8 +1,9 @@
 //! Functionality for running the MUSE 2.0 simulation.
 use crate::asset::{Asset, AssetPool, AssetRef};
-use crate::model::{Model, PricingStrategy};
+use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
+use crate::simulation::prices::get_prices_and_reduced_costs;
 use crate::units::Capacity;
 use anyhow::Result;
 use log::info;
@@ -64,26 +65,11 @@ pub fn run(
         .transpose()?;
     let solution = solution_candidates.unwrap_or(solution_existing);
 
-    // Calculate prices. We need to know the scarcity-adjusted prices as well as unadjusted, if the
-    // user has enabled this option. Note that the order of operations is important.
-    let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
-    let adjusted_prices = (model.parameters.pricing_strategy == PricingStrategy::ScarcityAdjusted)
-        .then(|| {
-            shadow_prices
-                .clone()
-                .with_scarcity_adjustment(solution.iter_activity_duals())
-                .with_levies(&model, year)
-        });
-    let unadjusted_prices = shadow_prices.with_levies(&model, year);
+    // Calculate commodity prices and asset reduced costs
+    let (prices, reduced_costs) = get_prices_and_reduced_costs(&model, &solution, &assets, year);
 
     // Write active assets and results of dispatch optimisation to file
-    writer.write(
-        year,
-        &solution,
-        &assets,
-        &flow_map,
-        adjusted_prices.as_ref().unwrap_or(&unadjusted_prices),
-    )?;
+    writer.write(year, &solution, &assets, &flow_map, &prices)?;
 
     for year in year_iter {
         info!("Milestone year: {year}");
@@ -95,15 +81,7 @@ pub fn run(
 
         // NB: Agent investment will actually be in a loop with more calls to
         // `perform_dispatch_optimisation`, but let's leave this as a placeholder for now
-        perform_agent_investment(
-            &model,
-            &solution,
-            &flow_map,
-            adjusted_prices.as_ref(),
-            &unadjusted_prices,
-            &assets,
-            year,
-        );
+        perform_agent_investment(&model, &flow_map, &prices, &reduced_costs, &assets, year);
 
         // Newly commissioned assets will be included in optimisation for at least one milestone
         // year before agents have the option of decommissioning them
