@@ -150,6 +150,13 @@ pub fn check_capacity_valid_for_asset(capacity: Capacity) -> Result<()> {
 #[derive(Clone, Debug)]
 pub struct AssetRef(Rc<Asset>);
 
+impl AssetRef {
+    /// Make a mutable reference to the underlying [`Asset`]
+    fn make_mut(&mut self) -> &mut Asset {
+        Rc::make_mut(&mut self.0)
+    }
+}
+
 impl From<Rc<Asset>> for AssetRef {
     fn from(value: Rc<Asset>) -> Self {
         Self(value)
@@ -290,26 +297,22 @@ impl AssetPool {
     }
 
     /// Replace the active pool with new and/or already commissioned assets
-    pub fn replace_active_pool<I>(&mut self, assets: I)
-    where
-        I: IntoIterator<Item = Rc<Asset>>,
-    {
-        let new_pool = assets.into_iter().map(|mut asset| {
-            if asset.id.is_none() {
+    pub fn replace_active_pool(&mut self, mut new_pool: Vec<AssetRef>) {
+        // Add IDs for non-commissioned assets
+        for asset in new_pool.iter_mut() {
+            if !asset.is_commissioned() {
                 // Asset is newly created from process so we need to assign an ID
-                let asset = Rc::make_mut(&mut asset);
+                let asset = asset.make_mut();
                 asset.id = Some(AssetID(self.next_id));
                 self.next_id += 1;
             }
+        }
 
-            asset.into()
-        });
+        // New pool may not have been sorted, but active needs to be sorted by ID
+        new_pool.sort();
 
         self.active.clear();
         self.active.extend(new_pool);
-
-        // New pool may not have been sorted, but active needs to be sorted by ID
-        self.active.sort();
     }
 }
 
@@ -564,7 +567,7 @@ mod tests {
     fn test_asset_pool_replace_active_pool_existing(mut asset_pool: AssetPool) {
         asset_pool.commission_new(2020);
         assert_eq!(asset_pool.active.len(), 2);
-        asset_pool.replace_active_pool(iter::once(asset_pool.active[1].clone().into()));
+        asset_pool.replace_active_pool(vec![asset_pool.active[1].clone()]);
         assert_eq!(asset_pool.active.len(), 1);
         assert_eq!(asset_pool.active[0].id, Some(AssetID(1)));
     }
@@ -582,7 +585,7 @@ mod tests {
 
         asset_pool.commission_new(2020);
         assert_eq!(asset_pool.active.len(), 2);
-        asset_pool.replace_active_pool(iter::once(asset.into()));
+        asset_pool.replace_active_pool(vec![asset.into()]);
         assert_eq!(asset_pool.active.len(), 1);
         assert_eq!(asset_pool.active[0].id, Some(AssetID(2)));
         assert_eq!(
@@ -607,10 +610,7 @@ mod tests {
 
         asset_pool.commission_new(2020);
         assert_eq!(asset_pool.active.len(), 2);
-        let mut new_pool: Vec<Rc<Asset>> = asset_pool
-            .iter()
-            .map(|asset| asset.clone().into())
-            .collect();
+        let mut new_pool: Vec<AssetRef> = asset_pool.iter().cloned().collect();
         new_pool.push(new_asset.into());
         new_pool.reverse();
 
