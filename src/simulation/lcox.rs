@@ -13,7 +13,7 @@ use std::collections::HashMap;
 ///
 /// Cost index for commodity and any unmet demand, to be included in the next tranche.
 pub fn calculate_lcox(
-    _assets: &[AssetRef],
+    _asset: &AssetRef,
     _reduced_costs: &HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>,
     demand: &HashMap<TimeSliceID, Flow>,
 ) -> (MoneyPerActivity, HashMap<TimeSliceID, Flow>) {
