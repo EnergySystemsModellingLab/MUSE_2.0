@@ -11,6 +11,7 @@ use crate::region::RegionID;
 use crate::simulation::demand::{
     calculate_demand_in_tranche, calculate_load, calculate_svd_demand_profile, get_tranches,
 };
+use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::TimeSliceID;
 use crate::units::{Capacity, Flow, FlowPerYear};
 use itertools::Itertools;
@@ -51,6 +52,7 @@ pub fn perform_agent_investment(
 
     let demand = calculate_svd_demand_profile(&model.commodities, flow_map);
 
+    let mut new_pool = Vec::new();
     for (commodity_id, commodity) in model.commodities.iter() {
         if commodity.kind != CommodityType::ServiceDemand {
             // We only consider SVD commodities first
@@ -58,7 +60,7 @@ pub fn perform_agent_investment(
         }
 
         for agent in get_responsible_agents(model.agents.values(), commodity_id, year) {
-            let objective_type = agent.objectives.get(&year).unwrap();
+            let objective_type = agent.objectives.get(&year).unwrap().clone();
 
             for region_id in agent.regions.iter() {
                 // Existing and candidate assets from which to choose
@@ -75,14 +77,21 @@ pub fn perform_agent_investment(
                 let (load_map, peak_load) =
                     calculate_load(&model.time_slice_info, commodity_id, region_id, &demand);
 
-                for asset in opt_assets {
-                    let appraisal_func = |tranche_demand: &HashMap<_, _>| match objective_type {
+                let appraisal_func =
+                    move |asset: &AssetRef,
+                          reduced_costs: &ReducedCosts,
+                          tranche_demand: &HashMap<_, _>| match objective_type {
                         ObjectiveType::LevelisedCostOfX => {
-                            calculate_lcox(&asset, &reduced_costs, tranche_demand)
+                            calculate_lcox(asset, reduced_costs, tranche_demand)
                         }
                     };
-                    perform_appraisal_for_tranches(model, &load_map, peak_load, appraisal_func);
-                }
+                new_pool.extend(get_best_assets_for_tranches(
+                    model,
+                    &opt_assets,
+                    &load_map,
+                    peak_load,
+                    appraisal_func,
+                ));
             }
         }
     }
@@ -179,22 +188,26 @@ fn get_candidate_assets<'a>(
 }
 
 /// Divide demand into tranches and perform appraisal over each in turn
-fn perform_appraisal_for_tranches<F>(
+fn get_best_assets_for_tranches<F>(
     model: &Model,
+    reduced_costs: &ReducedCosts,
+    opt_assets: &[AssetRef],
     load_map: &HashMap<TimeSliceID, FlowPerYear>,
     peak_load: FlowPerYear,
     appraisal_func: F,
-) where
-    F: Fn(&HashMap<TimeSliceID, Flow>) -> AppraisalOutput,
+) -> Vec<AssetRef>
+where
+    F: Fn(&AssetRef, &ReducedCosts, &HashMap<TimeSliceID, Flow>) -> AppraisalOutput,
 {
     // We want to consider the tranche with the highest load factor first, but in our case
     // that will always be the first
     let mut unmet_demand: Option<HashMap<TimeSliceID, Flow>> = None;
+    let mut chosen_assets = Vec::new();
     for tranche in get_tranches(peak_load, model.parameters.num_demand_tranches) {
         let demand_iter = calculate_demand_in_tranche(&model.time_slice_info, load_map, &tranche);
 
         // Get demand for current tranche
-        let tranche_demand = if let Some(unmet_demand) = unmet_demand {
+        let tranche_demand = if let Some(unmet_demand) = &unmet_demand {
             // If there is unmet demand from the previous tranche, we include it here
             demand_iter
                 .map(|(ts, demand)| {
@@ -207,7 +220,24 @@ fn perform_appraisal_for_tranches<F>(
         };
 
         // Investment appraisal
-        let appraisal_output = appraisal_func(&tranche_demand);
-        unmet_demand = Some(appraisal_output.unmet_demand);
+        let mut cheapest: Option<(AssetRef, AppraisalOutput)> = None;
+        for asset in opt_assets.iter() {
+            let output = appraisal_func(&asset, reduced_costs, &tranche_demand);
+            if cheapest
+                .as_ref()
+                .is_none_or(|cheapest| output.cost_index < cheapest.1.cost_index)
+            {
+                cheapest = Some((asset.clone(), output));
+            }
+        }
+        let (mut chosen_asset, output) = cheapest.unwrap();
+        if let Some(capacity) = output.capacity {
+            chosen_asset.make_mut().capacity = capacity;
+        }
+        unmet_demand = Some(output.unmet_demand);
+
+        chosen_assets.push(chosen_asset)
     }
+
+    chosen_assets
 }
