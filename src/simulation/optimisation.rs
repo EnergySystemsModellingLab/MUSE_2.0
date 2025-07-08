@@ -266,11 +266,5 @@ fn calculate_cost_coefficient(
     year: u32,
     time_slice: &TimeSliceID,
 ) -> MoneyPerActivity {
-    // The cost for all commodity flows (including levies/incentives)
-    let flows_cost: MoneyPerActivity = asset
-        .iter_flows()
-        .map(|flow| flow.get_total_cost(&asset.region_id, year, time_slice))
-        .sum();
-
-    asset.process_parameter.variable_operating_cost + flows_cost
+    asset.get_operating_cost(year, time_slice)
 }

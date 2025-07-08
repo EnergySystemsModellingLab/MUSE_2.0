@@ -8,7 +8,9 @@ use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
 use crate::units::Capacity;
 use anyhow::{ensure, Context, Result};
+use log::warn;
 use serde::Deserialize;
+use serde_string_enum::DeserializeLabeledStringEnum;
 use std::path::{Path, PathBuf};
 
 const MODEL_FILE_NAME: &str = "model.toml";
@@ -42,9 +44,26 @@ pub struct ModelFile {
     /// Don't change unless you know what you're doing.
     #[serde(default = "default_candidate_asset_capacity")]
     pub candidate_asset_capacity: Capacity,
+    /// If set to false, removes the effect of scarcity on commodity prices.
+    ///
+    /// Don't disable unless you know what you're doing.
+    #[serde(default)]
+    pub pricing_strategy: PricingStrategy,
 }
 
-fn default_candidate_asset_capacity() -> Capacity {
+/// The strategy used for calculating commodity prices
+#[derive(DeserializeLabeledStringEnum, Debug, PartialEq, Default)]
+pub enum PricingStrategy {
+    /// Take commodity prices directly from the shadow prices
+    #[default]
+    #[string = "shadow_prices"]
+    ShadowPrices,
+    /// Adjust shadow prices for scarcity
+    #[string = "scarcity_adjusted"]
+    ScarcityAdjusted,
+}
+
+const fn default_candidate_asset_capacity() -> Capacity {
     DEFAULT_CANDIDATE_ASSET_CAPACITY
 }
 
@@ -81,6 +100,14 @@ impl ModelFile {
     pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelFile> {
         let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
         let model_file: ModelFile = read_toml(&file_path)?;
+
+        if model_file.pricing_strategy == PricingStrategy::ScarcityAdjusted {
+            warn!(
+                "The pricing strategy is set to 'scarcity_adjusted'. Commodity prices may be \
+                incorrect if assets have more than one output commodity. See: {}/issues/677",
+                env!("CARGO_PKG_REPOSITORY")
+            );
+        }
 
         let validate = || -> Result<()> {
             check_milestone_years(&model_file.milestone_years)?;

@@ -3,6 +3,7 @@ use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
+use crate::simulation::prices::get_prices_and_reduced_costs;
 use crate::units::Capacity;
 use anyhow::Result;
 use log::info;
@@ -65,8 +66,8 @@ pub fn run(
         .transpose()?;
     let solution = solution_candidates.unwrap_or(solution_existing);
 
-    // Prices to be used in next milestone year
-    let prices = CommodityPrices::calculate(&model, &solution, year);
+    // Calculate commodity prices and asset reduced costs
+    let (prices, reduced_costs) = get_prices_and_reduced_costs(&model, &solution, &assets, year);
 
     // Write active assets and results of dispatch optimisation to file
     writer.write(year, &solution, &assets, &flow_map, &prices)?;
@@ -81,7 +82,7 @@ pub fn run(
 
         // NB: Agent investment will actually be in a loop with more calls to
         // `perform_dispatch_optimisation`, but let's leave this as a placeholder for now
-        perform_agent_investment(&model, &flow_map, &prices, &mut assets);
+        perform_agent_investment(&model, &flow_map, &prices, &reduced_costs, &assets, year);
 
         // Newly commissioned assets will be included in optimisation for at least one milestone
         // year before agents have the option of decommissioning them

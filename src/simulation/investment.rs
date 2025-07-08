@@ -3,6 +3,7 @@ use super::optimisation::FlowMap;
 use super::CommodityPrices;
 use crate::asset::AssetPool;
 use crate::model::Model;
+use crate::simulation::prices::ReducedCosts;
 use log::info;
 
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
@@ -13,11 +14,14 @@ use log::info;
 /// * `flow_map` - Map of commodity flows
 /// * `prices` - Commodity prices
 /// * `assets` - The asset pool
+/// * `year` - Current milestone year
 pub fn perform_agent_investment(
     _model: &Model,
     _flow_map: &FlowMap,
     _prices: &CommodityPrices,
-    _assets: &mut AssetPool,
+    _reduced_costs: &ReducedCosts,
+    _assets: &AssetPool,
+    _year: u32,
 ) {
     info!("Performing agent investment...");
 
