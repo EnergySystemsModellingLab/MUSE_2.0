@@ -1,6 +1,6 @@
-# Dispatch Optimization Formulation
+# Dispatch Optimisation Formulation
 
-This dispatch optimization model calculates the least-cost operation of the energy system for a
+This dispatch optimisation model calculates the least-cost operation of the energy system for a
 given configuration of assets and capacities, subject to demands and constraints. It is the core
 engine used for each dispatch run referenced in the overall MUSE 2.0 workflow. A key general
 assumption is that SVD commodities represent final demands only and are not consumed as inputs by
@@ -39,7 +39,7 @@ These define the fundamental categories used to define the energy system.
   - \\( \mathbf{C}^{\mathrm{OTH}} \\): Other Tracked Flows (e.g., losses, raw emissions).
 
 - \\( \mathbf{C}^{VoLL} \subseteq \mathbf{C}^{\mathrm{SVD}} \cup \mathbf{C}^{\mathrm{SED}} \\):
-  Subset of commodities where unserved demand is modeled with a penalty.
+  Subset of commodities where unserved demand is modelled with a penalty.
 
 - \\( \mathbf{P} \\): Set of External Pools/Markets (indexed by \\( p \\)).
 
@@ -103,7 +103,7 @@ These define the fundamental categories used to define the energy system.
 
 ### A.2. Decision Variables
 
-These are the quantities the dispatch optimization model determines.
+These are the quantities the dispatch optimisation model determines.
 
 - \\( act[a,r,t]\ge0 \\): Activity level of asset \\( a \\) in region \\( r \\) during time slice
   \\( t \\). This is the primary operational decision for each asset.
@@ -115,7 +115,7 @@ These are the quantities the dispatch optimization model determines.
 ### A.3. Objective Contribution (for standard assets \\( a \in \mathbf{A}^{std} \\))
 
 This term represents the sum of operational costs associated with standard assets, forming a
-component of the overall system cost that the model seeks to minimize.
+component of the overall system cost that the model seeks to minimise.
 
 \\[
   \sum_{a\in \mathbf{A}^{std}}\sum_{r,t} act[a,r,t]
@@ -149,8 +149,8 @@ time-varying availability limits. For all \\( a \in \mathbf{A}^{std}, r, t \\):
 ## F. Full Model Construction
 
 This section describes how all preceding components are integrated to form the complete dispatch
-optimization problem. 1. **Sets, Parameters, Decision Variables:** The union of all previously
-defined elements. 2. **Objective Function:** The overall objective is to minimize the total system
+optimisation problem. 1. **Sets, Parameters, Decision Variables:** The union of all previously
+defined elements. 2. **Objective Function:** The overall objective is to minimise the total system
 cost, which is the sum of all operational costs from assets (standard and flexible), financial
 impacts from policy scopes (taxes minus credits), costs of inter-regional trade, costs of pool-based
 trade, and importantly, the high economic penalties associated with any unserved demand for critical
@@ -158,7 +158,7 @@ commodities:
 
 \\[
   \begin{aligned}
-    \text{Minimize: } &(\text{Core Asset Operational Costs from A.3 and E.4}) \\\\
+    \text{Minimise: } &(\text{Core Asset Operational Costs from A.3 and E.4}) \\\\
     &+ (\text{Scope Policy Costs/Credits from B.4}) \\\\
     &+ (\text{Region-to-Region Trade Costs from C.4}) + (\text{Pool-Based Trade Costs from D.4}) \\\\
     &+ \sum_{c \in \mathbf{C}^{VoLL},r,t} UnmetD[c,r,t] \cdot VoLL[c,r]
@@ -168,7 +168,7 @@ commodities:
 
 ### Constraints
 
-The complete set of constraints that the optimization must satisfy includes:
+The complete set of constraints that the optimisation must satisfy includes:
 
 - Capacity & Availability constraints for all assets \\( a \in \mathbf{A} \\)
   (as per A.4 and E.5).
@@ -238,7 +238,7 @@ other regions).
     &+ \sum\_{p, c \in \mathbf{C}^P} ship\_{pool}[p,r,c,t](1 - loss\_{pool}[p,r,c,t])
       && \text{(Pool Imports)} \\\\
     &+ \mathbb{I}(c \in \mathbf{C}^{VoLL}) \cdot UnmetD[c,r,t]
-      && \text{(Unserved SED, if modeled)} \\\\
+      && \text{(Unserved SED, if modelled)} \\\\
     &= \sum\_{a \in \mathbf{A}^{std}} input\_{coeff}[a,c] act[a,r,t]
       && \text{(Std Asset Consumption)} \\\\
     &+ \sum\_{a \in \mathbf{A}^{flex}}
