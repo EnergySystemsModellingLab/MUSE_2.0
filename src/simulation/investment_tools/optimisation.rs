@@ -1,4 +1,6 @@
 use crate::asset::{AssetPool, AssetRef};
+use crate::commodity::CommodityID;
+use crate::region::RegionID;
 use crate::simulation::investment_tools::strategies::Strategy;
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
@@ -16,6 +18,8 @@ pub enum VariableType {
     Capacity(AssetRef),
     /// Activity level in a time slice
     Activity(AssetRef, TimeSliceID),
+    /// Unmet demand
+    UnmetDemand(CommodityID, RegionID, TimeSliceID),
 }
 
 /// Variable map for optimization
@@ -28,6 +32,7 @@ pub struct VariableMap {
     pub candidate_capacity_vars: IndexMap<AssetRef, Variable>,
     pub existing_activity_vars: IndexMap<(AssetRef, TimeSliceID), Variable>,
     pub candidate_activity_vars: IndexMap<(AssetRef, TimeSliceID), Variable>,
+    pub unmet_demand_vars: IndexMap<(CommodityID, RegionID, TimeSliceID), Variable>,
 }
 
 /// Solution to the optimisation problem
