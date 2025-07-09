@@ -1,5 +1,9 @@
 use crate::asset::{AssetPool, AssetRef};
 use crate::model::Model;
+use crate::simulation::lcox::constraints::{
+    add_activity_constraints_for_assets, add_activity_constraints_for_candidates,
+    add_capacity_constraints_for_candidates, add_demand_constraints,
+};
 use crate::simulation::lcox::costs::{
     activity_cost_for_asset, activity_cost_for_candidate, annual_fixed_cost_for_asset,
     annual_fixed_cost_for_candidate,
@@ -12,28 +16,23 @@ use indexmap::IndexMap;
 use itertools::iproduct;
 
 /// A decision variable in the optimisation
-type Variable = highs::Col;
+pub type Variable = highs::Col;
 
 /// Represents different types of optimization variables
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum VariableType {
-    /// Capacity investment for existing assets
-    AssetCapacity(AssetRef),
-    /// Capacity investment for candidate assets
-    CandidateCapacity(AssetRef),
-    /// Activity level for existing assets in each time slice
-    AssetActivity(AssetRef, TimeSliceID),
-    /// Activity level for candidate assets in each time slice
-    CandidateActivity(AssetRef, TimeSliceID),
+    /// Capacity
+    Capacity(AssetRef),
+    /// Activity level in a time slice
+    Activity(AssetRef, TimeSliceID),
 }
 
-/// A comprehensive variable map for LCOX optimization
+/// Variable map for optimization
 #[derive(Default)]
 pub struct VariableMap {
-    /// Maps variable types to their corresponding optimization variables
     variables: IndexMap<VariableType, Variable>,
 
-    /// Separate collections for efficient access by variable type
+    /// Also keep separate maps for different types of variables
     asset_capacity_vars: IndexMap<AssetRef, Variable>,
     candidate_capacity_vars: IndexMap<AssetRef, Variable>,
     asset_activity_vars: IndexMap<(AssetRef, TimeSliceID), Variable>,
@@ -41,15 +40,16 @@ pub struct VariableMap {
 }
 
 /// Add a capacity variable for an existing asset
+/// This also constrains the capacity to the asset's existing capacity
 fn add_asset_capacity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
     asset_ref: AssetRef,
+    col_factor: f64,
 ) {
-    let cost = annual_fixed_cost_for_asset(&asset_ref);
     let capacity = asset_ref.capacity;
-    let var = problem.add_column(cost.value(), capacity.value()..capacity.value());
-    let var_type = VariableType::AssetCapacity(asset_ref.clone());
+    let var = problem.add_column(col_factor, capacity.value()..capacity.value());
+    let var_type = VariableType::Capacity(asset_ref.clone());
     variables.variables.insert(var_type.clone(), var);
     variables.asset_capacity_vars.insert(asset_ref, var);
 }
@@ -59,10 +59,10 @@ fn add_candidate_capacity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
     asset_ref: AssetRef,
+    col_factor: f64,
 ) {
-    let cost = annual_fixed_cost_for_candidate(&asset_ref);
-    let var = problem.add_column(cost.value(), 0.0..);
-    let var_type = VariableType::CandidateCapacity(asset_ref.clone());
+    let var = problem.add_column(col_factor, 0.0..);
+    let var_type = VariableType::Capacity(asset_ref.clone());
     variables.variables.insert(var_type.clone(), var);
     variables.candidate_capacity_vars.insert(asset_ref, var);
 }
@@ -72,12 +72,11 @@ fn add_asset_activity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
     asset_ref: AssetRef,
-    reduced_costs: &ReducedCosts,
     time_slice: TimeSliceID,
+    col_factor: f64,
 ) {
-    let cost = activity_cost_for_asset(&asset_ref, reduced_costs, time_slice.clone());
-    let var = problem.add_column(cost.value(), 0.0..);
-    let var_type = VariableType::AssetActivity(asset_ref.clone(), time_slice.clone());
+    let var = problem.add_column(col_factor, 0.0..);
+    let var_type = VariableType::Activity(asset_ref.clone(), time_slice.clone());
     variables.variables.insert(var_type.clone(), var);
     variables
         .asset_activity_vars
@@ -89,18 +88,18 @@ fn add_candidate_activity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
     asset_ref: AssetRef,
-    reduced_costs: &ReducedCosts,
     time_slice: TimeSliceID,
+    col_factor: f64,
 ) {
-    let cost = activity_cost_for_candidate(&asset_ref, reduced_costs, time_slice.clone());
-    let var = problem.add_column(cost.value(), 0.0..);
-    let var_type = VariableType::CandidateActivity(asset_ref.clone(), time_slice.clone());
+    let var = problem.add_column(col_factor, 0.0..);
+    let var_type = VariableType::Activity(asset_ref.clone(), time_slice.clone());
     variables.variables.insert(var_type.clone(), var);
     variables
         .candidate_activity_vars
         .insert((asset_ref, time_slice), var);
 }
 
+/// Specific to LCOX
 fn add_variables_for_existing(
     problem: &mut Problem,
     variables: &mut VariableMap,
@@ -110,21 +109,24 @@ fn add_variables_for_existing(
 ) {
     // Add capacity variables
     for asset in assets {
-        add_asset_capacity_variable(problem, variables, asset.clone());
+        let col_factor = annual_fixed_cost_for_asset(asset);
+        add_asset_capacity_variable(problem, variables, asset.clone(), col_factor.value());
     }
 
     // Add activity variables
     for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
+        let col_factor = activity_cost_for_asset(asset, reduced_costs, time_slice.clone());
         add_asset_activity_variable(
             problem,
             variables,
             asset.clone(),
-            reduced_costs,
             time_slice.clone(),
+            col_factor.value(),
         );
     }
 }
 
+/// Specific to LCOX
 fn add_variables_for_candidates(
     problem: &mut Problem,
     variables: &mut VariableMap,
@@ -134,21 +136,24 @@ fn add_variables_for_candidates(
 ) {
     // Add capacity variables
     for asset in assets {
-        add_candidate_capacity_variable(problem, variables, asset.clone());
+        let col_factor = annual_fixed_cost_for_candidate(asset);
+        add_candidate_capacity_variable(problem, variables, asset.clone(), col_factor.value());
     }
 
     // Add activity variables
     for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
+        let col_factor = activity_cost_for_candidate(asset, reduced_costs, time_slice.clone());
         add_candidate_activity_variable(
             problem,
             variables,
             asset.clone(),
-            reduced_costs,
             time_slice.clone(),
+            col_factor.value(),
         );
     }
 }
 
+/// Solution to the optimisation problem
 pub struct Solution {
     solution: highs::Solution,
     variables: VariableMap,
@@ -198,6 +203,7 @@ pub fn perform_lcox_optimisation(
     }
 }
 
+/// Specific for LCOX
 fn add_constraints(problem: &mut Problem, variables: &VariableMap) {
     add_activity_constraints_for_assets(problem, &variables.asset_activity_vars);
     add_activity_constraints_for_candidates(
@@ -211,54 +217,4 @@ fn add_constraints(problem: &mut Problem, variables: &VariableMap) {
         &variables.asset_activity_vars,
         &variables.candidate_activity_vars,
     );
-}
-
-/// NOTE: Copied from `add_activity_constraints` in `optimisation/constraints.rs`.
-fn add_activity_constraints_for_assets(
-    problem: &mut Problem,
-    asset_activity_vars: &IndexMap<(AssetRef, TimeSliceID), Variable>,
-) {
-    for ((asset, time_slice), var) in asset_activity_vars.iter() {
-        let limits = asset.get_activity_limits(time_slice);
-        let limits = limits.start().value()..=limits.end().value();
-        problem.add_row(limits, [(*var, 1.0)]);
-    }
-}
-
-fn add_activity_constraints_for_candidates(
-    problem: &mut Problem,
-    candidate_capacity_vars: &IndexMap<AssetRef, Variable>,
-    candidate_activity_vars: &IndexMap<(AssetRef, TimeSliceID), Variable>,
-) {
-    for ((asset, time_slice), activity_var) in candidate_activity_vars.iter() {
-        let capacity_var = candidate_capacity_vars.get(asset).unwrap();
-        let limits = asset.get_activity_per_capacity_limits(time_slice);
-        let lower_limit = limits.start().value();
-        let upper_limit = limits.end().value();
-
-        // Upper bound: activity ≤ capacity * upper_limit
-        problem.add_row(
-            ..=0.0,
-            [(*activity_var, 1.0), (*capacity_var, -upper_limit)],
-        );
-
-        // Lower bound: activity ≥ capacity * lower_limit
-        problem.add_row(
-            ..=0.0,
-            [(*activity_var, -1.0), (*capacity_var, lower_limit)],
-        );
-    }
-}
-
-fn add_demand_constraints(
-    problem: &mut Problem,
-    asset_activity_vars: &IndexMap<(AssetRef, TimeSliceID), Variable>,
-    candidate_activity_vars: &IndexMap<(AssetRef, TimeSliceID), Variable>,
-) {
-}
-
-fn add_capacity_constraints_for_candidates(
-    problem: &mut Problem,
-    candidate_capacity_vars: &IndexMap<AssetRef, Variable>,
-) {
 }

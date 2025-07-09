@@ -8,6 +8,7 @@ use crate::time_slice::TimeSliceID;
 use crate::units::{Capacity, Flow, MoneyPerActivity};
 use std::collections::HashMap;
 
+pub mod constraints;
 pub mod costs;
 pub mod optimisation;
 
