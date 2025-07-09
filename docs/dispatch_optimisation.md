@@ -146,7 +146,11 @@ time-varying availability limits. For all \\( a \in \mathbf{A}^{std}, r, t \\):
 
   \\[ act[a,r,t] = capacity[a,r] cap2act[a] avail_{EQ}[a,t] duration[t] \\]
 
-## F. Full Model Construction
+## B. Full Model Construction
+
+> Note: This section includes references to many features that are not described elsewhere in this
+> document or implemented yet (e.g. region-to-region trade), but these are included for
+> completeness. This represents the roadmap for future MUSE 2.0 development.
 
 This section describes how all preceding components are integrated to form the complete dispatch
 optimisation problem. 1. **Sets, Parameters, Decision Variables:** The union of all previously
