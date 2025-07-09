@@ -1,5 +1,6 @@
 use crate::asset::{AssetPool, AssetRef};
 use crate::commodity::CommodityID;
+use crate::model::Model;
 use crate::region::RegionID;
 use crate::simulation::investment_tools::strategies::Strategy;
 use crate::simulation::prices::ReducedCosts;
@@ -19,7 +20,7 @@ pub struct CostCoefficientsMap {
     pub candidate_capacity_costs: IndexMap<AssetRef, MoneyPerCapacity>,
     pub existing_activity_costs: IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>,
     pub candidate_activity_costs: IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>,
-    pub unmet_demand_costs: IndexMap<(CommodityID, RegionID, TimeSliceID), MoneyPerActivity>,
+    pub unmet_demand_costs: IndexMap<(CommodityID, RegionID, TimeSliceID), f64>,
 }
 
 /// Variable map for optimization
@@ -90,6 +91,21 @@ pub fn add_candidate_activity_variable(
         .insert((asset_ref, time_slice), var);
 }
 
+/// Add a unmet demand variable for a commodity in a region in a time slice
+pub fn add_unmet_demand_variable(
+    problem: &mut Problem,
+    variables: &mut VariableMap,
+    commodity: CommodityID,
+    region: RegionID,
+    time_slice: TimeSliceID,
+    col_factor: f64,
+) {
+    let var = problem.add_column(col_factor, 0.0..);
+    variables
+        .unmet_demand_vars
+        .insert((commodity, region, time_slice), var);
+}
+
 /// Add variables to the problem based onn cost coefficients
 pub fn add_variables(
     problem: &mut Problem,
@@ -127,10 +143,23 @@ pub fn add_variables(
             cost.value(),
         );
     }
+
+    // Add unmet demand costs (only for LCOX)
+    for ((commodity, region, time_slice), cost) in cost_coefficients.unmet_demand_costs.iter() {
+        add_unmet_demand_variable(
+            problem,
+            variables,
+            commodity.clone(),
+            region.clone(),
+            time_slice.clone(),
+            *cost,
+        );
+    }
 }
 
 /// Perform optimisation for a given strategy
 pub fn perform_optimisation(
+    model: &Model,
     asset_pool: &AssetPool,
     candidate_assets: &[AssetRef],
     time_slice_info: &TimeSliceInfo,
@@ -143,6 +172,7 @@ pub fn perform_optimisation(
 
     // Calculate cost coefficients
     let cost_coefficients = strategy.calculate_cost_coefficients(
+        model,
         asset_pool,
         candidate_assets,
         time_slice_info,

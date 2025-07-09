@@ -1,4 +1,5 @@
 use crate::asset::{AssetPool, AssetRef};
+use crate::model::Model;
 use crate::simulation::investment_tools::constraints::{
     add_activity_constraints_for_candidates, add_activity_constraints_for_existing,
     add_capacity_constraints_for_candidates, add_demand_constraints,
@@ -7,11 +8,7 @@ use crate::simulation::investment_tools::costs::{
     activity_cost_for_candidate, activity_cost_for_existing, annual_fixed_cost_for_candidate,
     annual_fixed_cost_for_existing,
 };
-use crate::simulation::investment_tools::optimisation::{
-    add_candidate_activity_variable, add_candidate_capacity_variable,
-    add_existing_activity_variable, add_existing_capacity_variable, CostCoefficientsMap,
-    VariableMap,
-};
+use crate::simulation::investment_tools::optimisation::{CostCoefficientsMap, VariableMap};
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::TimeSliceInfo;
 use highs::{RowProblem as Problem, Sense};
@@ -22,6 +19,7 @@ pub trait Strategy {
     /// Calculate cost coefficients for the strategy
     fn calculate_cost_coefficients(
         &self,
+        model: &Model,
         asset_pool: &AssetPool,
         candidate_assets: &[AssetRef],
         time_slice_info: &TimeSliceInfo,
@@ -41,12 +39,14 @@ pub struct LcoxStrategy;
 impl Strategy for LcoxStrategy {
     fn calculate_cost_coefficients(
         &self,
+        model: &Model,
         asset_pool: &AssetPool,
         candidate_assets: &[AssetRef],
         time_slice_info: &TimeSliceInfo,
         reduced_costs: &ReducedCosts,
     ) -> CostCoefficientsMap {
         calculate_cost_coefficients_for_method(
+            model,
             asset_pool,
             candidate_assets,
             time_slice_info,
@@ -81,12 +81,14 @@ pub struct NpvStrategy;
 impl Strategy for NpvStrategy {
     fn calculate_cost_coefficients(
         &self,
+        model: &Model,
         asset_pool: &AssetPool,
         candidate_assets: &[AssetRef],
         time_slice_info: &TimeSliceInfo,
         reduced_costs: &ReducedCosts,
     ) -> CostCoefficientsMap {
         calculate_cost_coefficients_for_method(
+            model,
             asset_pool,
             candidate_assets,
             time_slice_info,
@@ -121,6 +123,7 @@ pub enum Method {
 }
 
 fn calculate_cost_coefficients_for_method(
+    model: &Model,
     asset_pool: &AssetPool,
     candidate_assets: &[AssetRef],
     time_slice_info: &TimeSliceInfo,
@@ -173,6 +176,24 @@ fn calculate_cost_coefficients_for_method(
         cost_coefficients
             .candidate_activity_costs
             .insert((asset.clone(), time_slice.clone()), cost);
+    }
+
+    // Add unmet demand costs (only for LCOX)
+    for (commodity, region, time_slice) in iproduct!(
+        model.commodities.keys(),
+        model.regions.keys(),
+        time_slice_info.iter_ids()
+    ) {
+        let cost: Option<f64> = match method {
+            Method::Lcox => Some(0.0), // TODO: Implement unmet demand cost for LCOX
+            Method::Npv => None,
+        };
+        if let Some(cost) = cost {
+            cost_coefficients.unmet_demand_costs.insert(
+                (commodity.clone(), region.clone(), time_slice.clone()),
+                cost,
+            );
+        }
     }
 
     cost_coefficients
