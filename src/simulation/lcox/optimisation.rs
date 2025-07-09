@@ -47,7 +47,8 @@ fn add_asset_capacity_variable(
     asset_ref: AssetRef,
 ) {
     let cost = annual_fixed_cost_for_asset(&asset_ref);
-    let var = problem.add_column(cost.value(), 0.0..);
+    let capacity = asset_ref.capacity;
+    let var = problem.add_column(cost.value(), capacity.value()..capacity.value());
     let var_type = VariableType::AssetCapacity(asset_ref.clone());
     variables.variables.insert(var_type.clone(), var);
     variables.asset_capacity_vars.insert(asset_ref, var);
