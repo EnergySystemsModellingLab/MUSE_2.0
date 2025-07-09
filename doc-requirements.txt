@@ -1,3 +1,4 @@
 pyyaml
 table2md
 jinja2
+check-jsonschema
