@@ -1,0 +1,14 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Model parameters
+type: object
+properties:
+  milestone_years:
+    type: array
+    items:
+      type: integer
+  candidate_asset_capacity:
+    type: number
+  pricing_strategy:
+    type: string
+    enum: [shadow_prices, scarcity_adjusted]
+required: [milestone_years]
