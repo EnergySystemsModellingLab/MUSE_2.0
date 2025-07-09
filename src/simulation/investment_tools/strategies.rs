@@ -11,11 +11,15 @@ use crate::simulation::investment_tools::costs::{
 use crate::simulation::investment_tools::optimisation::{CostCoefficientsMap, VariableMap};
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::TimeSliceInfo;
+use crate::units::MoneyPerFlow;
 use highs::{RowProblem as Problem, Sense};
 use itertools::iproduct;
 
 /// Trait defining the interface for optimization strategies
 pub trait Strategy {
+    /// The optimization sense (minimize or maximize)
+    fn sense(&self) -> Sense;
+
     /// Calculate cost coefficients for the strategy
     fn calculate_cost_coefficients(
         &self,
@@ -28,15 +32,16 @@ pub trait Strategy {
 
     /// Add constraints to the optimization problem
     fn add_constraints(&self, problem: &mut Problem, variables: &VariableMap);
-
-    /// The optimization sense (minimize or maximize)
-    fn sense(&self) -> Sense;
 }
 
 /// LCOX (Levelized Cost of X) optimization strategy
 pub struct LcoxStrategy;
 
 impl Strategy for LcoxStrategy {
+    fn sense(&self) -> Sense {
+        Sense::Minimise
+    }
+
     fn calculate_cost_coefficients(
         &self,
         model: &Model,
@@ -69,16 +74,16 @@ impl Strategy for LcoxStrategy {
             &variables.candidate_activity_vars,
         );
     }
-
-    fn sense(&self) -> Sense {
-        Sense::Minimise
-    }
 }
 
 /// NPV (Net Present Value) optimization strategy
 pub struct NpvStrategy;
 
 impl Strategy for NpvStrategy {
+    fn sense(&self) -> Sense {
+        Sense::Maximise
+    }
+
     fn calculate_cost_coefficients(
         &self,
         model: &Model,
@@ -110,10 +115,6 @@ impl Strategy for NpvStrategy {
             &variables.existing_activity_vars,
             &variables.candidate_activity_vars,
         );
-    }
-
-    fn sense(&self) -> Sense {
-        Sense::Maximise
     }
 }
 
@@ -184,8 +185,8 @@ fn calculate_cost_coefficients_for_method(
         model.regions.keys(),
         time_slice_info.iter_ids()
     ) {
-        let cost: Option<f64> = match method {
-            Method::Lcox => Some(0.0), // TODO: Implement unmet demand cost for LCOX
+        let cost: Option<MoneyPerFlow> = match method {
+            Method::Lcox => Some(MoneyPerFlow::new(0.0)), // TODO: Implement unmet demand cost for LCOX
             Method::Npv => None,
         };
         if let Some(cost) = cost {

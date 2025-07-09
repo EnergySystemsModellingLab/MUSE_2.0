@@ -5,7 +5,9 @@ use crate::region::RegionID;
 use crate::simulation::investment_tools::strategies::Strategy;
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{MoneyPerActivity, MoneyPerCapacity};
+use crate::units::{
+    Activity, Capacity, Flow, MoneyPerActivity, MoneyPerCapacity, MoneyPerFlow, UnitType,
+};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem};
 use indexmap::IndexMap;
@@ -20,7 +22,7 @@ pub struct CostCoefficientsMap {
     pub candidate_capacity_costs: IndexMap<AssetRef, MoneyPerCapacity>,
     pub existing_activity_costs: IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>,
     pub candidate_activity_costs: IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>,
-    pub unmet_demand_costs: IndexMap<(CommodityID, RegionID, TimeSliceID), f64>,
+    pub unmet_demand_costs: IndexMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
 }
 
 /// Variable map for optimization
@@ -31,12 +33,77 @@ pub struct VariableMap {
     pub existing_activity_vars: IndexMap<(AssetRef, TimeSliceID), Variable>,
     pub candidate_activity_vars: IndexMap<(AssetRef, TimeSliceID), Variable>,
     pub unmet_demand_vars: IndexMap<(CommodityID, RegionID, TimeSliceID), Variable>,
+    /// Maps variable to its index in the solution array
+    pub variable_to_index: IndexMap<Variable, usize>,
+    /// Next variable index to assign
+    next_index: usize,
+}
+
+impl VariableMap {
+    fn add_variable(&mut self, var: Variable) {
+        self.variable_to_index.insert(var, self.next_index);
+        self.next_index += 1;
+    }
+}
+
+#[derive(Default)]
+pub struct ResultsMap {
+    pub candidate_capacity_results: IndexMap<AssetRef, Capacity>,
+    pub existing_activity_results: IndexMap<(AssetRef, TimeSliceID), Activity>,
+    pub candidate_activity_results: IndexMap<(AssetRef, TimeSliceID), Activity>,
+    pub unmet_demand_results: IndexMap<(CommodityID, RegionID, TimeSliceID), Flow>, // TODO: Add unit
 }
 
 /// Solution to the optimisation problem
 pub struct Solution {
     solution: highs::Solution,
     variables: VariableMap,
+}
+
+impl Solution {
+    pub fn get_solution_value<T>(&self, var: &Variable) -> T
+    where
+        T: UnitType,
+    {
+        let index = self.variables.variable_to_index[var];
+        T::new(self.solution.columns()[index])
+    }
+
+    pub fn create_results_map(&self) -> ResultsMap {
+        let mut results_map = ResultsMap::default();
+
+        // Insert candidate capacity results
+        for (asset_ref, var) in self.variables.candidate_capacity_vars.iter() {
+            results_map
+                .candidate_capacity_results
+                .insert(asset_ref.clone(), self.get_solution_value::<Capacity>(var));
+        }
+
+        // Insert existing activity results
+        for ((asset_ref, time_slice), var) in self.variables.existing_activity_vars.iter() {
+            results_map.existing_activity_results.insert(
+                (asset_ref.clone(), time_slice.clone()),
+                self.get_solution_value::<Activity>(var),
+            );
+        }
+
+        // Insert candidate activity results
+        for ((asset_ref, time_slice), var) in self.variables.candidate_activity_vars.iter() {
+            results_map.candidate_activity_results.insert(
+                (asset_ref.clone(), time_slice.clone()),
+                self.get_solution_value::<Activity>(var),
+            );
+        }
+
+        // Insert unmet demand results
+        for ((commodity, region, time_slice), var) in self.variables.unmet_demand_vars.iter() {
+            results_map.unmet_demand_results.insert(
+                (commodity.clone(), region.clone(), time_slice.clone()),
+                self.get_solution_value::<Flow>(var),
+            );
+        }
+        results_map
+    }
 }
 
 /// Add a capacity variable for an existing asset
@@ -50,6 +117,7 @@ pub fn add_existing_capacity_variable(
     let capacity = asset_ref.capacity;
     let var = problem.add_column(col_factor, capacity.value()..capacity.value());
     variables.existing_capacity_vars.insert(asset_ref, var);
+    variables.add_variable(var);
 }
 
 /// Add a capacity variable for a candidate asset
@@ -61,6 +129,7 @@ pub fn add_candidate_capacity_variable(
 ) {
     let var = problem.add_column(col_factor, 0.0..);
     variables.candidate_capacity_vars.insert(asset_ref, var);
+    variables.add_variable(var);
 }
 
 /// Add an activity variable for an existing asset in a time slice
@@ -75,6 +144,7 @@ pub fn add_existing_activity_variable(
     variables
         .existing_activity_vars
         .insert((asset_ref, time_slice), var);
+    variables.add_variable(var);
 }
 
 /// Add an activity variable for a candidate asset in a time slice
@@ -89,6 +159,7 @@ pub fn add_candidate_activity_variable(
     variables
         .candidate_activity_vars
         .insert((asset_ref, time_slice), var);
+    variables.add_variable(var);
 }
 
 /// Add a unmet demand variable for a commodity in a region in a time slice
@@ -104,6 +175,7 @@ pub fn add_unmet_demand_variable(
     variables
         .unmet_demand_vars
         .insert((commodity, region, time_slice), var);
+    variables.add_variable(var);
 }
 
 /// Add variables to the problem based onn cost coefficients
@@ -152,7 +224,7 @@ pub fn add_variables(
             commodity.clone(),
             region.clone(),
             time_slice.clone(),
-            *cost,
+            cost.value(),
         );
     }
 }
@@ -165,7 +237,7 @@ pub fn perform_optimisation(
     time_slice_info: &TimeSliceInfo,
     reduced_costs: &ReducedCosts,
     strategy: &dyn Strategy,
-) -> Result<Solution> {
+) -> Result<ResultsMap> {
     // Set up problem
     let mut problem = Problem::default();
     let mut variables = VariableMap::default();
@@ -189,12 +261,16 @@ pub fn perform_optimisation(
     let highs_model = problem.optimise(strategy.sense());
 
     // Solve model
-    let solution = highs_model.solve();
-    match solution.status() {
+    let solved_model = highs_model.solve();
+    let solution = match solved_model.status() {
         HighsModelStatus::Optimal => Ok(Solution {
-            solution: solution.get_solution(),
+            solution: solved_model.get_solution(),
             variables,
         }),
         status => Err(anyhow!("Could not solve: {status:?}")),
-    }
+    };
+
+    // Assemble results
+    let results_map = solution.unwrap().create_results_map();
+    Ok(results_map)
 }
