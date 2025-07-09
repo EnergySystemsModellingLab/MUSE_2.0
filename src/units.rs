@@ -266,3 +266,4 @@ impl_div!(Money, Activity, MoneyPerActivity);
 impl_div!(Activity, Capacity, ActivityPerCapacity);
 impl_div!(MoneyPerYear, Capacity, MoneyPerCapacityPerYear);
 impl_div!(MoneyPerActivity, FlowPerActivity, MoneyPerFlow);
+impl_div!(MoneyPerCapacity, Year, MoneyPerCapacityPerYear);
