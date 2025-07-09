@@ -1,12 +1,12 @@
 use crate::asset::{AssetPool, AssetRef};
 use crate::model::Model;
 use crate::simulation::lcox::constraints::{
-    add_activity_constraints_for_assets, add_activity_constraints_for_candidates,
+    add_activity_constraints_for_candidates, add_activity_constraints_for_existing,
     add_capacity_constraints_for_candidates, add_demand_constraints,
 };
 use crate::simulation::lcox::costs::{
-    activity_cost_for_asset, activity_cost_for_candidate, annual_fixed_cost_for_asset,
-    annual_fixed_cost_for_candidate,
+    activity_cost_for_candidate, activity_cost_for_existinng, annual_fixed_cost_for_candidate,
+    annual_fixed_cost_for_existing,
 };
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
@@ -33,15 +33,15 @@ pub struct VariableMap {
     variables: IndexMap<VariableType, Variable>,
 
     /// Also keep separate maps for different types of variables
-    asset_capacity_vars: IndexMap<AssetRef, Variable>,
+    existing_capacity_vars: IndexMap<AssetRef, Variable>,
     candidate_capacity_vars: IndexMap<AssetRef, Variable>,
-    asset_activity_vars: IndexMap<(AssetRef, TimeSliceID), Variable>,
+    existing_activity_vars: IndexMap<(AssetRef, TimeSliceID), Variable>,
     candidate_activity_vars: IndexMap<(AssetRef, TimeSliceID), Variable>,
 }
 
 /// Add a capacity variable for an existing asset
 /// This also constrains the capacity to the asset's existing capacity
-fn add_asset_capacity_variable(
+fn add_existing_capacity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
     asset_ref: AssetRef,
@@ -51,7 +51,7 @@ fn add_asset_capacity_variable(
     let var = problem.add_column(col_factor, capacity.value()..capacity.value());
     let var_type = VariableType::Capacity(asset_ref.clone());
     variables.variables.insert(var_type.clone(), var);
-    variables.asset_capacity_vars.insert(asset_ref, var);
+    variables.existing_capacity_vars.insert(asset_ref, var);
 }
 
 /// Add a capacity variable for a candidate asset
@@ -68,7 +68,7 @@ fn add_candidate_capacity_variable(
 }
 
 /// Add an activity variable for an existing asset in a time slice
-fn add_asset_activity_variable(
+fn add_existing_activity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
     asset_ref: AssetRef,
@@ -79,7 +79,7 @@ fn add_asset_activity_variable(
     let var_type = VariableType::Activity(asset_ref.clone(), time_slice.clone());
     variables.variables.insert(var_type.clone(), var);
     variables
-        .asset_activity_vars
+        .existing_activity_vars
         .insert((asset_ref, time_slice), var);
 }
 
@@ -109,14 +109,14 @@ fn add_variables_for_existing(
 ) {
     // Add capacity variables
     for asset in assets {
-        let col_factor = annual_fixed_cost_for_asset(asset);
-        add_asset_capacity_variable(problem, variables, asset.clone(), col_factor.value());
+        let col_factor = annual_fixed_cost_for_existing(asset);
+        add_existing_capacity_variable(problem, variables, asset.clone(), col_factor.value());
     }
 
     // Add activity variables
     for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
-        let col_factor = activity_cost_for_asset(asset, reduced_costs, time_slice.clone());
-        add_asset_activity_variable(
+        let col_factor = activity_cost_for_existinng(asset, reduced_costs, time_slice.clone());
+        add_existing_activity_variable(
             problem,
             variables,
             asset.clone(),
@@ -205,7 +205,7 @@ pub fn perform_lcox_optimisation(
 
 /// Specific for LCOX
 fn add_constraints(problem: &mut Problem, variables: &VariableMap) {
-    add_activity_constraints_for_assets(problem, &variables.asset_activity_vars);
+    add_activity_constraints_for_existing(problem, &variables.existing_activity_vars);
     add_activity_constraints_for_candidates(
         problem,
         &variables.candidate_capacity_vars,
@@ -214,7 +214,7 @@ fn add_constraints(problem: &mut Problem, variables: &VariableMap) {
     add_capacity_constraints_for_candidates(problem, &variables.candidate_capacity_vars);
     add_demand_constraints(
         problem,
-        &variables.asset_activity_vars,
+        &variables.existing_activity_vars,
         &variables.candidate_activity_vars,
     );
 }

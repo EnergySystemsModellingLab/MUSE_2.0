@@ -5,7 +5,7 @@ use highs::RowProblem as Problem;
 use indexmap::IndexMap;
 
 /// NOTE: Copied from `add_activity_constraints` in `optimisation/constraints.rs`.
-pub fn add_activity_constraints_for_assets(
+pub fn add_activity_constraints_for_existing(
     problem: &mut Problem,
     asset_activity_vars: &IndexMap<(AssetRef, TimeSliceID), Variable>,
 ) {
