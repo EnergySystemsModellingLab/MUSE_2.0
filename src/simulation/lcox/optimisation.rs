@@ -5,10 +5,11 @@ use crate::simulation::lcox::costs::{
     annual_fixed_cost_for_candidate,
 };
 use crate::simulation::prices::ReducedCosts;
-use crate::time_slice::TimeSliceID;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
+use itertools::iproduct;
 
 /// A decision variable in the optimisation
 type Variable = highs::Col;
@@ -40,7 +41,7 @@ pub struct VariableMap {
 }
 
 /// Add a capacity variable for an existing asset
-pub fn add_asset_capacity_variable(
+fn add_asset_capacity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
     asset_ref: AssetRef,
@@ -53,7 +54,7 @@ pub fn add_asset_capacity_variable(
 }
 
 /// Add a capacity variable for a candidate asset
-pub fn add_candidate_capacity_variable(
+fn add_candidate_capacity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
     asset_ref: AssetRef,
@@ -66,7 +67,7 @@ pub fn add_candidate_capacity_variable(
 }
 
 /// Add an activity variable for an existing asset in a time slice
-pub fn add_asset_activity_variable(
+fn add_asset_activity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
     asset_ref: AssetRef,
@@ -83,7 +84,7 @@ pub fn add_asset_activity_variable(
 }
 
 /// Add an activity variable for a candidate asset in a time slice
-pub fn add_candidate_activity_variable(
+fn add_candidate_activity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
     asset_ref: AssetRef,
@@ -99,6 +100,54 @@ pub fn add_candidate_activity_variable(
         .insert((asset_ref, time_slice), var);
 }
 
+fn add_variables_for_existing(
+    problem: &mut Problem,
+    variables: &mut VariableMap,
+    assets: &[AssetRef],
+    time_slice_info: &TimeSliceInfo,
+    reduced_costs: &ReducedCosts,
+) {
+    // Add capacity variables
+    for asset in assets {
+        add_asset_capacity_variable(problem, variables, asset.clone());
+    }
+
+    // Add activity variables
+    for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
+        add_asset_activity_variable(
+            problem,
+            variables,
+            asset.clone(),
+            reduced_costs,
+            time_slice.clone(),
+        );
+    }
+}
+
+fn add_variables_for_candidates(
+    problem: &mut Problem,
+    variables: &mut VariableMap,
+    assets: &[AssetRef],
+    time_slice_info: &TimeSliceInfo,
+    reduced_costs: &ReducedCosts,
+) {
+    // Add capacity variables
+    for asset in assets {
+        add_candidate_capacity_variable(problem, variables, asset.clone());
+    }
+
+    // Add activity variables
+    for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
+        add_candidate_activity_variable(
+            problem,
+            variables,
+            asset.clone(),
+            reduced_costs,
+            time_slice.clone(),
+        );
+    }
+}
+
 pub struct Solution {
     solution: highs::Solution,
     variables: VariableMap,
@@ -108,13 +157,28 @@ pub fn perform_lcox_optimisation(
     model: &Model,
     asset_pool: &AssetPool,
     candidate_assets: &[AssetRef],
-    year: u32,
+    time_slice_info: &TimeSliceInfo,
+    reduced_costs: &ReducedCosts,
 ) -> Result<Solution> {
     // Set up problem
     let mut problem = Problem::default();
     let mut variables = VariableMap::default();
 
     // Add variables
+    add_variables_for_existing(
+        &mut problem,
+        &mut variables,
+        asset_pool.as_slice(),
+        &time_slice_info,
+        &reduced_costs,
+    );
+    add_variables_for_candidates(
+        &mut problem,
+        &mut variables,
+        candidate_assets,
+        &time_slice_info,
+        &reduced_costs,
+    );
 
     // Add constraints
 
