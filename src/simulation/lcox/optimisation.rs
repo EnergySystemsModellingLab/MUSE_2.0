@@ -1,5 +1,10 @@
-use crate::asset::{AssetID, AssetPool, AssetRef};
+use crate::asset::{AssetPool, AssetRef};
 use crate::model::Model;
+use crate::simulation::lcox::costs::{
+    activity_cost_for_asset, activity_cost_for_candidate, annual_fixed_cost_for_asset,
+    annual_fixed_cost_for_candidate,
+};
+use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::TimeSliceID;
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
@@ -12,11 +17,11 @@ type Variable = highs::Col;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum VariableType {
     /// Capacity investment for existing assets
-    AssetCapacity(AssetID),
+    AssetCapacity(AssetRef),
     /// Capacity investment for candidate assets
     CandidateCapacity(AssetRef),
     /// Activity level for existing assets in each time slice
-    AssetActivity(AssetID, TimeSliceID),
+    AssetActivity(AssetRef, TimeSliceID),
     /// Activity level for candidate assets in each time slice
     CandidateActivity(AssetRef, TimeSliceID),
 }
@@ -28,9 +33,9 @@ pub struct VariableMap {
     variables: IndexMap<VariableType, Variable>,
 
     /// Separate collections for efficient access by variable type
-    asset_capacity_vars: IndexMap<AssetID, Variable>,
+    asset_capacity_vars: IndexMap<AssetRef, Variable>,
     candidate_capacity_vars: IndexMap<AssetRef, Variable>,
-    asset_activity_vars: IndexMap<(AssetID, TimeSliceID), Variable>,
+    asset_activity_vars: IndexMap<(AssetRef, TimeSliceID), Variable>,
     candidate_activity_vars: IndexMap<(AssetRef, TimeSliceID), Variable>,
 }
 
@@ -38,12 +43,13 @@ pub struct VariableMap {
 pub fn add_asset_capacity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
-    asset_id: AssetID,
+    asset_ref: AssetRef,
 ) {
-    let var = problem.add_column(0.0, 0.0..);
-    let var_type = VariableType::AssetCapacity(asset_id);
+    let cost = annual_fixed_cost_for_asset(&asset_ref);
+    let var = problem.add_column(cost.value(), 0.0..);
+    let var_type = VariableType::AssetCapacity(asset_ref.clone());
     variables.variables.insert(var_type.clone(), var);
-    variables.asset_capacity_vars.insert(asset_id, var);
+    variables.asset_capacity_vars.insert(asset_ref, var);
 }
 
 /// Add a capacity variable for a candidate asset
@@ -52,7 +58,8 @@ pub fn add_candidate_capacity_variable(
     variables: &mut VariableMap,
     asset_ref: AssetRef,
 ) {
-    let var = problem.add_column(0.0, 0.0..);
+    let cost = annual_fixed_cost_for_candidate(&asset_ref);
+    let var = problem.add_column(cost.value(), 0.0..);
     let var_type = VariableType::CandidateCapacity(asset_ref.clone());
     variables.variables.insert(var_type.clone(), var);
     variables.candidate_capacity_vars.insert(asset_ref, var);
@@ -62,15 +69,17 @@ pub fn add_candidate_capacity_variable(
 pub fn add_asset_activity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
-    asset_id: AssetID,
+    asset_ref: AssetRef,
+    reduced_costs: &ReducedCosts,
     time_slice: TimeSliceID,
 ) {
-    let var = problem.add_column(0.0, 0.0..);
-    let var_type = VariableType::AssetActivity(asset_id, time_slice.clone());
+    let cost = activity_cost_for_asset(&asset_ref, reduced_costs, time_slice.clone());
+    let var = problem.add_column(cost.value(), 0.0..);
+    let var_type = VariableType::AssetActivity(asset_ref.clone(), time_slice.clone());
     variables.variables.insert(var_type.clone(), var);
     variables
         .asset_activity_vars
-        .insert((asset_id, time_slice), var);
+        .insert((asset_ref, time_slice), var);
 }
 
 /// Add an activity variable for a candidate asset in a time slice
@@ -78,9 +87,11 @@ pub fn add_candidate_activity_variable(
     problem: &mut Problem,
     variables: &mut VariableMap,
     asset_ref: AssetRef,
+    reduced_costs: &ReducedCosts,
     time_slice: TimeSliceID,
 ) {
-    let var = problem.add_column(0.0, 0.0..);
+    let cost = activity_cost_for_candidate(&asset_ref, reduced_costs, time_slice.clone());
+    let var = problem.add_column(cost.value(), 0.0..);
     let var_type = VariableType::CandidateActivity(asset_ref.clone(), time_slice.clone());
     variables.variables.insert(var_type.clone(), var);
     variables
