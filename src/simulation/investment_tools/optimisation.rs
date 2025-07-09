@@ -4,6 +4,7 @@ use crate::region::RegionID;
 use crate::simulation::investment_tools::strategies::Strategy;
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::units::{MoneyPerActivity, MoneyPerCapacity};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem};
 use indexmap::IndexMap;
@@ -11,23 +12,19 @@ use indexmap::IndexMap;
 /// A decision variable in the optimisation
 pub type Variable = highs::Col;
 
-/// Represents different types of optimization variables
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum VariableType {
-    /// Capacity
-    Capacity(AssetRef),
-    /// Activity level in a time slice
-    Activity(AssetRef, TimeSliceID),
-    /// Unmet demand
-    UnmetDemand(CommodityID, RegionID, TimeSliceID),
+/// Map storing cost coefficients for each variable type
+#[derive(Default)]
+pub struct CostCoefficientsMap {
+    pub existing_capacity_costs: IndexMap<AssetRef, MoneyPerCapacity>,
+    pub candidate_capacity_costs: IndexMap<AssetRef, MoneyPerCapacity>,
+    pub existing_activity_costs: IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>,
+    pub candidate_activity_costs: IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>,
+    pub unmet_demand_costs: IndexMap<(CommodityID, RegionID, TimeSliceID), MoneyPerActivity>,
 }
 
 /// Variable map for optimization
 #[derive(Default)]
 pub struct VariableMap {
-    pub variables: IndexMap<VariableType, Variable>,
-
-    /// Also keep separate maps for different types of variables
     pub existing_capacity_vars: IndexMap<AssetRef, Variable>,
     pub candidate_capacity_vars: IndexMap<AssetRef, Variable>,
     pub existing_activity_vars: IndexMap<(AssetRef, TimeSliceID), Variable>,
@@ -51,8 +48,6 @@ pub fn add_existing_capacity_variable(
 ) {
     let capacity = asset_ref.capacity;
     let var = problem.add_column(col_factor, capacity.value()..capacity.value());
-    let var_type = VariableType::Capacity(asset_ref.clone());
-    variables.variables.insert(var_type.clone(), var);
     variables.existing_capacity_vars.insert(asset_ref, var);
 }
 
@@ -64,8 +59,6 @@ pub fn add_candidate_capacity_variable(
     col_factor: f64,
 ) {
     let var = problem.add_column(col_factor, 0.0..);
-    let var_type = VariableType::Capacity(asset_ref.clone());
-    variables.variables.insert(var_type.clone(), var);
     variables.candidate_capacity_vars.insert(asset_ref, var);
 }
 
@@ -78,8 +71,6 @@ pub fn add_existing_activity_variable(
     col_factor: f64,
 ) {
     let var = problem.add_column(col_factor, 0.0..);
-    let var_type = VariableType::Activity(asset_ref.clone(), time_slice.clone());
-    variables.variables.insert(var_type.clone(), var);
     variables
         .existing_activity_vars
         .insert((asset_ref, time_slice), var);
@@ -94,11 +85,48 @@ pub fn add_candidate_activity_variable(
     col_factor: f64,
 ) {
     let var = problem.add_column(col_factor, 0.0..);
-    let var_type = VariableType::Activity(asset_ref.clone(), time_slice.clone());
-    variables.variables.insert(var_type.clone(), var);
     variables
         .candidate_activity_vars
         .insert((asset_ref, time_slice), var);
+}
+
+/// Add variables to the problem based onn cost coefficients
+pub fn add_variables(
+    problem: &mut Problem,
+    variables: &mut VariableMap,
+    cost_coefficients: &CostCoefficientsMap,
+) {
+    // Add capacity variables for existing assets
+    for (asset, cost) in cost_coefficients.existing_capacity_costs.iter() {
+        add_existing_capacity_variable(problem, variables, asset.clone(), cost.value());
+    }
+
+    // Add activity variables for existing assets
+    for ((asset, time_slice), cost) in cost_coefficients.existing_activity_costs.iter() {
+        add_existing_activity_variable(
+            problem,
+            variables,
+            asset.clone(),
+            time_slice.clone(),
+            cost.value(),
+        );
+    }
+
+    // Add capacity variables for candidate assets
+    for (asset, cost) in cost_coefficients.candidate_capacity_costs.iter() {
+        add_candidate_capacity_variable(problem, variables, asset.clone(), cost.value());
+    }
+
+    // Add activity variables for candidate assets
+    for ((asset, time_slice), cost) in cost_coefficients.candidate_activity_costs.iter() {
+        add_candidate_activity_variable(
+            problem,
+            variables,
+            asset.clone(),
+            time_slice.clone(),
+            cost.value(),
+        );
+    }
 }
 
 /// Perform optimisation for a given strategy
@@ -113,15 +141,16 @@ pub fn perform_optimisation(
     let mut problem = Problem::default();
     let mut variables = VariableMap::default();
 
-    // Add variables
-    strategy.add_variables(
-        &mut problem,
-        &mut variables,
+    // Calculate cost coefficients
+    let cost_coefficients = strategy.calculate_cost_coefficients(
         asset_pool,
         candidate_assets,
         time_slice_info,
         reduced_costs,
     );
+
+    // Add variables
+    add_variables(&mut problem, &mut variables, &cost_coefficients);
 
     // Add constraints
     strategy.add_constraints(&mut problem, &variables);

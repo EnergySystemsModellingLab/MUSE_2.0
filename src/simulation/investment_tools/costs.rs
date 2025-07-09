@@ -28,7 +28,7 @@ pub fn annual_fixed_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
 }
 
 /// Calculates the cost per unit of activity for an asset.
-pub fn activity_cost_for_existinng(
+pub fn activity_cost_for_existing(
     asset: &AssetRef,
     reduced_costs: &ReducedCosts,
     time_slice: TimeSliceID,
