@@ -1,5 +1,5 @@
 use crate::asset::AssetRef;
-use crate::simulation::lcox::optimisation::Variable;
+use crate::simulation::investment_tools::optimisation::Variable;
 use crate::time_slice::TimeSliceID;
 use highs::RowProblem as Problem;
 use indexmap::IndexMap;

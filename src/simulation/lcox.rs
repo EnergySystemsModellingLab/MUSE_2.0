@@ -8,11 +8,6 @@ use crate::time_slice::TimeSliceID;
 use crate::units::{Capacity, Flow, MoneyPerActivity};
 use std::collections::HashMap;
 
-pub mod constraints;
-pub mod costs;
-pub mod optimisation;
-pub mod strategies;
-
 /// Calculate LCOX based on the specified reduced costs and demand for a particular tranche.
 ///
 /// # Returns

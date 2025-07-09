@@ -1,5 +1,5 @@
 use crate::asset::{AssetPool, AssetRef};
-use crate::simulation::lcox::strategies::Strategy;
+use crate::simulation::investment_tools::strategies::Strategy;
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use anyhow::{anyhow, Result};
