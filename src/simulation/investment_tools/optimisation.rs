@@ -6,7 +6,8 @@ use crate::simulation::investment_tools::strategies::Strategy;
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{
-    Activity, Capacity, Flow, MoneyPerActivity, MoneyPerCapacity, MoneyPerFlow, UnitType,
+    Activity, Capacity, Dimensionless, Flow, Money, MoneyPerActivity, MoneyPerCapacity,
+    MoneyPerFlow, UnitType,
 };
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem};
@@ -51,7 +52,7 @@ pub struct ResultsMap {
     pub candidate_capacity_results: IndexMap<AssetRef, Capacity>,
     pub existing_activity_results: IndexMap<(AssetRef, TimeSliceID), Activity>,
     pub candidate_activity_results: IndexMap<(AssetRef, TimeSliceID), Activity>,
-    pub unmet_demand_results: IndexMap<(CommodityID, RegionID, TimeSliceID), Flow>, // TODO: Add unit
+    pub unmet_demand_results: IndexMap<(CommodityID, RegionID, TimeSliceID), Flow>,
 }
 
 /// Solution to the optimisation problem
@@ -273,4 +274,40 @@ pub fn perform_optimisation(
     // Assemble results
     let results_map = solution.unwrap().create_results_map();
     Ok(results_map)
+}
+
+pub fn calculate_profitability_index_for_candidate(
+    results: &ResultsMap,
+    cost_coefficients: &CostCoefficientsMap,
+    asset: &AssetRef,
+    time_slice_info: &TimeSliceInfo,
+) -> Dimensionless {
+    // Get the capacity result for the asset
+    let capacity = *results.candidate_capacity_results.get(asset).unwrap();
+
+    // Get the cost coefficients for the asset
+    let cost_coefficient = *cost_coefficients
+        .existing_capacity_costs
+        .get(asset)
+        .unwrap();
+
+    // Calculate the annualised capital cost
+    let annualised_capital_cost = cost_coefficient * capacity;
+
+    // Loop through the time slices
+    let mut total_annualised_surplus = Money(0.0);
+    for time_slice in time_slice_info.iter_ids() {
+        // Get the activity result for the asset
+        let activity = *results
+            .candidate_activity_results
+            .get(&(asset.clone(), time_slice.clone()))
+            .unwrap();
+        let cost_coefficient = *cost_coefficients
+            .candidate_activity_costs
+            .get(&(asset.clone(), time_slice.clone()))
+            .unwrap();
+        total_annualised_surplus += cost_coefficient * activity;
+    }
+
+    annualised_capital_cost / total_annualised_surplus
 }
