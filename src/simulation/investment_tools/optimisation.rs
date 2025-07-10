@@ -37,32 +37,8 @@ pub struct ResultsMap {
     pub capacity: Capacity,
     /// Activity variables in each time slice
     pub activity: IndexMap<TimeSliceID, Activity>,
-}
-
-/// Solution to the optimisation problem
-pub struct Solution {
-    /// Solution
-    solution: highs::Solution,
-    /// Variables
-    variables: VariableMap,
-}
-
-impl Solution {
-    /// Converts the solution to a ResultsMap.
-    pub fn into_results_map(self) -> ResultsMap {
-        let solution_values = self.solution.columns();
-
-        ResultsMap {
-            capacity: Capacity::new(solution_values[0]),
-            activity: self
-                .variables
-                .activity_vars
-                .keys()
-                .zip(solution_values[1..].iter())
-                .map(|(time_slice, &value)| (time_slice.clone(), Activity::new(value)))
-                .collect(),
-        }
-    }
+    /// Cost coefficients
+    pub cost_coefficients: CostCoefficientsMap,
 }
 
 /// Methods for optimisation
@@ -142,7 +118,7 @@ fn add_constraints(
 }
 
 /// Performs optimisation for a given strategy.
-pub fn perform_optimisation(
+pub fn perform_optimisation_for_method(
     asset: &AssetRef,
     time_slice_info: &TimeSliceInfo,
     reduced_costs: &ReducedCosts,
@@ -173,11 +149,18 @@ pub fn perform_optimisation(
     let solved_model = highs_model.solve();
     match solved_model.status() {
         HighsModelStatus::Optimal => {
-            let solution = Solution {
-                solution: solved_model.get_solution(),
-                variables,
-            };
-            Ok(solution.into_results_map())
+            let solution = solved_model.get_solution();
+            let solution_values = solution.columns();
+            Ok(ResultsMap {
+                capacity: Capacity::new(solution_values[0]),
+                activity: variables
+                    .activity_vars
+                    .keys()
+                    .zip(solution_values[1..].iter())
+                    .map(|(time_slice, &value)| (time_slice.clone(), Activity::new(value)))
+                    .collect(),
+                cost_coefficients,
+            })
         }
         status => Err(anyhow!("Could not solve: {status:?}")),
     }
