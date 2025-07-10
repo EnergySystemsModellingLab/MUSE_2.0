@@ -5,6 +5,13 @@ use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::TimeSliceID;
 use crate::units::{MoneyPerActivity, MoneyPerCapacity, Year};
 
+pub fn annual_fixed_cost(asset: &AssetRef) -> MoneyPerCapacity {
+    match asset.is_commissioned() {
+        true => annual_fixed_cost_for_existing(asset),
+        false => annual_fixed_cost_for_candidate(asset),
+    }
+}
+
 /// Calculates the annual fixed costs per unit of capacity for an asset.
 pub fn annual_fixed_cost_for_existing(asset: &AssetRef) -> MoneyPerCapacity {
     let fixed_operating_cost = asset.process_parameter.fixed_operating_cost;
@@ -25,6 +32,17 @@ pub fn annual_fixed_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
     let annual_fixed_operating_cost = fixed_operating_cost * Year(1.0);
     let capital_costs = annual_capital_cost_for_candidate(asset);
     annual_fixed_operating_cost + capital_costs
+}
+
+pub fn activity_cost(
+    asset: &AssetRef,
+    reduced_costs: &ReducedCosts,
+    time_slice: TimeSliceID,
+) -> MoneyPerActivity {
+    match asset.is_commissioned() {
+        true => activity_cost_for_existing(asset, reduced_costs, time_slice),
+        false => activity_cost_for_candidate(asset, reduced_costs, time_slice),
+    }
 }
 
 /// Calculates the cost per unit of activity for an asset.

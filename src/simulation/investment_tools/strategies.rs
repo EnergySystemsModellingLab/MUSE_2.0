@@ -1,19 +1,16 @@
-use crate::asset::{AssetPool, AssetRef};
-use crate::model::Model;
+use crate::asset::AssetRef;
 use crate::simulation::investment_tools::constraints::{
-    add_activity_constraints_for_candidates, add_activity_constraints_for_existing,
-    add_capacity_constraints_for_candidates, add_demand_constraints,
+    add_activity_constraints, add_capacity_constraint, add_demand_constraints,
 };
-use crate::simulation::investment_tools::costs::{
-    activity_cost_for_candidate, activity_cost_for_existing, annual_fixed_cost_for_candidate,
-    annual_fixed_cost_for_existing,
-};
+use crate::simulation::investment_tools::costs::{activity_cost, annual_fixed_cost};
 use crate::simulation::investment_tools::optimisation::{CostCoefficientsMap, VariableMap};
 use crate::simulation::prices::ReducedCosts;
+use crate::time_slice::TimeSliceID;
 use crate::time_slice::TimeSliceInfo;
-use crate::units::MoneyPerFlow;
+use crate::units::Flow;
 use highs::{RowProblem as Problem, Sense};
-use itertools::iproduct;
+use indexmap::IndexMap;
+use std::collections::HashMap;
 
 /// Trait defining the interface for optimization strategies
 pub trait Strategy {
@@ -23,15 +20,19 @@ pub trait Strategy {
     /// Calculate cost coefficients for the strategy
     fn calculate_cost_coefficients(
         &self,
-        model: &Model,
-        asset_pool: &AssetPool,
-        candidate_assets: &[AssetRef],
+        asset: &AssetRef,
         time_slice_info: &TimeSliceInfo,
         reduced_costs: &ReducedCosts,
     ) -> CostCoefficientsMap;
 
     /// Add constraints to the optimization problem
-    fn add_constraints(&self, problem: &mut Problem, variables: &VariableMap);
+    fn add_constraints(
+        &self,
+        problem: &mut Problem,
+        asset: &AssetRef,
+        variables: &VariableMap,
+        demand: &HashMap<TimeSliceID, Flow>,
+    );
 }
 
 /// LCOX (Levelized Cost of X) optimization strategy
@@ -44,35 +45,28 @@ impl Strategy for LcoxStrategy {
 
     fn calculate_cost_coefficients(
         &self,
-        model: &Model,
-        asset_pool: &AssetPool,
-        candidate_assets: &[AssetRef],
+        asset: &AssetRef,
         time_slice_info: &TimeSliceInfo,
         reduced_costs: &ReducedCosts,
     ) -> CostCoefficientsMap {
-        calculate_cost_coefficients_for_method(
-            model,
-            asset_pool,
-            candidate_assets,
-            time_slice_info,
-            reduced_costs,
-            Method::Lcox,
-        )
+        calculate_cost_coefficients_for_method(asset, time_slice_info, reduced_costs, Method::Lcox)
     }
 
-    fn add_constraints(&self, problem: &mut Problem, variables: &VariableMap) {
-        add_activity_constraints_for_existing(problem, &variables.existing_activity_vars);
-        add_activity_constraints_for_candidates(
+    fn add_constraints(
+        &self,
+        problem: &mut Problem,
+        asset: &AssetRef,
+        variables: &VariableMap,
+        demand: &HashMap<TimeSliceID, Flow>,
+    ) {
+        add_capacity_constraint(problem, asset, variables.capacity_var);
+        add_activity_constraints(
             problem,
-            &variables.candidate_capacity_vars,
-            &variables.candidate_activity_vars,
+            asset,
+            variables.capacity_var,
+            &variables.activity_vars,
         );
-        add_capacity_constraints_for_candidates(problem, &variables.candidate_capacity_vars);
-        add_demand_constraints(
-            problem,
-            &variables.existing_activity_vars,
-            &variables.candidate_activity_vars,
-        );
+        add_demand_constraints(problem, asset, demand, &variables.activity_vars);
     }
 }
 
@@ -86,35 +80,28 @@ impl Strategy for NpvStrategy {
 
     fn calculate_cost_coefficients(
         &self,
-        model: &Model,
-        asset_pool: &AssetPool,
-        candidate_assets: &[AssetRef],
+        asset: &AssetRef,
         time_slice_info: &TimeSliceInfo,
         reduced_costs: &ReducedCosts,
     ) -> CostCoefficientsMap {
-        calculate_cost_coefficients_for_method(
-            model,
-            asset_pool,
-            candidate_assets,
-            time_slice_info,
-            reduced_costs,
-            Method::Npv,
-        )
+        calculate_cost_coefficients_for_method(asset, time_slice_info, reduced_costs, Method::Npv)
     }
 
-    fn add_constraints(&self, problem: &mut Problem, variables: &VariableMap) {
-        add_activity_constraints_for_existing(problem, &variables.existing_activity_vars);
-        add_activity_constraints_for_candidates(
+    fn add_constraints(
+        &self,
+        problem: &mut Problem,
+        asset: &AssetRef,
+        variables: &VariableMap,
+        demand: &HashMap<TimeSliceID, Flow>,
+    ) {
+        add_capacity_constraint(problem, asset, variables.capacity_var);
+        add_activity_constraints(
             problem,
-            &variables.candidate_capacity_vars,
-            &variables.candidate_activity_vars,
+            asset,
+            variables.capacity_var,
+            &variables.activity_vars,
         );
-        add_capacity_constraints_for_candidates(problem, &variables.candidate_capacity_vars);
-        add_demand_constraints(
-            problem,
-            &variables.existing_activity_vars,
-            &variables.candidate_activity_vars,
-        );
+        add_demand_constraints(problem, asset, demand, &variables.activity_vars);
     }
 }
 
@@ -124,78 +111,30 @@ pub enum Method {
 }
 
 fn calculate_cost_coefficients_for_method(
-    model: &Model,
-    asset_pool: &AssetPool,
-    candidate_assets: &[AssetRef],
+    asset: &AssetRef,
     time_slice_info: &TimeSliceInfo,
     reduced_costs: &ReducedCosts,
     method: Method,
 ) -> CostCoefficientsMap {
-    let mut cost_coefficients = CostCoefficientsMap::default();
-    let existing_assets = asset_pool.as_slice();
+    // Capacity variable
+    let cost = match method {
+        Method::Lcox => annual_fixed_cost(asset),
+        Method::Npv => -annual_fixed_cost(asset),
+    };
+    let capacity_cost = cost;
 
-    // Add capacity variables for existing assets
-    for asset in existing_assets {
-        // let cost = annual_fixed_cost_for_existing(asset);
+    // Activity variables
+    let mut activity_costs = IndexMap::new();
+    for time_slice in time_slice_info.iter_ids() {
         let cost = match method {
-            Method::Lcox => annual_fixed_cost_for_existing(asset),
-            Method::Npv => -annual_fixed_cost_for_existing(asset),
+            Method::Lcox => activity_cost(asset, reduced_costs, time_slice.clone()),
+            Method::Npv => -activity_cost(asset, reduced_costs, time_slice.clone()),
         };
-        cost_coefficients
-            .existing_capacity_costs
-            .insert(asset.clone(), cost);
+        activity_costs.insert(time_slice.clone(), cost);
     }
 
-    // Add activity variables for existing assets
-    for (asset, time_slice) in iproduct!(existing_assets.iter(), time_slice_info.iter_ids()) {
-        let cost = match method {
-            Method::Lcox => activity_cost_for_existing(asset, reduced_costs, time_slice.clone()),
-            Method::Npv => -activity_cost_for_existing(asset, reduced_costs, time_slice.clone()),
-        };
-        cost_coefficients
-            .existing_activity_costs
-            .insert((asset.clone(), time_slice.clone()), cost);
+    CostCoefficientsMap {
+        capacity_cost,
+        activity_costs,
     }
-
-    // Add capacity variables for candidate assets
-    for asset in candidate_assets {
-        let cost = match method {
-            Method::Lcox => annual_fixed_cost_for_candidate(asset),
-            Method::Npv => -annual_fixed_cost_for_candidate(asset),
-        };
-        cost_coefficients
-            .candidate_capacity_costs
-            .insert(asset.clone(), cost);
-    }
-
-    // Add activity variables for candidate assets
-    for (asset, time_slice) in iproduct!(candidate_assets.iter(), time_slice_info.iter_ids()) {
-        let cost = match method {
-            Method::Lcox => activity_cost_for_candidate(asset, reduced_costs, time_slice.clone()),
-            Method::Npv => -activity_cost_for_candidate(asset, reduced_costs, time_slice.clone()),
-        };
-        cost_coefficients
-            .candidate_activity_costs
-            .insert((asset.clone(), time_slice.clone()), cost);
-    }
-
-    // Add unmet demand costs (only for LCOX)
-    for (commodity, region, time_slice) in iproduct!(
-        model.commodities.keys(),
-        model.regions.keys(),
-        time_slice_info.iter_ids()
-    ) {
-        let cost: Option<MoneyPerFlow> = match method {
-            Method::Lcox => Some(MoneyPerFlow::new(0.0)), // TODO: Implement unmet demand cost for LCOX
-            Method::Npv => None,
-        };
-        if let Some(cost) = cost {
-            cost_coefficients.unmet_demand_costs.insert(
-                (commodity.clone(), region.clone(), time_slice.clone()),
-                cost,
-            );
-        }
-    }
-
-    cost_coefficients
 }
