@@ -6,7 +6,7 @@ use crate::simulation::investment_tools::constraints::{
 use crate::simulation::investment_tools::costs::{activity_cost, annual_fixed_cost};
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{Flow, MoneyPerActivity, MoneyPerCapacity};
+use crate::units::{Activity, Capacity, Flow, MoneyPerActivity, MoneyPerCapacity};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
@@ -31,10 +31,38 @@ pub struct VariableMap {
     pub activity_vars: IndexMap<TimeSliceID, Variable>,
 }
 
+/// Results map for optimisation
+pub struct ResultsMap {
+    /// Capacity variable
+    pub capacity: Capacity,
+    /// Activity variables in each time slice
+    pub activity: IndexMap<TimeSliceID, Activity>,
+}
+
 /// Solution to the optimisation problem
 pub struct Solution {
-    _solution: highs::Solution,
-    _variables: VariableMap,
+    /// Solution
+    solution: highs::Solution,
+    /// Variables
+    variables: VariableMap,
+}
+
+impl Solution {
+    /// Converts the solution to a ResultsMap.
+    pub fn into_results_map(self) -> ResultsMap {
+        let solution_values = self.solution.columns();
+
+        ResultsMap {
+            capacity: Capacity::new(solution_values[0]),
+            activity: self
+                .variables
+                .activity_vars
+                .keys()
+                .zip(solution_values[1..].iter())
+                .map(|(time_slice, &value)| (time_slice.clone(), Activity::new(value)))
+                .collect(),
+        }
+    }
 }
 
 /// Methods for optimisation
@@ -120,7 +148,7 @@ pub fn perform_optimisation(
     reduced_costs: &ReducedCosts,
     demand: &HashMap<TimeSliceID, Flow>,
     method: &Method,
-) -> Result<Solution> {
+) -> Result<ResultsMap> {
     // Set up problem
     let mut problem = Problem::default();
 
@@ -144,10 +172,13 @@ pub fn perform_optimisation(
     // Solve model
     let solved_model = highs_model.solve();
     match solved_model.status() {
-        HighsModelStatus::Optimal => Ok(Solution {
-            _solution: solved_model.get_solution(),
-            _variables: variables,
-        }),
+        HighsModelStatus::Optimal => {
+            let solution = Solution {
+                solution: solved_model.get_solution(),
+                variables,
+            };
+            Ok(solution.into_results_map())
+        }
         status => Err(anyhow!("Could not solve: {status:?}")),
     }
 }
