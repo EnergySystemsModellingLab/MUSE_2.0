@@ -40,14 +40,16 @@ pub fn calculate_lcox(
     let new_capacity = (!asset.is_commissioned()).then_some(results.capacity);
 
     // Calculate LCOX
+    let annual_fixed_cost = results.coefficients.capacity_coefficient;
+    let activity_costs = results.coefficients.activity_coefficients;
     let lcox = lcox(
         results.capacity,
-        results.cost_coefficients.capacity_cost,
+        annual_fixed_cost,
         &results.activity,
-        &results.cost_coefficients.activity_costs,
+        &activity_costs,
     );
 
-    // Calculate unmet demand (TODO)
+    // Calculate unmet demand (**TODO.**)
     let unmet = demand.keys().cloned().map(|ts| (ts, Flow(0.0))).collect();
 
     (lcox, new_capacity, unmet)
@@ -74,14 +76,16 @@ pub fn calculate_npv(
     let new_capacity = (!asset.is_commissioned()).then_some(results.capacity);
 
     // Calculate profitability index
+    let annual_fixed_cost = -results.coefficients.capacity_coefficient;
+    let activity_surpluses = results.coefficients.activity_coefficients;
     let profitability_index = profitability_index(
         results.capacity,
-        results.cost_coefficients.capacity_cost,
+        annual_fixed_cost,
         &results.activity,
-        &results.cost_coefficients.activity_costs,
+        &activity_surpluses,
     );
 
-    // Calculate unnmet demand (TODO)
+    // Calculate unnmet demand (**TODO.**)
     let unmet = demand.keys().cloned().map(|ts| (ts, Flow(0.0))).collect();
 
     (profitability_index, new_capacity, unmet)

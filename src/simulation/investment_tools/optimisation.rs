@@ -3,7 +3,9 @@ use crate::asset::AssetRef;
 use crate::simulation::investment_tools::constraints::{
     add_activity_constraints, add_capacity_constraint, add_demand_constraints,
 };
-use crate::simulation::investment_tools::costs::{activity_cost, annual_fixed_cost};
+use crate::simulation::investment_tools::costs::{
+    activity_cost, activity_surplus, annual_fixed_cost,
+};
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Activity, Capacity, Flow, MoneyPerActivity, MoneyPerCapacity};
@@ -15,78 +17,80 @@ use std::collections::HashMap;
 /// A decision variable in the optimisation
 pub type Variable = highs::Col;
 
-/// Map storing cost coefficients for each variable type
-pub struct CostCoefficientsMap {
+/// Map storing coefficients for each variable
+pub struct CoefficientsMap {
     /// Cost per unit of capacity
-    pub capacity_cost: MoneyPerCapacity,
+    pub capacity_coefficient: MoneyPerCapacity,
     /// Cost per unit of activity in each time slice
-    pub activity_costs: IndexMap<TimeSliceID, MoneyPerActivity>,
+    pub activity_coefficients: IndexMap<TimeSliceID, MoneyPerActivity>,
+    // **TODO.**: VoLL coefficients (for LCOX)
 }
 
-/// Variable map for optimization
+/// Map storing variables for the optimisation problem
 struct VariableMap {
     /// Capacity variable
     capacity_var: Variable,
     /// Activity variables in each time slice
     activity_vars: IndexMap<TimeSliceID, Variable>,
+    // **TODO.**: VoLL variables (for LCOX)
 }
 
-/// Results map for optimisation
+/// Map containing optimisation results and coefficients
 pub struct ResultsMap {
     /// Capacity variable
     pub capacity: Capacity,
     /// Activity variables in each time slice
     pub activity: IndexMap<TimeSliceID, Activity>,
-    /// Cost coefficients
-    pub cost_coefficients: CostCoefficientsMap,
+    /// Coefficients
+    pub coefficients: CoefficientsMap,
 }
 
 /// Methods for optimisation
 pub enum Method {
-    /// LCOX method (not yet fully implemented)
+    /// LCOX method
     Lcox,
     /// NPV method
     Npv,
 }
 
 /// Calculates the cost coefficients for a given method.
-fn calculate_cost_coefficients_for_method(
+fn calculate_coefficients_for_method(
     asset: &AssetRef,
     time_slice_info: &TimeSliceInfo,
     reduced_costs: &ReducedCosts,
     method: &Method,
-) -> CostCoefficientsMap {
-    // Capacity variable
+) -> CoefficientsMap {
+    // Capacity cost
     let cost = match method {
         Method::Lcox => annual_fixed_cost(asset),
         Method::Npv => -annual_fixed_cost(asset),
     };
     let capacity_cost = cost;
 
-    // Activity variables
+    // Activity costs
     let mut activity_costs = IndexMap::new();
     for time_slice in time_slice_info.iter_ids() {
         let cost = match method {
             Method::Lcox => activity_cost(asset, reduced_costs, time_slice.clone()),
-            Method::Npv => -activity_cost(asset, reduced_costs, time_slice.clone()),
+            Method::Npv => activity_surplus(asset, reduced_costs, time_slice.clone()),
         };
         activity_costs.insert(time_slice.clone(), cost);
     }
 
-    CostCoefficientsMap {
-        capacity_cost,
-        activity_costs,
+    CoefficientsMap {
+        capacity_coefficient: capacity_cost,
+        activity_coefficients: activity_costs,
     }
 }
 
 /// Add variables to the problem based on cost coefficients
-fn add_variables(problem: &mut Problem, cost_coefficients: &CostCoefficientsMap) -> VariableMap {
+fn add_variables(problem: &mut Problem, cost_coefficients: &CoefficientsMap) -> VariableMap {
     // Create capacity variable
-    let capacity_var = problem.add_column(cost_coefficients.capacity_cost.value(), 0.0..);
+    let capacity_var = problem.add_column(cost_coefficients.capacity_coefficient.value(), 0.0..);
 
     // Create activity variables
     let mut activity_vars = IndexMap::new();
-    for (time_slice, cost) in cost_coefficients.activity_costs.iter() {
+    for (time_slice, cost) in cost_coefficients.activity_coefficients.iter() {
         let var = problem.add_column(cost.value(), 0.0..);
         activity_vars.insert(time_slice.clone(), var);
     }
@@ -125,17 +129,17 @@ pub fn perform_optimisation_for_method(
     // Set up problem
     let mut problem = Problem::default();
 
-    // Calculate cost coefficients
-    let cost_coefficients =
-        calculate_cost_coefficients_for_method(asset, time_slice_info, reduced_costs, method);
+    // Calculate coefficients
+    let coefficients =
+        calculate_coefficients_for_method(asset, time_slice_info, reduced_costs, method);
 
     // Add variables
-    let variables = add_variables(&mut problem, &cost_coefficients);
+    let variables = add_variables(&mut problem, &coefficients);
 
     // Add constraints
     add_constraints(&mut problem, asset, &variables, demand);
 
-    // Solve problem
+    // Perform optimisation
     let sense = match method {
         Method::Lcox => Sense::Minimise,
         Method::Npv => Sense::Maximise,
@@ -156,7 +160,7 @@ pub fn perform_optimisation_for_method(
                     .zip(solution_values[1..].iter())
                     .map(|(time_slice, &value)| (time_slice.clone(), Activity::new(value)))
                     .collect(),
-                cost_coefficients,
+                coefficients,
             })
         }
         status => Err(anyhow!("Could not solve: {status:?}")),

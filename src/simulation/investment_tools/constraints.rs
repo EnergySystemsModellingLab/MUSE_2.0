@@ -21,6 +21,7 @@ fn add_capacity_constraint_for_existing(
     _asset: &AssetRef,
     _capacity_var: Variable,
 ) {
+    // **TODO:** Add capacity constraint for existing asset.
 }
 
 /// Adds a capacity constraint to the problem for a candidate asset.
@@ -29,6 +30,7 @@ fn add_capacity_constraint_for_candidates(
     _asset: &AssetRef,
     _capacity_var: Variable,
 ) {
+    // **TODO:** Add capacity constraint for candidate asset.
 }
 
 /// Adds activity constraints to the problem.
@@ -86,4 +88,5 @@ pub fn add_demand_constraints(
     _demand: &HashMap<TimeSliceID, Flow>,
     _activity_vars: &IndexMap<TimeSliceID, Variable>,
 ) {
+    // **TODO:** Add demand constraints.
 }

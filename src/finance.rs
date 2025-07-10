@@ -28,44 +28,44 @@ pub fn annual_capital_cost(
     total_capital_cost * crf
 }
 
-/// Calculates a profitability index based on capacity and activity.
+/// Calculates an annual profitability index based on capacity and activity.
 pub fn profitability_index(
     capacity: Capacity,
     annual_fixed_cost: MoneyPerCapacity,
-    activity_map: &IndexMap<TimeSliceID, Activity>,
-    activity_costs: &IndexMap<TimeSliceID, MoneyPerActivity>,
+    activity: &IndexMap<TimeSliceID, Activity>,
+    activity_surpluses: &IndexMap<TimeSliceID, MoneyPerActivity>,
 ) -> Dimensionless {
-    // Calculate the annualised capital cost
-    let annualised_capital_cost = annual_fixed_cost * capacity;
+    // Calculate the annualised fixed costs
+    let annualised_fixed_cost = annual_fixed_cost * capacity;
 
-    // Loop through the time slices
+    // Calculate the total annualised surplus
     let mut total_annualised_surplus = Money(0.0);
-    for (time_slice, activity) in activity_map.iter() {
-        let activity_cost = *activity_costs.get(time_slice).unwrap();
-        total_annualised_surplus += activity_cost * *activity;
+    for (time_slice, activity) in activity.iter() {
+        let activity_surplus = *activity_surpluses.get(time_slice).unwrap();
+        total_annualised_surplus += activity_surplus * *activity;
     }
 
-    annualised_capital_cost / total_annualised_surplus
+    annualised_fixed_cost / total_annualised_surplus
 }
 
-/// Calculates LCOX based on capacity and activity.
+/// Calculates annual LCOX based on capacity and activity.
 pub fn lcox(
     capacity: Capacity,
     annual_fixed_cost: MoneyPerCapacity,
-    activity_map: &IndexMap<TimeSliceID, Activity>,
+    activity: &IndexMap<TimeSliceID, Activity>,
     activity_costs: &IndexMap<TimeSliceID, MoneyPerActivity>,
 ) -> MoneyPerActivity {
-    // Calculate the annualised capital cost
-    let annualised_capital_cost = annual_fixed_cost * capacity;
+    // Calculate the annualised fixed costs
+    let annualised_fixed_cost = annual_fixed_cost * capacity;
 
-    // Loop through the time slices
-    let mut total_annualised_surplus = Money(0.0);
+    // Calculate the total activity costs
+    let mut total_activity_costs = Money(0.0);
     let mut total_activity = Activity(0.0);
-    for (time_slice, activity) in activity_map.iter() {
+    for (time_slice, activity) in activity.iter() {
         let activity_cost = *activity_costs.get(time_slice).unwrap();
         total_activity += *activity;
-        total_annualised_surplus += activity_cost * *activity;
+        total_activity_costs += activity_cost * *activity;
     }
 
-    (annualised_capital_cost + total_annualised_surplus) / total_activity
+    (annualised_fixed_cost + total_activity_costs) / total_activity
 }
