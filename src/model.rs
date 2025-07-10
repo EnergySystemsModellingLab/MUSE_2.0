@@ -6,7 +6,7 @@ use crate::input::{input_err_msg, is_sorted_and_unique, read_toml};
 use crate::process::ProcessMap;
 use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
-use crate::units::Capacity;
+use crate::units::{Capacity, CapacityPerFlow};
 use anyhow::{ensure, Context, Result};
 use log::warn;
 use serde::Deserialize;
@@ -14,7 +14,10 @@ use serde_string_enum::DeserializeLabeledStringEnum;
 use std::path::{Path, PathBuf};
 
 const MODEL_FILE_NAME: &str = "model.toml";
+
+// Default parameter values
 const DEFAULT_CANDIDATE_ASSET_CAPACITY: Capacity = Capacity(0.0001);
+const DEFAULT_CAPACITY_LIMIT_FACTOR: CapacityPerFlow = CapacityPerFlow(0.1);
 
 /// Model definition
 pub struct Model {
@@ -47,6 +50,11 @@ pub struct ModelFile {
     /// Defines the strategy used for calculating commodity prices
     #[serde(default)]
     pub pricing_strategy: PricingStrategy,
+    /// Affects the maximum capacity that can be given to a newly created asset.
+    ///
+    /// It is defined as the fraction of peak demand for the commodity of interest.
+    #[serde(default = "default_capacity_limit_factor")]
+    pub capacity_limit_factor: CapacityPerFlow,
 }
 
 /// The strategy used for calculating commodity prices
@@ -63,6 +71,10 @@ pub enum PricingStrategy {
 
 const fn default_candidate_asset_capacity() -> Capacity {
     DEFAULT_CANDIDATE_ASSET_CAPACITY
+}
+
+const fn default_capacity_limit_factor() -> CapacityPerFlow {
+    DEFAULT_CAPACITY_LIMIT_FACTOR
 }
 
 /// Check that the milestone years parameter is valid
