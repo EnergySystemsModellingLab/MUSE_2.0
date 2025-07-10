@@ -175,6 +175,11 @@ fn validate_flows_and_update_primary_output(
             if let Some(primary_output) = inferred_primary_output {
                 flows.get_mut(&primary_output).unwrap().is_primary_output = true;
             }
+
+            // Sort flows so that primary output (if any) appears at the start
+            flows.sort_by(|_, flow1, _, flow2| {
+                flow2.is_primary_output.cmp(&flow1.is_primary_output)
+            });
         }
     }
 
