@@ -311,3 +311,41 @@ pub fn calculate_profitability_index_for_candidate(
 
     annualised_capital_cost / total_annualised_surplus
 }
+
+pub fn calculate_lcox_for_candidate(
+    results: &ResultsMap,
+    cost_coefficients: &CostCoefficientsMap,
+    asset: &AssetRef,
+    time_slice_info: &TimeSliceInfo,
+) -> MoneyPerActivity {
+    // Get the capacity result for the asset
+    let capacity = *results.candidate_capacity_results.get(asset).unwrap();
+
+    // Get the cost coefficients for the asset
+    let cost_coefficient = *cost_coefficients
+        .existing_capacity_costs
+        .get(asset)
+        .unwrap();
+
+    // Calculate the annualised capital cost
+    let annualised_capital_cost = cost_coefficient * capacity;
+
+    // Loop through the time slices
+    let mut total_annualised_surplus = Money(0.0);
+    let mut annual_output = Activity(0.0);
+    for time_slice in time_slice_info.iter_ids() {
+        // Get the activity result for the asset
+        let activity = *results
+            .candidate_activity_results
+            .get(&(asset.clone(), time_slice.clone()))
+            .unwrap();
+        let cost_coefficient = *cost_coefficients
+            .candidate_activity_costs
+            .get(&(asset.clone(), time_slice.clone()))
+            .unwrap();
+        total_annualised_surplus += cost_coefficient * activity;
+        annual_output += activity;
+    }
+
+    (annualised_capital_cost + total_annualised_surplus) / annual_output
+}
