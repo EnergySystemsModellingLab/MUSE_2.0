@@ -24,11 +24,11 @@ pub struct CostCoefficientsMap {
 }
 
 /// Variable map for optimization
-pub struct VariableMap {
+struct VariableMap {
     /// Capacity variable
-    pub capacity_var: Variable,
+    capacity_var: Variable,
     /// Activity variables in each time slice
-    pub activity_vars: IndexMap<TimeSliceID, Variable>,
+    activity_vars: IndexMap<TimeSliceID, Variable>,
 }
 
 /// Results map for optimisation
@@ -80,10 +80,7 @@ fn calculate_cost_coefficients_for_method(
 }
 
 /// Add variables to the problem based on cost coefficients
-pub fn add_variables(
-    problem: &mut Problem,
-    cost_coefficients: &CostCoefficientsMap,
-) -> VariableMap {
+fn add_variables(problem: &mut Problem, cost_coefficients: &CostCoefficientsMap) -> VariableMap {
     // Create capacity variable
     let capacity_var = problem.add_column(cost_coefficients.capacity_cost.value(), 0.0..);
 

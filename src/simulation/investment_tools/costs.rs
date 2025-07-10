@@ -14,13 +14,13 @@ pub fn annual_fixed_cost(asset: &AssetRef) -> MoneyPerCapacity {
 }
 
 /// Calculates the annual fixed costs per unit of capacity for an existing asset.
-pub fn annual_fixed_cost_for_existing(asset: &AssetRef) -> MoneyPerCapacity {
+fn annual_fixed_cost_for_existing(asset: &AssetRef) -> MoneyPerCapacity {
     let fixed_operating_cost = asset.process_parameter.fixed_operating_cost;
     fixed_operating_cost * Year(1.0)
 }
 
 /// Calculates the annual capital cost per unit of capacity for a candidate asset.
-pub fn annual_capital_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
+fn annual_capital_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
     let capital_cost = asset.process_parameter.capital_cost;
     let lifetime = asset.process_parameter.lifetime;
     let discount_rate = asset.process_parameter.discount_rate;
@@ -28,7 +28,7 @@ pub fn annual_capital_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
 }
 
 /// Calculates the annual fixed costs per unit of capacity for a candidate asset.
-pub fn annual_fixed_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
+fn annual_fixed_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
     let fixed_operating_cost = asset.process_parameter.fixed_operating_cost;
     let annual_fixed_operating_cost = fixed_operating_cost * Year(1.0);
     let capital_costs = annual_capital_cost_for_candidate(asset);
@@ -48,7 +48,7 @@ pub fn activity_cost(
 }
 
 /// Calculates the cost per unit of activity for an existing asset.
-pub fn activity_cost_for_existing(
+fn activity_cost_for_existing(
     asset: &AssetRef,
     reduced_costs: &ReducedCosts,
     time_slice: TimeSliceID,
@@ -57,7 +57,7 @@ pub fn activity_cost_for_existing(
 }
 
 /// Calculates the cost per unit of activity for a candidate asset.
-pub fn activity_cost_for_candidate(
+fn activity_cost_for_candidate(
     asset: &AssetRef,
     reduced_costs: &ReducedCosts,
     time_slice: TimeSliceID,

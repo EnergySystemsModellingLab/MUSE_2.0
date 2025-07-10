@@ -16,7 +16,7 @@ pub fn add_capacity_constraint(problem: &mut Problem, asset: &AssetRef, capacity
 }
 
 /// Adds a capacity constraint to the problem for an existing asset.
-pub fn add_capacity_constraint_for_existing(
+fn add_capacity_constraint_for_existing(
     _problem: &mut Problem,
     _asset: &AssetRef,
     _capacity_var: Variable,
@@ -24,7 +24,7 @@ pub fn add_capacity_constraint_for_existing(
 }
 
 /// Adds a capacity constraint to the problem for a candidate asset.
-pub fn add_capacity_constraint_for_candidates(
+fn add_capacity_constraint_for_candidates(
     _problem: &mut Problem,
     _asset: &AssetRef,
     _capacity_var: Variable,
@@ -47,7 +47,7 @@ pub fn add_activity_constraints(
 }
 
 /// Adds activity constraints to the problem for an existing asset.
-pub fn add_activity_constraints_for_existing(
+fn add_activity_constraints_for_existing(
     problem: &mut Problem,
     asset: &AssetRef,
     activity_vars: &IndexMap<TimeSliceID, Variable>,
@@ -60,7 +60,7 @@ pub fn add_activity_constraints_for_existing(
 }
 
 /// Adds activity constraints to the problem for a candidate asset.
-pub fn add_activity_constraints_for_candidates(
+fn add_activity_constraints_for_candidates(
     problem: &mut Problem,
     asset: &AssetRef,
     capacity_var: Variable,

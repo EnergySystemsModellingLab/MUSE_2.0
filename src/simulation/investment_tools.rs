@@ -1,4 +1,4 @@
 //! Investment tools.
-pub mod constraints;
-pub mod costs;
+mod constraints;
+mod costs;
 pub mod optimisation;
