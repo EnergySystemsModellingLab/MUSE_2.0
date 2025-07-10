@@ -8,6 +8,10 @@ use indexmap::IndexMap;
 use std::collections::HashMap;
 
 /// Adds a capacity constraint to the problem.
+///
+/// The behaviour depends on whether the asset is commissioned or a candidate:
+/// - For a commissioned asset, the capacity is fixed.
+/// - For a candidate asset, the capacity is variable between zero and an upper bound (**TODO.**).
 pub fn add_capacity_constraint(problem: &mut Problem, asset: &AssetRef, capacity_var: Variable) {
     match asset.is_commissioned() {
         true => add_capacity_constraint_for_existing(problem, asset, capacity_var),
@@ -15,7 +19,6 @@ pub fn add_capacity_constraint(problem: &mut Problem, asset: &AssetRef, capacity
     }
 }
 
-/// Adds a capacity constraint to the problem for an existing asset.
 fn add_capacity_constraint_for_existing(
     _problem: &mut Problem,
     _asset: &AssetRef,
@@ -24,16 +27,25 @@ fn add_capacity_constraint_for_existing(
     // **TODO:** Add capacity constraint for existing asset.
 }
 
-/// Adds a capacity constraint to the problem for a candidate asset.
 fn add_capacity_constraint_for_candidates(
-    _problem: &mut Problem,
-    _asset: &AssetRef,
-    _capacity_var: Variable,
+    problem: &mut Problem,
+    asset: &AssetRef,
+    capacity_var: Variable,
 ) {
-    // **TODO:** Add capacity constraint for candidate asset.
+    let capacity = asset.capacity;
+    problem.add_row(capacity.value()..=capacity.value(), [(capacity_var, 1.0)]);
 }
 
 /// Adds activity constraints to the problem.
+///
+/// Constrains the activity variables to be within the asset's activity limits.
+///
+/// The behaviour depends on whether the asset is commissioned or a candidate:
+/// - For an commissioned asset, the activity limits have fixed bounds based on the asset's (fixed)
+///   capacity.
+/// - For a candidate asset, the activity limits depend on the capacity of the asset, which is
+///   itself variable. The constraints are therefore applied to both the capacity and activity
+///   variables. We need separate constraints for the upper and lower bounds.
 pub fn add_activity_constraints(
     problem: &mut Problem,
     asset: &AssetRef,
@@ -48,7 +60,6 @@ pub fn add_activity_constraints(
     }
 }
 
-/// Adds activity constraints to the problem for an existing asset.
 fn add_activity_constraints_for_existing(
     problem: &mut Problem,
     asset: &AssetRef,
@@ -61,7 +72,6 @@ fn add_activity_constraints_for_existing(
     }
 }
 
-/// Adds activity constraints to the problem for a candidate asset.
 fn add_activity_constraints_for_candidates(
     problem: &mut Problem,
     asset: &AssetRef,

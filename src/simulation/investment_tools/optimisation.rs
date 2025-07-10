@@ -118,7 +118,7 @@ fn add_constraints(
     add_demand_constraints(problem, asset, demand, &variables.activity_vars);
 }
 
-/// Performs optimisation for a given strategy.
+/// Performs optimisation for a given method (LCOX or NPV).
 pub fn perform_optimisation_for_method(
     asset: &AssetRef,
     time_slice_info: &TimeSliceInfo,

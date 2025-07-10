@@ -24,6 +24,10 @@ pub fn activity_surplus(
 }
 
 /// Calculates the annual fixed costs per unit of capacity for an asset.
+///
+/// The behaviour depends on whether the asset is commissioned or a candidate:
+/// - For a commissioned asset, this only includes operating costs.
+/// - For a candidate asset, this includes both operating and capital costs.
 pub fn annual_fixed_cost(asset: &AssetRef) -> MoneyPerCapacity {
     match asset.is_commissioned() {
         true => annual_fixed_cost_for_existing(asset),
@@ -31,13 +35,11 @@ pub fn annual_fixed_cost(asset: &AssetRef) -> MoneyPerCapacity {
     }
 }
 
-/// Calculates the annual fixed costs per unit of capacity for an existing asset.
 fn annual_fixed_cost_for_existing(asset: &AssetRef) -> MoneyPerCapacity {
     let fixed_operating_cost = asset.process_parameter.fixed_operating_cost;
     fixed_operating_cost * Year(1.0)
 }
 
-/// Calculates the annual capital cost per unit of capacity for a candidate asset.
 fn annual_capital_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
     let capital_cost = asset.process_parameter.capital_cost;
     let lifetime = asset.process_parameter.lifetime;
@@ -45,7 +47,6 @@ fn annual_capital_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
     annual_capital_cost(capital_cost, lifetime, discount_rate)
 }
 
-/// Calculates the annual fixed costs per unit of capacity for a candidate asset.
 fn annual_fixed_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
     let fixed_operating_cost = asset.process_parameter.fixed_operating_cost;
     let annual_fixed_operating_cost = fixed_operating_cost * Year(1.0);
