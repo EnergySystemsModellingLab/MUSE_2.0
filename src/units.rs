@@ -237,6 +237,7 @@ unit_struct!(MoneyPerCapacityPerYear);
 unit_struct!(MoneyPerActivity);
 unit_struct!(ActivityPerCapacity);
 unit_struct!(FlowPerActivity);
+unit_struct!(CapacityPerFlow);
 
 macro_rules! impl_div {
     ($Lhs:ident, $Rhs:ident, $Out:ident) => {
@@ -283,3 +284,4 @@ impl_div!(Activity, Capacity, ActivityPerCapacity);
 impl_div!(MoneyPerYear, Capacity, MoneyPerCapacityPerYear);
 impl_div!(MoneyPerActivity, FlowPerActivity, MoneyPerFlow);
 impl_div!(MoneyPerCapacity, Year, MoneyPerCapacityPerYear);
+impl_div!(Capacity, Flow, CapacityPerFlow);
