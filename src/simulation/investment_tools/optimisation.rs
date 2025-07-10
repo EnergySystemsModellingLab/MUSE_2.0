@@ -1,10 +1,13 @@
 use crate::asset::AssetRef;
-use crate::simulation::investment_tools::strategies::Strategy;
+use crate::simulation::investment_tools::constraints::{
+    add_activity_constraints, add_capacity_constraint, add_demand_constraints,
+};
+use crate::simulation::investment_tools::costs::{activity_cost, annual_fixed_cost};
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Flow, MoneyPerActivity, MoneyPerCapacity};
 use anyhow::{anyhow, Result};
-use highs::{HighsModelStatus, RowProblem as Problem};
+use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use std::collections::HashMap;
 
@@ -29,6 +32,40 @@ pub struct Solution {
     variables: VariableMap,
 }
 
+pub enum Method {
+    Lcox,
+    Npv,
+}
+
+fn calculate_cost_coefficients_for_method(
+    asset: &AssetRef,
+    time_slice_info: &TimeSliceInfo,
+    reduced_costs: &ReducedCosts,
+    method: &Method,
+) -> CostCoefficientsMap {
+    // Capacity variable
+    let cost = match method {
+        Method::Lcox => annual_fixed_cost(asset),
+        Method::Npv => -annual_fixed_cost(asset),
+    };
+    let capacity_cost = cost;
+
+    // Activity variables
+    let mut activity_costs = IndexMap::new();
+    for time_slice in time_slice_info.iter_ids() {
+        let cost = match method {
+            Method::Lcox => activity_cost(asset, reduced_costs, time_slice.clone()),
+            Method::Npv => -activity_cost(asset, reduced_costs, time_slice.clone()),
+        };
+        activity_costs.insert(time_slice.clone(), cost);
+    }
+
+    CostCoefficientsMap {
+        capacity_cost,
+        activity_costs,
+    }
+}
+
 /// Add variables to the problem based on cost coefficients
 pub fn add_variables(
     problem: &mut Problem,
@@ -50,29 +87,49 @@ pub fn add_variables(
     }
 }
 
+fn add_constraints(
+    problem: &mut Problem,
+    asset: &AssetRef,
+    variables: &VariableMap,
+    demand: &HashMap<TimeSliceID, Flow>,
+) {
+    add_capacity_constraint(problem, asset, variables.capacity_var);
+    add_activity_constraints(
+        problem,
+        asset,
+        variables.capacity_var,
+        &variables.activity_vars,
+    );
+    add_demand_constraints(problem, asset, demand, &variables.activity_vars);
+}
+
 /// Perform optimisation for a given strategy
 pub fn perform_optimisation(
     asset: &AssetRef,
     time_slice_info: &TimeSliceInfo,
     reduced_costs: &ReducedCosts,
     demand: &HashMap<TimeSliceID, Flow>,
-    strategy: &dyn Strategy,
+    method: &Method,
 ) -> Result<Solution> {
     // Set up problem
     let mut problem = Problem::default();
 
     // Calculate cost coefficients
     let cost_coefficients =
-        strategy.calculate_cost_coefficients(asset, time_slice_info, reduced_costs);
+        calculate_cost_coefficients_for_method(asset, time_slice_info, reduced_costs, method);
 
     // Add variables
     let variables = add_variables(&mut problem, &cost_coefficients);
 
     // Add constraints
-    strategy.add_constraints(&mut problem, asset, &variables, demand);
+    add_constraints(&mut problem, asset, &variables, demand);
 
     // Solve problem
-    let highs_model = problem.optimise(strategy.sense());
+    let sense = match method {
+        Method::Lcox => Sense::Minimise,
+        Method::Npv => Sense::Maximise,
+    };
+    let highs_model = problem.optimise(sense);
 
     // Solve model
     let solved_model = highs_model.solve();
