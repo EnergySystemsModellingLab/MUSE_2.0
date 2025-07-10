@@ -44,7 +44,7 @@ def generate_markdown() -> str:
 
 def load_sections() -> Iterable[Section]:
     for title, patterns in _FILE_ORDER.items():
-        paths = []
+        paths: list[str] = []
         for pattern in patterns:
             paths.extend(map(str, _SCHEMA_DIR.glob(f"{pattern}.yaml")))
         files = (load_file(Path(path)) for path in sorted(paths))
@@ -76,7 +76,7 @@ def add_full_stop(s: str) -> str:
         return f"{s}."
 
 
-def fields2table(fields: list[dict[str, str]]) -> tuple[str, str | None]:
+def fields2table(fields: list[dict[str, str]]) -> str:
     data = []
     for f in fields:
         # MarkdownTable can't handle newlines, so replace with HTML equivalent
@@ -88,8 +88,7 @@ def fields2table(fields: list[dict[str, str]]) -> tuple[str, str | None]:
             "Notes": notes,
         }
         data.append(row)
-    table = str(MarkdownTable.from_dicts(data))
-    return table
+    return str(MarkdownTable.from_dicts(data))
 
 
 def format_notes(notes) -> str:
