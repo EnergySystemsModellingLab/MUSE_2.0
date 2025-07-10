@@ -60,26 +60,25 @@ fn calculate_coefficients_for_method(
     reduced_costs: &ReducedCosts,
     method: &Method,
 ) -> CoefficientsMap {
-    // Capacity cost
-    let cost = match method {
+    // Capacity coefficient
+    let capacity_coefficient = match method {
         Method::Lcox => annual_fixed_cost(asset),
         Method::Npv => -annual_fixed_cost(asset),
     };
-    let capacity_cost = cost;
 
-    // Activity costs
-    let mut activity_costs = IndexMap::new();
+    // Activity coefficients
+    let mut activity_coefficients = IndexMap::new();
     for time_slice in time_slice_info.iter_ids() {
-        let cost = match method {
+        let coefficient = match method {
             Method::Lcox => activity_cost(asset, reduced_costs, time_slice.clone()),
             Method::Npv => activity_surplus(asset, reduced_costs, time_slice.clone()),
         };
-        activity_costs.insert(time_slice.clone(), cost);
+        activity_coefficients.insert(time_slice.clone(), coefficient);
     }
 
     CoefficientsMap {
-        capacity_coefficient: capacity_cost,
-        activity_coefficients: activity_costs,
+        capacity_coefficient,
+        activity_coefficients,
     }
 }
 

@@ -15,25 +15,24 @@ use std::collections::HashMap;
 pub fn add_capacity_constraint(problem: &mut Problem, asset: &AssetRef, capacity_var: Variable) {
     match asset.is_commissioned() {
         true => add_capacity_constraint_for_existing(problem, asset, capacity_var),
-        false => add_capacity_constraint_for_candidates(problem, asset, capacity_var),
+        false => add_capacity_constraint_for_candidate(problem, asset, capacity_var),
     }
 }
 
 fn add_capacity_constraint_for_existing(
-    _problem: &mut Problem,
-    _asset: &AssetRef,
-    _capacity_var: Variable,
-) {
-    // **TODO:** Add capacity constraint for existing asset.
-}
-
-fn add_capacity_constraint_for_candidates(
     problem: &mut Problem,
     asset: &AssetRef,
     capacity_var: Variable,
 ) {
     let capacity = asset.capacity;
     problem.add_row(capacity.value()..=capacity.value(), [(capacity_var, 1.0)]);
+}
+fn add_capacity_constraint_for_candidate(
+    _problem: &mut Problem,
+    _asset: &AssetRef,
+    _capacity_var: Variable,
+) {
+    // **TODO:** Add capacity constraint for existing asset.
 }
 
 /// Adds activity constraints to the problem.
@@ -55,7 +54,7 @@ pub fn add_activity_constraints(
     match asset.is_commissioned() {
         true => add_activity_constraints_for_existing(problem, asset, activity_vars),
         false => {
-            add_activity_constraints_for_candidates(problem, asset, capacity_var, activity_vars)
+            add_activity_constraints_for_candidate(problem, asset, capacity_var, activity_vars)
         }
     }
 }
@@ -72,7 +71,7 @@ fn add_activity_constraints_for_existing(
     }
 }
 
-fn add_activity_constraints_for_candidates(
+fn add_activity_constraints_for_candidate(
     problem: &mut Problem,
     asset: &AssetRef,
     capacity_var: Variable,

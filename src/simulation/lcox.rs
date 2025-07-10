@@ -18,9 +18,9 @@ use std::collections::HashMap;
 /// next tranche.
 pub fn calculate_lcox(
     asset: &AssetRef,
-    time_slice_info: &TimeSliceInfo,
     reduced_costs: &ReducedCosts,
     demand: &HashMap<TimeSliceID, Flow>,
+    time_slice_info: &TimeSliceInfo,
 ) -> (
     MoneyPerActivity,
     Option<Capacity>,
@@ -58,9 +58,9 @@ pub fn calculate_lcox(
 /// Calculate NPV based on the specified reduced costs and demand for a particular tranche.
 pub fn calculate_npv(
     asset: &AssetRef,
-    time_slice_info: &TimeSliceInfo,
     reduced_costs: &ReducedCosts,
     demand: &HashMap<TimeSliceID, Flow>,
+    time_slice_info: &TimeSliceInfo,
 ) -> (Dimensionless, Option<Capacity>, HashMap<TimeSliceID, Flow>) {
     // Perform optimisation to calculate capacity and activity
     let results = perform_optimisation_for_method(
