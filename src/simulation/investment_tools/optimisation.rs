@@ -1,3 +1,4 @@
+//! Optimisation problem for investment tools.
 use crate::asset::AssetRef;
 use crate::simulation::investment_tools::constraints::{
     add_activity_constraints, add_capacity_constraint, add_demand_constraints,
@@ -16,27 +17,35 @@ pub type Variable = highs::Col;
 
 /// Map storing cost coefficients for each variable type
 pub struct CostCoefficientsMap {
+    /// Cost per unit of capacity
     pub capacity_cost: MoneyPerCapacity,
+    /// Cost per unit of activity in each time slice
     pub activity_costs: IndexMap<TimeSliceID, MoneyPerActivity>,
 }
 
 /// Variable map for optimization
 pub struct VariableMap {
+    /// Capacity variable
     pub capacity_var: Variable,
+    /// Activity variables in each time slice
     pub activity_vars: IndexMap<TimeSliceID, Variable>,
 }
 
 /// Solution to the optimisation problem
 pub struct Solution {
-    solution: highs::Solution,
-    variables: VariableMap,
+    _solution: highs::Solution,
+    _variables: VariableMap,
 }
 
+/// Methods for optimisation
 pub enum Method {
+    /// LCOX method (not yet fully implemented)
     Lcox,
+    /// NPV method
     Npv,
 }
 
+/// Calculates the cost coefficients for a given method.
 fn calculate_cost_coefficients_for_method(
     asset: &AssetRef,
     time_slice_info: &TimeSliceInfo,
@@ -87,6 +96,7 @@ pub fn add_variables(
     }
 }
 
+/// Adds constraints to the problem.
 fn add_constraints(
     problem: &mut Problem,
     asset: &AssetRef,
@@ -103,7 +113,7 @@ fn add_constraints(
     add_demand_constraints(problem, asset, demand, &variables.activity_vars);
 }
 
-/// Perform optimisation for a given strategy
+/// Performs optimisation for a given strategy.
 pub fn perform_optimisation(
     asset: &AssetRef,
     time_slice_info: &TimeSliceInfo,
@@ -135,8 +145,8 @@ pub fn perform_optimisation(
     let solved_model = highs_model.solve();
     match solved_model.status() {
         HighsModelStatus::Optimal => Ok(Solution {
-            solution: solved_model.get_solution(),
-            variables,
+            _solution: solved_model.get_solution(),
+            _variables: variables,
         }),
         status => Err(anyhow!("Could not solve: {status:?}")),
     }

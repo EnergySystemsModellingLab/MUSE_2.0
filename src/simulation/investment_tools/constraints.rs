@@ -1,3 +1,4 @@
+//! Constraints for the optimisation problem.
 use crate::asset::AssetRef;
 use crate::simulation::investment_tools::optimisation::Variable;
 use crate::time_slice::TimeSliceID;
@@ -6,6 +7,7 @@ use highs::RowProblem as Problem;
 use indexmap::IndexMap;
 use std::collections::HashMap;
 
+/// Adds a capacity constraint to the problem.
 pub fn add_capacity_constraint(problem: &mut Problem, asset: &AssetRef, capacity_var: Variable) {
     match asset.is_commissioned() {
         true => add_capacity_constraint_for_existing(problem, asset, capacity_var),
@@ -13,6 +15,7 @@ pub fn add_capacity_constraint(problem: &mut Problem, asset: &AssetRef, capacity
     }
 }
 
+/// Adds a capacity constraint to the problem for an existing asset.
 pub fn add_capacity_constraint_for_existing(
     _problem: &mut Problem,
     _asset: &AssetRef,
@@ -20,6 +23,7 @@ pub fn add_capacity_constraint_for_existing(
 ) {
 }
 
+/// Adds a capacity constraint to the problem for a candidate asset.
 pub fn add_capacity_constraint_for_candidates(
     _problem: &mut Problem,
     _asset: &AssetRef,
@@ -27,6 +31,7 @@ pub fn add_capacity_constraint_for_candidates(
 ) {
 }
 
+/// Adds activity constraints to the problem.
 pub fn add_activity_constraints(
     problem: &mut Problem,
     asset: &AssetRef,
@@ -41,6 +46,7 @@ pub fn add_activity_constraints(
     }
 }
 
+/// Adds activity constraints to the problem for an existing asset.
 pub fn add_activity_constraints_for_existing(
     problem: &mut Problem,
     asset: &AssetRef,
@@ -53,6 +59,7 @@ pub fn add_activity_constraints_for_existing(
     }
 }
 
+/// Adds activity constraints to the problem for a candidate asset.
 pub fn add_activity_constraints_for_candidates(
     problem: &mut Problem,
     asset: &AssetRef,
@@ -72,6 +79,7 @@ pub fn add_activity_constraints_for_candidates(
     }
 }
 
+/// Adds demand constraints to the problem.
 pub fn add_demand_constraints(
     _problem: &mut Problem,
     _asset: &AssetRef,

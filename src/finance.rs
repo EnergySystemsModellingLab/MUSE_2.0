@@ -28,6 +28,7 @@ pub fn annual_capital_cost(
     total_capital_cost * crf
 }
 
+/// Calculates a profitability index based on capacity and activity.
 pub fn profitability_index(
     capacity: Capacity,
     annual_fixed_cost: MoneyPerCapacity,
@@ -46,6 +47,8 @@ pub fn profitability_index(
 
     annualised_capital_cost / total_annualised_surplus
 }
+
+/// Calculates LCOX based on capacity and activity.
 pub fn lcox(
     capacity: Capacity,
     annual_fixed_cost: MoneyPerCapacity,

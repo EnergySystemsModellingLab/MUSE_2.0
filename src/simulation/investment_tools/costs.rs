@@ -1,10 +1,11 @@
-//! Costs for LCOX optimisation.
+//! Costs for the optimisation problem.
 use crate::asset::AssetRef;
 use crate::finance::annual_capital_cost;
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::TimeSliceID;
 use crate::units::{MoneyPerActivity, MoneyPerCapacity, Year};
 
+/// Calculates the annual fixed costs per unit of capacity for an asset.
 pub fn annual_fixed_cost(asset: &AssetRef) -> MoneyPerCapacity {
     match asset.is_commissioned() {
         true => annual_fixed_cost_for_existing(asset),
@@ -12,7 +13,7 @@ pub fn annual_fixed_cost(asset: &AssetRef) -> MoneyPerCapacity {
     }
 }
 
-/// Calculates the annual fixed costs per unit of capacity for an asset.
+/// Calculates the annual fixed costs per unit of capacity for an existing asset.
 pub fn annual_fixed_cost_for_existing(asset: &AssetRef) -> MoneyPerCapacity {
     let fixed_operating_cost = asset.process_parameter.fixed_operating_cost;
     fixed_operating_cost * Year(1.0)
@@ -34,6 +35,7 @@ pub fn annual_fixed_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
     annual_fixed_operating_cost + capital_costs
 }
 
+/// Calculates the cost per unit of activity for an asset.
 pub fn activity_cost(
     asset: &AssetRef,
     reduced_costs: &ReducedCosts,
@@ -45,7 +47,7 @@ pub fn activity_cost(
     }
 }
 
-/// Calculates the cost per unit of activity for an asset.
+/// Calculates the cost per unit of activity for an existing asset.
 pub fn activity_cost_for_existing(
     asset: &AssetRef,
     reduced_costs: &ReducedCosts,
