@@ -158,6 +158,13 @@ impl Asset {
     pub fn iter_flows(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.get_flows_map().values()
     }
+
+    /// Get the primary output (if any) for this asset
+    pub fn primary_output(&self) -> Option<&ProcessFlow> {
+        self.get_flows_map()
+            .values()
+            .find(|flow| flow.is_primary_output)
+    }
 }
 
 impl std::fmt::Debug for Asset {
