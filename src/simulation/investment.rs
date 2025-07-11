@@ -6,11 +6,12 @@ use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
+use crate::process::ProcessFlow;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Flow};
 use anyhow::{Context, Result};
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use itertools::{chain, iproduct};
 use log::info;
 use std::collections::HashMap;
@@ -40,42 +41,99 @@ pub fn perform_agent_investment(
     let mut new_pool = Vec::new();
 
     // We consider SVD commodities first
-    let commodities_of_interest = model
+    let mut commodities_of_interest: IndexSet<_> = model
         .commodities
         .iter()
         .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
         .map(|(id, _)| id.clone())
         .collect();
-    let demand = get_demand_profile(&commodities_of_interest, flow_map);
 
-    for (commodity_id, region_id) in iproduct!(commodities_of_interest.iter(), model.iter_regions())
-    {
-        for agent in get_responsible_agents(model.agents.values(), commodity_id, region_id, year) {
-            let best_assets = get_best_assets_for_agent(
-                agent,
-                commodity_id,
-                region_id,
-                model,
-                assets,
-                reduced_costs,
-                &demand,
-                year,
-            )
-            .with_context(|| {
-                format!(
+    while !commodities_of_interest.is_empty() {
+        let demand = get_demand_profile(&commodities_of_interest, flow_map);
+
+        for (commodity_id, region_id) in
+            iproduct!(commodities_of_interest.iter(), model.iter_regions())
+        {
+            for agent in
+                get_responsible_agents(model.agents.values(), commodity_id, region_id, year)
+            {
+                let best_assets = get_best_assets_for_agent(
+                    agent,
+                    commodity_id,
+                    region_id,
+                    model,
+                    assets,
+                    reduced_costs,
+                    &demand,
+                    year,
+                )
+                .with_context(|| {
+                    format!(
                     "Failed to meet demand for commodity '{commodity_id}' in region '{region_id}'"
                 )
-            })?;
+                })?;
 
-            // Add to asset pool
-            new_pool.extend(best_assets);
+                // Add to asset pool
+                new_pool.extend(best_assets);
+            }
         }
+
+        commodities_of_interest =
+            get_next_commodities(model, assets, &commodities_of_interest, year);
+
+        // **TODO:** Perform another dispatch optimisation here
+        dbg!(&commodities_of_interest);
+        commodities_of_interest.clear();
     }
 
     // Replace pool of active assets with the new one
     assets.replace_active_pool(new_pool);
 
     Ok(())
+}
+
+/// Get the next set of commodities of interest.
+///
+/// These commodities are the ones required to produce the previous set of commodities of interest.
+fn get_next_commodities(
+    model: &Model,
+    assets: &AssetPool,
+    prev_commodities: &IndexSet<CommodityID>,
+    year: u32,
+) -> IndexSet<CommodityID> {
+    let candidate_processes = model
+        .processes
+        .values()
+        .filter(|process| process.active_for_year(year));
+    let all_process_flows = candidate_processes.flat_map(|process| {
+        process
+            .regions
+            .iter()
+            .map(|region_id| process.flows.get(&(region_id.clone(), year)).unwrap())
+    });
+    let all_asset_flows = assets.iter().map(|asset| asset.get_flows_map());
+    let flows = chain(all_process_flows, all_asset_flows)
+        .filter(|flows| is_producer_of_any(flows, prev_commodities));
+
+    flows
+        .into_iter()
+        .flat_map(|flows| {
+            flows
+                .values()
+                .filter(|flow| flow.is_input())
+                .map(|flow| flow.commodity.id.clone())
+        })
+        .collect()
+}
+
+/// Whether the process produces any of the commodities in question
+fn is_producer_of_any(
+    flows: &IndexMap<CommodityID, ProcessFlow>,
+    commodities: &IndexSet<CommodityID>,
+) -> bool {
+    flows
+        .keys()
+        .any(|commodity_id| commodities.contains(commodity_id))
 }
 
 /// Get demand per time slice for specified commodities
