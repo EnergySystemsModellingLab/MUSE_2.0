@@ -11,7 +11,7 @@ use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Flow};
 use anyhow::{Context, Result};
 use indexmap::IndexSet;
-use itertools::chain;
+use itertools::{chain, iproduct};
 use log::info;
 use std::collections::HashMap;
 
@@ -48,43 +48,38 @@ pub fn perform_agent_investment(
         .collect();
     let demand = get_demand_profile(&commodities_of_interest, flow_map);
 
-    for commodity_id in commodities_of_interest.iter() {
-        for agent in get_responsible_agents(model.agents.values(), commodity_id, year) {
+    for (commodity_id, region_id) in iproduct!(commodities_of_interest.iter(), model.iter_regions())
+    {
+        for agent in get_responsible_agents(model.agents.values(), commodity_id, region_id, year) {
             let objective_type = agent.objectives.get(&year).unwrap();
 
-            for region_id in agent.regions.iter() {
-                // Maximum capacity for candidate assets
-                let max_capacity =
-                    get_maximum_candidate_capacity(model, &demand, commodity_id, region_id);
+            // Maximum capacity for candidate assets
+            let max_capacity =
+                get_maximum_candidate_capacity(model, &demand, commodity_id, region_id);
 
-                // Existing and candidate assets from which to choose
-                let opt_assets =
-                    get_asset_options(assets, agent, commodity_id, region_id, year, max_capacity)
-                        .collect();
+            // Existing and candidate assets from which to choose
+            let opt_assets =
+                get_asset_options(assets, agent, commodity_id, region_id, year, max_capacity)
+                    .collect();
 
-                let demand_for_commodity = get_demand_for_commodity(
-                    &model.time_slice_info,
-                    &demand,
-                    commodity_id,
-                    region_id,
-                );
+            let demand_for_commodity =
+                get_demand_for_commodity(&model.time_slice_info, &demand, commodity_id, region_id);
 
-                // Choose assets from among existing pool and candidates
-                let best_assets = select_best_assets(
-                    reduced_costs,
-                    opt_assets,
-                    demand_for_commodity,
-                    objective_type,
+            // Choose assets from among existing pool and candidates
+            let best_assets = select_best_assets(
+                reduced_costs,
+                opt_assets,
+                demand_for_commodity,
+                objective_type,
+            )
+            .with_context(|| {
+                format!(
+                    "Failed to meet demand for commodity '{commodity_id}' in region '{region_id}'"
                 )
-                .with_context(|| {
-                    format!(
-                        "Failed to meet demand for commodity '{commodity_id}' in region '{region_id}'"
-                    )
-                })?;
+            })?;
 
-                // Add to asset pool
-                new_pool.extend(best_assets);
-            }
+            // Add to asset pool
+            new_pool.extend(best_assets);
         }
     }
 
@@ -136,15 +131,17 @@ fn get_demand_for_commodity(
 fn get_responsible_agents<'a, I>(
     agents: I,
     commodity_id: &'a CommodityID,
+    region_id: &'a RegionID,
     year: u32,
 ) -> impl Iterator<Item = &'a Agent>
 where
     I: Iterator<Item = &'a Agent>,
 {
     agents.filter(move |agent| {
-        agent
-            .commodity_portions
-            .contains_key(&(commodity_id.clone(), year))
+        agent.regions.contains(region_id)
+            && agent
+                .commodity_portions
+                .contains_key(&(commodity_id.clone(), year))
     })
 }
 
