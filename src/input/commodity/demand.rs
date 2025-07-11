@@ -2,17 +2,18 @@
 //! slice.
 use super::super::*;
 use super::demand_slicing::{read_demand_slices, DemandSliceMap};
-use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
+use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType, DemandMap};
 use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel};
 use crate::units::Flow;
 use anyhow::{ensure, Result};
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
+use std::rc::Rc;
 
 const DEMAND_FILE_NAME: &str = "demand.csv";
 
@@ -32,15 +33,14 @@ struct Demand {
 /// A map relating commodity, region and year to annual demand
 pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), (TimeSliceLevel, Flow)>;
 
-/// A map containing a references to commodities
-pub type BorrowedCommodityMap<'a> = HashMap<CommodityID, &'a Commodity>;
+
 
 /// Reads demand data from CSV files.
 ///
 /// # Arguments
 ///
 /// * `model_dir` - Folder containing model configuration files
-/// * `commodity_ids` - All possible IDs of commodities
+/// * `commodities` - Map of commodities
 /// * `region_ids` - All possible IDs for regions
 /// * `time_slice_info` - Information about seasons and times of day
 /// * `milestone_years` - All milestone years
@@ -50,7 +50,7 @@ pub type BorrowedCommodityMap<'a> = HashMap<CommodityID, &'a Commodity>;
 /// This function returns [`DemandMap`]s grouped by commodity ID.
 pub fn read_demand(
     model_dir: &Path,
-    commodities: &IndexMap<CommodityID, Commodity>,
+    commodities: &IndexMap<CommodityID, Rc<Commodity>>,
     region_ids: &IndexSet<RegionID>,
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
@@ -59,7 +59,7 @@ pub fn read_demand(
     let svd_commodities = commodities
         .iter()
         .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
-        .map(|(id, commodity)| (id.clone(), commodity))
+        .map(|(id, commodity)| (id.clone(), commodity.clone()))
         .collect();
 
     let demand = read_demand_file(model_dir, &svd_commodities, region_ids, milestone_years)?;
@@ -82,7 +82,7 @@ pub fn read_demand(
 /// Annual demand data, grouped by commodity, region and milestone year.
 fn read_demand_file(
     model_dir: &Path,
-    svd_commodities: &BorrowedCommodityMap,
+    svd_commodities: &CommodityMap,
     region_ids: &IndexSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<AnnualDemandMap> {
@@ -107,7 +107,7 @@ fn read_demand_file(
 /// commodity + region pairs included in the file.
 fn read_demand_from_iter<I>(
     iter: I,
-    svd_commodities: &BorrowedCommodityMap,
+    svd_commodities: &CommodityMap,
     region_ids: &IndexSet<RegionID>,
     milestone_years: &[u32],
 ) -> Result<AnnualDemandMap>
