@@ -47,7 +47,7 @@ pub fn perform_agent_investment(
 }
 
 /// Get demand per time slice for specified commodities
-pub fn get_demand_profile(
+fn get_demand_profile(
     commodities: &IndexSet<CommodityID>,
     flow_map: &FlowMap,
 ) -> HashMap<(CommodityID, RegionID, TimeSliceID), Flow> {
