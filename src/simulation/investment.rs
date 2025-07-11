@@ -51,26 +51,15 @@ pub fn perform_agent_investment(
     for (commodity_id, region_id) in iproduct!(commodities_of_interest.iter(), model.iter_regions())
     {
         for agent in get_responsible_agents(model.agents.values(), commodity_id, region_id, year) {
-            let objective_type = agent.objectives.get(&year).unwrap();
-
-            // Maximum capacity for candidate assets
-            let max_capacity =
-                get_maximum_candidate_capacity(model, &demand, commodity_id, region_id);
-
-            // Existing and candidate assets from which to choose
-            let opt_assets =
-                get_asset_options(assets, agent, commodity_id, region_id, year, max_capacity)
-                    .collect();
-
-            let demand_for_commodity =
-                get_demand_for_commodity(&model.time_slice_info, &demand, commodity_id, region_id);
-
-            // Choose assets from among existing pool and candidates
-            let best_assets = select_best_assets(
+            let best_assets = get_best_assets_for_agent(
+                agent,
+                commodity_id,
+                region_id,
+                model,
+                assets,
                 reduced_costs,
-                opt_assets,
-                demand_for_commodity,
-                objective_type,
+                &demand,
+                year,
             )
             .with_context(|| {
                 format!(
@@ -143,6 +132,39 @@ where
                 .commodity_portions
                 .contains_key(&(commodity_id.clone(), year))
     })
+}
+
+/// Get the best assets for the given agent by running investment appraisal
+#[allow(clippy::too_many_arguments)]
+fn get_best_assets_for_agent(
+    agent: &Agent,
+    commodity_id: &CommodityID,
+    region_id: &RegionID,
+    model: &Model,
+    assets: &AssetPool,
+    reduced_costs: &ReducedCosts,
+    demand: &DemandMap,
+    year: u32,
+) -> Option<Vec<AssetRef>> {
+    let objective_type = agent.objectives.get(&year).unwrap();
+
+    // Maximum capacity for candidate assets
+    let max_capacity = get_maximum_candidate_capacity(model, demand, commodity_id, region_id);
+
+    // Existing and candidate assets from which to choose
+    let opt_assets =
+        get_asset_options(assets, agent, commodity_id, region_id, year, max_capacity).collect();
+
+    let demand_for_commodity =
+        get_demand_for_commodity(&model.time_slice_info, demand, commodity_id, region_id);
+
+    // Choose assets from among existing pool and candidates
+    select_best_assets(
+        reduced_costs,
+        opt_assets,
+        demand_for_commodity,
+        objective_type,
+    )
 }
 
 /// Get the maximum candidate asset capacity
