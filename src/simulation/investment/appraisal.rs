@@ -28,6 +28,12 @@ pub struct AppraisalOutput {
     pub tool_output: Box<dyn ToolOutput>,
 }
 
+impl AppraisalOutput {
+    pub fn is_better_than(&self, other: &AppraisalOutput) -> bool {
+        self.tool_output.comparison_metric() < other.tool_output.comparison_metric()
+    }
+}
+
 /// A trait representing tool-specific output information for a particular asset
 pub trait ToolOutput {
     /// Return the comparison metric for this output.
