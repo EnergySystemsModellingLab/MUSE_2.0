@@ -206,7 +206,6 @@ impl PartialEq for AssetRef {
             self.0.id == other.0.id
         } else {
             other.0.id.is_none()
-                && self.0.agent_id == other.0.agent_id
                 && Rc::ptr_eq(&self.0.process, &other.0.process)
                 && self.0.region_id == other.0.region_id
                 && self.0.commission_year == other.0.commission_year
@@ -222,7 +221,6 @@ impl Hash for AssetRef {
         if let Some(id) = self.0.id {
             id.hash(state);
         } else {
-            self.0.agent_id.hash(state);
             self.0.process.id.hash(state);
             self.0.region_id.hash(state);
             self.0.commission_year.hash(state);
