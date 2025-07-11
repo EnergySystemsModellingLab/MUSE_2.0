@@ -4,7 +4,7 @@ use crate::asset::check_capacity_valid_for_asset;
 use crate::commodity::CommodityMap;
 use crate::input::{input_err_msg, is_sorted_and_unique, read_toml};
 use crate::process::ProcessMap;
-use crate::region::{RegionID, RegionMap};
+use crate::region::{Region, RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
 use crate::units::{Capacity, CapacityPerFlow};
 use anyhow::{ensure, Context, Result};
@@ -139,7 +139,7 @@ impl Model {
     }
 
     /// Iterate over the model's regions (region IDs).
-    pub fn iter_regions(&self) -> impl Iterator<Item = &RegionID> + '_ {
+    pub fn iter_regions(&self) -> indexmap::map::Keys<RegionID, Region> {
         self.regions.keys()
     }
 }
