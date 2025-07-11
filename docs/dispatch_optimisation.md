@@ -1,5 +1,8 @@
 # Dispatch Optimisation Formulation
 
+<!-- We sometimes need a space after an underscore to make equations render properly -->
+<!-- markdownlint-disable MD037 -->
+
 This dispatch optimisation model calculates the least-cost operation of the energy system for a
 given configuration of assets and capacities, subject to demands and constraints. It is the core
 engine used for each dispatch run referenced in the overall MUSE 2.0 workflow. A key general
@@ -64,7 +67,7 @@ These define the fundamental categories used to define the energy system.
 - \\( demand[r,c] \\): Total annual exogenously specified demand (\\( \ge 0 \\)) for commodity \\( c
   \in \mathbf{C}^{\mathrm{SVD}} \\) in region \\( r \\). This is the final demand to be met.
 
-- \\( timeslice\\_share[c,t] \\): Fraction (\\( \in [0,1] \\)) of the annual \\( demand[r,c] \\)
+- \\( timeslice\\_ share[c,t] \\): Fraction (\\( \in [0,1] \\)) of the annual \\( demand[r,c] \\)
   for \\( c \in \mathbf{C}^{\mathrm{SVD}} \\) that occurs during time slice \\( t \\). (\\(
   \sum_{t}timeslice\\_ share[c,t]=1 \\)). Defines the demand profile.
 
