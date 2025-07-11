@@ -1,4 +1,5 @@
 //! Calculation for investment tools such as Levelised Cost of X (LCOX) and Net Present Value (NPV).
+use super::DemandMap;
 use crate::agent::ObjectiveType;
 use crate::asset::{Asset, AssetRef};
 use crate::commodity::CommodityID;
@@ -16,9 +17,6 @@ mod costs;
 mod optimisation;
 use coefficients::{calculate_coefficients_for_lcox, calculate_coefficients_for_npv};
 use optimisation::perform_optimisation;
-
-/// A map of demand across time slices
-pub type DemandMap = HashMap<TimeSliceID, Flow>;
 
 /// The output of investment appraisal
 pub struct AppraisalOutput {

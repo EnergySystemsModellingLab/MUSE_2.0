@@ -10,12 +10,15 @@ use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{Capacity, Flow};
 use anyhow::Result;
 use indexmap::IndexSet;
-use itertools::{chain, Itertools};
+use itertools::chain;
 use log::info;
 use std::collections::HashMap;
 
 pub mod appraisal;
-use appraisal::appraise_investment;
+use appraisal::{appraise_investment, AppraisalOutput};
+
+/// A map of demand across time slices for a specific commodity and region
+type DemandMap = HashMap<TimeSliceID, Flow>;
 
 /// Demand for a given combination of commodity, region and time slice
 type AllDemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
@@ -73,7 +76,7 @@ pub fn perform_agent_investment(
                     year,
                     max_capacity,
                 )
-                .collect_vec();
+                .collect();
 
                 let demand_for_commodity = get_demand_for_commodity(
                     &model.time_slice_info,
@@ -84,7 +87,7 @@ pub fn perform_agent_investment(
 
                 // Choose assets from among existing pool and candidates
                 let best_assets = select_best_assets(
-                    &opt_assets,
+                    opt_assets,
                     objective_type,
                     reduced_costs,
                     &demand_for_commodity,
@@ -125,7 +128,7 @@ fn get_demand_for_commodity(
     demand: &AllDemandMap,
     commodity_id: &CommodityID,
     region_id: &RegionID,
-) -> HashMap<TimeSliceID, Flow> {
+) -> DemandMap {
     time_slice_info
         .iter_ids()
         .map(|time_slice| {
@@ -254,17 +257,18 @@ fn get_candidate_assets<'a>(
 
 /// Get the best assets for meeting demand for the given commodity
 fn select_best_assets(
-    opt_assets: &[AssetRef],
+    opt_assets: Vec<AssetRef>,
     objective_type: &ObjectiveType,
     reduced_costs: &ReducedCosts,
-    demand: &HashMap<TimeSliceID, Flow>,
+    demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
 ) -> Result<impl Iterator<Item = AssetRef>> {
     // **TODO:** Loop while demand is unmet
+    let mut current_best: Option<AppraisalOutput> = None;
     for asset in opt_assets.iter() {
         // Investment appraisal
-        let _output = appraise_investment(
+        let output = appraise_investment(
             asset,
             objective_type,
             reduced_costs,
@@ -273,11 +277,26 @@ fn select_best_assets(
             time_slice_level,
         )?;
 
-        // **TODO:** Choose based on output
+        if current_best
+            .as_ref()
+            .is_none_or(|best_output| output.is_better_than(best_output))
+        {
+            current_best = Some(output);
+        }
     }
 
-    // **PLACEHOLDER**
-    Ok(std::iter::empty())
+    let best_output = current_best.expect("No assets given");
+    let mut best_asset = best_output.asset;
+
+    drop(opt_assets); // drop so there's (probably) only one reference to best_asset
+
+    // If a candidate asset, we need to set the capacity
+    if !best_asset.is_commissioned() {
+        best_asset.make_mut().capacity = best_output.capacity;
+    }
+
+    // Just return this one asset for now
+    Ok(std::iter::once(best_asset))
 }
 
 #[cfg(test)]
