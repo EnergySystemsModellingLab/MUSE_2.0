@@ -40,53 +40,61 @@ pub fn perform_agent_investment(
     let mut new_pool = Vec::new();
 
     // We consider SVD commodities first
-    let commodities_of_interest = model
+    let mut commodities_of_interest: IndexSet<_> = model
         .commodities
         .iter()
         .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
         .map(|(id, _)| id.clone())
         .collect();
-    let demand = get_demand_profile(&commodities_of_interest, flow_map);
 
-    for (commodity_id, region_id) in iproduct!(commodities_of_interest.iter(), model.iter_regions())
-    {
-        for agent in get_responsible_agents(model.agents.values(), commodity_id, region_id, year) {
-            let objective_type = agent.objectives.get(&year).unwrap();
+    loop {
+        let demand = get_demand_profile(&commodities_of_interest, flow_map);
 
-            // Maximum capacity for candidate assets
-            let max_capacity =
-                get_maximum_candidate_capacity(model, &demand, commodity_id, region_id);
+        // Select new/existing assets to meet demand for given commodities
+        let chosen_assets = select_assets_producing_commodities(
+            &commodities_of_interest,
+            model,
+            assets,
+            reduced_costs,
+            &demand,
+            year,
+        )?;
 
-            // Existing and candidate assets from which to choose
-            let opt_assets =
-                get_asset_options(assets, agent, commodity_id, region_id, year, max_capacity)
-                    .collect();
+        // Get commodities of interest for next iteration
+        commodities_of_interest = iter_commodities_consumed_by(&chosen_assets).collect();
 
-            let demand_for_commodity =
-                get_demand_for_commodity(&model.time_slice_info, &demand, commodity_id, region_id);
+        // Add chosen assets to new asset pool
+        new_pool.extend(chosen_assets);
 
-            // Choose assets from among existing pool and candidates
-            let best_assets = select_best_assets(
-                reduced_costs,
-                opt_assets,
-                demand_for_commodity,
-                objective_type,
-            )
-            .with_context(|| {
-                format!(
-                    "Failed to meet demand for commodity '{commodity_id}' in region '{region_id}'"
-                )
-            })?;
+        // **Temporary hack**
+        dbg!(&commodities_of_interest);
+        commodities_of_interest.clear();
 
-            // Add to asset pool
-            new_pool.extend(best_assets);
+        // If there are no more commodities of interest, we've finished
+        if commodities_of_interest.is_empty() {
+            break;
         }
+
+        // **TODO:** Perform another dispatch optimisation here
+        //      See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/651
     }
 
     // Replace pool of active assets with the new one
     assets.replace_active_pool(new_pool);
 
     Ok(())
+}
+
+/// Get the commodities consumed by the specified assets
+fn iter_commodities_consumed_by<'a>(
+    assets: &'a [AssetRef],
+) -> impl Iterator<Item = CommodityID> + 'a {
+    assets.iter().flat_map(|asset| {
+        asset
+            .get_flows_map()
+            .values()
+            .filter_map(|flow| flow.is_input().then_some(flow.commodity.id.clone()))
+    })
 }
 
 /// Get demand per time slice for specified commodities
@@ -125,6 +133,52 @@ fn get_demand_for_commodity(
             )
         })
         .collect()
+}
+
+/// Get new assets to meet demand for given commodities
+fn select_assets_producing_commodities(
+    commodities: &IndexSet<CommodityID>,
+    model: &Model,
+    assets: &AssetPool,
+    reduced_costs: &ReducedCosts,
+    demand: &DemandMap,
+    year: u32,
+) -> Result<Vec<AssetRef>> {
+    let mut chosen_assets = Vec::new();
+    for (commodity_id, region_id) in iproduct!(commodities.iter(), model.iter_regions()) {
+        for agent in get_responsible_agents(model.agents.values(), commodity_id, region_id, year) {
+            let objective_type = agent.objectives.get(&year).unwrap();
+
+            // Maximum capacity for candidate assets
+            let max_capacity =
+                get_maximum_candidate_capacity(model, demand, commodity_id, region_id);
+
+            // Existing and candidate assets from which to choose
+            let opt_assets =
+                get_asset_options(assets, agent, commodity_id, region_id, year, max_capacity)
+                    .collect();
+
+            let demand_for_commodity =
+                get_demand_for_commodity(&model.time_slice_info, demand, commodity_id, region_id);
+
+            // Choose assets from among existing pool and candidates
+            let chosen_assets_for_agent = select_best_assets(
+                reduced_costs,
+                opt_assets,
+                demand_for_commodity,
+                objective_type,
+            )
+            .with_context(|| {
+                format!(
+                    "Failed to meet demand for commodity '{commodity_id}' in region '{region_id}'"
+                )
+            })?;
+
+            chosen_assets.extend(chosen_assets_for_agent);
+        }
+    }
+
+    Ok(chosen_assets)
 }
 
 /// Get the agents responsible for a given commodity in a given year
