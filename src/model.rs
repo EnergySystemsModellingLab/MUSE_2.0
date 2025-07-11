@@ -44,9 +44,7 @@ pub struct ModelFile {
     /// Don't change unless you know what you're doing.
     #[serde(default = "default_candidate_asset_capacity")]
     pub candidate_asset_capacity: Capacity,
-    /// If set to false, removes the effect of scarcity on commodity prices.
-    ///
-    /// Don't disable unless you know what you're doing.
+    /// Defines the strategy used for calculating commodity prices
     #[serde(default)]
     pub pricing_strategy: PricingStrategy,
 }
