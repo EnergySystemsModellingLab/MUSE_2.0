@@ -1,5 +1,5 @@
 //! Code for performing agent investment.
-use super::lcox::calculate_lcox;
+use super::lcox::{calculate_lcox, AppraisalOutput};
 use super::optimisation::FlowMap;
 use super::prices::ReducedCosts;
 use crate::agent::{Agent, ObjectiveType};
@@ -10,7 +10,7 @@ use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Flow};
 use indexmap::IndexSet;
-use itertools::{chain, Itertools};
+use itertools::chain;
 use log::info;
 use std::collections::HashMap;
 
@@ -30,10 +30,13 @@ pub fn perform_agent_investment(
     model: &Model,
     flow_map: &FlowMap,
     reduced_costs: &ReducedCosts,
-    assets: &AssetPool,
+    assets: &mut AssetPool,
     year: u32,
 ) {
     info!("Performing agent investment...");
+
+    // New asset pool
+    let mut new_pool = Vec::new();
 
     // We consider SVD commodities first
     let commodities_of_interest = model
@@ -56,7 +59,7 @@ pub fn perform_agent_investment(
                 // Existing and candidate assets from which to choose
                 let opt_assets =
                     get_asset_options(assets, agent, commodity_id, region_id, year, max_capacity)
-                        .collect_vec();
+                        .collect();
 
                 let demand_for_commodity = get_demand_for_commodity(
                     &model.time_slice_info,
@@ -66,18 +69,19 @@ pub fn perform_agent_investment(
                 );
 
                 // Choose assets from among existing pool and candidates
-                let _best_assets = select_best_assets(
+                let best_assets = select_best_assets(
                     reduced_costs,
-                    &opt_assets,
+                    opt_assets,
                     &demand_for_commodity,
                     objective_type,
                 );
+                new_pool.extend(best_assets);
             }
         }
     }
 
-    // **TODO:** Perform agent investment. For now, let's just leave the pool unmodified.
-    // assets.replace_active_pool(new_pool);
+    // Replace pool of active assets with the new one
+    assets.replace_active_pool(new_pool);
 }
 
 /// Get demand per time slice for specified commodities
@@ -234,7 +238,7 @@ fn get_candidate_assets<'a>(
 /// Get the best assets for meeting demand for the given commodity
 fn select_best_assets(
     reduced_costs: &ReducedCosts,
-    opt_assets: &[AssetRef],
+    opt_assets: Vec<AssetRef>,
     demand: &HashMap<TimeSliceID, Flow>,
     objective_type: &ObjectiveType,
 ) -> impl Iterator<Item = AssetRef> {
@@ -243,15 +247,30 @@ fn select_best_assets(
     };
 
     // **TODO:** Loop while demand is unmet
+    let mut current_best: Option<(&AssetRef, AppraisalOutput)> = None;
     for asset in opt_assets.iter() {
         // Investment appraisal
-        let _output = appraise_investment(asset, reduced_costs, demand);
+        let output = appraise_investment(asset, reduced_costs, demand);
 
-        // **TODO:** Choose based on output
+        if current_best
+            .as_ref()
+            .is_none_or(|(_, best_output)| output.cost_index < best_output.cost_index)
+        {
+            current_best = Some((asset, output));
+        }
     }
 
-    // **PLACEHOLDER**
-    std::iter::empty()
+    let (best_asset, best_output) = current_best.expect("No assets given");
+    let mut best_asset = best_asset.clone();
+    drop(opt_assets); // drop so there's (probably) only one reference to best_asset
+
+    // If a candidate asset, we need to set the capacity
+    if let Some(new_capacity) = best_output.capacity {
+        best_asset.make_mut().capacity = new_capacity;
+    }
+
+    // Just return this one asset for now
+    std::iter::once(best_asset)
 }
 
 #[cfg(test)]
