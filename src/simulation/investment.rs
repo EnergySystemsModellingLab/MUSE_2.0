@@ -59,10 +59,10 @@ pub fn perform_agent_investment(
             .get(commodity_id)
             .unwrap()
             .time_slice_level;
-        for agent in get_responsible_agents(model.agents.values(), commodity_id, year) {
-            let objective_type = agent.objectives.get(&year).unwrap();
-
-            for region_id in agent.regions.iter() {
+        for region_id in model.iter_regions() {
+            for agent in
+                get_responsible_agents(model.agents.values(), commodity_id, region_id, year)
+            {
                 debug!(
                     "Running investment for agent '{}' with commodity '{}' in region '{}'",
                     &agent.id, commodity_id, region_id
@@ -94,7 +94,7 @@ pub fn perform_agent_investment(
                 let best_assets = select_best_assets(
                     opt_assets,
                     commodity_id,
-                    objective_type,
+                    agent.objectives.get(&year).unwrap(),
                     reduced_costs,
                     demand_for_commodity,
                     &model.time_slice_info,
@@ -152,15 +152,17 @@ fn get_demand_for_commodity(
 fn get_responsible_agents<'a, I>(
     agents: I,
     commodity_id: &'a CommodityID,
+    region_id: &'a RegionID,
     year: u32,
 ) -> impl Iterator<Item = &'a Agent>
 where
     I: Iterator<Item = &'a Agent>,
 {
     agents.filter(move |agent| {
-        agent
-            .commodity_portions
-            .contains_key(&(commodity_id.clone(), year))
+        agent.regions.contains(region_id)
+            && agent
+                .commodity_portions
+                .contains_key(&(commodity_id.clone(), year))
     })
 }
 
