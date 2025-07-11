@@ -87,6 +87,12 @@ macro_rules! base_unit_struct {
                 self.0.approx_eq(other.0, margin)
             }
         }
+        impl std::ops::Neg for $name {
+            type Output = $name;
+            fn neg(self) -> $name {
+                $name(-self.0)
+            }
+        }
         impl $name {
             /// Create from an f64 value
             pub fn new(value: f64) -> Self {
@@ -266,3 +272,4 @@ impl_div!(Money, Activity, MoneyPerActivity);
 impl_div!(Activity, Capacity, ActivityPerCapacity);
 impl_div!(MoneyPerYear, Capacity, MoneyPerCapacityPerYear);
 impl_div!(MoneyPerActivity, FlowPerActivity, MoneyPerFlow);
+impl_div!(MoneyPerCapacity, Year, MoneyPerCapacityPerYear);
