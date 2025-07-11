@@ -9,6 +9,7 @@ use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Flow};
+use anyhow::{Context, Result};
 use indexmap::IndexSet;
 use itertools::chain;
 use log::info;
@@ -32,7 +33,7 @@ pub fn perform_agent_investment(
     reduced_costs: &ReducedCosts,
     assets: &mut AssetPool,
     year: u32,
-) {
+) -> Result<()> {
     info!("Performing agent investment...");
 
     // New asset pool
@@ -72,9 +73,16 @@ pub fn perform_agent_investment(
                 let best_assets = select_best_assets(
                     reduced_costs,
                     opt_assets,
-                    &demand_for_commodity,
+                    demand_for_commodity,
                     objective_type,
-                );
+                )
+                .with_context(|| {
+                    format!(
+                        "Failed to meet demand for commodity '{commodity_id}' in region '{region_id}'"
+                    )
+                })?;
+
+                // Add to asset pool
                 new_pool.extend(best_assets);
             }
         }
@@ -82,6 +90,8 @@ pub fn perform_agent_investment(
 
     // Replace pool of active assets with the new one
     assets.replace_active_pool(new_pool);
+
+    Ok(())
 }
 
 /// Get demand per time slice for specified commodities
@@ -238,39 +248,103 @@ fn get_candidate_assets<'a>(
 /// Get the best assets for meeting demand for the given commodity
 fn select_best_assets(
     reduced_costs: &ReducedCosts,
-    opt_assets: Vec<AssetRef>,
+    mut opt_assets: Vec<AssetRef>,
+    mut demand: HashMap<TimeSliceID, Flow>,
+    objective_type: &ObjectiveType,
+) -> Option<Vec<AssetRef>> {
+    let mut chosen_assets: Vec<AssetRef> = Vec::new();
+
+    while is_remaining_unmet_demand(&demand) {
+        // If there are no assets remaining, we were unable to meet the demand
+        if opt_assets.is_empty() {
+            return None;
+        }
+
+        let mut current_best: Option<(&AssetRef, AppraisalOutput)> = None;
+        for asset in opt_assets.iter() {
+            // Investment appraisal
+            let output = appraise_investment(asset, reduced_costs, &demand, objective_type);
+
+            if current_best
+                .as_ref()
+                .is_none_or(|(_, best_output)| output.cost_index < best_output.cost_index)
+            {
+                current_best = Some((asset, output));
+            }
+        }
+
+        let (chosen_asset, chosen_output) = current_best.unwrap();
+        demand = chosen_output.unmet_demand;
+
+        update_assets(
+            chosen_asset.clone(),
+            chosen_output.capacity,
+            &mut opt_assets,
+            &mut chosen_assets,
+        );
+    }
+
+    Some(chosen_assets)
+}
+
+/// Check whether there is any remaining demand that is unmet in any time slice
+fn is_remaining_unmet_demand(demand: &HashMap<TimeSliceID, Flow>) -> bool {
+    demand.values().any(|flow| *flow > Flow(0.0))
+}
+
+/// Update capacity of chosen asset, if needed, and update both asset options and chosen assets
+fn update_assets(
+    mut chosen_asset: AssetRef,
+    new_capacity: Option<Capacity>,
+    opt_assets: &mut Vec<AssetRef>,
+    chosen_assets: &mut Vec<AssetRef>,
+) {
+    // New capacity given for candidates only
+    if let Some(new_capacity) = new_capacity {
+        // Get a reference to the copy of the asset in opt_assets
+        let (old_idx, old) = opt_assets
+            .iter_mut()
+            .enumerate()
+            .find(|(_, asset)| **asset == chosen_asset)
+            .unwrap();
+
+        // Remove this capacity from the available remaining capacity for this asset
+        old.make_mut().capacity -= new_capacity;
+
+        // If there's no capacity remaining, remove the asset from the options
+        if old.capacity <= Capacity(0.0) {
+            opt_assets.swap_remove(old_idx);
+        }
+
+        if let Some(existing_asset) = chosen_assets
+            .iter_mut()
+            .find(|asset| **asset == chosen_asset)
+        {
+            // Add the additional required capacity
+            existing_asset.make_mut().capacity += new_capacity;
+        } else {
+            // Update the capacity of the chosen asset
+            chosen_asset.make_mut().capacity = new_capacity;
+
+            chosen_assets.push(chosen_asset);
+        };
+    } else {
+        // Remove this asset from the options
+        opt_assets.retain(|asset| *asset != chosen_asset);
+
+        chosen_assets.push(chosen_asset);
+    }
+}
+
+fn appraise_investment(
+    asset: &AssetRef,
+    reduced_costs: &ReducedCosts,
     demand: &HashMap<TimeSliceID, Flow>,
     objective_type: &ObjectiveType,
-) -> impl Iterator<Item = AssetRef> {
-    let appraise_investment = move |asset, reduced_costs, demand| match objective_type {
+) -> AppraisalOutput {
+    match objective_type {
         ObjectiveType::LevelisedCostOfX => calculate_lcox(asset, reduced_costs, demand),
-    };
-
-    // **TODO:** Loop while demand is unmet
-    let mut current_best: Option<(&AssetRef, AppraisalOutput)> = None;
-    for asset in opt_assets.iter() {
-        // Investment appraisal
-        let output = appraise_investment(asset, reduced_costs, demand);
-
-        if current_best
-            .as_ref()
-            .is_none_or(|(_, best_output)| output.cost_index < best_output.cost_index)
-        {
-            current_best = Some((asset, output));
-        }
     }
-
-    let (best_asset, best_output) = current_best.expect("No assets given");
-    let mut best_asset = best_asset.clone();
-    drop(opt_assets); // drop so there's (probably) only one reference to best_asset
-
-    // If a candidate asset, we need to set the capacity
-    if let Some(new_capacity) = best_output.capacity {
-        best_asset.make_mut().capacity = new_capacity;
-    }
-
-    // Just return this one asset for now
-    std::iter::once(best_asset)
 }
 
 #[cfg(test)]
