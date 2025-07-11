@@ -139,15 +139,15 @@ time-varying availability limits. For all \\( a \in \mathbf{A}^{std}, r, t \\):
 
     \\[
       \begin{aligned}
-        capacity[a,r] cap2act[a] avail_{LB}[a,t] duration[t] &\le act[a,r,t] \\\\
-        act[a,r,t] &\le capacity[a,r] cap2act[a] avail_{UB}[a,t] duration[t]
+        capacity[a,r]\\,cap2act[a]\\,avail_{LB}[a,t]\\,duration[t] &\le act[a,r,t] \\\\
+        act[a,r,t] &\le capacity[a,r]\\,cap2act[a]\\,avail_{UB}[a,t]\\,duration[t]
       \end{aligned}
     \\]
 
 - If an exact operational level is mandated (e.g., for some renewables based on forecast, or fixed
   generation profiles for specific assets):
 
-  \\[ act[a,r,t] = capacity[a,r] cap2act[a] avail_{EQ}[a,t] duration[t] \\]
+  \\[ act[a,r,t] = capacity[a,r]\\,cap2act[a]\\,avail_{EQ}[a,t]\\,duration[t] \\]
 
 ## B. Full Model Construction
 
@@ -229,7 +229,7 @@ other regions).
 
 \\[
   \begin{aligned}
-    &\sum\_{a \in \mathbf{A}^{std}} output_{coeff}[a,c] act[a,r,t]
+    &\sum\_{a \in \mathbf{A}^{std}} output_{coeff}[a,c]\\,act[a,r,t]
       && \text{(Std Asset Production)} \\\\
     &+ \sum\_{a \in \mathbf{A}^{flex}}
       \left(
@@ -246,7 +246,7 @@ other regions).
       && \text{(Pool Imports)} \\\\
     &+ \mathbb{I}(c \in \mathbf{C}^{VoLL}) \cdot UnmetD[c,r,t]
       && \text{(Unserved SED, if modelled)} \\\\
-    &= \sum\_{a \in \mathbf{A}^{std}} input\_{coeff}[a,c] act[a,r,t]
+    &= \sum\_{a \in \mathbf{A}^{std}} input\_{coeff}[a,c]\\,act[a,r,t]
       && \text{(Std Asset Consumption)} \\\\
     &+ \sum\_{a \in \mathbf{A}^{flex}}
       \left(
