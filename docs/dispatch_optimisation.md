@@ -1,190 +1,267 @@
 # Dispatch Optimisation Formulation
 
-## Decision variables
+<!-- We sometimes need a space after an underscore to make equations render properly -->
+<!-- markdownlint-disable MD037 -->
 
-\\( q_{r,a,c,ts} \\), where *q* represents *c* commodity flow in region *r*, to/from asset *a*, in
-time slice *ts*. Negative values are flows into the asset and positive values are flows from the
-asset; *q* must be ≤0 for input flows and ≥0 for output flows. Note that *q* is a quantity flow
-(e.g. energy) as opposed to an intensity (e.g. power).
+This dispatch optimisation model calculates the least-cost operation of the energy system for a
+given configuration of assets and capacities, subject to demands and constraints. It is the core
+engine used for each dispatch run referenced in the overall MUSE 2.0 workflow. A key general
+assumption is that SVD commodities represent final demands only and are not consumed as inputs by
+any asset.
 
-where
+## General Sets
 
-*r* = region
+These define the fundamental categories used to define the energy system.
 
-*a* = asset
+- \\( \mathbf{R} \\): Set of Regions (indexed by \\( r \\)). Represents distinct geographical or
+  modelling areas.
 
-*c* = commodity
+- \\( \mathbf{T} \\): Set of Time Slices (indexed by \\( t \\)). Discrete operational periods within
+  a year.
 
-*ts* = time slice
+- \\( \mathbf{H} \\): Set of Seasons (indexed by \\( h \\)). Collections of time slices.
 
-## Objective function
+- \\( \mathbf{A} \\): Set of All Assets (indexed by \\( a \\)). All existing and candidate
+  production, consumption, or conversion technologies.
 
-$$
-  min. \sum_{r}{\sum_{a}{\sum_{c}{\sum_{ts}}}} cost_{r,a,c,ts} * q_{r,a,c,ts}
-$$
+- \\( \mathbf{A}^{flex} \subseteq \mathbf{A} \\): Subset of Flexible Assets (variable input/output
+  ratios).
 
-Where *cost* is a vector of cost coefficients representing the cost of
-each commodity flow.
+- \\( \mathbf{A}^{std} = \mathbf{A} \setminus \mathbf{A}^{flex} \\): Subset of Standard Assets
+  (fixed input/output coefficients).
 
-$$
-  cost_{r,a,c,ts} = var\\_ opex_{r,a,pacs} + flow\\_ cost_{r,a,c} + commodity\\_ cost_{r,c,ts}
-$$
+- \\( \mathbf{C} \\): Set of Commodities (indexed by \\( c \\)). All energy carriers, materials, or
+  tracked flows. Partitioned into:
 
-*var\_opex* is the variable operating cost for a PAC. If the commodity is not a PAC, this value is
-zero.
+  - \\( \mathbf{C}^{\mathrm{SVD}} \\): Supply-Driven Commodities (final demands; not consumed by
+    assets).
 
-*flow\_cost* is the cost per unit flow.
+  - \\( \mathbf{C}^{\mathrm{SED}} \\): Supply-Equals-Demand Commodities (intermediate system flows
+    like grid electricity).
 
-*commodity\_cost* is the exogenous (user-defined) cost for a commodity. If none is defined for this
-combination of parameters, this value is zero.
+  - \\( \mathbf{C}^{\mathrm{OTH}} \\): Other Tracked Flows (e.g., losses, raw emissions).
 
-**NOTE:** If the commodity flow is an input (i.e. flow <0), then the value of *cost* should be
-multiplied by &minus;1 so that the impact on the objective function is positive.
+- \\( \mathbf{C}^{VoLL} \subseteq \mathbf{C}^{\mathrm{SVD}} \cup \mathbf{C}^{\mathrm{SED}} \\):
+  Subset of commodities where unserved demand is modelled with a penalty.
 
-## Constraints
+- \\( \mathbf{P} \\): Set of External Pools/Markets (indexed by \\( p \\)).
 
-  > **Issue 1:** It would reduce the size of the optimisation problem if all assets of the same
-  type that are in the same region are grouped together in constraints (to reduce the number of
-  constraints). However, this approach would also complicate pre- and post-optimisation processing
-  which would need to unpick grouped assets and allocate back to their agent owners.
+- \\( \mathbf{S} \\): Set of Scopes (indexed by \\( s \\)). Sets of \\( (r,t) \\) pairs for policy
+  application.
 
-### Asset-level input-output commodity balances
+## A. Core Model (Standard Assets: \\( a \in \mathbf{A}^{std} \\))
 
-#### Non-flexible assets
+**Purpose:** Defines the operation of assets with fixed, predefined input-output relationships.
 
-Assets where ratio between output/s and input/s is strictly proportional. Energy commodity asset
-inputs and outputs are proportional to first-listed primary activity commodity at a time slice level
-defined for each commodity. Input/output ratio is a fixed value.
+### A.1. Parameters (for \\( a \in \mathbf{A}^{std} \\) or global)
 
-For each *r*, *a*, *ts*, *c*:
+- \\( duration[t] \\): Duration of time slice \\( t \\) as a fraction of the year (\\( \in (0,1]
+  \\)). Represents the portion of the year covered by this slice.
 
-$$ \frac{q_{r,a,c,ts}}{flow_{r,a,c}} - \frac{q_{r,a,pac1,ts}}{flow_{r,a,pac1}} = 0 $$
+- \\( season\\_ slice[h,t] \\): Binary indicator; \\( 1 \\) if time slice \\( t \\) is in season \\(
+  h \\), \\( 0 \\) otherwise. Facilitates seasonal aggregation.
 
-for all commodity flows that the process has (except *pac1*). Where *pac1* is the first listed
-primary activity commodity for the asset (i.e. all input and output flows are made proportional to
-*pac1* flow).
+- \\( balance\\_ level[c,r] \\): Defines the temporal resolution (’timeslice’, ’seasonal’, ’annual’)
+  at which the supply-demand balance for commodity \\( c \\) in region \\( r \\) must be enforced.
 
-**TBD** - cases where time slice level of the commodity is seasonal or annual.
+- \\( demand[r,c] \\): Total annual exogenously specified demand (\\( \ge 0 \\)) for commodity \\( c
+  \in \mathbf{C}^{\mathrm{SVD}} \\) in region \\( r \\). This is the final demand to be met.
 
-#### Commodity-flexible assets
+- \\( timeslice\\_ share[c,t] \\): Fraction (\\( \in [0,1] \\)) of the annual \\( demand[r,c] \\)
+  for \\( c \in \mathbf{C}^{\mathrm{SVD}} \\) that occurs during time slice \\( t \\). (\\(
+  \sum_{t}timeslice\\_ share[c,t]=1 \\)). Defines the demand profile.
 
-Assets where ratio of input/s to output/s can vary for selected commodities, subject to user-defined
-ratios between input and output.
+- \\( capacity[a,r] \\): Installed operational capacity (\\( \ge 0 \\)) of asset \\( a \\) in region
+  \\( r \\) (e.g., MW for power plants). This value is an input to each dispatch run.
 
-Energy commodity asset inputs and outputs are constrained such that total inputs to total outputs
-of selected commodities is limited to user-defined ratios. Furthermore, each commodity input or
-output can be limited to be within a range, relative to other commodities.
+- \\( cap2act[a] \\): Conversion factor (\\( >0 \\)) from asset capacity units to activity units,
+  ensuring consistency between capacity (e.g., MW) and activity (e.g., MWh produced in a slice)
+  considering \\( duration[t] \\).
 
-For each *r*, *a*, *c*, *ts*:
+- \\( avail_{UB}[a,r,t], avail_{LB}[a,r,t], avail_{EQ}[a,r,t] \\): Availability factors (\\( \in
+  [0,1] \\)) for asset \\( a \\) in time slice \\( t \\). \\( UB \\) is maximum availability, \\( LB
+  \\) is minimum operational level, \\( EQ \\) specifies exact operation if required.
 
-(**TBD**)
+- \\( cost_{var}[a,r,t] \\): Variable operating cost (\\( \ge 0 \\)) per unit of activity for asset
+  \\( a \\) (e.g., non-fuel O&M).
 
-for all *c* that are flexible commodities. “in” refers to input flow commodities (i.e. with a
-negative sign), and “out” refers to output flow commodities (i.e. with a positive sign).
+- \\( input_{coeff}[a,c] \\): Units (\\( \ge 0 \\)) of commodity \\( c \in
+  (\mathbf{C}^{\mathrm{SED}} \cup \mathbf{C}^{\mathrm{OTH}}) \\) consumed by asset \\( a \\) per
+  unit of its activity. (By assumption, \\( input_{coeff}[a,c]=0 \\) if \\( c \in
+  \mathbf{C}^{\mathrm{SVD}} \\)).
 
-### Asset-level capacity and availability constraints
+- \\( output_{coeff}[a,c] \\): Units (\\( \ge 0 \\)) of commodity \\( c \in \mathbf{C} \\) produced
+  by asset \\( a \\) per unit of its activity.
 
-Primary activity commodity/ies output must not exceed asset capacity or any other limit as
-defined by availability factor constraint user inputs.
+- \\( cost_{input}[a,c] \\): Specific cost (\\( \ge 0 \\)) per unit of input commodity \\( c \\)
+  consumed by asset \\( a \\). Useful if \\( c \\) attracts a levy/incentive \\( only \\) if it is
+  consumed by this type of asset.
 
-For the capacity limits, for each *r*, *a*, *c*, *ts*. The sum of all PACs must be less than the
-assets' capacity:
+- \\( cost_{output}[a,c] \\): Specific cost (if positive) or revenue (if negative) per unit of
+  output commodity \\( c \\) produced by asset \\( a \\). Useful if levy/incentive applies \\( only
+  \\) when the commodity is produced by this type of asset.
 
-$$
-\sum_{pacs} \frac{q_{r,a,c,ts}}{capacity\\_ a_{a} * time\\_ slice\\_ length_{ts}} \leq 1
-$$
+- \\( VoLL[c,r] \\): Value of Lost Load. A very high penalty cost applied per unit of unserved
+  demand for \\( c \in \mathbf{C}^{VoLL} \\) in region \\( r \\).
 
-For the availability constraints, for each *r*, *a*, *c*, *ts*:
+### A.2. Decision Variables
 
-$$
-\sum_{pacs} \frac{q_{r,a,c,ts}}{capacity\\_ a_{a} * time\\_ slice\\_ length_{ts}}
-\leq process.availability.value(up)_{r,a,ts}
-$$
+These are the quantities the dispatch optimisation model determines.
 
-$$
-\sum_{pacs} \frac{q_{r,a,c,ts}}{capacity\\_ a_{a} * time\\_ slice\\_ length_{ts}}
-\geq process.availability.value(lo)_{r,a,ts}
-$$
+- \\( act[a,r,t]\ge0 \\): Activity level of asset \\( a \\) in region \\( r \\) during time slice
+  \\( t \\). This is the primary operational decision for each asset.
 
-$$
-\sum_{pacs} \frac{q_{r,a,c,ts}}{capacity\\_ a_{a} * time\\_ slice\\_ length_{ts}}
-= process.availability.value(fx)_{r,a,ts}
-$$
+- \\( UnmetD[c,r,t]\ge0 \\): Unserved demand for commodity \\( c \in \mathbf{C}^{VoLL} \\) in region
+  \\( r \\) during time slice \\( t \\). This variable allows the model to find a solution even if
+  capacity is insufficient.
 
-The sum of all PACs must be within the assets' availability bounds. Similar constraints also
-limit output of PACs to respect the availability constraints at time slice, seasonal or annual
-levels. With appropriate selection of *q* on the LHS to match RHS temporal granularity.
+### A.3. Objective Contribution (for standard assets \\( a \in \mathbf{A}^{std} \\))
 
-Note: Where availability is specified for a process at `daynight` time slice level, it supersedes
-the capacity limit constraint (i.e. you don't need both).
+This term represents the sum of operational costs associated with standard assets, forming a
+component of the overall system cost that the model seeks to minimise.
 
-### Commodity balance constraints
+\\[
+  \sum_{a\in \mathbf{A}^{std}}\sum_{r,t} act[a,r,t]
+  \Biggl(
+    cost_{var}[a,r,t] +
+    \sum_{c \notin \mathbf{C}^{\mathrm{SVD}}} cost_{input}[a,c]\\,input_{coeff}[a,c] +
+    \sum_{c \in \mathbf{C}} cost_{output}[a,c]\\,output_{coeff}[a,c]
+  \Biggr)
+\\]
 
-Commodity supply-demand balance for a whole system (or for a single region or set of regions).
-For each internal commodity that requires a strict balance (supply == demand, SED), it is an
-equality constraint with just “1” for each relevant commodity and RHS equals 0. Note there is also
-a special case where the commodity is a service demand (e.g. Mt steel produced), where net sum of
-output must be equal to the demand.
+### A.4. Constraints (Capacity & Availability for standard assets \\( a \in \mathbf{A}^{std} \\))
 
-For supply-demand balance commodities. For each *r* and each *c*:
+These constraints ensure that each standard asset’s operation respects its physical capacity and
+time-varying availability limits. For all \\( a \in \mathbf{A}^{std}, r, t \\):
 
-$$\sum_{a,ts} q_{r,a,c,ts} = 0$$
+- Asset activity \\( act[a,r,t] \\) is constrained by its available capacity, considering its
+  minimum operational level (lower bound, LB) and maximum availability (upper bound, UB):
 
-For a service demand, for each *c*, within a single region:
+    \\[
+      \begin{aligned}
+        capacity[a,r]\\,cap2act[a]\\,avail_{LB}[a,t]\\,duration[t] &\le act[a,r,t] \\\\
+        act[a,r,t] &\le capacity[a,r]\\,cap2act[a]\\,avail_{UB}[a,t]\\,duration[t]
+      \end{aligned}
+    \\]
 
-$$\sum_{a,ts} q_{r,a,c,ts} = cr\\_ net\\_ fx$$
+- If an exact operational level is mandated (e.g., for some renewables based on forecast, or fixed
+  generation profiles for specific assets):
 
-Where *c* is a service demand commodity and *cr_net_fx* is the exogenous (user-defined) demand for
-the given time slice selection. Note that the *ts* to be summed over will differ depending on the
-specified time slice level for a given commodity. If the time slice level is `annual`, it will be
-every time slice, if it's `season` then there will be separate constraints for each season and if
-it's `time_slice` then there will be separate constraints for every individual time slice.
+  \\[ act[a,r,t] = capacity[a,r]\\,cap2act[a]\\,avail_{EQ}[a,t]\\,duration[t] \\]
 
-**TBD** – commodities that are consumed (so sum of *q* can be a negative value). E.g. oil reserves. \
-**TBD** – trade between regions.
+## B. Full Model Construction
 
-### Asset-level commodity flow share constraints for flexible assets
+> Note: This section includes references to many features that are not described elsewhere in this
+> document or implemented yet (e.g. region-to-region trade), but these are included for
+> completeness. This represents the roadmap for future MUSE 2.0 development.
 
-Restricts share of flow amongst a set of specified flexible commodities. Constraints can be
-constructed for input side of processes or output side of processes, or both.
+This section describes how all preceding components are integrated to form the complete dispatch
+optimisation problem. 1. **Sets, Parameters, Decision Variables:** The union of all previously
+defined elements. 2. **Objective Function:** The overall objective is to minimise the total system
+cost, which is the sum of all operational costs from assets (standard and flexible), financial
+impacts from policy scopes (taxes minus credits), costs of inter-regional trade, costs of pool-based
+trade, and importantly, the high economic penalties associated with any unserved demand for critical
+commodities:
 
-$$
-q_{r,a,c,ts} \leq process.commodity.constraint.value(up)\_{r,a,c,ts} *
-\left( \sum_{flexible\ c} q\_{r,a,c,ts} \right)
-$$
+\\[
+  \begin{aligned}
+    \text{Minimise: } &(\text{Core Asset Operational Costs from A.3 and E.4}) \\\\
+    &+ (\text{Scope Policy Costs/Credits from B.4}) \\\\
+    &+ (\text{Region-to-Region Trade Costs from C.4}) + (\text{Pool-Based Trade Costs from D.4}) \\\\
+    &+ \sum_{c \in \mathbf{C}^{VoLL},r,t} UnmetD[c,r,t] \cdot VoLL[c,r]
+    \quad \text{(Penalty for Unserved Demand)}
+  \end{aligned}
+\\]
 
-$$
-q_{r,a,c,ts} \geq process.commodity.constraint.value(lo)\_{r,a,c,ts} *
-\left( \sum\_{flexible\ c} q_{r,a,c,ts} \right)
-$$
+### Constraints
 
-$$
-q_{r,a,c,ts} = process.commodity.constraint.value(fx)\_{r,a,c,ts} *
-\left( \sum\_{flexible\ c} q\_{r,a,c,ts} \right)
-$$
+The complete set of constraints that the optimisation must satisfy includes:
 
-Could be used to define flow limits on specific commodities in a flexible process. E.g. a
-refinery that is flexible and can produce gasoline, diesel or jet fuel, but for a given crude oil
-input only a limited amount of jet fuel can be produced and remainder of production must be either
-diesel or gasoline (for example).
+- Capacity & Availability constraints for all assets \\( a \in \mathbf{A} \\)
+  (as per A.4 and E.5).
 
-### Other net and absolute commodity volume constraints
+- Scope policy constraints (B.5).
 
-<!-- markdownlint-disable-next-line MD033 -->
-Net constraint: There might be a net CO<sub>2</sub> emissions limit of zero in 2050, or even a
-negative value. Constraint applied on both outputs and inputs of the commodity, sum must less then
-(or equal to or more than) a user-specified value. For system-wide net commodity production
-constraint, for each *c*, sum over regions, assets, time slices.
+- Region-to-Region Trade Limits (C.5.A).
 
-$$\sum_{r,a,ts} q_{r,a,c,ts} \leq commodity.constraint.rhs\\_ value(up)$$
+- Pool-Based Trade Limits (D.5.A).
 
-$$\sum_{r,a,ts} q_{r,a,c,ts} \geq commodity.constraint.rhs\\_ value(lo)$$
+- Flexible Asset operational constraints (E.5).
 
-$$\sum_{r,a,ts} q_{r,a,c,ts} = commodity.constraint.rhs\\_ value(fx)$$
+### Demand Satisfaction for \\( c\in \mathbf{C}^{\mathrm{SVD}} \\)
 
-Similar constraints can be constructed for net commodity volume over specific regions or sets of
-regions.
+These constraints ensure that exogenously defined final demands for SVDs are met in each region \\(
+r \\) and time slice \\( t \\), or any shortfall is explicitly accounted for.
 
-Production or consumption constraint: Likewise similar constraints can be constructed to limit
-absolute production or absolute consumption. In these cases selective choice of *q* focused on
-process inputs (consumption) or process outputs (production) can be applied.
+For all \\( r,t,c \in \mathbf{C}^{\mathrm{SVD}} \\): Let \\( TotalSystemProduction_{SVD}[c,r,t] \\)
+be the sum of all production of \\( c \\) from standard assets (\\( output_{coeff}[a,c]\\,act[a,r,t]
+\\)) and flexible assets (the relevant \\( OutputSpec[a,c,r,t] \\) if \\( c \in
+\mathbf{C}\_a^{eff\\_out} \\), or \\( act[a,r,t] \cdot coeff\_{aux\\_out}[a,c] \\) if \\( c \in
+\mathbf{C}^{aux\\_out}\_a \\)).
+
+Let \\( NetImports_{SVD}[c,r,t] \\) be net imports of \\( c \\) from R2R and Pool trade if SVDs are
+tradeable. If \\( c \in \mathbf{C}^{VoLL} \\) (meaning unserved demand for this SVD is permitted at
+a penalty):
+
+\\[
+  TotalSystemProduction_{SVD}[c,r,t] + NetImports_{SVD}[c,r,t] + UnmetD[c,r,t]
+    = demand[r,c] \times timeslice\\_ share[c,t]
+\\]
+
+Else (if SVD \\( c \\) must be strictly met and is not included in \\( \mathbf{C}^{VoLL} \\)):
+
+\\[
+  TotalSystemProduction_{SVD}[c,r,t] + NetImports_{SVD}[c,r,t]
+    = demand[r,c] \times timeslice\\_ share[c,t]
+\\]
+
+### Commodity Balance for \\( c\in \mathbf{C}^{\mathrm{SED}} \\)
+
+These constraints ensure that for all intermediate SED commodities, total supply equals total demand
+within each region \\( r \\) and for each balancing period defined by \\( balance\\_ level[c,r] \\)
+(e.g., timeslice, seasonal, annual).
+
+For a timeslice balance (\\( \forall r,t,c \in \mathbf{C}^{\mathrm{SED}} \\)):
+
+Total Inflows (Local Production by all assets + Imports from other regions and pools + Unserved SED
+if \\( c \in \mathbf{C}^{VoLL} \\)) = Total Outflows (Local Consumption by all assets + Exports to
+other regions).
+
+\\[
+  \begin{aligned}
+    &\sum\_{a \in \mathbf{A}^{std}} output_{coeff}[a,c]\\,act[a,r,t]
+      && \text{(Std Asset Production)} \\\\
+    &+ \sum\_{a \in \mathbf{A}^{flex}}
+      \left(
+        \begin{cases}
+          OutputSpec[a,c,r,t] & \text{if } c \in \mathbf{C}^{eff\\_out}\_a \\\\
+          act[a,r,t] \cdot coeff\_{aux\\_out}[a,c] & \text{if } c \in \mathbf{C}^{aux\_out}\_a \\ 0
+            & \text{otherwise}
+        \end{cases}
+      \right)
+      && \text{(Flex Asset Production)} \\\\
+    &+ \sum\_{r'\neq r, c \in \mathbf{C}^R} ship\_{R2R}[r',r,c,t](1 - loss\_{R2R}[r',r,c,t])
+      && \text{(R2R Imports)} \\\\
+    &+ \sum\_{p, c \in \mathbf{C}^P} ship\_{pool}[p,r,c,t](1 - loss\_{pool}[p,r,c,t])
+      && \text{(Pool Imports)} \\\\
+    &+ \mathbb{I}(c \in \mathbf{C}^{VoLL}) \cdot UnmetD[c,r,t]
+      && \text{(Unserved SED, if modelled)} \\\\
+    &= \sum\_{a \in \mathbf{A}^{std}} input\_{coeff}[a,c]\\,act[a,r,t]
+      && \text{(Std Asset Consumption)} \\\\
+    &+ \sum\_{a \in \mathbf{A}^{flex}}
+      \left(
+        \begin{cases}
+          InputSpec[a,c,r,t] & \text{if } c \in \mathbf{C}^{eff\\_in}\_a \\\\
+          act[a,r,t] \cdot coeff\_{aux\\_in}[a,c] & \text{if } c \in \mathbf{C}^{aux\\_in}\_a \\\\
+          0 & \text{otherwise}
+        \end{cases}
+      \right)
+      && \text{(Flex Asset Consumption)} \\\\
+    &+ \sum\_{r'\neq r, c \in \mathbf{C}^R} ship\_{R2R}[r,r',c,t]
+      && \text{(R2R Exports)}
+  \end{aligned}
+\\]
+
+(where \\( \mathbb{I}(c \in \mathbf{C}^{VoLL}) \\) is an indicator function, \\( 1 \\) if \\( c \\)
+is in \\( \mathbf{C}^{VoLL} \\), \\( 0 \\) otherwise. Note that SVDs are not consumed by assets, so
+\\( input_{coeff}[a,c] \\) and related terms for SVDs on the consumption side are zero).

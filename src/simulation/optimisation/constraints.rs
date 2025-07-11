@@ -90,7 +90,7 @@ where
 ///
 /// See description in [the dispatch optimisation documentation][1].
 ///
-/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#commodity-balance-constraints
+/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#commodity-balance-for--cin-mathbfcmathrmsed-
 fn add_commodity_balance_constraints<'a, I>(
     problem: &mut Problem,
     variables: &VariableMap,
@@ -171,6 +171,10 @@ where
 ///
 /// This ensures that assets do not exceed their specified capacity and availability for each time
 /// slice.
+///
+/// See description in [the dispatch optimisation documentation][1].
+///
+/// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/dispatch_optimisation.html#a4-constraints-capacity--availability-for-standard-assets--a-in-mathbfastd-
 fn add_activity_constraints(problem: &mut Problem, variables: &VariableMap) -> ActivityKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
