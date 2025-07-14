@@ -70,7 +70,8 @@ pub fn run(
     };
 
     // Calculate commodity prices and asset reduced costs
-    let (prices, reduced_costs) = get_prices_and_reduced_costs(&model, &solution, &assets, year);
+    let (prices, reduced_costs) =
+        get_prices_and_reduced_costs(&model, &solution, assets.as_slice(), year);
 
     // Write active assets and results of dispatch optimisation to file
     writer.write(year, &solution, &assets, &flow_map, &prices)?;

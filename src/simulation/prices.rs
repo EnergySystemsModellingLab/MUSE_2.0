@@ -1,5 +1,5 @@
 //! Code for updating the simulation state.
-use crate::asset::{AssetPool, AssetRef};
+use crate::asset::AssetRef;
 use crate::commodity::CommodityID;
 use crate::model::{Model, PricingStrategy};
 use crate::process::ProcessFlow;
@@ -20,7 +20,7 @@ pub type ReducedCosts = HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
 pub fn get_prices_and_reduced_costs(
     model: &Model,
     solution: &Solution,
-    assets: &AssetPool,
+    assets: &[AssetRef],
     year: u32,
 ) -> (CommodityPrices, ReducedCosts) {
     let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
@@ -255,7 +255,7 @@ fn get_scarcity_adjustment(
 /// Calculate reduced costs for existing assets
 fn reduced_costs_for_existing<'a>(
     time_slice_info: &'a TimeSliceInfo,
-    assets: &'a AssetPool,
+    assets: &'a [AssetRef],
     prices: &'a CommodityPrices,
     year: u32,
 ) -> impl Iterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)> + 'a {
