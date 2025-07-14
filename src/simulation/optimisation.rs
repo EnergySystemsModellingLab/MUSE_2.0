@@ -1,7 +1,7 @@
 //! Code for performing dispatch optimisation.
 //!
 //! This is used to calculate commodity flows and prices.
-use crate::asset::{Asset, AssetPool, AssetRef};
+use crate::asset::{Asset, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::region::RegionID;
@@ -156,8 +156,8 @@ impl Solution<'_> {
 /// # Arguments
 ///
 /// * `model` - The model
-/// * `asset_pool` - The asset pool
-/// * `candidate_assets` - Candidate assets for inclusion in active pool
+/// * `assets` - Assets to include in optimisation
+/// * `candidate_assets` - Extra, candidate assets to include
 /// * `year` - Current milestone year
 ///
 /// # Returns
@@ -165,7 +165,7 @@ impl Solution<'_> {
 /// A solution containing new commodity flows for assets and prices for (some) commodities.
 pub fn perform_dispatch_optimisation<'a>(
     model: &'a Model,
-    asset_pool: &AssetPool,
+    assets: &[AssetRef],
     candidate_assets: &[AssetRef],
     year: u32,
 ) -> Result<Solution<'a>> {
@@ -176,7 +176,7 @@ pub fn perform_dispatch_optimisation<'a>(
         &mut problem,
         &mut variables,
         &model.time_slice_info,
-        asset_pool.as_slice(),
+        assets,
         year,
     );
     let candidate_asset_var_idx = add_variables(
@@ -188,7 +188,7 @@ pub fn perform_dispatch_optimisation<'a>(
     );
 
     // Add constraints
-    let all_assets = chain(asset_pool.iter(), candidate_assets.iter());
+    let all_assets = chain(assets.iter(), candidate_assets.iter());
     let constraint_keys = add_asset_constraints(&mut problem, &variables, model, all_assets, year);
 
     // Solve problem

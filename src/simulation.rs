@@ -47,7 +47,7 @@ pub fn run(
     assets.commission_new(year);
 
     // Dispatch optimisation with existing assets only
-    let solution_existing = perform_dispatch_optimisation(&model, &assets, &[], year)?;
+    let solution_existing = perform_dispatch_optimisation(&model, assets.as_slice(), &[], year)?;
     let flow_map = solution_existing.create_flow_map();
 
     // Get candidate assets for next year, if any
@@ -66,7 +66,7 @@ pub fn run(
     let solution = if candidates.is_empty() {
         solution_existing
     } else {
-        perform_dispatch_optimisation(&model, &assets, &candidates, year)?
+        perform_dispatch_optimisation(&model, assets.as_slice(), &candidates, year)?
     };
 
     // Calculate commodity prices and asset reduced costs
