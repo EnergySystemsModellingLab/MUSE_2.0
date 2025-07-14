@@ -24,10 +24,10 @@ class Section:
     files: Iterable[File]
 
 
-def generate_markdown(
+def generate_for_csv(
     file_order: dict[str, list[str]], schema_dir: Path, template_file_name: str
 ) -> str:
-    """Generate markdown from Jinja template using metadata in schemas."""
+    """Generate markdown from Jinja template using metadata in schemas for CSV files."""
     env = Environment(loader=FileSystemLoader(Path(__file__).parent))
     template = env.get_template(template_file_name)
     return template.render(

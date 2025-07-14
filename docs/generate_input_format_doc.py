@@ -20,9 +20,9 @@ if __name__ == "__main__":
     TEMPLATE_FILE_NAME = "input_format.md.jinja"
 
     sys.path.append(str(DOCS_DIR))
-    from format_docs import generate_markdown
+    from format_docs import generate_for_csv
 
     output_path = DOCS_DIR / "input_format.md"
     output_path.write_text(
-        generate_markdown(FILE_ORDER, SCHEMA_DIR, TEMPLATE_FILE_NAME), encoding="utf-8"
+        generate_for_csv(FILE_ORDER, SCHEMA_DIR, TEMPLATE_FILE_NAME), encoding="utf-8"
     )
