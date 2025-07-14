@@ -1,6 +1,10 @@
 *.log
 *.zip
 
+# MUSE2 settings file
+settings.toml
+!assets/settings.toml
+
 # Simulation output files
 **/muse2_results
 
