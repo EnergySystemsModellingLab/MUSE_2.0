@@ -7,12 +7,12 @@ use crate::units::{Capacity, Dimensionless, Flow, MoneyPerActivity};
 use anyhow::Result;
 use std::collections::HashMap;
 
+mod coefficients;
 mod constraints;
 mod costs;
 mod optimisation;
-use optimisation::{
-    calculate_coefficients_for_lcox, calculate_coefficients_for_npv, perform_optimisation,
-};
+use coefficients::{calculate_coefficients_for_lcox, calculate_coefficients_for_npv};
+use optimisation::perform_optimisation;
 
 /// Calculate LCOX based on the specified reduced costs and demand for a particular tranche.
 ///

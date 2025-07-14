@@ -1,12 +1,11 @@
 //! Optimisation problem for investment tools.
-use super::super::prices::ReducedCosts;
+use super::coefficients::CoefficientsMap;
 use super::constraints::{
     add_activity_constraints, add_capacity_constraint, add_demand_constraints,
 };
-use super::costs::{activity_cost, activity_surplus, annual_fixed_cost};
 use crate::asset::AssetRef;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::{Activity, Capacity, Flow, MoneyPerActivity, MoneyPerCapacity};
+use crate::units::{Activity, Capacity, Flow};
 use anyhow::{anyhow, Result};
 use highs::{RowProblem as Problem, Sense};
 use indexmap::IndexMap;
@@ -14,15 +13,6 @@ use std::collections::HashMap;
 
 /// A decision variable in the optimisation
 pub type Variable = highs::Col;
-
-/// Map storing coefficients for each variable
-pub struct CoefficientsMap {
-    /// Cost per unit of capacity
-    pub capacity_coefficient: MoneyPerCapacity,
-    /// Cost per unit of activity in each time slice
-    pub activity_coefficients: IndexMap<TimeSliceID, MoneyPerActivity>,
-    // **TODO.**: VoLL coefficients (for LCOX)
-}
 
 /// Map storing variables for the optimisation problem
 struct VariableMap {
@@ -39,50 +29,6 @@ pub struct ResultsMap {
     pub capacity: Capacity,
     /// Activity variables in each time slice
     pub activity: IndexMap<TimeSliceID, Activity>,
-}
-
-/// Calculates the cost coefficients for LCOX.
-pub fn calculate_coefficients_for_lcox(
-    asset: &AssetRef,
-    time_slice_info: &TimeSliceInfo,
-    reduced_costs: &ReducedCosts,
-) -> CoefficientsMap {
-    // Capacity coefficient
-    let capacity_coefficient = annual_fixed_cost(asset);
-
-    // Activity coefficients
-    let mut activity_coefficients = IndexMap::new();
-    for time_slice in time_slice_info.iter_ids() {
-        let coefficient = activity_cost(asset, reduced_costs, time_slice.clone());
-        activity_coefficients.insert(time_slice.clone(), coefficient);
-    }
-
-    CoefficientsMap {
-        capacity_coefficient,
-        activity_coefficients,
-    }
-}
-
-/// Calculates the cost coefficients for NPV.
-pub fn calculate_coefficients_for_npv(
-    asset: &AssetRef,
-    time_slice_info: &TimeSliceInfo,
-    reduced_costs: &ReducedCosts,
-) -> CoefficientsMap {
-    // Capacity coefficient
-    let capacity_coefficient = -annual_fixed_cost(asset);
-
-    // Activity coefficients
-    let mut activity_coefficients = IndexMap::new();
-    for time_slice in time_slice_info.iter_ids() {
-        let coefficient = activity_surplus(asset, reduced_costs, time_slice.clone());
-        activity_coefficients.insert(time_slice.clone(), coefficient);
-    }
-
-    CoefficientsMap {
-        capacity_coefficient,
-        activity_coefficients,
-    }
 }
 
 /// Add variables to the problem based on cost coefficients
@@ -128,7 +74,11 @@ fn add_constraints(
     );
 }
 
-/// Performs optimisation for a given method (LCOX or NPV).
+/// Performs optimisation for an asset, given the coefficients and demand.
+///
+/// Will either maximise or minimise the objective function, depending on the `minimise` parameter.
+///
+/// **TODO.**: Will need to modify constraints to handle unmet demand variables in LCOX case
 pub fn perform_optimisation(
     asset: &AssetRef,
     coefficients: &CoefficientsMap,
