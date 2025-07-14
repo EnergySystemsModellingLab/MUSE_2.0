@@ -80,6 +80,8 @@ fn add_activity_constraints_for_candidate(
 ///
 /// Constrains supply to be less than or equal to demand, which adapts based on the commodity's
 /// balance level.
+///
+/// **TODO:** For LCOX this will need to include unmet demand variables.
 pub fn add_demand_constraints(
     problem: &mut Problem,
     time_slice_level: TimeSliceLevel,

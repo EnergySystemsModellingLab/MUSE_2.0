@@ -47,9 +47,9 @@ pub struct ResultsMap {
 
 /// Methods for optimisation
 pub enum Method {
-    /// LCOX method
+    /// Levelised Cost of X (LCOX)
     Lcox,
-    /// NPV method
+    /// Net Present Value (NPV)
     Npv,
 }
 
