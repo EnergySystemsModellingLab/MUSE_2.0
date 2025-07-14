@@ -1,11 +1,13 @@
 //! Code for reading the agent search space CSV file.
 use super::super::*;
-use crate::agent::{AgentID, AgentMap, AgentSearchSpaceMap};
+use crate::agent::{Agent, AgentID, AgentMap, AgentSearchSpaceMap};
 use crate::commodity::CommodityID;
 use crate::id::IDCollection;
 use crate::process::{Process, ProcessMap};
+use crate::region::RegionID;
 use crate::year::parse_year_str;
 use anyhow::{Context, Result};
+use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -150,7 +152,73 @@ where
         }
     }
 
+    for (agent_id, agent) in agents.iter() {
+        // Get or create search space map
+        let search_space = search_spaces
+            .entry(agent_id.clone())
+            .or_insert_with(AgentSearchSpaceMap::new);
+
+        // Add missing entries for commodities/years
+        fill_missing_search_space_entries(agent, processes, search_space);
+    }
+
     Ok(search_spaces)
+}
+
+/// Fill missing entries for the search space map for all commodities/milestone years.
+///
+/// The entries are filled will all producers of the given commodity in the given year. Only
+/// producers which operate in at least one of the same regions as the agent are considered.
+fn fill_missing_search_space_entries(
+    agent: &Agent,
+    processes: &ProcessMap,
+    search_space: &mut AgentSearchSpaceMap,
+) {
+    // Agents all have commodity portions and this field should have been assigned already
+    assert!(!agent.commodity_portions.is_empty());
+
+    for (commodity_id, year) in agent.commodity_portions.keys() {
+        let key = (commodity_id.clone(), *year);
+        search_space.entry(key).or_insert_with(|| {
+            Rc::new(get_all_producers(processes, &agent.regions, commodity_id, *year).collect())
+        });
+    }
+}
+
+/// Get all processes active in the relevant year and regions which produce the given commodity
+fn get_all_producers<'a>(
+    processes: &'a ProcessMap,
+    region_ids: &'a IndexSet<RegionID>,
+    commodity_id: &'a CommodityID,
+    year: u32,
+) -> impl Iterator<Item = Rc<Process>> + 'a {
+    processes
+        .values()
+        .filter(move |process| {
+            process.active_for_year(year)
+                && is_primary_producer(process, region_ids, commodity_id, year)
+        })
+        .cloned()
+}
+
+/// Whether the specified process produces the commodity as a primary output in the given year.
+///
+/// True if it is a primary output in at least one region.
+fn is_primary_producer(
+    process: &Process,
+    region_ids: &IndexSet<RegionID>,
+    commodity_id: &CommodityID,
+    year: u32,
+) -> bool {
+    let mut flows_for_all_regions = region_ids
+        .iter()
+        .filter_map(|region_id| process.flows.get(&(region_id.clone(), year)));
+
+    flows_for_all_regions.any(|flows| {
+        flows
+            .get(commodity_id)
+            .is_some_and(|flow| flow.is_primary_output)
+    })
 }
 
 #[cfg(test)]
