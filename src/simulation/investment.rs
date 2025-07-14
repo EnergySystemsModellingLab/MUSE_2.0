@@ -9,7 +9,7 @@ use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Flow};
-use anyhow::{Context, Result};
+use anyhow::{ensure, Context, Result};
 use indexmap::IndexSet;
 use itertools::{chain, iproduct};
 use log::info;
@@ -46,6 +46,7 @@ pub fn perform_agent_investment(
         .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
         .map(|(id, _)| id.clone())
         .collect();
+    let mut already_seen_commodities = commodities_of_interest.clone();
 
     loop {
         let demand = get_demand_profile(&commodities_of_interest, flow_map);
@@ -62,6 +63,13 @@ pub fn perform_agent_investment(
 
         // Get commodities of interest for next iteration
         commodities_of_interest = iter_commodities_consumed_by(&chosen_assets).collect();
+
+        // Check that there are no dependency loops between commodities
+        ensure!(
+            commodities_of_interest.is_disjoint(&already_seen_commodities),
+            "There is a demand loop between commodities. This is not permitted."
+        );
+        already_seen_commodities.extend(commodities_of_interest.iter().cloned());
 
         // Add chosen assets to new asset pool
         new_pool.extend(chosen_assets);
