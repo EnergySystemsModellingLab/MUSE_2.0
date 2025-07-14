@@ -11,28 +11,14 @@ use std::collections::HashMap;
 ///
 /// The behaviour depends on whether the asset is commissioned or a candidate:
 /// - For a commissioned asset, the capacity is fixed.
-/// - For a candidate asset, the capacity is variable between zero and an upper bound (**TODO.**).
+/// - For a candidate asset, the capacity is variable between zero and an upper bound.
 pub fn add_capacity_constraint(problem: &mut Problem, asset: &AssetRef, capacity_var: Variable) {
-    match asset.is_commissioned() {
-        true => add_capacity_constraint_for_existing(problem, asset, capacity_var),
-        false => add_capacity_constraint_for_candidate(problem, asset, capacity_var),
-    }
-}
-
-fn add_capacity_constraint_for_existing(
-    problem: &mut Problem,
-    asset: &AssetRef,
-    capacity_var: Variable,
-) {
     let capacity = asset.capacity;
-    problem.add_row(capacity.value()..=capacity.value(), [(capacity_var, 1.0)]);
-}
-fn add_capacity_constraint_for_candidate(
-    _problem: &mut Problem,
-    _asset: &AssetRef,
-    _capacity_var: Variable,
-) {
-    // **TODO:** Add capacity constraint for existing asset.
+    let bounds = match asset.is_commissioned() {
+        true => capacity.value()..=capacity.value(),
+        false => 0.0..=capacity.value(),
+    };
+    problem.add_row(bounds, [(capacity_var, 1.0)]);
 }
 
 /// Adds activity constraints to the problem.
