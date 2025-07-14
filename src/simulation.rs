@@ -50,21 +50,24 @@ pub fn run(
         perform_dispatch_optimisation(&model, &assets, &[], year, 0, &mut writer)?;
     let flow_map = solution_existing.create_flow_map();
 
-    // Perform a separate dispatch run with existing assets and candidates from next year (skip if
-    // only one milestone year)
-    let solution_candidates = year_iter
+    // Get candidate assets for next year, if any
+    let candidates = year_iter
         .peek()
         .map(|next_year| {
-            let candidates = candidate_assets_for_year(
+            candidate_assets_for_year(
                 &model.processes,
                 *next_year,
                 model.parameters.candidate_asset_capacity,
-            );
-
-            perform_dispatch_optimisation(&model, &assets, &candidates, year, 1, &mut writer)
+            )
         })
-        .transpose()?;
-    let solution = solution_candidates.unwrap_or(solution_existing);
+        .unwrap_or_default();
+
+    // Perform a separate dispatch run with existing assets and candidates (if there are any)
+    let solution = if candidates.is_empty() {
+        solution_existing
+    } else {
+        perform_dispatch_optimisation(&model, &assets, &candidates, year, 1, &mut writer)?
+    };
 
     // Calculate commodity prices and asset reduced costs
     let (prices, reduced_costs) = get_prices_and_reduced_costs(&model, &solution, &assets, year);
