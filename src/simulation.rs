@@ -48,7 +48,7 @@ pub fn run(
     // Dispatch optimisation with existing assets only
     let solution_existing =
         perform_dispatch_optimisation(&model, &assets, &[], year, 0, &mut writer)?;
-    let flow_map = solution_existing.create_flow_map();
+    let mut flow_map = solution_existing.create_flow_map();
 
     // Get candidate assets for next year, if any
     let candidates = year_iter
@@ -70,7 +70,7 @@ pub fn run(
     };
 
     // Calculate commodity prices and asset reduced costs
-    let (prices, reduced_costs) = get_prices_and_reduced_costs(
+    let (prices, mut reduced_costs) = get_prices_and_reduced_costs(
         &model,
         &solution,
         &assets,
@@ -91,8 +91,16 @@ pub fn run(
 
         // NB: Agent investment will actually be in a loop with more calls to
         // `perform_dispatch_optimisation`, but let's leave this as a placeholder for now
-        perform_agent_investment(&model, &flow_map, &reduced_costs, &mut assets, year)
-            .context("Agent investment failed")?;
+        perform_agent_investment(
+            &model,
+            year,
+            &mut assets,
+            &mut flow_map,
+            &prices,
+            &mut reduced_costs,
+            &mut writer,
+        )
+        .context("Agent investment failed")?;
 
         // Newly commissioned assets will be included in optimisation for at least one milestone
         // year before agents have the option of decommissioning them

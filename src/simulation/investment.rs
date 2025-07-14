@@ -1,11 +1,13 @@
 //! Code for performing agent investment.
-use super::optimisation::FlowMap;
-use super::prices::ReducedCosts;
+use super::optimisation::{perform_dispatch_optimisation, FlowMap};
+use super::prices::{get_prices_and_reduced_costs, ReducedCosts};
 use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
 use crate::commodity::{Commodity, CommodityID};
 use crate::model::Model;
+use crate::output::DataWriter;
 use crate::region::RegionID;
+use crate::simulation::CommodityPrices;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
@@ -27,16 +29,20 @@ type AllDemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 /// # Arguments
 ///
 /// * `model` - The model
-/// * `flow_map` - Map of commodity flows
-/// * `reduced_costs` - Reduced costs for assets
-/// * `assets` - The asset pool
 /// * `year` - Current milestone year
+/// * `assets` - The asset pool
+/// * `flow_map` - Map of commodity flows
+/// * `prices` - Commodity prices
+/// * `reduced_costs` - Reduced costs for assets
+/// * `writer` - Data writer
 pub fn perform_agent_investment(
     model: &Model,
-    flow_map: &FlowMap,
-    reduced_costs: &ReducedCosts,
-    assets: &mut AssetPool,
     year: u32,
+    assets: &mut AssetPool,
+    flow_map: &mut FlowMap,
+    prices: &CommodityPrices,
+    reduced_costs: &mut ReducedCosts,
+    writer: &mut DataWriter,
 ) -> Result<()> {
     info!("Performing agent investment...");
 
@@ -44,7 +50,10 @@ pub fn perform_agent_investment(
     let existing_assets = assets.take();
 
     // Demand profile for commodities
-    let demand = get_demand_profile(flow_map);
+    let mut demand = get_demand_profile(flow_map);
+
+    // Which dispatch run for current year
+    let mut run_number = 0;
 
     // We consider SVD commodities first
     for region_id in model.iter_regions() {
@@ -91,6 +100,18 @@ pub fn perform_agent_investment(
                 // Add assets to pool
                 assets.extend(best_assets);
             }
+
+            // Perform dispatch optimisation with assets that have been selected so far
+            let solution =
+                perform_dispatch_optimisation(model, assets, &[], year, run_number, writer)?;
+            run_number += 1;
+            *flow_map = solution.create_flow_map();
+            let (_cur_prices, cur_reduced_costs) =
+                get_prices_and_reduced_costs(model, &solution, assets, prices, year);
+            *reduced_costs = cur_reduced_costs;
+
+            // Update demand profile
+            demand = get_demand_profile(flow_map);
         }
     }
 
