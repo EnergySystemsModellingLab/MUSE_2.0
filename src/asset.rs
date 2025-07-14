@@ -143,7 +143,7 @@ impl Asset {
     }
 
     /// Get the process flows map for this asset
-    fn get_flows_map(&self) -> &IndexMap<CommodityID, ProcessFlow> {
+    pub fn get_flows_map(&self) -> &IndexMap<CommodityID, ProcessFlow> {
         self.process
             .flows
             .get(&(self.region_id.clone(), self.commission_year))
