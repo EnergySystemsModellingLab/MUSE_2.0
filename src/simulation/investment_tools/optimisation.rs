@@ -7,7 +7,7 @@ use crate::simulation::investment_tools::costs::{
     activity_cost, activity_surplus, annual_fixed_cost,
 };
 use crate::simulation::prices::ReducedCosts;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{Activity, Capacity, Flow, MoneyPerActivity, MoneyPerCapacity};
 use anyhow::{anyhow, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
@@ -106,6 +106,8 @@ fn add_constraints(
     asset: &AssetRef,
     variables: &VariableMap,
     demand: &HashMap<TimeSliceID, Flow>,
+    time_slice_level: TimeSliceLevel,
+    time_slice_info: &TimeSliceInfo,
 ) {
     add_capacity_constraint(problem, asset, variables.capacity_var);
     add_activity_constraints(
@@ -114,13 +116,20 @@ fn add_constraints(
         variables.capacity_var,
         &variables.activity_vars,
     );
-    add_demand_constraints(problem, asset, demand, &variables.activity_vars);
+    add_demand_constraints(
+        problem,
+        time_slice_level,
+        time_slice_info,
+        demand,
+        &variables.activity_vars,
+    );
 }
 
 /// Performs optimisation for a given method (LCOX or NPV).
 pub fn perform_optimisation_for_method(
     asset: &AssetRef,
     time_slice_info: &TimeSliceInfo,
+    time_slice_level: TimeSliceLevel,
     reduced_costs: &ReducedCosts,
     demand: &HashMap<TimeSliceID, Flow>,
     method: &Method,
@@ -136,7 +145,14 @@ pub fn perform_optimisation_for_method(
     let variables = add_variables(&mut problem, &coefficients);
 
     // Add constraints
-    add_constraints(&mut problem, asset, &variables, demand);
+    add_constraints(
+        &mut problem,
+        asset,
+        &variables,
+        demand,
+        time_slice_level,
+        time_slice_info,
+    );
 
     // Perform optimisation
     let sense = match method {

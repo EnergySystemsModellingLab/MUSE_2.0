@@ -1,7 +1,7 @@
 //! Constraints for the optimisation problem.
 use crate::asset::AssetRef;
 use crate::simulation::investment_tools::optimisation::Variable;
-use crate::time_slice::TimeSliceID;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::Flow;
 use highs::RowProblem as Problem;
 use indexmap::IndexMap;
@@ -77,11 +77,24 @@ fn add_activity_constraints_for_candidate(
 }
 
 /// Adds demand constraints to the problem.
+///
+/// Constrains supply to be less than or equal to demand, which adapts based on the commodity's
+/// balance level.
 pub fn add_demand_constraints(
-    _problem: &mut Problem,
-    _asset: &AssetRef,
-    _demand: &HashMap<TimeSliceID, Flow>,
-    _activity_vars: &IndexMap<TimeSliceID, Variable>,
+    problem: &mut Problem,
+    time_slice_level: TimeSliceLevel,
+    time_slice_info: &TimeSliceInfo,
+    demand: &HashMap<TimeSliceID, Flow>,
+    activity_vars: &IndexMap<TimeSliceID, Variable>,
 ) {
-    // **TODO:** Add demand constraints.
+    for ts_selection in time_slice_info.iter_selections_at_level(time_slice_level) {
+        let mut demand_for_ts_selection = Flow(0.0);
+        let mut terms = Vec::new();
+        for (time_slice, _) in ts_selection.iter(time_slice_info) {
+            demand_for_ts_selection += *demand.get(time_slice).unwrap();
+            let var = activity_vars.get(time_slice).unwrap();
+            terms.push((*var, 1.0));
+        }
+        problem.add_row(0.0..=demand_for_ts_selection.value(), terms);
+    }
 }

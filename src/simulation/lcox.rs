@@ -6,7 +6,7 @@ use crate::asset::AssetRef;
 use crate::finance::{lcox, profitability_index};
 use crate::simulation::investment_tools::optimisation::{perform_optimisation_for_method, Method};
 use crate::simulation::prices::ReducedCosts;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{Capacity, Dimensionless, Flow, MoneyPerActivity};
 use std::collections::HashMap;
 
@@ -21,6 +21,7 @@ pub fn calculate_lcox(
     reduced_costs: &ReducedCosts,
     demand: &HashMap<TimeSliceID, Flow>,
     time_slice_info: &TimeSliceInfo,
+    time_slice_level: TimeSliceLevel,
 ) -> (
     MoneyPerActivity,
     Option<Capacity>,
@@ -30,6 +31,7 @@ pub fn calculate_lcox(
     let results = perform_optimisation_for_method(
         asset,
         time_slice_info,
+        time_slice_level,
         reduced_costs,
         demand,
         &Method::Lcox,
@@ -49,7 +51,7 @@ pub fn calculate_lcox(
         &activity_costs,
     );
 
-    // Calculate unmet demand (**TODO.**)
+    // Placeholder for unmet demand (**TODO.**)
     let unmet = demand.keys().cloned().map(|ts| (ts, Flow(0.0))).collect();
 
     (lcox, new_capacity, unmet)
@@ -61,11 +63,13 @@ pub fn calculate_npv(
     reduced_costs: &ReducedCosts,
     demand: &HashMap<TimeSliceID, Flow>,
     time_slice_info: &TimeSliceInfo,
-) -> (Dimensionless, Option<Capacity>, HashMap<TimeSliceID, Flow>) {
+    time_slice_level: TimeSliceLevel,
+) -> (Dimensionless, Option<Capacity>) {
     // Perform optimisation to calculate capacity and activity
     let results = perform_optimisation_for_method(
         asset,
         time_slice_info,
+        time_slice_level,
         reduced_costs,
         demand,
         &Method::Npv,
@@ -85,8 +89,5 @@ pub fn calculate_npv(
         &activity_surpluses,
     );
 
-    // Calculate unnmet demand (**TODO.**)
-    let unmet = demand.keys().cloned().map(|ts| (ts, Flow(0.0))).collect();
-
-    (profitability_index, new_capacity, unmet)
+    (profitability_index, new_capacity)
 }
