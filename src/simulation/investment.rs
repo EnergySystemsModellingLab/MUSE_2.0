@@ -1,6 +1,6 @@
 //! Code for performing agent investment.
-use super::optimisation::FlowMap;
-use super::prices::ReducedCosts;
+use super::optimisation::{perform_dispatch_optimisation, FlowMap};
+use super::prices::{get_prices_and_reduced_costs, ReducedCosts};
 use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
 use crate::commodity::{CommodityID, CommodityType};
@@ -28,16 +28,16 @@ type AllDemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 /// # Arguments
 ///
 /// * `model` - The model
+/// * `year` - Current milestone year
+/// * `assets` - The asset pool
 /// * `flow_map` - Map of commodity flows
 /// * `reduced_costs` - Reduced costs for assets
-/// * `assets` - The asset pool
-/// * `year` - Current milestone year
 pub fn perform_agent_investment(
     model: &Model,
-    flow_map: &FlowMap,
-    reduced_costs: &ReducedCosts,
-    assets: &mut AssetPool,
     year: u32,
+    assets: &mut AssetPool,
+    flow_map: &mut FlowMap,
+    reduced_costs: &mut ReducedCosts,
 ) -> Result<()> {
     info!("Performing agent investment...");
 
@@ -79,17 +79,17 @@ pub fn perform_agent_investment(
         // Add assets to pool
         assets.extend(best_assets);
 
-        // **Temporary hack**
-        dbg!(&commodities_of_interest);
-        commodities_of_interest.clear();
-
         // If there are no more commodities of interest, we've finished
         if commodities_of_interest.is_empty() {
             break;
         }
 
-        // **TODO:** Perform another dispatch optimisation here
-        //      See: https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/651
+        // Perform dispatch optimisation with assets that have been selected so far
+        let solution = perform_dispatch_optimisation(model, &assets, &[], year)?;
+        *flow_map = solution.create_flow_map();
+        let (_cur_prices, cur_reduced_costs) =
+            get_prices_and_reduced_costs(model, &solution, &assets, year);
+        *reduced_costs = cur_reduced_costs;
     }
 
     Ok(())
