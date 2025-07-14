@@ -45,12 +45,13 @@ pub fn perform_agent_investment(
     let existing_assets = assets.take();
 
     // We consider SVD commodities first
-    let mut commodities_of_interest = model
+    let mut commodities_of_interest: IndexSet<_> = model
         .commodities
         .iter()
         .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
         .map(|(id, _)| id.clone())
         .collect();
+    let mut already_seen_commodities = commodities_of_interest.clone();
 
     loop {
         let demand = get_demand_profile(&commodities_of_interest, flow_map);
@@ -67,6 +68,13 @@ pub fn perform_agent_investment(
 
         // Get commodities of interest for next iteration
         commodities_of_interest = iter_commodities_consumed_by(&best_assets).collect();
+
+        // Check that there are no dependency loops between commodities
+        ensure!(
+            commodities_of_interest.is_disjoint(&already_seen_commodities),
+            "There is a demand loop between commodities. This is not permitted."
+        );
+        already_seen_commodities.extend(commodities_of_interest.iter().cloned());
 
         // Add assets to pool
         assets.extend(best_assets);
