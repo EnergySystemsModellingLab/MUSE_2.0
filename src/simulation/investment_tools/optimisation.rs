@@ -1,16 +1,14 @@
 //! Optimisation problem for investment tools.
-use crate::asset::AssetRef;
-use crate::simulation::investment_tools::constraints::{
+use super::super::prices::ReducedCosts;
+use super::constraints::{
     add_activity_constraints, add_capacity_constraint, add_demand_constraints,
 };
-use crate::simulation::investment_tools::costs::{
-    activity_cost, activity_surplus, annual_fixed_cost,
-};
-use crate::simulation::prices::ReducedCosts;
+use super::costs::{activity_cost, activity_surplus, annual_fixed_cost};
+use crate::asset::AssetRef;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{Activity, Capacity, Flow, MoneyPerActivity, MoneyPerCapacity};
 use anyhow::{anyhow, Result};
-use highs::{HighsModelStatus, RowProblem as Problem, Sense};
+use highs::{RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use std::collections::HashMap;
 
@@ -41,38 +39,43 @@ pub struct ResultsMap {
     pub capacity: Capacity,
     /// Activity variables in each time slice
     pub activity: IndexMap<TimeSliceID, Activity>,
-    /// Coefficients
-    pub coefficients: CoefficientsMap,
 }
 
-/// Methods for optimisation
-pub enum Method {
-    /// Levelised Cost of X (LCOX)
-    Lcox,
-    /// Net Present Value (NPV)
-    Npv,
-}
-
-/// Calculates the cost coefficients for a given method.
-fn calculate_coefficients_for_method(
+/// Calculates the cost coefficients for LCOX.
+pub fn calculate_coefficients_for_lcox(
     asset: &AssetRef,
     time_slice_info: &TimeSliceInfo,
     reduced_costs: &ReducedCosts,
-    method: &Method,
 ) -> CoefficientsMap {
     // Capacity coefficient
-    let capacity_coefficient = match method {
-        Method::Lcox => annual_fixed_cost(asset),
-        Method::Npv => -annual_fixed_cost(asset),
-    };
+    let capacity_coefficient = annual_fixed_cost(asset);
 
     // Activity coefficients
     let mut activity_coefficients = IndexMap::new();
     for time_slice in time_slice_info.iter_ids() {
-        let coefficient = match method {
-            Method::Lcox => activity_cost(asset, reduced_costs, time_slice.clone()),
-            Method::Npv => activity_surplus(asset, reduced_costs, time_slice.clone()),
-        };
+        let coefficient = activity_cost(asset, reduced_costs, time_slice.clone());
+        activity_coefficients.insert(time_slice.clone(), coefficient);
+    }
+
+    CoefficientsMap {
+        capacity_coefficient,
+        activity_coefficients,
+    }
+}
+
+/// Calculates the cost coefficients for NPV.
+pub fn calculate_coefficients_for_npv(
+    asset: &AssetRef,
+    time_slice_info: &TimeSliceInfo,
+    reduced_costs: &ReducedCosts,
+) -> CoefficientsMap {
+    // Capacity coefficient
+    let capacity_coefficient = -annual_fixed_cost(asset);
+
+    // Activity coefficients
+    let mut activity_coefficients = IndexMap::new();
+    for time_slice in time_slice_info.iter_ids() {
+        let coefficient = activity_surplus(asset, reduced_costs, time_slice.clone());
         activity_coefficients.insert(time_slice.clone(), coefficient);
     }
 
@@ -126,23 +129,19 @@ fn add_constraints(
 }
 
 /// Performs optimisation for a given method (LCOX or NPV).
-pub fn perform_optimisation_for_method(
+pub fn perform_optimisation(
     asset: &AssetRef,
+    coefficients: &CoefficientsMap,
+    demand: &HashMap<TimeSliceID, Flow>,
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
-    reduced_costs: &ReducedCosts,
-    demand: &HashMap<TimeSliceID, Flow>,
-    method: &Method,
+    minimise: bool,
 ) -> Result<ResultsMap> {
     // Set up problem
     let mut problem = Problem::default();
 
-    // Calculate coefficients
-    let coefficients =
-        calculate_coefficients_for_method(asset, time_slice_info, reduced_costs, method);
-
     // Add variables
-    let variables = add_variables(&mut problem, &coefficients);
+    let variables = add_variables(&mut problem, coefficients);
 
     // Add constraints
     add_constraints(
@@ -154,30 +153,24 @@ pub fn perform_optimisation_for_method(
         time_slice_info,
     );
 
-    // Perform optimisation
-    let sense = match method {
-        Method::Lcox => Sense::Minimise,
-        Method::Npv => Sense::Maximise,
-    };
-    let highs_model = problem.optimise(sense);
-
     // Solve model
-    let solved_model = highs_model.solve();
-    match solved_model.status() {
-        HighsModelStatus::Optimal => {
-            let solution = solved_model.get_solution();
-            let solution_values = solution.columns();
-            Ok(ResultsMap {
-                capacity: Capacity::new(solution_values[0]),
-                activity: variables
-                    .activity_vars
-                    .keys()
-                    .zip(solution_values[1..].iter())
-                    .map(|(time_slice, &value)| (time_slice.clone(), Activity::new(value)))
-                    .collect(),
-                coefficients,
-            })
-        }
-        status => Err(anyhow!("Could not solve: {status:?}")),
-    }
+    let sense = match minimise {
+        true => Sense::Minimise,
+        false => Sense::Maximise,
+    };
+    let solution = problem
+        .optimise(sense)
+        .try_solve()
+        .map_err(|status| anyhow!("Could not solve: {status:?}"))?
+        .get_solution();
+    let solution_values = solution.columns();
+    Ok(ResultsMap {
+        capacity: Capacity::new(solution_values[0]),
+        activity: variables
+            .activity_vars
+            .keys()
+            .zip(solution_values[1..].iter())
+            .map(|(time_slice, &value)| (time_slice.clone(), Activity::new(value)))
+            .collect(),
+    })
 }

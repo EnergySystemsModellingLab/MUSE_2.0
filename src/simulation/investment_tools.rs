@@ -1,15 +1,18 @@
 //! Calculation for investment tools such as Levelised Cost of X (LCOX) and Net Present Value (NPV).
 use crate::asset::AssetRef;
 use crate::finance::{lcox, profitability_index};
-use crate::simulation::investment_tools::optimisation::{perform_optimisation_for_method, Method};
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{Capacity, Dimensionless, Flow, MoneyPerActivity};
+use anyhow::Result;
 use std::collections::HashMap;
 
 mod constraints;
 mod costs;
 mod optimisation;
+use optimisation::{
+    calculate_coefficients_for_lcox, calculate_coefficients_for_npv, perform_optimisation,
+};
 
 /// Calculate LCOX based on the specified reduced costs and demand for a particular tranche.
 ///
@@ -26,28 +29,23 @@ pub fn calculate_lcox(
     demand: &HashMap<TimeSliceID, Flow>,
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
-) -> (
-    MoneyPerActivity,
-    Option<Capacity>,
-    HashMap<TimeSliceID, Flow>,
-) {
+) -> Result<(MoneyPerActivity, Capacity, HashMap<TimeSliceID, Flow>)> {
+    // Calculate coefficients
+    let coefficients = calculate_coefficients_for_lcox(asset, time_slice_info, reduced_costs);
+
     // Perform optimisation to calculate capacity and activity
-    let results = perform_optimisation_for_method(
+    let results = perform_optimisation(
         asset,
+        &coefficients,
+        demand,
         time_slice_info,
         time_slice_level,
-        reduced_costs,
-        demand,
-        &Method::Lcox,
-    )
-    .unwrap();
-
-    // Extract capacity result for candidate assets
-    let new_capacity = (!asset.is_commissioned()).then_some(results.capacity);
+        true,
+    )?;
 
     // Calculate LCOX
-    let annual_fixed_cost = results.coefficients.capacity_coefficient;
-    let activity_costs = results.coefficients.activity_coefficients;
+    let annual_fixed_cost = coefficients.capacity_coefficient;
+    let activity_costs = coefficients.activity_coefficients;
     let lcox = lcox(
         results.capacity,
         annual_fixed_cost,
@@ -58,7 +56,7 @@ pub fn calculate_lcox(
     // Placeholder for unmet demand (**TODO.**)
     let unmet = demand.keys().cloned().map(|ts| (ts, Flow(0.0))).collect();
 
-    (lcox, new_capacity, unmet)
+    Ok((lcox, results.capacity, unmet))
 }
 
 /// Calculate NPV based on the specified reduced costs and demand for a particular tranche.
@@ -68,24 +66,23 @@ pub fn calculate_npv(
     demand: &HashMap<TimeSliceID, Flow>,
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
-) -> (Dimensionless, Option<Capacity>) {
+) -> Result<(Dimensionless, Capacity)> {
+    // Calculate coefficients
+    let coefficients = calculate_coefficients_for_npv(asset, time_slice_info, reduced_costs);
+
     // Perform optimisation to calculate capacity and activity
-    let results = perform_optimisation_for_method(
+    let results = perform_optimisation(
         asset,
+        &coefficients,
+        demand,
         time_slice_info,
         time_slice_level,
-        reduced_costs,
-        demand,
-        &Method::Npv,
-    )
-    .unwrap();
-
-    // Extract capacity result for candidate assets
-    let new_capacity = (!asset.is_commissioned()).then_some(results.capacity);
+        false,
+    )?;
 
     // Calculate profitability index
-    let annual_fixed_cost = -results.coefficients.capacity_coefficient;
-    let activity_surpluses = results.coefficients.activity_coefficients;
+    let annual_fixed_cost = -coefficients.capacity_coefficient;
+    let activity_surpluses = coefficients.activity_coefficients;
     let profitability_index = profitability_index(
         results.capacity,
         annual_fixed_cost,
@@ -93,5 +90,5 @@ pub fn calculate_npv(
         &activity_surpluses,
     );
 
-    (profitability_index, new_capacity)
+    Ok((profitability_index, results.capacity))
 }

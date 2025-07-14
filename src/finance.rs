@@ -17,7 +17,7 @@ pub fn capital_recovery_factor(lifetime: u32, discount_rate: Dimensionless) -> D
     (discount_rate * factor) / (factor - Dimensionless(1.0))
 }
 
-/// Calculates the annual capital cost for a technology per unit of capacity
+/// Calculates the annual capital cost for a process per unit of capacity
 pub fn annual_capital_cost(
     capital_cost: MoneyPerCapacity,
     lifetime: u32,
@@ -45,7 +45,7 @@ pub fn profitability_index(
         total_annualised_surplus += activity_surplus * *activity;
     }
 
-    annualised_fixed_cost / total_annualised_surplus
+    total_annualised_surplus / annualised_fixed_cost
 }
 
 /// Calculates annual LCOX based on capacity and activity.

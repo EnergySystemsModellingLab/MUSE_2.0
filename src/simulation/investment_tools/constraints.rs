@@ -1,6 +1,6 @@
 //! Constraints for the optimisation problem.
+use super::optimisation::Variable;
 use crate::asset::AssetRef;
-use crate::simulation::investment_tools::optimisation::Variable;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::Flow;
 use highs::RowProblem as Problem;
