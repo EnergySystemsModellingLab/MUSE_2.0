@@ -154,6 +154,9 @@ where
                 } else {
                     0.0
                 };
+
+                debug!("Adding commodity balance constraint (commodity: {commodity_id}, region: {region_id}, time slice(s): {ts_selection}): \
+                       LHS: [{terms:?}]; RHS: {rhs}");
                 problem.add_row(rhs..=rhs, terms.drain(..));
                 keys.push((
                     commodity_id.clone(),
@@ -184,7 +187,13 @@ fn add_activity_constraints(problem: &mut Problem, variables: &VariableMap) -> A
         let limits = asset.get_activity_limits(time_slice);
         let limits = limits.start().value()..=limits.end().value();
 
-        problem.add_row(limits, [(var, 1.0)]);
+        let term = [(var, 1.0)];
+        debug!(
+            "Adding activity constraint (process: {}, time slice: {}): \
+               LHS: {:?}; RHS: {:?}",
+            asset.process.id, time_slice, term, limits
+        );
+        problem.add_row(limits, term);
         keys.push((asset.clone(), time_slice.clone()))
     }
 
