@@ -14,9 +14,10 @@ use std::collections::HashMap;
 /// - For a candidate asset, the capacity is variable between zero and an upper bound.
 pub fn add_capacity_constraint(problem: &mut Problem, asset: &AssetRef, capacity_var: Variable) {
     let capacity = asset.capacity;
-    let bounds = match asset.is_commissioned() {
-        true => capacity.value()..=capacity.value(),
-        false => 0.0..=capacity.value(),
+    let bounds = if asset.is_commissioned() {
+        capacity.value()..=capacity.value()
+    } else {
+        0.0..=capacity.value()
     };
     problem.add_row(bounds, [(capacity_var, 1.0)]);
 }
@@ -37,11 +38,10 @@ pub fn add_activity_constraints(
     capacity_var: Variable,
     activity_vars: &IndexMap<TimeSliceID, Variable>,
 ) {
-    match asset.is_commissioned() {
-        true => add_activity_constraints_for_existing(problem, asset, activity_vars),
-        false => {
-            add_activity_constraints_for_candidate(problem, asset, capacity_var, activity_vars)
-        }
+    if asset.is_commissioned() {
+        add_activity_constraints_for_existing(problem, asset, activity_vars)
+    } else {
+        add_activity_constraints_for_candidate(problem, asset, capacity_var, activity_vars)
     }
 }
 

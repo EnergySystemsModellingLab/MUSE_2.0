@@ -40,7 +40,7 @@ pub fn calculate_lcox(
         demand,
         time_slice_info,
         time_slice_level,
-        true,
+        highs::Sense::Minimise,
     )?;
 
     // Calculate LCOX
@@ -77,7 +77,7 @@ pub fn calculate_npv(
         demand,
         time_slice_info,
         time_slice_level,
-        false,
+        highs::Sense::Maximise,
     )?;
 
     // Calculate profitability index

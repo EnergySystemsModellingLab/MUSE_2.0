@@ -76,7 +76,7 @@ fn add_constraints(
 
 /// Performs optimisation for an asset, given the coefficients and demand.
 ///
-/// Will either maximise or minimise the objective function, depending on the `minimise` parameter.
+/// Will either maximise or minimise the objective function, depending on the `sense` parameter.
 ///
 /// **TODO.**: Will need to modify constraints to handle unmet demand variables in LCOX case
 pub fn perform_optimisation(
@@ -85,7 +85,7 @@ pub fn perform_optimisation(
     demand: &HashMap<TimeSliceID, Flow>,
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
-    minimise: bool,
+    sense: Sense,
 ) -> Result<ResultsMap> {
     // Set up problem
     let mut problem = Problem::default();
@@ -104,10 +104,6 @@ pub fn perform_optimisation(
     );
 
     // Solve model
-    let sense = match minimise {
-        true => Sense::Minimise,
-        false => Sense::Maximise,
-    };
     let solution = problem
         .optimise(sense)
         .try_solve()

@@ -29,9 +29,10 @@ pub fn activity_surplus(
 /// - For a commissioned asset, this only includes operating costs.
 /// - For a candidate asset, this includes both operating and capital costs.
 pub fn annual_fixed_cost(asset: &AssetRef) -> MoneyPerCapacity {
-    match asset.is_commissioned() {
-        true => annual_fixed_cost_for_existing(asset),
-        false => annual_fixed_cost_for_candidate(asset),
+    if asset.is_commissioned() {
+        annual_fixed_cost_for_existing(asset)
+    } else {
+        annual_fixed_cost_for_candidate(asset)
     }
 }
 
