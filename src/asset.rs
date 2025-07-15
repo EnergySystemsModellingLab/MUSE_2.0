@@ -17,7 +17,7 @@ use std::rc::Rc;
 pub struct AssetID(u32);
 
 /// An asset controlled by an agent.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Asset {
     /// A unique identifier for the asset
     pub id: Option<AssetID>,
@@ -139,6 +139,19 @@ impl Asset {
     /// Iterate over the asset's flows
     pub fn iter_flows(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.get_flows_map().values()
+    }
+}
+
+impl std::fmt::Debug for Asset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Asset")
+            .field("id", &self.id)
+            .field("agent_id", &self.agent_id)
+            .field("process", &self.process.id)
+            .field("region_id", &self.region_id)
+            .field("capacity", &self.capacity)
+            .field("commission_year", &self.commission_year)
+            .finish()
     }
 }
 
