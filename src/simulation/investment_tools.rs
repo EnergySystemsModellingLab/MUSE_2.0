@@ -53,7 +53,7 @@ pub trait ToolOutput {
 }
 
 /// Additional output data for LCOX
-pub struct LCOXOutput {
+struct LCOXOutput {
     cost_index: MoneyPerActivity,
     unmet_demand: HashMap<TimeSliceID, Flow>,
 }
@@ -74,7 +74,7 @@ impl ToolOutput for LCOXOutput {
 }
 
 /// Additional output data for NPV
-pub struct NPVOutput {
+struct NPVOutput {
     profitability_index: Dimensionless,
     activity: IndexMap<TimeSliceID, Activity>,
 }
@@ -113,7 +113,7 @@ impl ToolOutput for NPVOutput {
 /// # Returns
 ///
 /// Required capacity for asset and additional information in [`LCOXOutput`].
-pub fn calculate_lcox(
+fn calculate_lcox(
     asset: &AssetRef,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
@@ -160,7 +160,7 @@ pub fn calculate_lcox(
 /// # Returns
 ///
 /// Required capacity for asset and additional information in [`NPVOutput`].
-pub fn calculate_npv(
+fn calculate_npv(
     asset: &AssetRef,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
