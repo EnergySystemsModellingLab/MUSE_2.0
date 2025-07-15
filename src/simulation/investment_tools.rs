@@ -1,4 +1,5 @@
 //! Calculation for investment tools such as Levelised Cost of X (LCOX) and Net Present Value (NPV).
+use crate::agent::ObjectiveType;
 use crate::asset::{Asset, AssetRef};
 use crate::commodity::CommodityID;
 use crate::finance::{lcox, profitability_index};
@@ -196,4 +197,39 @@ pub fn calculate_npv(
             activity: results.activity,
         },
     ))
+}
+
+/// Appraise the given investment with the specified objective type
+pub fn appraise_investment(
+    asset: &AssetRef,
+    objective_type: &ObjectiveType,
+    reduced_costs: &ReducedCosts,
+    demand: &DemandMap,
+    time_slice_info: &TimeSliceInfo,
+    time_slice_level: TimeSliceLevel,
+) -> Result<AppraisalOutput> {
+    // Macro to reduce boilerplate
+    macro_rules! appraisal_method {
+        ($fn: ident) => {{
+            let (capacity, output) = $fn(
+                asset,
+                reduced_costs,
+                demand,
+                time_slice_info,
+                time_slice_level,
+            )?;
+
+            Ok(AppraisalOutput {
+                asset: asset.clone(),
+                capacity,
+                tool_output: Box::new(output),
+            })
+        }};
+    }
+
+    // Delegate appraisal to relevant function
+    match objective_type {
+        ObjectiveType::LevelisedCostOfX => appraisal_method!(calculate_lcox),
+        ObjectiveType::NetPresentValue => appraisal_method!(calculate_npv),
+    }
 }
