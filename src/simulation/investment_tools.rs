@@ -14,6 +14,9 @@ mod optimisation;
 use coefficients::{calculate_coefficients_for_lcox, calculate_coefficients_for_npv};
 use optimisation::perform_optimisation;
 
+/// A map of demand across time slices
+pub type DemandMap = HashMap<TimeSliceID, Flow>;
+
 /// Calculate LCOX based on the specified reduced costs and demand for a particular tranche.
 ///
 /// This is more commonly referred to as Levelised Cost of *Electricity*, but as the model can
@@ -26,10 +29,10 @@ use optimisation::perform_optimisation;
 pub fn calculate_lcox(
     asset: &AssetRef,
     reduced_costs: &ReducedCosts,
-    demand: &HashMap<TimeSliceID, Flow>,
+    demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
-) -> Result<(MoneyPerActivity, Capacity, HashMap<TimeSliceID, Flow>)> {
+) -> Result<(MoneyPerActivity, Capacity, DemandMap)> {
     // Calculate coefficients
     let coefficients = calculate_coefficients_for_lcox(asset, time_slice_info, reduced_costs);
 
@@ -63,7 +66,7 @@ pub fn calculate_lcox(
 pub fn calculate_npv(
     asset: &AssetRef,
     reduced_costs: &ReducedCosts,
-    demand: &HashMap<TimeSliceID, Flow>,
+    demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
 ) -> Result<(Dimensionless, Capacity)> {
