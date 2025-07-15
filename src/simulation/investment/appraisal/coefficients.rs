@@ -1,7 +1,7 @@
 //! Calculation of cost coefficients for investment tools.
-use super::super::prices::ReducedCosts;
 use super::costs::{activity_cost, activity_surplus, annual_fixed_cost};
 use crate::asset::AssetRef;
+use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{MoneyPerActivity, MoneyPerCapacity};
 use indexmap::IndexMap;
