@@ -4,7 +4,7 @@ use crate::commodity::CommodityID;
 use crate::process::{Process, ProcessFlow, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
-use crate::units::{Activity, Capacity, MoneyPerActivity};
+use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity};
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -100,6 +100,24 @@ impl Asset {
 
         // limits in real units (which are user defined)
         (max_act * *limits.start())..=(max_act * *limits.end())
+    }
+
+    /// Get the activity limits per unit of capacity for this asset in a particular time slice
+    pub fn get_activity_per_capacity_limits(
+        &self,
+        time_slice: &TimeSliceID,
+    ) -> RangeInclusive<ActivityPerCapacity> {
+        let limits = self
+            .process
+            .activity_limits
+            .get(&(
+                self.region_id.clone(),
+                self.commission_year,
+                time_slice.clone(),
+            ))
+            .unwrap();
+        let cap2act = self.process_parameter.capacity_to_activity;
+        (cap2act * *limits.start())..=(cap2act * *limits.end())
     }
 
     /// Get the operating cost for this asset in a given year and time slice

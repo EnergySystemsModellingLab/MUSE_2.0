@@ -81,4 +81,7 @@ pub enum ObjectiveType {
     /// Average cost of one unit of output commodity over its lifetime
     #[string = "lcox"]
     LevelisedCostOfX,
+    /// Net present value
+    #[string = "npv"]
+    NetPresentValue,
 }
