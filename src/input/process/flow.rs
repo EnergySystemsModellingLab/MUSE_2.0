@@ -163,16 +163,16 @@ fn validate_flows_and_update_primary_output(
                 .get(&(process_id.clone(), region_id.clone(), year))
                 .unwrap();
 
-            let inferred_primary_output = validate_or_infer_primary_output(flows, primary_outputs)
+            let primary_output = try_get_primary_output(flows, primary_outputs)
                 .with_context(|| {
                     format!(
                     "Invalid primary output configuration for process {process_id} (region: {region_id}, year: {year})"
                 )
                 })?;
 
-            // The primary output was inferred (i.e. there was one output flow which wasn't assigned
-            // a value for is_primary_output). Update map.
-            if let Some(primary_output) = inferred_primary_output {
+            // If there is a primary output (either specified explicitly or inferred), we need to
+            // update the map
+            if let Some(primary_output) = primary_output {
                 flows.get_mut(&primary_output).unwrap().is_primary_output = true;
             }
         }
@@ -181,11 +181,11 @@ fn validate_flows_and_update_primary_output(
     Ok(())
 }
 
-fn validate_or_infer_primary_output(
+fn try_get_primary_output(
     flows_map: &IndexMap<CommodityID, ProcessFlow>,
     primary_outputs: &PrimaryOutputsValues,
 ) -> Result<Option<CommodityID>> {
-    let mut has_primary = false;
+    let mut explicit_primary_output = None;
     let mut output_flow = None;
     let mut outputs_count = 0;
     for (commodity_id, is_primary_output) in primary_outputs.iter() {
@@ -200,10 +200,10 @@ fn validate_or_infer_primary_output(
                     "Commodity {commodity_id} cannot be the primary output as it is an input flow"
                 );
                 ensure!(
-                    !has_primary,
+                    explicit_primary_output.is_none(),
                     "Multiple commodities designated as primary outputs"
                 );
-                has_primary = true;
+                explicit_primary_output = Some(commodity_id.clone());
             }
             None if is_output => {
                 output_flow = Some(commodity_id.clone());
@@ -213,8 +213,8 @@ fn validate_or_infer_primary_output(
     }
 
     // If all flows are inputs or user has designated a primary output explicitly, we're done
-    if has_primary || outputs_count == 0 {
-        return Ok(None);
+    if explicit_primary_output.is_some() || outputs_count == 0 {
+        return Ok(explicit_primary_output);
     }
 
     ensure!(
@@ -322,8 +322,8 @@ mod tests {
         let mut flows = IndexMap::new();
         flows.insert("commodity1".into(), flow(Rc::clone(&c1), 1.0));
         let primary_outputs = vec![("commodity1".into(), Some(true))];
-        let res = validate_or_infer_primary_output(&flows, &primary_outputs).unwrap();
-        assert_eq!(res, None);
+        let res = try_get_primary_output(&flows, &primary_outputs).unwrap();
+        assert_eq!(res, Some("commodity1".into()));
     }
 
     #[rstest]
@@ -343,8 +343,8 @@ mod tests {
         flows.insert("c1".into(), flow(Rc::clone(&c1), 1.0));
         flows.insert("c2".into(), flow(Rc::clone(&c2), 2.0));
         let primary_outputs = vec![("c1".into(), Some(true)), ("c2".into(), None)];
-        let res = validate_or_infer_primary_output(&flows, &primary_outputs).unwrap();
-        assert_eq!(res, None);
+        let res = try_get_primary_output(&flows, &primary_outputs).unwrap();
+        assert_eq!(res, Some("c1".into()));
     }
 
     #[rstest]
@@ -364,7 +364,7 @@ mod tests {
         flows.insert("c1".into(), flow(Rc::clone(&c1), 1.0));
         flows.insert("c2".into(), flow(Rc::clone(&c2), 2.0));
         let primary_outputs = vec![("c1".into(), None), ("c2".into(), None)];
-        let res = validate_or_infer_primary_output(&flows, &primary_outputs);
+        let res = try_get_primary_output(&flows, &primary_outputs);
         assert!(res.is_err());
     }
 
@@ -385,7 +385,7 @@ mod tests {
         flows.insert("c1".into(), flow(Rc::clone(&c1), 1.0));
         flows.insert("c2".into(), flow(Rc::clone(&c2), 2.0));
         let primary_outputs = vec![("c1".into(), Some(false)), ("c2".into(), Some(false))];
-        let res = validate_or_infer_primary_output(&flows, &primary_outputs);
+        let res = try_get_primary_output(&flows, &primary_outputs);
         assert!(res.is_err());
     }
 
@@ -406,7 +406,7 @@ mod tests {
         flows.insert("c1".into(), flow(Rc::clone(&c1), -1.0));
         flows.insert("c2".into(), flow(Rc::clone(&c2), -2.0));
         let primary_outputs = vec![("c1".into(), None), ("c2".into(), None)];
-        let res = validate_or_infer_primary_output(&flows, &primary_outputs).unwrap();
+        let res = try_get_primary_output(&flows, &primary_outputs).unwrap();
         assert_eq!(res, None);
     }
 
@@ -427,7 +427,7 @@ mod tests {
         flows.insert("c1".into(), flow(Rc::clone(&c1), 1.0));
         flows.insert("c2".into(), flow(Rc::clone(&c2), 2.0));
         let primary_outputs = vec![("c1".into(), Some(true)), ("c2".into(), Some(true))];
-        let res = validate_or_infer_primary_output(&flows, &primary_outputs);
+        let res = try_get_primary_output(&flows, &primary_outputs);
         assert!(res.is_err());
     }
 
@@ -448,7 +448,7 @@ mod tests {
         flows.insert("c1".into(), flow(Rc::clone(&c1), -1.0));
         flows.insert("c2".into(), flow(Rc::clone(&c2), 2.0));
         let primary_outputs = vec![("c1".into(), Some(true)), ("c2".into(), None)];
-        let res = validate_or_infer_primary_output(&flows, &primary_outputs);
+        let res = try_get_primary_output(&flows, &primary_outputs);
         assert!(res.is_err());
     }
 }
