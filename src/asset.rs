@@ -358,6 +358,11 @@ impl AssetPool {
         // New pool may not have been sorted, but active needs to be sorted by ID
         self.active.sort();
     }
+
+    /// Return current active pool and clear
+    pub fn take(&mut self) -> Vec<AssetRef> {
+        std::mem::take(&mut self.active)
+    }
 }
 
 /// Additional methods for iterating over assets
