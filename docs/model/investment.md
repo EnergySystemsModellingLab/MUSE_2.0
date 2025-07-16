@@ -156,7 +156,9 @@ providing investment and dynamic decommissioning decisions.
 5. Keep going until there is no \\( D[c] \\) left. Will need to handle a situation where we run out
    of candidate and existing assets and demand is still present.
 
-### Tool A: NPV
+### Tools
+
+#### Tool A: NPV
 
 This method is used when decision rule is single objective and objective is annualised profit for
 agents’ serving commodity \\( c \\). This method iteratively builds a supply portfolio by selecting
@@ -193,7 +195,7 @@ operational constraints (e.g., minimum load levels) and the balance level of the
 - **Save information:** Save \\( opt \\) information. If this is the last \\( opt \\) then exit this
   loop.
 
-## Tool B: LCOX
+#### Tool B: LCOX
 
 This method is used when decision rule is single objective and objective is LCOX for agents’ serving
 commodity \\( c \\). This method constructs a supply portfolio (from new candidates \\( ca \\), new
