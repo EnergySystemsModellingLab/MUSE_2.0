@@ -8,7 +8,7 @@ use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{Capacity, Flow};
-use anyhow::Result;
+use anyhow::{ensure, Result};
 use indexmap::IndexSet;
 use itertools::chain;
 use log::info;
@@ -88,9 +88,10 @@ pub fn perform_agent_investment(
                 // Choose assets from among existing pool and candidates
                 let best_assets = select_best_assets(
                     opt_assets,
+                    commodity_id,
                     objective_type,
                     reduced_costs,
-                    &demand_for_commodity,
+                    demand_for_commodity,
                     &model.time_slice_info,
                     time_slice_level,
                 )?;
@@ -257,46 +258,95 @@ fn get_candidate_assets<'a>(
 
 /// Get the best assets for meeting demand for the given commodity
 fn select_best_assets(
-    opt_assets: Vec<AssetRef>,
+    mut opt_assets: Vec<AssetRef>,
+    commodity_id: &CommodityID,
     objective_type: &ObjectiveType,
     reduced_costs: &ReducedCosts,
-    demand: &DemandMap,
+    mut demand: DemandMap,
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
-) -> Result<impl Iterator<Item = AssetRef>> {
-    // **TODO:** Loop while demand is unmet
-    let mut current_best: Option<AppraisalOutput> = None;
-    for asset in opt_assets.iter() {
-        // Investment appraisal
-        let output = appraise_investment(
-            asset,
-            objective_type,
-            reduced_costs,
-            demand,
-            time_slice_info,
-            time_slice_level,
-        )?;
+) -> Result<Vec<AssetRef>> {
+    let mut best_assets: Vec<AssetRef> = Vec::new();
 
-        if current_best
-            .as_ref()
-            .is_none_or(|best_output| output.is_better_than(best_output))
-        {
-            current_best = Some(output);
+    while is_remaining_unmet_demand(&demand) {
+        ensure!(
+            !opt_assets.is_empty(),
+            "Failed to meet demand for commodity '{commodity_id}' with provided assets"
+        );
+
+        let mut current_best: Option<AppraisalOutput> = None;
+        for asset in opt_assets.iter() {
+            let output = appraise_investment(
+                asset,
+                objective_type,
+                reduced_costs,
+                &demand,
+                time_slice_info,
+                time_slice_level,
+            )?;
+
+            if current_best
+                .as_ref()
+                .is_none_or(|best_output| output.is_better_than(best_output))
+            {
+                current_best = Some(output);
+            }
         }
+
+        let best_output = current_best.expect("No assets given");
+        let (asset, capacity, unmet_demand) = best_output.into_parts(commodity_id, demand);
+        demand = unmet_demand;
+
+        update_assets(asset, capacity, &mut opt_assets, &mut best_assets);
     }
 
-    let best_output = current_best.expect("No assets given");
-    let mut best_asset = best_output.asset;
+    Ok(best_assets)
+}
 
-    drop(opt_assets); // drop so there's (probably) only one reference to best_asset
+/// Check whether there is any remaining demand that is unmet in any time slice
+fn is_remaining_unmet_demand(demand: &HashMap<TimeSliceID, Flow>) -> bool {
+    demand.values().any(|flow| *flow > Flow(0.0))
+}
 
-    // If a candidate asset, we need to set the capacity
+/// Update capacity of chosen asset, if needed, and update both asset options and chosen assets
+fn update_assets(
+    mut best_asset: AssetRef,
+    capacity: Capacity,
+    opt_assets: &mut Vec<AssetRef>,
+    best_assets: &mut Vec<AssetRef>,
+) {
+    // New capacity given for candidates only
     if !best_asset.is_commissioned() {
-        best_asset.make_mut().capacity = best_output.capacity;
-    }
+        // Get a reference to the copy of the asset in opt_assets
+        let (old_idx, old) = opt_assets
+            .iter_mut()
+            .enumerate()
+            .find(|(_, asset)| **asset == best_asset)
+            .unwrap();
 
-    // Just return this one asset for now
-    Ok(std::iter::once(best_asset))
+        // Remove this capacity from the available remaining capacity for this asset
+        old.make_mut().capacity -= capacity;
+
+        // If there's no capacity remaining, remove the asset from the options
+        if old.capacity <= Capacity(0.0) {
+            opt_assets.swap_remove(old_idx);
+        }
+
+        if let Some(existing_asset) = best_assets.iter_mut().find(|asset| **asset == best_asset) {
+            // Add the additional required capacity
+            existing_asset.make_mut().capacity += capacity;
+        } else {
+            // Update the capacity of the chosen asset
+            best_asset.make_mut().capacity = capacity;
+
+            best_assets.push(best_asset);
+        };
+    } else {
+        // Remove this asset from the options
+        opt_assets.retain(|asset| *asset != best_asset);
+
+        best_assets.push(best_asset);
+    }
 }
 
 #[cfg(test)]
