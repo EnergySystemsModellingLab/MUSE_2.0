@@ -138,11 +138,10 @@ impl Solution<'_> {
         variable_idx: &Range<usize>,
         output: &'a [f64],
     ) -> impl Iterator<Item = (&'a AssetRef, &'a TimeSliceID, T)> {
-        assert!(variable_idx.end <= output.len());
-        self.variables
-            .0
-            .keys()
-            .zip(output[variable_idx.clone()].iter())
+        let keys = self.variables.0.keys().skip(variable_idx.start);
+        assert!(keys.len() >= variable_idx.len());
+
+        keys.zip(output[variable_idx.clone()].iter())
             .map(|((asset, time_slice), value)| (asset, time_slice, T::new(*value)))
     }
 }
