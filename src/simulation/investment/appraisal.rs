@@ -36,17 +36,17 @@ impl AppraisalOutput {
         self.tool_output.comparison_metric() < other.tool_output.comparison_metric()
     }
 
-    /// Convert this [`AppraisalOutput`] into the remaining demand if the asset were selected.
-    pub fn into_unmet_demand(
+    /// Convert this [`AppraisalOutput`] into an asset, the required capacity and unmet demand
+    pub fn into_parts(
         mut self,
         commodity_id: &CommodityID,
         previous_demand: DemandMap,
-    ) -> DemandMap {
+    ) -> (AssetRef, Capacity, DemandMap) {
         let mut demand = previous_demand;
         self.tool_output
             .update_demand(&self.asset, commodity_id, &mut demand);
 
-        demand
+        (self.asset, self.capacity, demand)
     }
 }
 
