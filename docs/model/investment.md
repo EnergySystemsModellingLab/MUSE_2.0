@@ -73,8 +73,8 @@ providing investment and dynamic decommissioning decisions.
 
 ### Pre-calculation of metrics for each supply option
 
-- Annualized fixed costs per unit of capacity (\\( AFC_{opt,r} \\)): For new candidates, this is
-  their annualized CAPEX plus FOM. For existing assets, the relevant fixed cost is its FOM.
+- Annualised fixed costs per unit of capacity (\\( AFC_{opt,r} \\)): For new candidates, this is
+  their annualised CAPEX plus FOM. For existing assets, the relevant fixed cost is its FOM.
 
 - **Determine candidate asset reduced cost or equivalent for existing assets:** For candidate
   assets, if \\( ScarcityPricing \\) is active, candidate asset reduced costs are as provided by the
@@ -127,7 +127,7 @@ providing investment and dynamic decommissioning decisions.
 
 ### Initialise demand profiles for commodity of interest
 
-- Initialize \\( D[c,t] \\) from the MSY dispatch run output \\( U_c \\).
+- Initialise \\( D[c,t] \\) from the MSY dispatch run output \\( U_c \\).
 
 - We break down the demand profile into tranches. The first tranche for investment consideration is
   that with the highest load factor. The size of this tranche is the overall peak demand divided by
@@ -161,8 +161,8 @@ economic evaluation uses \\( \pi_{prevMSY} \\) prices and takes account of asset
 operational constraints (e.g., minimum load levels) and the balance level of the target commodity
 (time slice profile, seasonal or annual).
 
-- **Choose capacity and dispatch to maximise annualised profit:** Solve a small optimization
-  sub-problem to maximize the asset’s surplus, subject to its operational rules and the specific
+- **Choose capacity and dispatch to maximise annualised profit:** Solve a small optimisation
+  sub-problem to maximise the asset’s surplus, subject to its operational rules and the specific
   demand tranche it is being asked to serve. Define \\( SurplusPerAct_{opt,t} = - RC^*_{opt,r,t}
   \\).
 
@@ -198,8 +198,8 @@ explicitly accounts for its own operational constraints and adapts based on the 
 milestone year (\\( \pi_{prevMSY} \\)), for priced commodities. Inputs and outputs for unpriced
 commodities are set to zero, and the commodity of interest is assumed to have zero value.
 
-- **Choose capacity and dispatch to minimise annualised cost:** Solve a small optimization
-  sub-problem to maximize the asset’s surplus, subject to its operational rules and the specific
+- **Choose capacity and dispatch to minimise annualised cost:** Solve a small optimisation
+  sub-problem to maximise the asset’s surplus, subject to its operational rules and the specific
   demand tranche it is being asked to serve. Define \\( CostPerAct_{opt,t} = RC^*_{opt,r,t} \\).
 
   \\[
