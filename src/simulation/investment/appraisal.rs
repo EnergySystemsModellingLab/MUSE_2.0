@@ -40,16 +40,10 @@ pub trait ToolOutput {
     /// It is a logic error to compare comparison metrics returned by different appraisal tools.
     fn comparison_metric(&self) -> f64;
 
-    /// Convert this [`ToolOutput`] into a map of the remaining demand, if the asset were selected.
+    /// Update the demand, if the appraised asset is selected.
     ///
-    /// It is assumed that `previous_demand` has entries for every time slice and it is a logic
-    /// error if not.
-    fn into_unmet_demand(
-        self,
-        asset: &Asset,
-        commodity_id: &CommodityID,
-        previous_demand: DemandMap,
-    ) -> DemandMap;
+    /// This function should only be called once and may panic if called subsequently.
+    fn update_demand(&mut self, asset: &Asset, commodity_id: &CommodityID, demand: &mut DemandMap);
 }
 
 /// Additional output data for LCOX
@@ -63,13 +57,14 @@ impl ToolOutput for LCOXOutput {
         self.cost_index.value()
     }
 
-    fn into_unmet_demand(
-        self,
+    fn update_demand(
+        &mut self,
         _asset: &Asset,
         _commodity_id: &CommodityID,
-        _previous_demand: DemandMap,
-    ) -> DemandMap {
-        self.unmet_demand
+        demand: &mut DemandMap,
+    ) {
+        assert!(!self.unmet_demand.is_empty(), "update_demand called twice");
+        *demand = std::mem::take(&mut self.unmet_demand);
     }
 }
 
@@ -86,22 +81,14 @@ impl ToolOutput for NPVOutput {
         -self.profitability_index.value()
     }
 
-    fn into_unmet_demand(
-        self,
-        asset: &Asset,
-        commodity_id: &CommodityID,
-        previous_demand: DemandMap,
-    ) -> DemandMap {
+    fn update_demand(&mut self, asset: &Asset, commodity_id: &CommodityID, demand: &mut DemandMap) {
         let coeff = asset.get_flow(commodity_id).unwrap().coeff;
 
         // Subtract the flow produced by this asset for this commodity from previous demand
-        let mut demand = previous_demand;
         for (time_slice, demand) in demand.iter_mut() {
             let activity = self.activity.get(time_slice).unwrap();
             *demand -= *activity * coeff;
         }
-
-        demand
     }
 }
 
@@ -263,14 +250,15 @@ mod tests {
         commodity_id: CommodityID,
         time_slice: TimeSliceID,
     ) {
-        let mut unmet = HashMap::new();
-        unmet.insert(time_slice.clone(), Flow::new(3.0));
-        let output = LCOXOutput {
+        let mut demand = HashMap::new();
+        demand.insert(time_slice.clone(), Flow::new(3.0));
+        let demand2 = demand.clone();
+        let mut output = LCOXOutput {
             cost_index: MoneyPerActivity::new(1.0),
-            unmet_demand: unmet.clone(),
+            unmet_demand: demand.clone(),
         };
-        let result = output.into_unmet_demand(&asset, &commodity_id, HashMap::new());
-        assert_eq!(result, unmet);
+        output.update_demand(&asset, &commodity_id, &mut demand);
+        assert_eq!(demand, demand2);
     }
 
     #[rstest]
@@ -316,15 +304,15 @@ mod tests {
         asset.process = Rc::new(process);
         let mut activity = IndexMap::new();
         activity.insert(time_slice.clone(), Activity::new(5.0));
-        let mut prev_demand = HashMap::new();
-        prev_demand.insert(time_slice.clone(), Flow::new(20.0));
-        let output = NPVOutput {
+        let mut demand = HashMap::new();
+        demand.insert(time_slice.clone(), Flow::new(20.0));
+        let mut output = NPVOutput {
             profitability_index: Dimensionless::new(1.0),
             activity,
         };
-        let result = output.into_unmet_demand(&asset, &commodity_id, prev_demand.clone());
+        output.update_demand(&asset, &commodity_id, &mut demand);
         // Should subtract activity * coeff from prev_demand
         let expected = 20.0 - 5.0 * 2.0;
-        assert_eq!(result[&time_slice], Flow::new(expected));
+        assert_eq!(demand[&time_slice], Flow::new(expected));
     }
 }
