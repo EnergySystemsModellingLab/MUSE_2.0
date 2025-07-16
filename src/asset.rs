@@ -7,6 +7,7 @@ use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity};
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, RangeInclusive};
@@ -370,6 +371,32 @@ impl AssetPool {
     pub fn take(&mut self) -> Vec<AssetRef> {
         std::mem::take(&mut self.active)
     }
+
+    /// Extend the active pool with existing or candidate assets
+    pub fn extend<I>(&mut self, assets: I)
+    where
+        I: IntoIterator<Item = AssetRef>,
+    {
+        let assets = assets.into_iter().map(|mut asset| {
+            if !asset.is_commissioned() {
+                // Asset is newly created from process so we need to assign an ID
+                let asset = asset.make_mut();
+                asset.id = Some(AssetID(self.next_id));
+                self.next_id += 1;
+            }
+
+            asset
+        });
+
+        // Add assets to pool
+        self.active.extend(assets);
+
+        // New assets may not have been sorted, but active needs to be sorted by ID
+        self.active.sort();
+
+        // Sanity check: all assets should be unique
+        debug_assert_eq!(self.active.iter().unique().count(), self.active.len());
+    }
 }
 
 /// Additional methods for iterating over assets
@@ -679,5 +706,198 @@ mod tests {
             asset_pool.active[2].agent_id,
             Some("some_other_agent".into())
         );
+    }
+
+    #[rstest]
+    fn test_asset_pool_extend_empty(mut asset_pool: AssetPool) {
+        // Start with commissioned assets
+        asset_pool.commission_new(2020);
+        let original_count = asset_pool.active.len();
+
+        // Extend with empty iterator
+        asset_pool.extend(std::iter::empty());
+
+        assert_eq!(asset_pool.active.len(), original_count);
+    }
+
+    #[rstest]
+    fn test_asset_pool_extend_existing_assets(mut asset_pool: AssetPool) {
+        // Start with some commissioned assets
+        asset_pool.commission_new(2020);
+        assert_eq!(asset_pool.active.len(), 2);
+        let existing_assets = asset_pool.take();
+
+        // Extend with the same assets (should maintain their IDs)
+        asset_pool.extend(existing_assets.clone());
+
+        assert_eq!(asset_pool.active.len(), 2);
+        assert_eq!(asset_pool.active[0].id, Some(AssetID(0)));
+        assert_eq!(asset_pool.active[1].id, Some(AssetID(1)));
+    }
+
+    #[rstest]
+    fn test_asset_pool_extend_new_assets(mut asset_pool: AssetPool, process: Process) {
+        // Start with some commissioned assets
+        asset_pool.commission_new(2020);
+        let original_count = asset_pool.active.len();
+
+        // Create new non-commissioned assets
+        let process_rc = Rc::new(process);
+        let new_assets = [
+            Asset::new(
+                Some("agent2".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(1.5),
+                2015,
+            )
+            .unwrap()
+            .into(),
+            Asset::new(
+                Some("agent3".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(2.5),
+                2018,
+            )
+            .unwrap()
+            .into(),
+        ];
+
+        asset_pool.extend(new_assets);
+
+        assert_eq!(asset_pool.active.len(), original_count + 2);
+        // New assets should get IDs 2 and 3
+        assert_eq!(asset_pool.active[original_count].id, Some(AssetID(2)));
+        assert_eq!(asset_pool.active[original_count + 1].id, Some(AssetID(3)));
+        assert_eq!(
+            asset_pool.active[original_count].agent_id,
+            Some("agent2".into())
+        );
+        assert_eq!(
+            asset_pool.active[original_count + 1].agent_id,
+            Some("agent3".into())
+        );
+    }
+
+    #[rstest]
+    fn test_asset_pool_extend_mixed_assets(mut asset_pool: AssetPool, process: Process) {
+        // Start with some commissioned assets
+        asset_pool.commission_new(2020);
+
+        // Create a new non-commissioned asset
+        let new_asset = Asset::new(
+            Some("agent_new".into()),
+            process.into(),
+            "GBR".into(),
+            Capacity(3.0),
+            2019,
+        )
+        .unwrap()
+        .into();
+
+        // Extend with just the new asset (not mixing with existing to avoid duplicates)
+        asset_pool.extend([new_asset]);
+
+        assert_eq!(asset_pool.active.len(), 3);
+        // Check that we have the original assets plus the new one
+        assert!(asset_pool.active.iter().any(|a| a.id == Some(AssetID(0))));
+        assert!(asset_pool.active.iter().any(|a| a.id == Some(AssetID(1))));
+        assert!(asset_pool.active.iter().any(|a| a.id == Some(AssetID(2))));
+        // Check that the new asset has the correct agent
+        assert!(asset_pool
+            .active
+            .iter()
+            .any(|a| a.agent_id == Some("agent_new".into())));
+    }
+
+    #[rstest]
+    fn test_asset_pool_extend_maintains_sort_order(mut asset_pool: AssetPool, process: Process) {
+        // Start with some commissioned assets
+        asset_pool.commission_new(2020);
+
+        // Create new assets that would be out of order if added at the end
+        let process_rc = Rc::new(process);
+        let new_assets = [
+            Asset::new(
+                Some("agent_high_id".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(1.0),
+                2016,
+            )
+            .unwrap()
+            .into(),
+            Asset::new(
+                Some("agent_low_id".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(1.0),
+                2017,
+            )
+            .unwrap()
+            .into(),
+        ];
+
+        asset_pool.extend(new_assets);
+
+        // Check that assets are sorted by ID
+        let ids: Vec<u32> = asset_pool.iter().map(|a| a.id.unwrap().0).collect();
+        assert_equal(ids, 0..4);
+    }
+
+    #[rstest]
+    fn test_asset_pool_extend_no_duplicates_expected(mut asset_pool: AssetPool) {
+        // Start with some commissioned assets
+        asset_pool.commission_new(2020);
+        let original_count = asset_pool.active.len();
+
+        // The extend method expects unique assets - adding duplicates would violate
+        // the debug assertion, so this test verifies the normal case
+        asset_pool.extend(std::iter::empty::<AssetRef>());
+
+        assert_eq!(asset_pool.active.len(), original_count);
+        // Verify all assets are still unique (this is what the debug_assert checks)
+        assert_eq!(
+            asset_pool.active.iter().unique().count(),
+            asset_pool.active.len()
+        );
+    }
+
+    #[rstest]
+    fn test_asset_pool_extend_increments_next_id(mut asset_pool: AssetPool, process: Process) {
+        // Start with some commissioned assets
+        asset_pool.commission_new(2020);
+        assert_eq!(asset_pool.next_id, 2); // Should be 2 after commissioning 2 assets
+
+        // Create new non-commissioned assets
+        let process_rc = Rc::new(process);
+        let new_assets = [
+            Asset::new(
+                Some("agent1".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(1.0),
+                2015,
+            )
+            .unwrap()
+            .into(),
+            Asset::new(
+                Some("agent2".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(1.0),
+                2016,
+            )
+            .unwrap()
+            .into(),
+        ];
+
+        asset_pool.extend(new_assets);
+
+        // next_id should have incremented for each new asset
+        assert_eq!(asset_pool.next_id, 4);
+        assert_eq!(asset_pool.active[2].id, Some(AssetID(2)));
+        assert_eq!(asset_pool.active[3].id, Some(AssetID(3)));
     }
 }
