@@ -33,10 +33,13 @@ pub fn perform_agent_investment(
     model: &Model,
     flow_map: &FlowMap,
     reduced_costs: &ReducedCosts,
-    assets: &AssetPool,
+    assets: &mut AssetPool,
     year: u32,
 ) -> Result<()> {
     info!("Performing agent investment...");
+
+    // Get all existing assets and clear pool
+    let existing_assets = assets.take();
 
     // We consider SVD commodities first
     let commodities_of_interest = model
@@ -62,9 +65,15 @@ pub fn perform_agent_investment(
                     get_maximum_candidate_capacity(model, &demand, commodity_id, region_id);
 
                 // Existing and candidate assets from which to choose
-                let opt_assets =
-                    get_asset_options(assets, agent, commodity_id, region_id, year, max_capacity)
-                        .collect_vec();
+                let opt_assets = get_asset_options(
+                    &existing_assets,
+                    agent,
+                    commodity_id,
+                    region_id,
+                    year,
+                    max_capacity,
+                )
+                .collect_vec();
 
                 let demand_for_commodity = get_demand_for_commodity(
                     &model.time_slice_info,
@@ -74,7 +83,7 @@ pub fn perform_agent_investment(
                 );
 
                 // Choose assets from among existing pool and candidates
-                let _best_assets = select_best_assets(
+                let best_assets = select_best_assets(
                     &opt_assets,
                     objective_type,
                     reduced_costs,
@@ -82,12 +91,12 @@ pub fn perform_agent_investment(
                     &model.time_slice_info,
                     time_slice_level,
                 )?;
+
+                // Add assets to pool
+                assets.extend(best_assets);
             }
         }
     }
-
-    // **TODO:** Perform agent investment. For now, let's just leave the pool unmodified.
-    // assets.replace_active_pool(new_pool);
 
     Ok(())
 }
@@ -177,7 +186,7 @@ fn get_peak_demand(
 
 /// Get options from existing and potential assets for the given parameters
 fn get_asset_options<'a>(
-    assets: &'a AssetPool,
+    all_existing_assets: &'a [AssetRef],
     agent: &'a Agent,
     commodity_id: &'a CommodityID,
     region_id: &'a RegionID,
@@ -185,7 +194,7 @@ fn get_asset_options<'a>(
     candidate_asset_capacity: Capacity,
 ) -> impl Iterator<Item = AssetRef> + 'a {
     // Get existing assets which produce the commodity of interest
-    let existing_assets = assets
+    let existing_assets = all_existing_assets
         .iter()
         .filter_agent(&agent.id)
         .filter_region(region_id)

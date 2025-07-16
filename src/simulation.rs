@@ -81,7 +81,7 @@ pub fn run(
 
         // NB: Agent investment will actually be in a loop with more calls to
         // `perform_dispatch_optimisation`, but let's leave this as a placeholder for now
-        perform_agent_investment(&model, &flow_map, &reduced_costs, &assets, year)
+        perform_agent_investment(&model, &flow_map, &reduced_costs, &mut assets, year)
             .context("Agent investment failed")?;
 
         // Newly commissioned assets will be included in optimisation for at least one milestone
