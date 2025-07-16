@@ -30,6 +30,21 @@ pub struct AppraisalOutput {
     pub tool_output: Box<dyn ToolOutput>,
 }
 
+impl AppraisalOutput {
+    /// Whether this [`AppraisalOutput`] indicates a better result than `other`
+    pub fn is_better_than(&self, other: &AppraisalOutput) -> bool {
+        self.tool_output.comparison_metric() < other.tool_output.comparison_metric()
+    }
+
+    /// Update the demand map if this asset is selected.
+    ///
+    /// This function should only be called once and may panic if called subsequently.
+    pub fn update_demand(&mut self, commodity_id: &CommodityID, demand: &mut DemandMap) {
+        self.tool_output
+            .update_demand(&self.asset, commodity_id, demand);
+    }
+}
+
 /// A trait representing tool-specific output information for a particular asset
 pub trait ToolOutput {
     /// Return the comparison metric for this output.
