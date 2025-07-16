@@ -7,7 +7,7 @@ from table2md import MarkdownTable
 import yaml
 from pathlib import Path
 from dataclasses import dataclass
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment
 
 
 @dataclass
@@ -25,14 +25,11 @@ class Section:
 
 
 def generate_for_csv(
-    file_order: dict[str, list[str]], schema_dir: Path, template_file_name: str
+    file_order: dict[str, list[str]], schema_dir: Path, env: Environment
 ) -> str:
     """Generate markdown from Jinja template using metadata in schemas for CSV files."""
-    env = Environment(loader=FileSystemLoader(Path(__file__).parent))
-    template = env.get_template(template_file_name)
-    return template.render(
-        script_name=Path(__file__).name, sections=_load_sections(file_order, schema_dir)
-    )
+    template = env.get_template("csv.md.jinja")
+    return template.render(sections=_load_sections(file_order, schema_dir))
 
 
 def _load_sections(

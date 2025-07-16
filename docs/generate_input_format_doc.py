@@ -5,6 +5,8 @@
 from pathlib import Path
 import sys
 
+from jinja2 import Environment, FileSystemLoader
+
 
 if __name__ == "__main__":
     DOCS_DIR = Path(__file__).parent
@@ -17,12 +19,15 @@ if __name__ == "__main__":
         "Commodities": ["commodities", "commodity_levies", "demand", "demand_slicing"],
         "Processes": ["processes", "process_*"],
     }
-    TEMPLATE_FILE_NAME = "input_format.md.jinja"
 
     sys.path.append(str(DOCS_DIR))
     from format_docs import generate_for_csv
 
+    env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
+    csv_sections = generate_for_csv(FILE_ORDER, SCHEMA_DIR, env)
+
+    template = env.get_template("input_format.md.jinja")
+    out = template.render(csv_sections=csv_sections, script_name=Path(__file__).name)
+
     output_path = DOCS_DIR / "input_format.md"
-    output_path.write_text(
-        generate_for_csv(FILE_ORDER, SCHEMA_DIR, TEMPLATE_FILE_NAME), encoding="utf-8"
-    )
+    output_path.write_text(out, encoding="utf-8")
