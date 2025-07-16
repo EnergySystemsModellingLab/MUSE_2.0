@@ -36,12 +36,17 @@ impl AppraisalOutput {
         self.tool_output.comparison_metric() < other.tool_output.comparison_metric()
     }
 
-    /// Update the demand map if this asset is selected.
-    ///
-    /// This function should only be called once and may panic if called subsequently.
-    pub fn update_demand(&mut self, commodity_id: &CommodityID, demand: &mut DemandMap) {
+    /// Convert this [`AppraisalOutput`] into the remaining demand if the asset were selected.
+    pub fn into_unmet_demand(
+        mut self,
+        commodity_id: &CommodityID,
+        previous_demand: DemandMap,
+    ) -> DemandMap {
+        let mut demand = previous_demand;
         self.tool_output
-            .update_demand(&self.asset, commodity_id, demand);
+            .update_demand(&self.asset, commodity_id, &mut demand);
+
+        demand
     }
 }
 
