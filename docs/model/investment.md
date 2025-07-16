@@ -20,11 +20,11 @@ reliable \\( \pi_{prevMSY} \\) values for these economic evaluations.
 This data provides the primary economic context for appraisal calculations, drawn from the settled
 state of the preceding milestone year.
 
-- Previous MSY prices: \\( \pi_{prevMSY}[c,r,t] \\). When \\( ScarcityPricing \\) is activated,
+- Previous MSY prices: \\( \pi_{prevMSY}[c,r,t] \\). When `pricing_strategy` is `shadow_prices`,
   these are the shadow prices for each commodity \\( c \\), in each region \\( r \\), for each time
-  slice \\( t \\), taken from the final dispatch of the preceding MSY. When \\( ScarcityPricing \\)
-  is not activated, these are the shadow prices for each commodity adjusted to remove the impact of
-  binding capacity constraints.
+  slice \\( t \\), taken from the final dispatch of the preceding MSY. When the `pricing_strategy`
+  option is set to `scarcity_adjusted`, these are the shadow prices for each commodity adjusted to
+  remove the impact of binding capacity constraints.
 
 - Previous MSY reduced costs for new candidates: \\( rc_{prevMSY}[ca,r,t] \\). If candidate assets
   \\( ca \\) were included (at zero capacity) in the \\( \text{MSY}\_{prev} \\)’s final dispatch run,
@@ -79,9 +79,9 @@ providing investment and dynamic decommissioning decisions.
   their annualised CAPEX plus FOM. For existing assets, the relevant fixed cost is its FOM.
 
 - **Determine candidate asset reduced cost or equivalent for existing assets:** For candidate
-  assets, if \\( ScarcityPricing \\) is active, candidate asset reduced costs are as provided by the
-  solver. If \\( ScarcityPricing \\) is not active, candidate asset reduced costs must be calculated
-  as follows:
+  assets, if `pricing_strategy` is `scarcity_adjusted`, candidate asset reduced costs are as
+  provided by the solver. If `pricing_strategy` is `shadow_prices`, candidate asset reduced costs
+  must be calculated as follows:
 
   \\[
     \begin{aligned}
