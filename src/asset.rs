@@ -344,29 +344,6 @@ impl AssetPool {
         self.active.iter()
     }
 
-    /// Replace the active pool with new and/or already commissioned assets
-    pub fn replace_active_pool<I>(&mut self, assets: I)
-    where
-        I: IntoIterator<Item = Rc<Asset>>,
-    {
-        let new_pool = assets.into_iter().map(|mut asset| {
-            if asset.id.is_none() {
-                // Asset is newly created from process so we need to assign an ID
-                let asset = Rc::make_mut(&mut asset);
-                asset.id = Some(AssetID(self.next_id));
-                self.next_id += 1;
-            }
-
-            asset.into()
-        });
-
-        self.active.clear();
-        self.active.extend(new_pool);
-
-        // New pool may not have been sorted, but active needs to be sorted by ID
-        self.active.sort();
-    }
-
     /// Return current active pool and clear
     pub fn take(&mut self) -> Vec<AssetRef> {
         std::mem::take(&mut self.active)
@@ -643,69 +620,6 @@ mod tests {
         asset_pool.commission_new(2020);
         assert_eq!(asset_pool.get(AssetID(0)), Some(&asset_pool.active[0]));
         assert_eq!(asset_pool.get(AssetID(1)), Some(&asset_pool.active[1]));
-    }
-
-    #[rstest]
-    fn test_asset_pool_replace_active_pool_existing(mut asset_pool: AssetPool) {
-        asset_pool.commission_new(2020);
-        assert_eq!(asset_pool.active.len(), 2);
-        asset_pool.replace_active_pool(iter::once(asset_pool.active[1].clone().into()));
-        assert_eq!(asset_pool.active.len(), 1);
-        assert_eq!(asset_pool.active[0].id, Some(AssetID(1)));
-    }
-
-    #[rstest]
-    fn test_asset_pool_replace_active_pool_new_asset(mut asset_pool: AssetPool, process: Process) {
-        let asset = Asset::new(
-            Some("some_other_agent".into()),
-            process.into(),
-            "GBR".into(),
-            Capacity(2.0),
-            2010,
-        )
-        .unwrap();
-
-        asset_pool.commission_new(2020);
-        assert_eq!(asset_pool.active.len(), 2);
-        asset_pool.replace_active_pool(iter::once(asset.into()));
-        assert_eq!(asset_pool.active.len(), 1);
-        assert_eq!(asset_pool.active[0].id, Some(AssetID(2)));
-        assert_eq!(
-            asset_pool.active[0].agent_id,
-            Some("some_other_agent".into())
-        );
-    }
-
-    #[rstest]
-    fn test_asset_pool_replace_active_pool_out_of_order(
-        mut asset_pool: AssetPool,
-        process: Process,
-    ) {
-        let new_asset = Asset::new(
-            Some("some_other_agent".into()),
-            process.into(),
-            "GBR".into(),
-            Capacity(2.0),
-            2010,
-        )
-        .unwrap();
-
-        asset_pool.commission_new(2020);
-        assert_eq!(asset_pool.active.len(), 2);
-        let mut new_pool: Vec<Rc<Asset>> = asset_pool
-            .iter()
-            .map(|asset| asset.clone().into())
-            .collect();
-        new_pool.push(new_asset.into());
-        new_pool.reverse();
-
-        asset_pool.replace_active_pool(new_pool);
-        assert_equal(asset_pool.iter().map(|asset| asset.id.unwrap().0), 0..3);
-        assert_eq!(asset_pool.active[2].id, Some(AssetID(2)));
-        assert_eq!(
-            asset_pool.active[2].agent_id,
-            Some("some_other_agent".into())
-        );
     }
 
     #[rstest]
