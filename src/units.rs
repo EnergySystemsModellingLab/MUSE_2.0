@@ -38,7 +38,7 @@ pub trait UnitType:
     /// Returns the min of two values
     fn min(&self, other: Self) -> Self;
     /// Returns ordering between self and other
-    fn total_cmp(&self, other: Self) -> std::cmp::Ordering;
+    fn total_cmp(&self, other: &Self) -> std::cmp::Ordering;
 }
 
 macro_rules! base_unit_struct {
@@ -136,31 +136,31 @@ macro_rules! base_unit_struct {
             }
             /// Returns the underlying f64 value.
             fn value(&self) -> f64 {
-                self.value()
+                Self::value(&self)
             }
             /// Returns true if the value is a normal number.
             fn is_normal(&self) -> bool {
-                self.is_normal()
+                Self::is_normal(&self)
             }
             /// Returns true if the value is finite.
             fn is_finite(&self) -> bool {
-                self.is_finite()
+                Self::is_finite(&self)
             }
             /// Returns the absolute value of this unit.
             fn abs(&self) -> Self {
-                self.abs()
+                Self::abs(&self)
             }
             /// Returns the max of two values
             fn max(&self, other: Self) -> Self {
-                self.max(other)
+                Self::max(&self, other)
             }
             /// Returns the min of two values
             fn min(&self, other: Self) -> Self {
-                self.min(other)
+                Self::min(&self, other)
             }
             /// Returns ordering between self and other
-            fn total_cmp(&self, other: Self) -> std::cmp::Ordering {
-                self.total_cmp(&other)
+            fn total_cmp(&self, other: &Self) -> std::cmp::Ordering {
+                Self::total_cmp(&self, other)
             }
         }
     };
