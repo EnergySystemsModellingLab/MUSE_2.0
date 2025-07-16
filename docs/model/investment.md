@@ -73,6 +73,8 @@ providing investment and dynamic decommissioning decisions.
 
 ### Pre-calculation of metrics for each supply option
 
+> Note: This section contains a reference to "scopes", a feature that is not yet implemented
+
 - Annualised fixed costs per unit of capacity (\\( AFC_{opt,r} \\)): For new candidates, this is
   their annualised CAPEX plus FOM. For existing assets, the relevant fixed cost is its FOM.
 
@@ -135,6 +137,8 @@ providing investment and dynamic decommissioning decisions.
 
 ### Iteratively construct asset portfolio to meet target \\( U_c \\)
 
+> Not: The current implementation of MUSE 2.0 doesn't use tranches
+
 1. Start with the first tranche of the demand.
 
 2. Loop over available options \\( opt \\) (new or existing or import), applying either tool A or B
@@ -166,8 +170,10 @@ operational constraints (e.g., minimum load levels) and the balance level of the
   demand tranche it is being asked to serve. Define \\( SurplusPerAct_{opt,t} = - RC^*_{opt,r,t}
   \\).
 
-  \\[ maximise \Big\\{ -AFC\_{opt,r}\*cap_{opt,r} + \sum\_{t} act\_{opt,t}\*SurplusPerAct_{opt,t}
-    \Big\\} \\]
+  \\[
+    maximise \Big\\{ -AFC\_{opt,r}\*cap_{opt,r} + \sum\_{t} act\_{opt,t}\*SurplusPerAct_{opt,t}
+    \Big\\}
+  \\]
 
   Where \\( cap_{opt,r} \\) and \\( act_{opt,t} \\) are decision variables, and subject to:
 
@@ -203,11 +209,9 @@ commodities are set to zero, and the commodity of interest is assumed to have ze
   demand tranche it is being asked to serve. Define \\( CostPerAct_{opt,t} = RC^*_{opt,r,t} \\).
 
   \\[
-    \begin{aligned}
-      minimise \Big\\{
-        AFC\_{opt,r}\*cap\_{opt,r} + \sum\_{t} act\_{opt,t}\*CostPerAct\_{opt,t} + VoLL*UnmetD\_{r,c,t}
-      \Big\\}
-    \end{aligned}
+    minimise \Big\\{
+      AFC\_{opt,r}\*cap\_{opt,r} + \sum\_{t} act\_{opt,t}\*CostPerAct\_{opt,t} + VoLL*UnmetD\_{r,c,t}
+    \Big\\}
   \\]
 
   Where \\( cap_{opt,r} \\) and \\( act_{opt,t} \\) are decision variables, and subject to:
