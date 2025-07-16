@@ -199,6 +199,13 @@ pub fn check_capacity_valid_for_asset(capacity: Capacity) -> Result<()> {
 #[derive(Clone, Debug)]
 pub struct AssetRef(Rc<Asset>);
 
+impl AssetRef {
+    /// Make a mutable reference to the underlying [`Asset`]
+    pub fn make_mut(&mut self) -> &mut Asset {
+        Rc::make_mut(&mut self.0)
+    }
+}
+
 impl From<Rc<Asset>> for AssetRef {
     fn from(value: Rc<Asset>) -> Self {
         Self(value)
