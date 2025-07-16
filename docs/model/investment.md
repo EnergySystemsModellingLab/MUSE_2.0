@@ -3,8 +3,8 @@
 <!-- markdownlint-disable MD049 -->
 
 This section details the investment and asset retention decision process, which is applied within
-step 2 of the overall MUSE 2.0 workflow. This process determines which new assets to build and which
-existing assets to retain to meet system needs over time. In the overall workflow, dispatch
+step 2 of the [overall MUSE 2.0 workflow]. This process determines which new assets to build and
+which existing assets to retain to meet system needs over time. In the overall workflow, dispatch
 optimisation is used to identify *physical needs* by quantifying demand profiles for commodities of
 interest.
 
@@ -236,4 +236,5 @@ commodities are set to zero, and the commodity of interest is assumed to have ze
 - **Save information:** Save \\( opt \\) information. If this is the last \\( opt \\) then exit this
   loop.
 
+[overall MUSE 2.0 workflow]: ./model_description.md#framework-overview
 [Dispatch Optimisation Formulation]: ./dispatch_optimisation.md
