@@ -233,3 +233,98 @@ pub fn appraise_investment(
         ObjectiveType::NetPresentValue => appraisal_method!(calculate_npv),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commodity::{Commodity, CommodityType};
+    use crate::fixture::{asset, commodity_id, process, time_slice};
+    use crate::process::{FlowType, Process, ProcessFlow};
+    use crate::region::RegionID;
+    use crate::time_slice::TimeSliceLevel;
+    use crate::units::{FlowPerActivity, MoneyPerFlow};
+    use indexmap::IndexMap;
+    use rstest::rstest;
+    use std::collections::HashMap;
+    use std::rc::Rc;
+
+    #[rstest]
+    fn test_lcoxoutput_comparison_metric() {
+        let output = LCOXOutput {
+            cost_index: MoneyPerActivity::new(42.0),
+            unmet_demand: HashMap::new(),
+        };
+        assert_eq!(output.comparison_metric(), 42.0);
+    }
+
+    #[rstest]
+    fn test_lcoxoutput_into_unmet_demand(
+        asset: Asset,
+        commodity_id: CommodityID,
+        time_slice: TimeSliceID,
+    ) {
+        let mut unmet = HashMap::new();
+        unmet.insert(time_slice.clone(), Flow::new(3.0));
+        let output = LCOXOutput {
+            cost_index: MoneyPerActivity::new(1.0),
+            unmet_demand: unmet.clone(),
+        };
+        let result = output.into_unmet_demand(&asset, &commodity_id, HashMap::new());
+        assert_eq!(result, unmet);
+    }
+
+    #[rstest]
+    fn test_npvoutput_comparison_metric() {
+        let output = NPVOutput {
+            profitability_index: Dimensionless::new(7.0),
+            activity: IndexMap::new(),
+        };
+        // Should be negative of profitability_index
+        assert_eq!(output.comparison_metric(), -7.0);
+    }
+
+    #[rstest]
+    fn test_npvoutput_into_unmet_demand(
+        process: Process,
+        commodity_id: CommodityID,
+        time_slice: TimeSliceID,
+        mut asset: Asset,
+    ) {
+        // Clone and modify the process to add a flow for the commodity
+        let mut process = process;
+        let region: RegionID = "GBR".into();
+        let year = 2015;
+        let coeff = FlowPerActivity::new(2.0);
+        let commodity = Rc::new(Commodity {
+            id: commodity_id.clone(),
+            description: String::new(),
+            kind: CommodityType::ServiceDemand,
+            time_slice_level: TimeSliceLevel::DayNight,
+            levies: Default::default(),
+            demand: Default::default(),
+        });
+        let flow = ProcessFlow {
+            commodity: commodity.clone(),
+            coeff,
+            kind: FlowType::Fixed,
+            cost: MoneyPerFlow::new(0.0),
+            is_primary_output: true,
+        };
+        let mut flows_map = IndexMap::new();
+        flows_map.insert(commodity_id.clone(), flow);
+        process.flows.insert((region.clone(), year), flows_map);
+        asset.process = Rc::new(process);
+        let mut activity = IndexMap::new();
+        activity.insert(time_slice.clone(), Activity::new(5.0));
+        let mut prev_demand = HashMap::new();
+        prev_demand.insert(time_slice.clone(), Flow::new(20.0));
+        let output = NPVOutput {
+            profitability_index: Dimensionless::new(1.0),
+            activity,
+        };
+        let result = output.into_unmet_demand(&asset, &commodity_id, prev_demand.clone());
+        // Should subtract activity * coeff from prev_demand
+        let expected = 20.0 - 5.0 * 2.0;
+        assert_eq!(result[&time_slice], Flow::new(expected));
+    }
+}
