@@ -137,7 +137,7 @@ providing investment and dynamic decommissioning decisions.
 
 ### Iteratively construct asset portfolio to meet target \\( U_c \\)
 
-> Not: The current implementation of MUSE 2.0 doesn't use tranches
+> Note: The current implementation of MUSE 2.0 doesn't use tranches
 
 1. Start with the first tranche of the demand.
 
