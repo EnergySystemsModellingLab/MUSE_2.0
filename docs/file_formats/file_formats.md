@@ -1,4 +1,4 @@
-# MUSE 2.0 File Formats
+# File Formats
 
 The following chapters describe the formats for the various files that MUSE 2.0 consumes/produces.
 Files are either in [CSV] or [TOML] format.

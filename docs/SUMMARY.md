@@ -4,8 +4,8 @@
 
 - [User Guide](user_guide.md)
 - [Command Line Help](command_line_help.md)
-- [File Formats](file_formats.md)
-  - [Input Files](input_files.md)
+- [File Formats](file_formats/file_formats.md)
+  - [Input Files](file_formats/input_files.md)
 - [Model Description](model/model_description.md)
   - [Dispatch Optimisation](model/dispatch_optimisation.md)
   - [Investment Appraisal](model/investment.md)

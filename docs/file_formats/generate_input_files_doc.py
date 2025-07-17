@@ -9,8 +9,8 @@ from jinja2 import Environment, FileSystemLoader
 
 
 if __name__ == "__main__":
-    DOCS_DIR = Path(__file__).parent
-    SCHEMA_DIR = DOCS_DIR.parent / "schemas" / "input"
+    FILE_FORMAT_DOCS_DIR = Path(__file__).parent
+    SCHEMA_DIR = FILE_FORMAT_DOCS_DIR.parent.parent / "schemas" / "input"
     FILE_ORDER = {
         "Time slices": ["time_slices"],
         "Regions": ["regions"],
@@ -20,7 +20,7 @@ if __name__ == "__main__":
         "Processes": ["processes", "process_*"],
     }
 
-    sys.path.append(str(DOCS_DIR))
+    sys.path.append(str(FILE_FORMAT_DOCS_DIR))
     from format_docs import generate_for_csv, generate_for_toml
 
     env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
@@ -34,5 +34,5 @@ if __name__ == "__main__":
         csv_sections=csv_sections, toml_info=toml_info, script_name=Path(__file__).name
     )
 
-    output_path = DOCS_DIR / "input_files.md"
+    output_path = FILE_FORMAT_DOCS_DIR / "input_files.md"
     output_path.write_text(out, encoding="utf-8")
