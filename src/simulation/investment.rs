@@ -12,6 +12,8 @@ use indexmap::IndexSet;
 use log::info;
 use std::collections::HashMap;
 
+pub mod appraisal;
+
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
 /// # Arguments
