@@ -73,11 +73,10 @@ The workflow is structured as follows:
       \\) is the set of existing assets and their capacities available after EOL decommissioning.
 
    2. **Determine SVD demand profiles and run investment appraisal tools for them.** SVD demand
-      profiles for the \\( MSY \\) are determined from user input data. The investment appraisal
-      tools shown in part 2 are applied to determine portfolios of existing and new assets to meet
-      demand for each SVD commodity. Prices of input commodities are known from the final dispatch
-      of the previous milestone year. This finalises \\( NewCapacity \\) and \\( AssetChosen \\) for
-      each SVD.
+      profiles for the \\( MSY \\) are determined from user input data. The [investment appraisal
+      tools] are applied to determine portfolios of existing and new assets to meet demand for each
+      SVD commodity. Prices of input commodities are known from the final dispatch of the previous
+      milestone year. This finalises \\( NewCapacity \\) and \\( AssetChosen \\) for each SVD.
 
    3. **Build System Layer-by-Layer loop: Completes the investment pass for the milestone year,
       progressively adding commodities layer by layer.** This step determines new asset capacities
@@ -101,9 +100,9 @@ The workflow is structured as follows:
          prices and e.g. commodity levies. Demand profiles for commodities of interest are recorded
          (\\( D[c,r,t] \\)).
 
-      3. **Run investment appraisal tools for each commodity of interest.** The investment appraisal
-         tools shown in part 2 are applied to determine portfolios of existing and new assets to
-         meet demand for each commodity of interest. It is necessary to consider the complete demand
+      3. **Run investment appraisal tools for each commodity of interest.** The [investment
+         appraisal tools] are applied to determine portfolios of existing and new assets to meet
+         demand for each commodity of interest. It is necessary to consider the complete demand
          profile of each commodity of interest, as even where demand can be served with existing
          assets in the MSY without new investment, economic decommissioning is still possible.
 
@@ -135,4 +134,5 @@ The workflow is structured as follows:
 
 3. **Outer loop ends when no further milestone years exist.**
 
+[investment appraisal tools]: ./investment.md#tools
 [Dispatch Optimisation Formulation]: ./dispatch_optimisation.md

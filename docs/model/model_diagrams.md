@@ -13,14 +13,14 @@ Functions are described with the following terms:
 
 <p>
 <figure>
-    <img alt="Overview of MUSE 2.0" src="images/model_overview.drawio.svg" />
+    <img alt="Overview of MUSE 2.0" src="../images/model_overview.drawio.svg" />
     <figcaption>Figure 1: Overview of MUSE 2.0 algorithm</figcaption>
 </figure>
 </p>
 
 <p>
 <figure>
-    <img alt="Dispatch optimisation" src="images/dispatch_optimisation.drawio.svg" />
+    <img alt="Dispatch optimisation" src="../images/dispatch_optimisation.drawio.svg" />
     <figcaption>Figure 2: Overview of dispatch optimisation</figcaption>
 </figure>
 </p>
