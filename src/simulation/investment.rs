@@ -1,18 +1,27 @@
 //! Code for performing agent investment.
 use super::optimisation::FlowMap;
 use super::prices::ReducedCosts;
-use super::CommodityPrices;
-use crate::asset::AssetPool;
+use crate::agent::{Agent, ObjectiveType};
+use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
-use crate::time_slice::TimeSliceID;
-use crate::units::Flow;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
+use crate::units::{Capacity, Flow};
+use anyhow::{ensure, Result};
 use indexmap::IndexSet;
-use log::info;
+use itertools::chain;
+use log::{debug, info};
 use std::collections::HashMap;
 
 pub mod appraisal;
+use appraisal::{appraise_investment, AppraisalOutput};
+
+/// A map of demand across time slices for a specific commodity and region
+type DemandMap = HashMap<TimeSliceID, Flow>;
+
+/// Demand for a given combination of commodity, region and time slice
+type AllDemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
@@ -20,18 +29,20 @@ pub mod appraisal;
 ///
 /// * `model` - The model
 /// * `flow_map` - Map of commodity flows
-/// * `prices` - Commodity prices
+/// * `reduced_costs` - Reduced costs for assets
 /// * `assets` - The asset pool
 /// * `year` - Current milestone year
 pub fn perform_agent_investment(
     model: &Model,
     flow_map: &FlowMap,
-    _prices: &CommodityPrices,
-    _reduced_costs: &ReducedCosts,
-    _assets: &AssetPool,
-    _year: u32,
-) {
+    reduced_costs: &ReducedCosts,
+    assets: &mut AssetPool,
+    year: u32,
+) -> Result<()> {
     info!("Performing agent investment...");
+
+    // Get all existing assets and clear pool
+    let existing_assets = assets.take();
 
     // We consider SVD commodities first
     let commodities_of_interest = model
@@ -40,17 +51,67 @@ pub fn perform_agent_investment(
         .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
         .map(|(id, _)| id.clone())
         .collect();
-    let _demand = get_demand_profile(&commodities_of_interest, flow_map);
+    let demand = get_demand_profile(&commodities_of_interest, flow_map);
 
-    // **TODO:** Perform agent investment. For now, let's just leave the pool unmodified.
-    // assets.replace_active_pool(new_pool);
+    for commodity_id in commodities_of_interest.iter() {
+        let time_slice_level = model
+            .commodities
+            .get(commodity_id)
+            .unwrap()
+            .time_slice_level;
+        for agent in get_responsible_agents(model.agents.values(), commodity_id, year) {
+            let objective_type = agent.objectives.get(&year).unwrap();
+
+            for region_id in agent.regions.iter() {
+                debug!(
+                    "Running investment for agent '{}' with commodity '{}' in region '{}'",
+                    &agent.id, commodity_id, region_id
+                );
+
+                // Maximum capacity for candidate assets
+                let max_capacity =
+                    get_maximum_candidate_capacity(model, &demand, commodity_id, region_id);
+
+                // Existing and candidate assets from which to choose
+                let opt_assets = get_asset_options(
+                    &existing_assets,
+                    agent,
+                    commodity_id,
+                    region_id,
+                    year,
+                    max_capacity,
+                )
+                .collect();
+
+                let demand_for_commodity = get_demand_for_commodity(
+                    &model.time_slice_info,
+                    &demand,
+                    commodity_id,
+                    region_id,
+                );
+
+                // Choose assets from among existing pool and candidates
+                let best_assets = select_best_assets(
+                    opt_assets,
+                    commodity_id,
+                    objective_type,
+                    reduced_costs,
+                    demand_for_commodity,
+                    &model.time_slice_info,
+                    time_slice_level,
+                )?;
+
+                // Add assets to pool
+                assets.extend(best_assets);
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Get demand per time slice for specified commodities
-pub fn get_demand_profile(
-    commodities: &IndexSet<CommodityID>,
-    flow_map: &FlowMap,
-) -> HashMap<(CommodityID, RegionID, TimeSliceID), Flow> {
+fn get_demand_profile(commodities: &IndexSet<CommodityID>, flow_map: &FlowMap) -> AllDemandMap {
     let mut map = HashMap::new();
     for ((asset, commodity_id, time_slice), &flow) in flow_map.iter() {
         if commodities.contains(commodity_id) && flow > Flow(0.0) {
@@ -65,6 +126,242 @@ pub fn get_demand_profile(
     }
 
     map
+}
+
+/// Get part of the demand profile for this commodity and region
+fn get_demand_for_commodity(
+    time_slice_info: &TimeSliceInfo,
+    demand: &AllDemandMap,
+    commodity_id: &CommodityID,
+    region_id: &RegionID,
+) -> DemandMap {
+    time_slice_info
+        .iter_ids()
+        .map(|time_slice| {
+            (
+                time_slice.clone(),
+                *demand
+                    .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+                    .unwrap(),
+            )
+        })
+        .collect()
+}
+
+/// Get the agents responsible for a given commodity in a given year
+fn get_responsible_agents<'a, I>(
+    agents: I,
+    commodity_id: &'a CommodityID,
+    year: u32,
+) -> impl Iterator<Item = &'a Agent>
+where
+    I: Iterator<Item = &'a Agent>,
+{
+    agents.filter(move |agent| {
+        agent
+            .commodity_portions
+            .contains_key(&(commodity_id.clone(), year))
+    })
+}
+
+/// Get the maximum candidate asset capacity
+fn get_maximum_candidate_capacity(
+    model: &Model,
+    demand: &AllDemandMap,
+    commodity_id: &CommodityID,
+    region_id: &RegionID,
+) -> Capacity {
+    model.parameters.capacity_limit_factor
+        * get_peak_demand(&model.time_slice_info, demand, commodity_id, region_id)
+}
+
+/// Get the peak demand for this commodity
+fn get_peak_demand(
+    time_slice_info: &TimeSliceInfo,
+    demand: &AllDemandMap,
+    commodity_id: &CommodityID,
+    region_id: &RegionID,
+) -> Flow {
+    *time_slice_info
+        .iter_ids()
+        .map(|time_slice| {
+            demand
+                .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+                .unwrap()
+        })
+        .max_by(|a, b| a.total_cmp(b))
+        .unwrap()
+}
+
+/// Get options from existing and potential assets for the given parameters
+fn get_asset_options<'a>(
+    all_existing_assets: &'a [AssetRef],
+    agent: &'a Agent,
+    commodity_id: &'a CommodityID,
+    region_id: &'a RegionID,
+    year: u32,
+    candidate_asset_capacity: Capacity,
+) -> impl Iterator<Item = AssetRef> + 'a {
+    // Get existing assets which produce the commodity of interest
+    let existing_assets = all_existing_assets
+        .iter()
+        .filter_agent(&agent.id)
+        .filter_region(region_id)
+        .filter_primary_producers_of(commodity_id)
+        .cloned();
+
+    // Get candidates assets which produce the commodity of interest
+    let candidate_assets = get_candidate_assets(
+        agent,
+        region_id,
+        commodity_id,
+        year,
+        candidate_asset_capacity,
+    );
+
+    chain(existing_assets, candidate_assets)
+}
+
+/// Get candidate assets which produce a particular commodity for a given agent
+fn get_candidate_assets<'a>(
+    agent: &'a Agent,
+    region_id: &'a RegionID,
+    commodity_id: &'a CommodityID,
+    year: u32,
+    candidate_asset_capacity: Capacity,
+) -> impl Iterator<Item = AssetRef> + 'a {
+    let flows_key = (region_id.clone(), year);
+
+    // Get all the processes which produce the commodity in this year
+    let producers = agent
+        .search_space
+        .get(&(commodity_id.clone(), year))
+        .unwrap()
+        .iter()
+        .filter(move |process| {
+            process
+                .flows
+                .get(&flows_key)
+                .unwrap()
+                .get(commodity_id)
+                .unwrap()
+                .is_output()
+        });
+
+    producers.map(move |process| {
+        Asset::new(
+            Some(agent.id.clone()),
+            process.clone(),
+            region_id.clone(),
+            candidate_asset_capacity,
+            year,
+        )
+        .unwrap()
+        .into()
+    })
+}
+
+/// Get the best assets for meeting demand for the given commodity
+fn select_best_assets(
+    mut opt_assets: Vec<AssetRef>,
+    commodity_id: &CommodityID,
+    objective_type: &ObjectiveType,
+    reduced_costs: &ReducedCosts,
+    mut demand: DemandMap,
+    time_slice_info: &TimeSliceInfo,
+    time_slice_level: TimeSliceLevel,
+) -> Result<Vec<AssetRef>> {
+    let mut best_assets: Vec<AssetRef> = Vec::new();
+
+    while is_remaining_unmet_demand(&demand) {
+        ensure!(
+            !opt_assets.is_empty(),
+            "Failed to meet demand for commodity '{commodity_id}' with provided assets"
+        );
+
+        let mut current_best: Option<AppraisalOutput> = None;
+        for asset in opt_assets.iter() {
+            let output = appraise_investment(
+                asset,
+                objective_type,
+                reduced_costs,
+                &demand,
+                time_slice_info,
+                time_slice_level,
+            )?;
+
+            if current_best
+                .as_ref()
+                .is_none_or(|best_output| output.is_better_than(best_output))
+            {
+                current_best = Some(output);
+            }
+        }
+
+        let best_output = current_best.expect("No assets given");
+        let (asset, capacity, unmet_demand) = best_output.into_parts(commodity_id, demand);
+        demand = unmet_demand;
+
+        let commissioned_txt = if asset.is_commissioned() {
+            "existing"
+        } else {
+            "candidate"
+        };
+        debug!(
+            "Selected {} asset '{}'",
+            commissioned_txt, &asset.process.id
+        );
+
+        update_assets(asset, capacity, &mut opt_assets, &mut best_assets);
+    }
+
+    Ok(best_assets)
+}
+
+/// Check whether there is any remaining demand that is unmet in any time slice
+fn is_remaining_unmet_demand(demand: &HashMap<TimeSliceID, Flow>) -> bool {
+    demand.values().any(|flow| *flow > Flow(0.0))
+}
+
+/// Update capacity of chosen asset, if needed, and update both asset options and chosen assets
+fn update_assets(
+    mut best_asset: AssetRef,
+    capacity: Capacity,
+    opt_assets: &mut Vec<AssetRef>,
+    best_assets: &mut Vec<AssetRef>,
+) {
+    // New capacity given for candidates only
+    if !best_asset.is_commissioned() {
+        // Get a reference to the copy of the asset in opt_assets
+        let (old_idx, old) = opt_assets
+            .iter_mut()
+            .enumerate()
+            .find(|(_, asset)| **asset == best_asset)
+            .unwrap();
+
+        // Remove this capacity from the available remaining capacity for this asset
+        old.make_mut().capacity -= capacity;
+
+        // If there's no capacity remaining, remove the asset from the options
+        if old.capacity <= Capacity(0.0) {
+            opt_assets.swap_remove(old_idx);
+        }
+
+        if let Some(existing_asset) = best_assets.iter_mut().find(|asset| **asset == best_asset) {
+            // Add the additional required capacity
+            existing_asset.make_mut().capacity += capacity;
+        } else {
+            // Update the capacity of the chosen asset
+            best_asset.make_mut().capacity = capacity;
+
+            best_assets.push(best_asset);
+        };
+    } else {
+        // Remove this asset from the options
+        opt_assets.retain(|asset| *asset != best_asset);
+
+        best_assets.push(best_asset);
+    }
 }
 
 #[cfg(test)]
