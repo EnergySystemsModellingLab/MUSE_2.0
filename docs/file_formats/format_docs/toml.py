@@ -13,7 +13,9 @@ class TOMLInfo:
     table: str
 
 
-def generate_for_toml(schema_dir: Path, file_name: str, env: Environment) -> str:
+def generate_for_toml(
+    schema_dir: Path, file_name: str, env: Environment, heading_level: int
+) -> str:
     """Generate markdown from Jinja template using metadata in schema for TOML file."""
 
     file_name_stem, _, _ = file_name.rpartition(".")
@@ -23,6 +25,7 @@ def generate_for_toml(schema_dir: Path, file_name: str, env: Environment) -> str
     toml_info = _load_toml_info(file_name, schema_path)
     return template.render(
         title=toml_info.heading,
+        heading_level=heading_level * "#",
         description=toml_info.description,
         table=toml_info.table,
     )
