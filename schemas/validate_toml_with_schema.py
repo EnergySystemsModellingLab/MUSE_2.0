@@ -4,6 +4,7 @@
 # format).
 import tomllib
 from typing import Iterable
+from jsonschema import ValidationError
 import yaml
 from jsonschema.validators import Draft202012Validator
 from pathlib import Path
@@ -25,7 +26,7 @@ def main(
             data = tomllib.load(f)
         try:
             validator.validate(data)
-        except Exception as e:
+        except ValidationError as e:
             print(f"Error validating {file_path}: {e}")
             error = True
         else:
