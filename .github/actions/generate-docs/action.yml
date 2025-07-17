@@ -14,9 +14,9 @@ runs:
     - name: Install Python dependencies
       shell: bash
       run: pip install -r doc-requirements.txt
-    - name: Generate input format documentation
+    - name: Generate input files documentation
       shell: bash
-      run: python docs/generate_input_format_doc.py
+      run: python docs/generate_input_files_doc.py
     - name: Build API docs
       shell: bash
       run: |

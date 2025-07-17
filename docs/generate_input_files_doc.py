@@ -29,10 +29,10 @@ if __name__ == "__main__":
     toml_file_name = "model.toml"
     toml_info = generate_for_toml(SCHEMA_DIR, toml_file_name, env)
 
-    template = env.get_template("input_format.md.jinja")
+    template = env.get_template("input_files.md.jinja")
     out = template.render(
         csv_sections=csv_sections, toml_info=toml_info, script_name=Path(__file__).name
     )
 
-    output_path = DOCS_DIR / "input_format.md"
+    output_path = DOCS_DIR / "input_files.md"
     output_path.write_text(out, encoding="utf-8")
