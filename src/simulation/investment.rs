@@ -11,7 +11,7 @@ use crate::units::{Capacity, Flow};
 use anyhow::{ensure, Result};
 use indexmap::IndexSet;
 use itertools::chain;
-use log::info;
+use log::{debug, info};
 use std::collections::HashMap;
 
 pub mod appraisal;
@@ -63,6 +63,11 @@ pub fn perform_agent_investment(
             let objective_type = agent.objectives.get(&year).unwrap();
 
             for region_id in agent.regions.iter() {
+                debug!(
+                    "Running investment for agent '{}' with commodity '{}' in region '{}'",
+                    &agent.id, commodity_id, region_id
+                );
+
                 // Maximum capacity for candidate assets
                 let max_capacity =
                     get_maximum_candidate_capacity(model, &demand, commodity_id, region_id);
@@ -296,6 +301,16 @@ fn select_best_assets(
         let best_output = current_best.expect("No assets given");
         let (asset, capacity, unmet_demand) = best_output.into_parts(commodity_id, demand);
         demand = unmet_demand;
+
+        let commissioned_txt = if asset.is_commissioned() {
+            "existing"
+        } else {
+            "candidate"
+        };
+        debug!(
+            "Selected {} asset '{}'",
+            commissioned_txt, &asset.process.id
+        );
 
         update_assets(asset, capacity, &mut opt_assets, &mut best_assets);
     }
