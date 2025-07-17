@@ -17,6 +17,11 @@ runs:
     - name: Validate assets/settings.toml
       shell: bash
       run: schemas/validate_toml_with_schema.py schemas/settings.yaml assets/settings.toml
+    - name: Validate model.toml files
+      shell: bash
+      run: |
+        MODEL_FILES=$(find examples -name model.toml)
+        schemas/validate_toml_with_schema.py schemas/input/model.yaml $MODEL_FILES
     - name: Generate documentation for file formats
       shell: bash
       run: python docs/file_formats/generate_docs.py
