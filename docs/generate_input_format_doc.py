@@ -21,13 +21,18 @@ if __name__ == "__main__":
     }
 
     sys.path.append(str(DOCS_DIR))
-    from format_docs import generate_for_csv
+    from format_docs import generate_for_csv, generate_for_toml
 
     env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"))
     csv_sections = generate_for_csv(FILE_ORDER, SCHEMA_DIR, env)
 
+    toml_file_name = "model.toml"
+    toml_info = generate_for_toml(SCHEMA_DIR, toml_file_name, env)
+
     template = env.get_template("input_format.md.jinja")
-    out = template.render(csv_sections=csv_sections, script_name=Path(__file__).name)
+    out = template.render(
+        csv_sections=csv_sections, toml_info=toml_info, script_name=Path(__file__).name
+    )
 
     output_path = DOCS_DIR / "input_format.md"
     output_path.write_text(out, encoding="utf-8")

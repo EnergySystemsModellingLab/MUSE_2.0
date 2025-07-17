@@ -3,8 +3,8 @@
 # A script to generate markdown documentation from table schemas.
 
 from typing import Iterable
-from table2md import MarkdownTable
 import yaml
+from .table import fields2table
 from pathlib import Path
 from dataclasses import dataclass
 from jinja2 import Environment
@@ -66,21 +66,6 @@ def add_full_stop(s: str) -> str:
         return s
     else:
         return f"{s}."
-
-
-def fields2table(fields: list[dict[str, str]]) -> str:
-    data = []
-    for f in fields:
-        # MarkdownTable can't handle newlines, so replace with HTML equivalent
-        notes = f.get("notes", "")
-        notes = notes.replace("\n\n", "<br /><br />").replace("\n", " ")
-        row = {
-            "Field": f"`{f['name']}`",
-            "Description": f["description"],
-            "Notes": notes,
-        }
-        data.append(row)
-    return str(MarkdownTable.from_dicts(data))
 
 
 def format_notes(notes) -> str:
