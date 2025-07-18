@@ -14,6 +14,11 @@ repos:
       - id: check-metaschema
         name: Validate JSON schemas
         files: ^schemas/(settings|input/model)\.yaml$
+      - id: check-jsonschema
+        name: Validate model.toml files
+        args: ["--schemafile", "schemas/input/model.yaml"]
+        files: /model\.toml$
+        types_or: [toml]
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.38.0
     hooks:
