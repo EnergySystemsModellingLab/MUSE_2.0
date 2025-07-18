@@ -1,0 +1,22 @@
+on:
+  release:
+  workflow_dispatch:
+
+name: Publish to crates.io
+
+jobs:
+  crates_io_publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: cargo login
+        run: |
+          echo "${{ secrets.CRATES_IO_API_TOKEN }}" | cargo login
+
+      - run: cargo publish
