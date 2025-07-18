@@ -15,6 +15,11 @@ repos:
         name: Validate JSON schemas
         files: ^schemas/(settings|input/model)\.yaml$
       - id: check-jsonschema
+        name: Validate table schemas
+        args: ["--schemafile", "https://specs.frictionlessdata.io/schemas/table-schema.json"]
+        files: ^schemas/
+        exclude: /(model|settings)\.yaml$
+      - id: check-jsonschema
         name: Validate model.toml files
         args: ["--schemafile", "schemas/input/model.yaml"]
         files: /model\.toml$
