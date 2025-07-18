@@ -46,7 +46,8 @@ pub fn run(
     assets.commission_new(year);
 
     // Dispatch optimisation with existing assets only
-    let solution_existing = perform_dispatch_optimisation(&model, &assets, &[], year)?;
+    let solution_existing =
+        perform_dispatch_optimisation(&model, &assets, &[], year, 0, &mut writer)?;
     let flow_map = solution_existing.create_flow_map();
 
     // Perform a separate dispatch run with existing assets and candidates from next year (skip if
@@ -60,7 +61,7 @@ pub fn run(
                 model.parameters.candidate_asset_capacity,
             );
 
-            perform_dispatch_optimisation(&model, &assets, &candidates, year)
+            perform_dispatch_optimisation(&model, &assets, &candidates, year, 1, &mut writer)
         })
         .transpose()?;
     let solution = solution_candidates.unwrap_or(solution_existing);
@@ -69,7 +70,7 @@ pub fn run(
     let (prices, reduced_costs) = get_prices_and_reduced_costs(&model, &solution, &assets, year);
 
     // Write active assets and results of dispatch optimisation to file
-    writer.write(year, &solution, &assets, &flow_map, &prices)?;
+    writer.write(year, &assets, &flow_map, &prices)?;
 
     for year in year_iter {
         info!("Milestone year: {year}");
