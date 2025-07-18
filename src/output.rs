@@ -7,7 +7,7 @@ use crate::region::RegionID;
 use crate::simulation::optimisation::{FlowMap, Solution};
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
-use crate::units::{Flow, MoneyPerActivity, MoneyPerFlow};
+use crate::units::{Activity, Flow, MoneyPerActivity, MoneyPerFlow};
 use anyhow::{Context, Result};
 use csv;
 use serde::{Deserialize, Serialize};
@@ -29,6 +29,9 @@ const COMMODITY_PRICES_FILE_NAME: &str = "commodity_prices.csv";
 
 /// The output file name for assets
 const ASSETS_FILE_NAME: &str = "assets.csv";
+
+/// The output file name for raw activity
+const ACTIVITY_FILE_NAME: &str = "debug_activity.csv";
 
 /// The output file name for commodity balance duals
 const COMMODITY_BALANCE_DUALS_FILE_NAME: &str = "debug_commodity_balance_duals.csv";
@@ -112,6 +115,15 @@ struct CommodityPriceRow {
     price: MoneyPerFlow,
 }
 
+/// Represents the activity in a row of the activity CSV file
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct ActivityRow {
+    milestone_year: u32,
+    asset_id: Option<AssetID>,
+    time_slice: TimeSliceID,
+    activity: Activity,
+}
+
 /// Represents the activity duals data in a row of the activity duals CSV file
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ActivityDualsRow {
@@ -133,6 +145,7 @@ struct CommodityBalanceDualsRow {
 
 /// For writing extra debug information about the model
 struct DebugDataWriter {
+    activity_writer: csv::Writer<File>,
     commodity_balance_duals_writer: csv::Writer<File>,
     activity_duals_writer: csv::Writer<File>,
 }
@@ -150,6 +163,7 @@ impl DebugDataWriter {
         };
 
         Ok(Self {
+            activity_writer: new_writer(ACTIVITY_FILE_NAME)?,
             commodity_balance_duals_writer: new_writer(COMMODITY_BALANCE_DUALS_FILE_NAME)?,
             activity_duals_writer: new_writer(ACTIVITY_DUALS_FILE_NAME)?,
         })
@@ -157,11 +171,30 @@ impl DebugDataWriter {
 
     /// Write all debug info to output files
     fn write_debug_info(&mut self, milestone_year: u32, solution: &Solution) -> Result<()> {
+        self.write_activity(milestone_year, solution.iter_activity())?;
         self.write_activity_duals(milestone_year, solution.iter_activity_duals())?;
         self.write_commodity_balance_duals(
             milestone_year,
             solution.iter_commodity_balance_duals(),
         )?;
+        Ok(())
+    }
+
+    // Write activity to file
+    fn write_activity<'a, I>(&mut self, milestone_year: u32, iter: I) -> Result<()>
+    where
+        I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, Activity)>,
+    {
+        for (asset, time_slice, activity) in iter {
+            let row = ActivityRow {
+                milestone_year,
+                asset_id: asset.id,
+                time_slice: time_slice.clone(),
+                activity,
+            };
+            self.activity_writer.serialize(row)?;
+        }
+
         Ok(())
     }
 
@@ -204,6 +237,7 @@ impl DebugDataWriter {
 
     /// Flush the underlying streams
     fn flush(&mut self) -> Result<()> {
+        self.activity_duals_writer.flush()?;
         self.commodity_balance_duals_writer.flush()?;
         self.activity_duals_writer.flush()?;
 
@@ -497,6 +531,37 @@ mod tests {
                 .into_deserialize()
                 .try_collect()
                 .unwrap();
+        assert_equal(records, iter::once(expected));
+    }
+
+    #[rstest]
+    fn test_write_activity(assets: AssetPool, time_slice: TimeSliceID) {
+        let milestone_year = 2020;
+        let activity = Activity(100.5);
+        let dir = tempdir().unwrap();
+        let asset = assets.iter().next().unwrap();
+
+        // Write activity
+        {
+            let mut writer = DebugDataWriter::create(dir.path()).unwrap();
+            writer
+                .write_activity(milestone_year, iter::once((asset, &time_slice, activity)))
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        // Read back and compare
+        let expected = ActivityRow {
+            milestone_year,
+            asset_id: asset.id,
+            time_slice,
+            activity,
+        };
+        let records: Vec<ActivityRow> = csv::Reader::from_path(dir.path().join(ACTIVITY_FILE_NAME))
+            .unwrap()
+            .into_deserialize()
+            .try_collect()
+            .unwrap();
         assert_equal(records, iter::once(expected));
     }
 }
