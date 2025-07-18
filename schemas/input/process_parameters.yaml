@@ -1,3 +1,4 @@
+$schema: https://specs.frictionlessdata.io/schemas/table-schema.json
 description: |
   Parameters for processes which vary by region and year.
 

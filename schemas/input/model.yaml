@@ -1,0 +1,27 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Model parameters
+description: Parameters which affect the behaviour of the model. Most are optional.
+type: object
+properties:
+  milestone_years:
+    type: array
+    items:
+      type: integer
+    description: The milestone years for the simulation
+    notes: Must be positive integers that are sorted and unique
+  candidate_asset_capacity:
+    type: number
+    description: Capacity to give to candidate assets in dispatch optimisation
+    notes: |
+      Optional. The default value should work. Do not change this value unless you know what you're
+      doing!
+  pricing_strategy:
+    type: string
+    enum: [shadow_prices, scarcity_adjusted]
+    description: Change the algorithm used for calculating commodity prices
+    notes: |
+      Optional. Defaults to `shadow_prices`, which just uses the shadow prices for commodity prices.
+
+      The `scarcity_adjusted` option may cause price instability for assets with more than one
+      output commodity. Do not use this unless you know what you're doing!
+required: [milestone_years]

@@ -1,3 +1,4 @@
+$schema: https://specs.frictionlessdata.io/schemas/table-schema.json
 description: |
   Defines levies for commodities (or, if `value` is negative, incentives).
 
