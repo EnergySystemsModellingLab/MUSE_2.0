@@ -1,3 +1,4 @@
+$schema: https://specs.frictionlessdata.io/schemas/table-schema.json
 description: |
   Defines the processes in which an agent will invest for given parameters.
 
