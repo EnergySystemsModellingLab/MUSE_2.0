@@ -19,6 +19,11 @@ repos:
         args: ["--schemafile", "schemas/input/model.yaml"]
         files: /model\.toml$
         types_or: [toml]
+      - id: check-jsonschema
+        name: Validate settings.toml files
+        args: ["--schemafile", "schemas/settings.yaml"]
+        files: /settings\.toml$
+        types_or: [toml]
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.38.0
     hooks:
