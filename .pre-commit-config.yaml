@@ -11,6 +11,9 @@ repos:
       - id: check-dependabot
       - id: check-github-actions
       - id: check-github-workflows
+      - id: check-metaschema
+        name: Validate JSON schemas
+        files: ^schemas/(settings|input/model)\.yaml$
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.38.0
     hooks:
