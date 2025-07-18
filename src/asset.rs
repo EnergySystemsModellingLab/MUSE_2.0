@@ -276,12 +276,37 @@ impl Ord for AssetRef {
     }
 }
 
+/// Convert the specified assets to being decommissioned and return
+fn decommission_assets<'a, I>(assets: I, year: u32) -> impl Iterator<Item = Asset> + 'a
+where
+    I: IntoIterator<Item = AssetRef> + 'a,
+{
+    assets.into_iter().map(move |asset| {
+        // We could use `make_mut` on the assumption that there's only one ref, but in practice
+        // there are likely to be more in variable maps etc., so we'll end up cloning it anyway
+        let mut asset = Asset::clone(&asset);
+        assert!(
+            asset.is_commissioned(),
+            "Cannot decommission an asset that hasn't been commissioned"
+        );
+        assert!(
+            asset.decommission_year.is_none(),
+            "Asset decommissioned twice"
+        );
+        asset.decommission_year = Some(year);
+
+        asset
+    })
+}
+
 /// A pool of [`Asset`]s
 pub struct AssetPool {
-    /// The pool of active assets
+    /// The pool of active assets, sorted by ID
     active: Vec<AssetRef>,
     /// Assets that have not yet been commissioned, sorted by commission year
     future: Vec<Asset>,
+    /// Assets that have been decommissioned
+    decommissioned: Vec<Asset>,
     /// Next available asset ID number
     next_id: u32,
 }
@@ -295,6 +320,7 @@ impl AssetPool {
         Self {
             active: Vec::new(),
             future: assets,
+            decommissioned: Vec::new(),
             next_id: 0,
         }
     }
@@ -323,7 +349,14 @@ impl AssetPool {
 
     /// Decommission old assets for the specified milestone year
     pub fn decommission_old(&mut self, year: u32) {
-        self.active.retain(|asset| asset.decommission_year() > year);
+        let to_remove = self
+            .active
+            .iter()
+            .filter(|asset| asset.decommission_year() <= year)
+            .collect_vec();
+
+        let removed = to_remove.iter().map(|idx| self.active.remove(*idx));
+        self.decommissioned.extend(removed);
     }
 
     /// Get an asset with the specified ID.
