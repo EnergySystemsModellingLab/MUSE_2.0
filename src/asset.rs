@@ -34,8 +34,10 @@ pub struct Asset {
     pub region_id: RegionID,
     /// Capacity of asset
     pub capacity: Capacity,
-    /// The year the asset comes online
+    /// The year the asset was commissioned
     pub commission_year: u32,
+    /// The year the asset was decommissioned (if relevant)
+    pub decommission_year: Option<u32>,
 }
 
 impl Asset {
@@ -91,6 +93,7 @@ impl Asset {
             region_id,
             capacity: Capacity(0.0),
             commission_year,
+            decommission_year: None,
         })
     }
 
