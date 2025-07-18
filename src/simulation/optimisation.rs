@@ -4,6 +4,7 @@
 use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
+use crate::output::DataWriter;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Activity, Flow, MoneyPerActivity, MoneyPerFlow, UnitType};
@@ -167,11 +168,30 @@ impl Solution<'_> {
 /// * `asset_pool` - The asset pool
 /// * `candidate_assets` - Candidate assets for inclusion in active pool
 /// * `year` - Current milestone year
+/// * `run_number` - Which dispatch run for the current year this is
+/// * `data_writer` - For saving output data
 ///
 /// # Returns
 ///
 /// A solution containing new commodity flows for assets and prices for (some) commodities.
 pub fn perform_dispatch_optimisation<'a>(
+    model: &'a Model,
+    asset_pool: &AssetPool,
+    candidate_assets: &[AssetRef],
+    year: u32,
+    run_number: u32,
+    writer: &mut DataWriter,
+) -> Result<Solution<'a>> {
+    let solution =
+        perform_dispatch_optimisation_no_save(model, asset_pool, candidate_assets, year)?;
+
+    writer.write_debug_info(year, run_number, &solution)?;
+
+    Ok(solution)
+}
+
+/// Perform the dispatch optimisation without saving output data
+fn perform_dispatch_optimisation_no_save<'a>(
     model: &'a Model,
     asset_pool: &AssetPool,
     candidate_assets: &[AssetRef],
