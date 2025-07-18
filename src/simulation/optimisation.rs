@@ -87,6 +87,15 @@ impl Solution<'_> {
     }
 
     /// Activity for each active asset
+    pub fn iter_activity(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Activity)> {
+        self.variables
+            .0
+            .keys()
+            .zip(self.solution.columns())
+            .map(|((asset, time_slice), activity)| (asset, time_slice, Activity(*activity)))
+    }
+
+    /// Activity for each active asset
     fn iter_activity_for_active(
         &self,
     ) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Activity)> {
