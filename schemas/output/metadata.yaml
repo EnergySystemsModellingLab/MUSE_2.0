@@ -1,0 +1,68 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Metadata
+description: Metadata about the program run, the MUSE 2.0 build and the user's platform.
+type: object
+properties:
+  run:
+    type: object
+    description: Information about the program run
+    properties:
+      model_path:
+        type: string
+        description: Path to the input model
+      datetime:
+        type: string
+        description: Timestamp for the model run
+        notes: Time at which the model run commenced
+    additionalProperties: false
+  program:
+    type: object
+    description: Information about MUSE 2.0
+    properties:
+      name:
+        type: string
+        description: The name of the program (`muse2`)
+      version:
+        type: string
+        description: Program version (e.g. 2.0.0)
+      target:
+        type: string
+        description: The target triple MUSE 2.0 was built for
+      is_debug:
+        type: boolean
+        description: Whether the current build is a debug or release build
+      rustc_version:
+        type: string
+        description: The version of `rustc` used to compile MUSE 2.0
+      build_time_utc:
+        type: string
+        description: The UTC time and date at which MUSE 2.0 was built
+      git_commit_hash:
+        type: string
+        description: The short hash of the git commit from which MUSE 2.0 was built
+        notes: If the git working tree was dirty, `-dirty` is appended to the hash
+    additionalProperties: false
+  platform:
+    type: object
+    description: Information about the platform on which the simulation was run
+    properties:
+      sysname:
+        type: string
+        description: The name of the implementation of the operating system
+      nodename:
+        type: string
+        description: The hostname of the machine
+      release:
+        type: string
+        description: The release level of the operating system
+      version:
+        type: string
+        description: The version level of the release
+      machine:
+        type: string
+        description: The name of the system's hardware
+      osname:
+        type: string
+        description: The name of the current OS
+    additionalProperties: false
+additionalProperties: false

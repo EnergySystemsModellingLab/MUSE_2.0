@@ -14,7 +14,7 @@ repos:
       - id: check-github-workflows
       - id: check-metaschema
         name: Validate JSON schemas
-        files: ^schemas/(settings|input/model)\.yaml$
+        files: ^schemas/(settings|input/model|output/metadata)\.yaml$
       - id: check-jsonschema
         name: Validate table schemas
         args: ["--schemafile", "schemas/table-schema.json"]
