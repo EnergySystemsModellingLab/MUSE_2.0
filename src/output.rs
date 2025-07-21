@@ -10,6 +10,7 @@ use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, Flow, MoneyPerActivity, MoneyPerFlow};
 use anyhow::{Context, Result};
 use csv;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
@@ -73,24 +74,24 @@ pub fn create_output_directory(output_dir: &Path) -> Result<()> {
 /// Represents a row in the assets output CSV file.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct AssetRow {
-    milestone_year: u32,
     asset_id: AssetID,
     process_id: ProcessID,
     region_id: RegionID,
     agent_id: AgentID,
     commission_year: u32,
+    decommission_year: Option<u32>,
 }
 
 impl AssetRow {
     /// Create a new [`AssetRow`]
-    fn new(milestone_year: u32, asset: &Asset) -> Self {
+    fn new(asset: &Asset) -> Self {
         Self {
-            milestone_year,
             asset_id: asset.id.unwrap(),
             process_id: asset.process.id.clone(),
             region_id: asset.region_id.clone(),
             agent_id: asset.agent_id.clone().unwrap(),
             commission_year: asset.commission_year,
+            decommission_year: asset.decommission_year,
         }
     }
 }
@@ -268,7 +269,7 @@ impl DebugDataWriter {
 
 /// An object for writing commodity prices to file
 pub struct DataWriter {
-    assets_writer: csv::Writer<File>,
+    assets_path: PathBuf,
     flows_writer: csv::Writer<File>,
     prices_writer: csv::Writer<File>,
     debug_writer: Option<DebugDataWriter>,
@@ -298,7 +299,7 @@ impl DataWriter {
         };
 
         Ok(Self {
-            assets_writer: new_writer(ASSETS_FILE_NAME)?,
+            assets_path: output_path.join(ASSETS_FILE_NAME),
             flows_writer: new_writer(COMMODITY_FLOWS_FILE_NAME)?,
             prices_writer: new_writer(COMMODITY_PRICES_FILE_NAME)?,
             debug_writer,
@@ -313,7 +314,7 @@ impl DataWriter {
         flow_map: &FlowMap,
         prices: &CommodityPrices,
     ) -> Result<()> {
-        self.write_assets(milestone_year, assets.iter())?;
+        self.write_assets(assets.iter_all())?;
         self.write_flows(milestone_year, flow_map)?;
         self.write_prices(milestone_year, prices)?;
 
@@ -334,15 +335,27 @@ impl DataWriter {
         Ok(())
     }
 
-    /// Write assets to a CSV file
-    fn write_assets<'a, I>(&mut self, milestone_year: u32, assets: I) -> Result<()>
+    /// Write assets to a CSV file.
+    ///
+    /// The whole file is written at once and is overwritten with subsequent invocations. This is
+    /// done so that partial results will be written in the case of errors and so that the user can
+    /// see the results while the simulation is still running.
+    ///
+    /// The file is sorted by asset ID.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any of the assets has not yet been commissioned (decommissioned assets are fine).
+    fn write_assets<'a, I>(&mut self, assets: I) -> Result<()>
     where
         I: Iterator<Item = &'a AssetRef>,
     {
-        for asset in assets {
-            let row = AssetRow::new(milestone_year, asset);
-            self.assets_writer.serialize(row)?;
+        let mut writer = csv::Writer::from_path(&self.assets_path)?;
+        for asset in assets.sorted() {
+            let row = AssetRow::new(asset);
+            writer.serialize(row)?;
         }
+        writer.flush()?;
 
         Ok(())
     }
@@ -381,7 +394,6 @@ impl DataWriter {
 
     /// Flush the underlying streams
     pub fn flush(&mut self) -> Result<()> {
-        self.assets_writer.flush()?;
         self.flows_writer.flush()?;
         self.prices_writer.flush()?;
         if let Some(ref mut wtr) = &mut self.debug_writer {
@@ -406,19 +418,18 @@ mod tests {
 
     #[rstest]
     fn test_write_assets(assets: AssetPool) {
-        let milestone_year = 2020;
         let dir = tempdir().unwrap();
 
         // Write an asset
         {
             let mut writer = DataWriter::create(dir.path(), dir.path(), false).unwrap();
-            writer.write_assets(milestone_year, assets.iter()).unwrap();
+            writer.write_assets(assets.iter()).unwrap();
             writer.flush().unwrap();
         }
 
         // Read back and compare
         let asset = assets.iter().next().unwrap();
-        let expected = AssetRow::new(milestone_year, asset);
+        let expected = AssetRow::new(asset);
         let records: Vec<AssetRow> = csv::Reader::from_path(dir.path().join(ASSETS_FILE_NAME))
             .unwrap()
             .into_deserialize()
