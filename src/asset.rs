@@ -7,11 +7,12 @@ use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity};
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
-use itertools::Itertools;
+use itertools::{chain, Itertools};
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, RangeInclusive};
 use std::rc::Rc;
+use std::slice;
 
 /// A unique identifier for an asset
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
@@ -424,8 +425,20 @@ impl AssetPool {
     }
 
     /// Iterate over active assets
-    pub fn iter(&self) -> std::slice::Iter<AssetRef> {
+    pub fn iter(&self) -> slice::Iter<AssetRef> {
         self.active.iter()
+    }
+
+    /// Iterate over decommissioned assets
+    pub fn iter_decommissioned(&self) -> slice::Iter<AssetRef> {
+        self.decommissioned.iter()
+    }
+
+    /// Iterate over all commissioned and decommissioned assets.
+    ///
+    /// NB: Not-yet-commissioned assets are not included.
+    pub fn iter_all(&self) -> impl Iterator<Item = &AssetRef> {
+        chain(self.iter(), self.iter_decommissioned())
     }
 
     /// Return current active pool and clear
