@@ -110,7 +110,7 @@ impl Asset {
                 time_slice.clone(),
             ))
             .unwrap();
-        let max_act = self.maximum_activity();
+        let max_act = self.max_activity();
 
         // limits in real units (which are user defined)
         (max_act * *limits.start())..=(max_act * *limits.end())
@@ -146,7 +146,7 @@ impl Asset {
     }
 
     /// Maximum activity for this asset
-    pub fn maximum_activity(&self) -> Activity {
+    pub fn max_activity(&self) -> Activity {
         self.capacity * self.process_parameter.capacity_to_activity
     }
 
