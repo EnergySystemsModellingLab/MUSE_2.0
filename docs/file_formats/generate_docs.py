@@ -48,7 +48,25 @@ def generate_input_docs(env: Environment) -> None:
     output_path.write_text(out, encoding="utf-8")
 
 
-generators = {"settings": generate_settings_docs, "input": generate_input_docs}
+def generate_output_docs(env: Environment) -> None:
+    OUTPUT_SCHEMA_DIR = SCHEMA_DIR / "output"
+    toml_file_name = "metadata.toml"
+    toml_info = generate_for_toml(
+        OUTPUT_SCHEMA_DIR, toml_file_name, env, heading_level=2
+    )
+
+    template = env.get_template("output_files.md.jinja")
+    out = template.render(toml_info=toml_info, script_name=Path(__file__).name)
+
+    output_path = FILE_FORMAT_DOCS_DIR / "output_files.md"
+    output_path.write_text(out, encoding="utf-8")
+
+
+generators = {
+    "settings": generate_settings_docs,
+    "input": generate_input_docs,
+    "output": generate_output_docs,
+}
 
 
 def main(options: Iterable[str]) -> None:

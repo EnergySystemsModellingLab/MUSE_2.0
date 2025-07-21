@@ -2,4 +2,12 @@
 
 {{ description }}
 
+{% for section, table in tables.items() %}
+{%- if section == "" -%}
+{{ heading_level }}# Top-level table
+{%- else -%}
+{{ heading_level }}# `[{{ section }}]` table
+{%- endif %}
+
 {{ table }}
+{% endfor %}
