@@ -95,7 +95,7 @@ impl Asset {
     }
 
     /// The last year in which this asset should be decommissioned
-    pub fn decommission_year(&self) -> u32 {
+    pub fn max_decommission_year(&self) -> u32 {
         self.commission_year + self.process_parameter.lifetime
     }
 
@@ -333,7 +333,8 @@ impl AssetPool {
 
     /// Decommission old assets for the specified milestone year
     pub fn decommission_old(&mut self, year: u32) {
-        self.active.retain(|asset| asset.decommission_year() > year);
+        self.active
+            .retain(|asset| asset.max_decommission_year() > year);
     }
 
     /// Get an asset with the specified ID.
