@@ -375,6 +375,38 @@ impl AssetPool {
             .retain(|asset| asset.max_decommission_year() > year);
     }
 
+    /// Decommission the specified assets if they are no longer in the active pool.
+    ///
+    /// # Arguments
+    ///
+    /// * `assets` - Assets to possibly decommission
+    /// * `year` - Decommissioning year
+    ///
+    /// # Panics
+    ///
+    /// Panics if any of the provided assets was never commissioned or has already been
+    /// decommissioned.
+    pub fn decommission_if_not_active<I>(&mut self, assets: I, year: u32)
+    where
+        I: IntoIterator<Item = AssetRef>,
+    {
+        // Decommission assets not found in active pool
+        let to_decommission = assets.into_iter().filter(|asset| {
+            let id = asset
+                .id
+                .expect("Cannot decommission asset that has not been commissioned");
+
+            // Return true if asset **not** in active pool
+            self.active
+                .binary_search_by(|asset| asset.id.unwrap().cmp(&id))
+                .is_err()
+        });
+
+        // Set `decommission_year` and copy to `self.decommissioned`
+        let decommissioned = decommission_assets(to_decommission, year);
+        self.decommissioned.extend(decommissioned);
+    }
+
     /// Get an asset with the specified ID.
     ///
     /// # Returns
@@ -894,5 +926,85 @@ mod tests {
         assert_eq!(asset_pool.next_id, 4);
         assert_eq!(asset_pool.active[2].id, Some(AssetID(2)));
         assert_eq!(asset_pool.active[3].id, Some(AssetID(3)));
+    }
+
+    #[rstest]
+    fn test_asset_pool_decommission_if_not_active(mut asset_pool: AssetPool) {
+        // Commission some assets
+        asset_pool.commission_new(2020);
+        assert_eq!(asset_pool.active.len(), 2);
+        assert_eq!(asset_pool.decommissioned.len(), 0);
+
+        // Remove one asset from the active pool (simulating it being removed elsewhere)
+        let removed_asset = asset_pool.active.remove(0);
+        assert_eq!(asset_pool.active.len(), 1);
+
+        // Try to decommission both the removed asset (not in active) and an active asset
+        let assets_to_check = vec![removed_asset.clone(), asset_pool.active[0].clone()];
+        asset_pool.decommission_if_not_active(assets_to_check, 2025);
+
+        // Only the removed asset should be decommissioned (since it's not in active pool)
+        assert_eq!(asset_pool.active.len(), 1); // Active pool unchanged
+        assert_eq!(asset_pool.decommissioned.len(), 1);
+        assert_eq!(asset_pool.decommissioned[0].id, removed_asset.id);
+        assert_eq!(asset_pool.decommissioned[0].decommission_year, Some(2025));
+    }
+
+    #[rstest]
+    fn test_asset_pool_decommission_if_not_active_all_active(mut asset_pool: AssetPool) {
+        // Commission some assets
+        asset_pool.commission_new(2020);
+        assert_eq!(asset_pool.active.len(), 2);
+        assert_eq!(asset_pool.decommissioned.len(), 0);
+
+        // Try to decommission assets that are all still in the active pool
+        let assets_to_check = asset_pool.active.clone();
+        asset_pool.decommission_if_not_active(assets_to_check, 2025);
+
+        // Nothing should be decommissioned since all assets are still active
+        assert_eq!(asset_pool.active.len(), 2);
+        assert_eq!(asset_pool.decommissioned.len(), 0);
+    }
+
+    #[rstest]
+    fn test_asset_pool_decommission_if_not_active_none_active(mut asset_pool: AssetPool) {
+        // Commission some assets
+        asset_pool.commission_new(2020);
+        let all_assets = asset_pool.active.clone();
+
+        // Clear the active pool (simulating all assets being removed)
+        asset_pool.active.clear();
+
+        // Try to decommission the assets that are no longer active
+        asset_pool.decommission_if_not_active(all_assets.clone(), 2025);
+
+        // All assets should be decommissioned since none are in active pool
+        assert_eq!(asset_pool.active.len(), 0);
+        assert_eq!(asset_pool.decommissioned.len(), 2);
+        assert_eq!(asset_pool.decommissioned[0].id, all_assets[0].id);
+        assert_eq!(asset_pool.decommissioned[0].decommission_year, Some(2025));
+        assert_eq!(asset_pool.decommissioned[1].id, all_assets[1].id);
+        assert_eq!(asset_pool.decommissioned[1].decommission_year, Some(2025));
+    }
+
+    #[rstest]
+    #[should_panic(expected = "Cannot decommission asset that has not been commissioned")]
+    fn test_asset_pool_decommission_if_not_active_non_commissioned_asset(
+        mut asset_pool: AssetPool,
+        process: Process,
+    ) {
+        // Create a non-commissioned asset
+        let non_commissioned_asset = Asset::new(
+            Some("agent_new".into()),
+            process.into(),
+            "GBR".into(),
+            Capacity(1.0),
+            2015,
+        )
+        .unwrap()
+        .into();
+
+        // This should panic because the asset was never commissioned
+        asset_pool.decommission_if_not_active(vec![non_commissioned_asset], 2025);
     }
 }
