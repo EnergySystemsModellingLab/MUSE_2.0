@@ -5,7 +5,9 @@ use crate::agent::{
     AgentSearchSpaceMap, DecisionRule,
 };
 use crate::asset::{Asset, AssetPool};
-use crate::commodity::{Commodity, CommodityID, CommodityLevyMap, CommodityMap, CommodityType, DemandMap};
+use crate::commodity::{
+    Commodity, CommodityID, CommodityLevyMap, CommodityMap, CommodityType, DemandMap,
+};
 use crate::process::{
     Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessMap, ProcessParameter,
     ProcessParameterMap,

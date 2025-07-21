@@ -33,8 +33,6 @@ struct Demand {
 /// A map relating commodity, region and year to annual demand
 pub type AnnualDemandMap = HashMap<(CommodityID, RegionID, u32), (TimeSliceLevel, Flow)>;
 
-
-
 /// Reads demand data from CSV files.
 ///
 /// # Arguments
