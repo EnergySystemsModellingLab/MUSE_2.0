@@ -102,6 +102,9 @@ pub fn perform_agent_investment(
         }
     }
 
+    // Decommission non-selected assets
+    assets.decommission_if_not_active(existing_assets, year);
+
     Ok(())
 }
 
