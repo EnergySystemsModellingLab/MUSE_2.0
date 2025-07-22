@@ -5,7 +5,6 @@ use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
-use crate::process::Process;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{ActivityPerCapacity, Capacity, Dimensionless, Flow};
@@ -170,40 +169,18 @@ where
     })
 }
 
-// Get the maximum activity per unit capacity for every time slice
-fn iter_max_activity_per_capacity<'a>(
-    time_slice_info: &'a TimeSliceInfo,
-    process: &'a Process,
-    region_id: &'a RegionID,
-    year: u32,
-) -> impl Iterator<Item = (&'a TimeSliceID, ActivityPerCapacity)> + 'a {
-    let cap2act = process.parameters[&(region_id.clone(), year)].capacity_to_activity;
-    time_slice_info.iter_ids().map(move |time_slice| {
-        // Activity upper bound
-        let activity_upper =
-            *process.activity_limits[&(region_id.clone(), year, time_slice.clone())].end();
-
-        // Adjust for cap2act and time slice duration
-        let max_act_per_cap = activity_upper * cap2act;
-
-        (time_slice, max_act_per_cap)
-    })
-}
-
 /// Get required capacity by time slice
 fn iter_capacity_per_time_slice<'a, I>(
     act_per_cap: I,
-    process: &'a Process,
+    asset: &'a Asset,
     commodity_id: &'a CommodityID,
-    region_id: &'a RegionID,
     demand: &'a DemandMap,
-    year: u32,
 ) -> impl Iterator<Item = (&'a TimeSliceID, Capacity)> + 'a
 where
     I: IntoIterator<Item = (&'a TimeSliceID, ActivityPerCapacity)> + 'a,
 {
     // Flow coefficient for this commodity
-    let coeff = process.flows[&(region_id.clone(), year)][commodity_id].coeff;
+    let coeff = asset.get_flow(commodity_id).unwrap().coeff;
 
     // Required capacity to meet demand in any time slice
     // iter_max_activity_per_capacity(time_slice_info, process, region_id, year).map(
@@ -220,14 +197,15 @@ where
 /// Get the maximum required capacity across time slices
 fn get_max_capacity(
     time_slice_info: &TimeSliceInfo,
-    process: &Process,
+    asset: &Asset,
     commodity_id: &CommodityID,
-    region_id: &RegionID,
     demand: &DemandMap,
-    year: u32,
 ) -> Capacity {
-    let act_per_cap = iter_max_activity_per_capacity(time_slice_info, process, region_id, year);
-    iter_capacity_per_time_slice(act_per_cap, process, commodity_id, region_id, demand, year)
+    let act_per_cap = time_slice_info.iter_ids().map(|time_slice| {
+        let value = *asset.get_activity_per_capacity_limits(time_slice).end();
+        (time_slice, value)
+    });
+    iter_capacity_per_time_slice(act_per_cap, asset, commodity_id, demand)
         .map(|(_, capacity)| capacity)
         .max_by(|a, b| a.total_cmp(b))
         .unwrap()
@@ -286,22 +264,15 @@ fn get_candidate_assets<'a>(
         });
 
     producers.map(move |process| {
-        let capacity = model.parameters.capacity_limit_factor
-            * get_max_capacity(
-                &model.time_slice_info,
-                process,
-                commodity_id,
-                region_id,
-                demand,
-                year,
-            );
-
-        Asset::new(
+        Asset::new_and_set_capacity(
             Some(agent.id.clone()),
             process.clone(),
             region_id.clone(),
-            capacity,
             year,
+            |asset| {
+                model.parameters.capacity_limit_factor
+                    * get_max_capacity(&model.time_slice_info, asset, commodity_id, demand)
+            },
         )
         .unwrap()
         .into()
@@ -414,10 +385,11 @@ fn update_assets(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent::AgentID;
     use crate::asset::{Asset, AssetRef};
     use crate::commodity::Commodity;
     use crate::commodity::CommodityID;
-    use crate::fixture::{asset, commodity_id, region_id, time_slice, time_slice_info2};
+    use crate::fixture::{agent_id, asset, commodity_id, region_id, time_slice, time_slice_info2};
     use crate::process::{
         FlowType, Process, ProcessActivityLimitsMap, ProcessFlow, ProcessFlowsMap,
         ProcessParameter, ProcessParameterMap,
@@ -496,6 +468,7 @@ mod tests {
     #[rstest]
     fn test_iter_capacity_per_time_slice(
         time_slice_info2: TimeSliceInfo,
+        agent_id: AgentID,
         region_id: RegionID,
         commodity_id: CommodityID,
     ) {
@@ -570,83 +543,20 @@ mod tests {
             time_slice_info2.iter_ids(),
             [ActivityPerCapacity(0.1), ActivityPerCapacity(0.2)]
         );
-
-        // Run iter_capacity_per_time_slice
-        let result: HashMap<_, _> = iter_capacity_per_time_slice(
-            act_per_cap,
-            &process,
-            &commodity_id,
-            &region_id,
-            &demand,
+        let asset = Asset::new(
+            Some(agent_id),
+            process.into(),
+            region_id,
+            Capacity(100.0),
             year,
         )
-        .collect();
+        .unwrap();
+
+        // Run iter_capacity_per_time_slice
+        let result: HashMap<_, _> =
+            iter_capacity_per_time_slice(act_per_cap, &asset, &commodity_id, &demand).collect();
 
         assert_approx_eq!(Capacity, result[&ts_day], Capacity(50.0 / 3.0));
         assert_approx_eq!(Capacity, result[&ts_night], Capacity(60.0 / 6.0));
-    }
-
-    #[rstest]
-    fn test_iter_max_activity_per_capacity(time_slice_info2: TimeSliceInfo, region_id: RegionID) {
-        // Setup two time slices
-        let (ts_day, ts_night) = time_slice_info2.time_slices.keys().collect_tuple().unwrap();
-        let year = 2020u32;
-
-        // Activity limits: [0.0, 0.8] for day, [0.0, 1.0] for night
-        let mut activity_limits = ProcessActivityLimitsMap::new();
-        activity_limits.insert(
-            (region_id.clone(), year, ts_day.clone()),
-            Dimensionless(0.0)..=Dimensionless(0.8),
-        );
-        activity_limits.insert(
-            (region_id.clone(), year, ts_night.clone()),
-            Dimensionless(0.0)..=Dimensionless(1.0),
-        );
-
-        // Process parameters: capacity_to_activity = 2.5
-        let mut parameters = ProcessParameterMap::new();
-        parameters.insert(
-            (region_id.clone(), year),
-            Rc::new(ProcessParameter {
-                capital_cost: MoneyPerCapacity(0.0),
-                fixed_operating_cost: MoneyPerCapacityPerYear(0.0),
-                variable_operating_cost: MoneyPerActivity(0.0),
-                lifetime: 1,
-                discount_rate: Dimensionless(1.0),
-                capacity_to_activity: ActivityPerCapacity(2.5),
-            }),
-        );
-
-        // Build process (minimal setup, only need activity_limits and parameters)
-        let process = Process {
-            id: "test_process".into(),
-            description: "Test process for activity per capacity".into(),
-            years: vec![year],
-            activity_limits,
-            flows: ProcessFlowsMap::new(),
-            parameters,
-            regions: [region_id.clone()].into_iter().collect(),
-        };
-
-        // Run iter_max_activity_per_capacity
-        let result: HashMap<_, _> =
-            iter_max_activity_per_capacity(&time_slice_info2, &process, &region_id, year).collect();
-
-        // Expected calculations:
-        // Day: activity_upper = 0.8, cap2act = 2.5, duration = 0.5
-        // max_act_per_cap = 0.8 * 2.5 = 2.0
-        assert_approx_eq!(
-            ActivityPerCapacity,
-            result[&ts_day],
-            ActivityPerCapacity(2.0)
-        );
-
-        // Night: activity_upper = 1.0, cap2act = 2.5, duration = 0.5
-        // max_act_per_cap = 1.0 * 2.5  = 2.5
-        assert_approx_eq!(
-            ActivityPerCapacity,
-            result[&ts_night],
-            ActivityPerCapacity(2.5)
-        );
     }
 }
