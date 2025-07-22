@@ -177,15 +177,14 @@ fn iter_max_activity_per_capacity<'a>(
     region_id: &'a RegionID,
     year: u32,
 ) -> impl Iterator<Item = (&'a TimeSliceID, ActivityPerCapacity)> + 'a {
-    time_slice_info.iter().map(move |(time_slice, duration)| {
+    let cap2act = process.parameters[&(region_id.clone(), year)].capacity_to_activity;
+    time_slice_info.iter_ids().map(move |time_slice| {
         // Activity upper bound
         let activity_upper =
             *process.activity_limits[&(region_id.clone(), year, time_slice.clone())].end();
 
         // Adjust for cap2act and time slice duration
-        let max_act_per_cap = activity_upper
-            * process.parameters[&(region_id.clone(), year)].capacity_to_activity
-            / Dimensionless(duration.value());
+        let max_act_per_cap = activity_upper * cap2act;
 
         (time_slice, max_act_per_cap)
     })
@@ -650,19 +649,19 @@ mod tests {
 
         // Expected calculations:
         // Day: activity_upper = 0.8, cap2act = 2.5, duration = 0.5
-        // max_act_per_cap = 0.8 * 2.5 / 0.5 = 4.0
+        // max_act_per_cap = 0.8 * 2.5 = 2.0
         assert_approx_eq!(
             ActivityPerCapacity,
             result[&ts_day],
-            ActivityPerCapacity(4.0)
+            ActivityPerCapacity(2.0)
         );
 
         // Night: activity_upper = 1.0, cap2act = 2.5, duration = 0.5
-        // max_act_per_cap = 1.0 * 2.5 / 0.5 = 5.0
+        // max_act_per_cap = 1.0 * 2.5  = 2.5
         assert_approx_eq!(
             ActivityPerCapacity,
             result[&ts_night],
-            ActivityPerCapacity(5.0)
+            ActivityPerCapacity(2.5)
         );
     }
 }
