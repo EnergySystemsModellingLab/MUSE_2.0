@@ -129,7 +129,7 @@ fn get_demand_profile(commodities: &IndexSet<CommodityID>, flow_map: &FlowMap) -
     map
 }
 
-/// Get part of the demand profile for this commodity and region
+/// Get a portion of the demand profile for this commodity and region
 fn get_demand_for_commodity(
     time_slice_info: &TimeSliceInfo,
     demand: &AllDemandMap,
