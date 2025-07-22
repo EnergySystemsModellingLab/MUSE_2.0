@@ -8,7 +8,7 @@ use crate::model::Model;
 use crate::process::Process;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
+use crate::units::{ActivityPerCapacity, Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
 use indexmap::IndexSet;
 use itertools::chain;
@@ -170,7 +170,56 @@ where
     })
 }
 
-/// Get the maximum candidate asset capacity across time slices
+// Get the maximum activity per unit capacity for every time slice
+fn iter_max_activity_per_capacity<'a>(
+    time_slice_info: &'a TimeSliceInfo,
+    process: &'a Process,
+    region_id: &'a RegionID,
+    year: u32,
+) -> impl Iterator<Item = (&'a TimeSliceID, ActivityPerCapacity)> + 'a {
+    time_slice_info.iter().map(move |(time_slice, duration)| {
+        // Activity upper bound
+        let activity_upper =
+            *process.activity_limits[&(region_id.clone(), year, time_slice.clone())].end();
+
+        // Adjust for cap2act and time slice duration
+        let max_act_per_cap = activity_upper
+            * process.parameters[&(region_id.clone(), year)].capacity_to_activity
+            / Dimensionless(duration.value());
+
+        (time_slice, max_act_per_cap)
+    })
+}
+
+/// Get required capacity by time slice
+fn iter_capacity_per_time_slice<'a, I>(
+    act_per_cap: I,
+    process: &'a Process,
+    commodity_id: &'a CommodityID,
+    region_id: &'a RegionID,
+    demand: &'a DemandMap,
+    year: u32,
+) -> impl Iterator<Item = (&'a TimeSliceID, Capacity)> + 'a
+where
+    I: IntoIterator<Item = (&'a TimeSliceID, ActivityPerCapacity)> + 'a,
+{
+    // Flow coefficient for this commodity
+    let coeff = process.flows[&(region_id.clone(), year)][commodity_id].coeff;
+
+    // Required capacity to meet demand in any time slice
+    // iter_max_activity_per_capacity(time_slice_info, process, region_id, year).map(
+    act_per_cap
+        .into_iter()
+        .map(move |(time_slice, max_act_per_cap)| {
+            // `Mul` is not defined for these unit types, though the result would be `FlowPerCapacity`
+            let max_flow_per_cap = FlowPerCapacity(max_act_per_cap.value() * coeff.value());
+
+            let capacity = demand[time_slice] / max_flow_per_cap;
+            (time_slice, capacity)
+        })
+}
+
+/// Get the maximum required capacity across time slices
 fn get_max_capacity(
     time_slice_info: &TimeSliceInfo,
     process: &Process,
@@ -179,27 +228,9 @@ fn get_max_capacity(
     demand: &DemandMap,
     year: u32,
 ) -> Capacity {
-    // Flow coefficient for this commodity
-    let coeff = process.flows[&(region_id.clone(), year)][commodity_id].coeff;
-
-    // Maximum required capacity to meet demand in any time slice
-    time_slice_info
-        .iter()
-        .map(|(time_slice, duration)| {
-            // Activity upper bound
-            let activity_upper =
-                *process.activity_limits[&(region_id.clone(), year, time_slice.clone())].end();
-
-            // Adjust for cap2act and time slice duration
-            let max_act_per_cap = activity_upper
-                * process.parameters[&(region_id.clone(), year)].capacity_to_activity
-                / Dimensionless(duration.value());
-
-            // `Mul` is not defined for these unit types, though the result would be `FlowPerCapacity`
-            let max_flow_per_cap = FlowPerCapacity(max_act_per_cap.value() * coeff.value());
-
-            demand[time_slice] / max_flow_per_cap
-        })
+    let act_per_cap = iter_max_activity_per_capacity(time_slice_info, process, region_id, year);
+    iter_capacity_per_time_slice(act_per_cap, process, commodity_id, region_id, demand, year)
+        .map(|(_, capacity)| capacity)
         .max_by(|a, b| a.total_cmp(b))
         .unwrap()
 }
