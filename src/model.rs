@@ -2,7 +2,9 @@
 use crate::agent::AgentMap;
 use crate::asset::check_capacity_valid_for_asset;
 use crate::commodity::CommodityMap;
-use crate::input::{input_err_msg, is_sorted_and_unique, read_toml};
+use crate::input::{
+    deserialise_proportion_nonzero, input_err_msg, is_sorted_and_unique, read_toml,
+};
 use crate::process::ProcessMap;
 use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
@@ -52,8 +54,9 @@ pub struct ModelFile {
     pub pricing_strategy: PricingStrategy,
     /// Affects the maximum capacity that can be given to a newly created asset.
     ///
-    /// It is defined as the fraction of peak demand for the commodity of interest.
+    /// It is the proportion of maximum capacity that could be required across time slices.
     #[serde(default = "default_capacity_limit_factor")]
+    #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     pub capacity_limit_factor: Dimensionless,
 }
 
