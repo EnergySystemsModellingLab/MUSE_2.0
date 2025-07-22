@@ -180,3 +180,29 @@ pub fn time_slice_info() -> TimeSliceInfo {
         .collect(),
     }
 }
+
+#[fixture]
+pub fn time_slice_info2() -> TimeSliceInfo {
+    TimeSliceInfo {
+        times_of_day: ["day".into(), "night".into()].into_iter().collect(),
+        seasons: iter::once(("winter".into(), Year(1.0))).collect(),
+        time_slices: [
+            (
+                TimeSliceID {
+                    season: "winter".into(),
+                    time_of_day: "day".into(),
+                },
+                Year(0.5),
+            ),
+            (
+                TimeSliceID {
+                    season: "winter".into(),
+                    time_of_day: "night".into(),
+                },
+                Year(0.5),
+            ),
+        ]
+        .into_iter()
+        .collect(),
+    }
+}
