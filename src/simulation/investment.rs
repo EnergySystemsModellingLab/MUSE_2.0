@@ -70,9 +70,16 @@ pub fn perform_agent_investment(
                     &agent.id, commodity_id, region_id
                 );
 
+                let demand_for_commodity = get_demand_for_commodity(
+                    &model.time_slice_info,
+                    &demand,
+                    commodity_id,
+                    region_id,
+                    commodity_portion,
+                );
+
                 // Maximum capacity for candidate assets
-                let max_capacity =
-                    get_maximum_candidate_capacity(model, &demand, commodity_id, region_id);
+                let max_capacity = get_maximum_candidate_capacity(model, &demand_for_commodity);
 
                 // Existing and candidate assets from which to choose
                 let opt_assets = get_asset_options(
@@ -84,14 +91,6 @@ pub fn perform_agent_investment(
                     max_capacity,
                 )
                 .collect();
-
-                let demand_for_commodity = get_demand_for_commodity(
-                    &model.time_slice_info,
-                    &demand,
-                    commodity_id,
-                    region_id,
-                    commodity_portion,
-                );
 
                 // Choose assets from among existing pool and candidates
                 let best_assets = select_best_assets(
@@ -173,32 +172,12 @@ where
 }
 
 /// Get the maximum candidate asset capacity
-fn get_maximum_candidate_capacity(
-    model: &Model,
-    demand: &AllDemandMap,
-    commodity_id: &CommodityID,
-    region_id: &RegionID,
-) -> Capacity {
-    model.parameters.capacity_limit_factor
-        * get_peak_demand(&model.time_slice_info, demand, commodity_id, region_id)
-}
-
-/// Get the peak demand for this commodity
-fn get_peak_demand(
-    time_slice_info: &TimeSliceInfo,
-    demand: &AllDemandMap,
-    commodity_id: &CommodityID,
-    region_id: &RegionID,
-) -> Flow {
-    *time_slice_info
-        .iter_ids()
-        .map(|time_slice| {
-            demand
-                .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
-                .unwrap()
-        })
-        .max_by(|a, b| a.total_cmp(b))
-        .unwrap()
+fn get_maximum_candidate_capacity(model: &Model, demand: &DemandMap) -> Capacity {
+    let peak_demand = *demand
+        .values()
+        .max_by(|flow1, flow2| flow1.total_cmp(flow2))
+        .unwrap();
+    model.parameters.capacity_limit_factor * peak_demand
 }
 
 /// Get options from existing and potential assets for the given parameters
