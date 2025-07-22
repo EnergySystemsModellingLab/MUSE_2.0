@@ -4,6 +4,7 @@ use crate::agent::{AgentID, AgentMap, AgentObjectiveMap, DecisionRule, Objective
 use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
+use log::warn;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -80,6 +81,7 @@ where
 
         let missing_years = milestone_years
             .iter()
+            .copied()
             .filter(|year| !agent_objectives.contains_key(year))
             .collect_vec();
         ensure!(
@@ -88,6 +90,18 @@ where
             agent_id,
             missing_years
         );
+
+        let lcox_years = milestone_years
+            .iter()
+            .copied()
+            .filter(|year| agent_objectives[year] == ObjectiveType::LevelisedCostOfX)
+            .collect_vec();
+        if !lcox_years.is_empty() {
+            warn!(
+                "Agent {agent_id} is using LCOX in years {lcox_years:?}. \
+                Support for LCOX is currently experimental and may give bad results."
+            );
+        }
     }
 
     Ok(all_objectives)

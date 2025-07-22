@@ -19,8 +19,11 @@ fields:
     notes: One or more milestone years separated by semicolons or `all`
   - name: objective_type
     type: string
+    enum: [lcox, npv]
     description: The type of objective
-    notes: Currently only `lcox` is supported
+    notes: |
+      Must be `npv` (net present value) or `lcox` (levelised cost of X). Note that support for LCOX
+      is experimental and may give bad results.
   - name: decision_weight
     type: number
     description: Weight for weighted sum decision rule
