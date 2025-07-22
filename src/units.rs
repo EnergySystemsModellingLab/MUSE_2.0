@@ -247,6 +247,12 @@ macro_rules! impl_div {
                 $Out(self.0 / rhs.0)
             }
         }
+        impl std::ops::Div<$Out> for $Lhs {
+            type Output = $Rhs;
+            fn div(self, rhs: $Out) -> $Rhs {
+                $Rhs(self.0 / rhs.0)
+            }
+        }
         impl std::ops::Mul<$Rhs> for $Out {
             type Output = $Lhs;
             fn mul(self, by: $Rhs) -> $Lhs {
