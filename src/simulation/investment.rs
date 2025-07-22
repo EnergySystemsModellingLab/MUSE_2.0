@@ -7,7 +7,7 @@ use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::{Capacity, Flow};
+use crate::units::{Capacity, Dimensionless, Flow};
 use anyhow::{ensure, Result};
 use indexmap::IndexSet;
 use itertools::chain;
@@ -59,7 +59,9 @@ pub fn perform_agent_investment(
             .get(commodity_id)
             .unwrap()
             .time_slice_level;
-        for agent in get_responsible_agents(model.agents.values(), commodity_id, year) {
+        for (agent, commodity_portion) in
+            get_responsible_agents(model.agents.values(), commodity_id, year)
+        {
             let objective_type = agent.objectives.get(&year).unwrap();
 
             for region_id in agent.regions.iter() {
@@ -88,6 +90,7 @@ pub fn perform_agent_investment(
                     &demand,
                     commodity_id,
                     region_id,
+                    commodity_portion,
                 );
 
                 // Choose assets from among existing pool and candidates
@@ -134,33 +137,38 @@ fn get_demand_for_commodity(
     demand: &AllDemandMap,
     commodity_id: &CommodityID,
     region_id: &RegionID,
+    commodity_portion: Dimensionless,
 ) -> DemandMap {
     time_slice_info
         .iter_ids()
         .map(|time_slice| {
             (
                 time_slice.clone(),
-                *demand
-                    .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
-                    .unwrap(),
+                commodity_portion
+                    * *demand
+                        .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
+                        .unwrap(),
             )
         })
         .collect()
 }
 
-/// Get the agents responsible for a given commodity in a given year
+/// Get the agents responsible for a given commodity in a given year along with the commodity
+/// portion for which they are responsible
 fn get_responsible_agents<'a, I>(
     agents: I,
     commodity_id: &'a CommodityID,
     year: u32,
-) -> impl Iterator<Item = &'a Agent>
+) -> impl Iterator<Item = (&'a Agent, Dimensionless)>
 where
     I: Iterator<Item = &'a Agent>,
 {
-    agents.filter(move |agent| {
-        agent
+    agents.filter_map(move |agent| {
+        let portion = agent
             .commodity_portions
-            .contains_key(&(commodity_id.clone(), year))
+            .get(&(commodity_id.clone(), year))?;
+
+        Some((agent, *portion))
     })
 }
 
