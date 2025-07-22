@@ -170,9 +170,9 @@ where
     })
 }
 
-/// Get the maximum candidate asset capacity
-fn get_maximum_candidate_capacity(
-    model: &Model,
+/// Get the maximum candidate asset capacity across time slices
+fn get_max_capacity(
+    time_slice_info: &TimeSliceInfo,
     process: &Process,
     commodity_id: &CommodityID,
     region_id: &RegionID,
@@ -183,8 +183,7 @@ fn get_maximum_candidate_capacity(
     let coeff = process.flows[&(region_id.clone(), year)][commodity_id].coeff;
 
     // Maximum required capacity to meet demand in any time slice
-    let max_capacity = model
-        .time_slice_info
+    time_slice_info
         .iter()
         .map(|(time_slice, duration)| {
             // Activity upper bound
@@ -202,9 +201,7 @@ fn get_maximum_candidate_capacity(
             demand[time_slice] / max_flow_per_cap
         })
         .max_by(|a, b| a.total_cmp(b))
-        .unwrap();
-
-    model.parameters.capacity_limit_factor * max_capacity
+        .unwrap()
 }
 
 /// Get options from existing and potential assets for the given parameters
@@ -260,8 +257,16 @@ fn get_candidate_assets<'a>(
         });
 
     producers.map(move |process| {
-        let capacity =
-            get_maximum_candidate_capacity(model, process, commodity_id, region_id, demand, year);
+        let capacity = model.parameters.capacity_limit_factor
+            * get_max_capacity(
+                &model.time_slice_info,
+                process,
+                commodity_id,
+                region_id,
+                demand,
+                year,
+            );
+
         Asset::new(
             Some(agent.id.clone()),
             process.clone(),
