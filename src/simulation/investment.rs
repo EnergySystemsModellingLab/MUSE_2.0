@@ -8,7 +8,7 @@ use crate::model::Model;
 use crate::process::Process;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::{ActivityPerCapacity, Capacity, Dimensionless, Flow, FlowPerCapacity};
+use crate::units::{ActivityPerCapacity, Capacity, Dimensionless, Flow};
 use anyhow::{ensure, Result};
 use indexmap::IndexSet;
 use itertools::chain;
@@ -210,8 +210,7 @@ where
     act_per_cap
         .into_iter()
         .map(move |(time_slice, max_act_per_cap)| {
-            // `Mul` is not defined for these unit types, though the result would be `FlowPerCapacity`
-            let max_flow_per_cap = FlowPerCapacity(max_act_per_cap.value() * coeff.value());
+            let max_flow_per_cap = max_act_per_cap * coeff;
 
             let capacity = demand[time_slice] / max_flow_per_cap;
             (time_slice, capacity)
