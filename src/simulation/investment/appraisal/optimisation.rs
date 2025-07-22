@@ -5,6 +5,7 @@ use super::constraints::{
 };
 use super::DemandMap;
 use crate::asset::AssetRef;
+use crate::commodity::CommodityID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{Activity, Capacity, Flow};
 use anyhow::{anyhow, Result};
@@ -64,6 +65,7 @@ fn add_variables(problem: &mut Problem, cost_coefficients: &CoefficientsMap) -> 
 fn add_constraints(
     problem: &mut Problem,
     asset: &AssetRef,
+    commodity_id: &CommodityID,
     variables: &VariableMap,
     demand: &DemandMap,
     time_slice_level: TimeSliceLevel,
@@ -78,10 +80,13 @@ fn add_constraints(
     );
     add_demand_constraints(
         problem,
+        asset,
+        commodity_id,
         time_slice_level,
         time_slice_info,
         demand,
         &variables.activity_vars,
+        &variables.unmet_demand_vars,
     );
 }
 
@@ -92,6 +97,7 @@ fn add_constraints(
 /// **TODO.**: Will need to modify constraints to handle unmet demand variables in LCOX case
 pub fn perform_optimisation(
     asset: &AssetRef,
+    commodity_id: &CommodityID,
     coefficients: &CoefficientsMap,
     demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
@@ -108,6 +114,7 @@ pub fn perform_optimisation(
     add_constraints(
         &mut problem,
         asset,
+        commodity_id,
         &variables,
         demand,
         time_slice_level,

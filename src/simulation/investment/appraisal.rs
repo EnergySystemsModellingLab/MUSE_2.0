@@ -1,6 +1,7 @@
 //! Calculation for investment tools such as Levelised Cost of X (LCOX) and Net Present Value (NPV).
 use crate::agent::ObjectiveType;
 use crate::asset::AssetRef;
+use crate::commodity::CommodityID;
 use crate::finance::{lcox, profitability_index};
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
@@ -105,6 +106,7 @@ impl ToolOutput for NPVOutput {
 /// Required capacity for asset and additional information in [`LCOXOutput`].
 fn calculate_lcox(
     asset: &AssetRef,
+    commodity_id: &CommodityID,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
@@ -116,6 +118,7 @@ fn calculate_lcox(
     // Perform optimisation to calculate capacity, activity and unmet demand
     let results = perform_optimisation(
         asset,
+        commodity_id,
         &coefficients,
         demand,
         time_slice_info,
@@ -149,6 +152,7 @@ fn calculate_lcox(
 /// Required capacity for asset and additional information in [`NPVOutput`].
 fn calculate_npv(
     asset: &AssetRef,
+    commodity_id: &CommodityID,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
@@ -160,6 +164,7 @@ fn calculate_npv(
     // Perform optimisation to calculate capacity, activity and unmet demand
     let results = perform_optimisation(
         asset,
+        commodity_id,
         &coefficients,
         demand,
         time_slice_info,
@@ -189,6 +194,7 @@ fn calculate_npv(
 /// Appraise the given investment with the specified objective type
 pub fn appraise_investment(
     asset: &AssetRef,
+    commodity_id: &CommodityID,
     objective_type: &ObjectiveType,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
@@ -200,6 +206,7 @@ pub fn appraise_investment(
         ($fn: ident) => {{
             let (capacity, output) = $fn(
                 asset,
+                commodity_id,
                 reduced_costs,
                 demand,
                 time_slice_info,
