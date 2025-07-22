@@ -177,7 +177,10 @@ fn get_maximum_candidate_capacity(model: &Model, demand: &DemandMap) -> Capacity
         .values()
         .max_by(|flow1, flow2| flow1.total_cmp(flow2))
         .unwrap();
-    model.parameters.capacity_limit_factor * peak_demand
+
+    // **HACK:** Ignore units for now
+    let value = model.parameters.capacity_limit_factor.value() * peak_demand.value();
+    Capacity(value)
 }
 
 /// Get options from existing and potential assets for the given parameters
