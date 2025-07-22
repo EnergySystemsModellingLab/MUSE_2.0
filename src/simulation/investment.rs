@@ -594,4 +594,75 @@ mod tests {
         assert_approx_eq!(Capacity, result[&ts_day], Capacity(50.0 / 3.0));
         assert_approx_eq!(Capacity, result[&ts_night], Capacity(60.0 / 6.0));
     }
+
+    #[rstest]
+    fn test_iter_max_activity_per_capacity(time_slice_info2: TimeSliceInfo, region_id: RegionID) {
+        // Setup two time slices
+        let ts_day = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "day".into(),
+        };
+        let ts_night = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "night".into(),
+        };
+        let year = 2020u32;
+
+        // Activity limits: [0.0, 0.8] for day, [0.0, 1.0] for night
+        let mut activity_limits = ProcessActivityLimitsMap::new();
+        activity_limits.insert(
+            (region_id.clone(), year, ts_day.clone()),
+            Dimensionless(0.0)..=Dimensionless(0.8),
+        );
+        activity_limits.insert(
+            (region_id.clone(), year, ts_night.clone()),
+            Dimensionless(0.0)..=Dimensionless(1.0),
+        );
+
+        // Process parameters: capacity_to_activity = 2.5
+        let mut parameters = ProcessParameterMap::new();
+        parameters.insert(
+            (region_id.clone(), year),
+            Rc::new(ProcessParameter {
+                capital_cost: MoneyPerCapacity(0.0),
+                fixed_operating_cost: MoneyPerCapacityPerYear(0.0),
+                variable_operating_cost: MoneyPerActivity(0.0),
+                lifetime: 1,
+                discount_rate: Dimensionless(1.0),
+                capacity_to_activity: ActivityPerCapacity(2.5),
+            }),
+        );
+
+        // Build process (minimal setup, only need activity_limits and parameters)
+        let process = Process {
+            id: "test_process".into(),
+            description: "Test process for activity per capacity".into(),
+            years: vec![year],
+            activity_limits,
+            flows: ProcessFlowsMap::new(),
+            parameters,
+            regions: [region_id.clone()].into_iter().collect(),
+        };
+
+        // Run iter_max_activity_per_capacity
+        let result: HashMap<_, _> =
+            iter_max_activity_per_capacity(&time_slice_info2, &process, &region_id, year).collect();
+
+        // Expected calculations:
+        // Day: activity_upper = 0.8, cap2act = 2.5, duration = 0.5
+        // max_act_per_cap = 0.8 * 2.5 / 0.5 = 4.0
+        assert_approx_eq!(
+            ActivityPerCapacity,
+            result[&ts_day],
+            ActivityPerCapacity(4.0)
+        );
+
+        // Night: activity_upper = 1.0, cap2act = 2.5, duration = 0.5
+        // max_act_per_cap = 1.0 * 2.5 / 0.5 = 5.0
+        assert_approx_eq!(
+            ActivityPerCapacity,
+            result[&ts_night],
+            ActivityPerCapacity(5.0)
+        );
+    }
 }
