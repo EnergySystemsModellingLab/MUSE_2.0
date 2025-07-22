@@ -81,6 +81,7 @@ where
 
         let missing_years = milestone_years
             .iter()
+            .copied()
             .filter(|year| !agent_objectives.contains_key(year))
             .collect_vec();
         ensure!(
@@ -92,7 +93,8 @@ where
 
         let lcox_years = milestone_years
             .iter()
-            .filter(|year| *agent_objectives.get(year).unwrap() == ObjectiveType::LevelisedCostOfX)
+            .copied()
+            .filter(|year| agent_objectives[year] == ObjectiveType::LevelisedCostOfX)
             .collect_vec();
         if !lcox_years.is_empty() {
             warn!(
