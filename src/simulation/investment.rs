@@ -428,7 +428,7 @@ mod tests {
     };
     use float_cmp::assert_approx_eq;
     use indexmap::indexmap;
-    use itertools::izip;
+    use itertools::{izip, Itertools};
     use rstest::rstest;
     use std::collections::HashMap;
     use std::rc::Rc;
@@ -500,14 +500,7 @@ mod tests {
         commodity_id: CommodityID,
     ) {
         // Setup two time slices
-        let ts_day = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "day".into(),
-        };
-        let ts_night = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "night".into(),
-        };
+        let (ts_day, ts_night) = time_slice_info2.time_slices.keys().collect_tuple().unwrap();
         let year = 2020u32;
 
         // Activity limits: [0.0, 1.0] for both slices
@@ -596,14 +589,7 @@ mod tests {
     #[rstest]
     fn test_iter_max_activity_per_capacity(time_slice_info2: TimeSliceInfo, region_id: RegionID) {
         // Setup two time slices
-        let ts_day = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "day".into(),
-        };
-        let ts_night = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "night".into(),
-        };
+        let (ts_day, ts_night) = time_slice_info2.time_slices.keys().collect_tuple().unwrap();
         let year = 2020u32;
 
         // Activity limits: [0.0, 0.8] for day, [0.0, 1.0] for night
