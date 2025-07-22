@@ -99,7 +99,7 @@ where
         if !lcox_years.is_empty() {
             warn!(
                 "Agent {agent_id} is using LCOX in years {lcox_years:?}. \
-                  Support for LCOX is currently experimental and may give bad results."
+                Support for LCOX is currently experimental and may give bad results."
             );
         }
     }
