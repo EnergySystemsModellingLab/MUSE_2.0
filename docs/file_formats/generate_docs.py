@@ -15,14 +15,13 @@ sys.path.append(str(FILE_FORMAT_DOCS_DIR))
 from format_docs import generate_for_csv, generate_for_toml  # noqa: E402
 
 
-def generate_settings_docs(env: Environment) -> None:
+def generate_settings_docs(env: Environment) -> tuple[str, str]:
     toml_file_name = "settings.toml"
     out = generate_for_toml(SCHEMA_DIR, toml_file_name, env, heading_level=1)
-    output_path = FILE_FORMAT_DOCS_DIR / "program_settings.md"
-    output_path.write_text(out, encoding="utf-8")
+    return ("program_settings.md", out)
 
 
-def generate_input_docs(env: Environment) -> None:
+def generate_input_docs(env: Environment) -> tuple[str, str]:
     INPUT_SCHEMA_DIR = SCHEMA_DIR / "input"
     FILE_ORDER = {
         "Time slices": ["time_slices"],
@@ -43,12 +42,10 @@ def generate_input_docs(env: Environment) -> None:
     out = template.render(
         csv_sections=csv_sections, toml_info=toml_info, script_name=Path(__file__).name
     )
-
-    output_path = FILE_FORMAT_DOCS_DIR / "input_files.md"
-    output_path.write_text(out, encoding="utf-8")
+    return ("input_files.md", out)
 
 
-def generate_output_docs(env: Environment) -> None:
+def generate_output_docs(env: Environment) -> tuple[str, str]:
     OUTPUT_SCHEMA_DIR = SCHEMA_DIR / "output"
     toml_file_name = "metadata.toml"
     toml_info = generate_for_toml(
@@ -57,9 +54,7 @@ def generate_output_docs(env: Environment) -> None:
 
     template = env.get_template("output_files.md.jinja")
     out = template.render(toml_info=toml_info, script_name=Path(__file__).name)
-
-    output_path = FILE_FORMAT_DOCS_DIR / "output_files.md"
-    output_path.write_text(out, encoding="utf-8")
+    return ("output_files.md", out)
 
 
 generators = {
@@ -78,7 +73,10 @@ def main(options: Iterable[str]) -> None:
         except KeyError:
             print(f'Unknown option "{option}"')
         else:
-            fun(env)
+            (filename, txt) = fun(env)
+            path = FILE_FORMAT_DOCS_DIR / filename
+            print(f"Writing {path}")
+            path.write_text(txt, encoding="utf-8")
 
 
 if __name__ == "__main__":
