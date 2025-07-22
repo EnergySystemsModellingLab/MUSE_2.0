@@ -50,6 +50,25 @@ impl Asset {
         capacity: Capacity,
         commission_year: u32,
     ) -> Result<Self> {
+        check_capacity_valid_for_asset(capacity)?;
+
+        let asset = Self {
+            capacity,
+            ..Self::new_without_capacity(agent_id, process, region_id, commission_year)?
+        };
+
+        Ok(asset)
+    }
+
+    /// Create a new [`Asset`] without any capacity.
+    ///
+    /// This is an internal function that should not be made public.
+    fn new_without_capacity(
+        agent_id: Option<AgentID>,
+        process: Rc<Process>,
+        region_id: RegionID,
+        commission_year: u32,
+    ) -> Result<Self> {
         ensure!(
             process.regions.contains(&region_id),
             "Region {} is not one of the regions in which process {} operates",
@@ -68,15 +87,13 @@ impl Asset {
             })?
             .clone();
 
-        check_capacity_valid_for_asset(capacity)?;
-
         Ok(Self {
             id: None,
             agent_id,
             process,
             process_parameter,
             region_id,
-            capacity,
+            capacity: Capacity(0.0),
             commission_year,
         })
     }
