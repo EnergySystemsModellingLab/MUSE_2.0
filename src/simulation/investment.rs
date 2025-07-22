@@ -5,9 +5,10 @@ use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
+use crate::process::Process;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::{Capacity, Dimensionless, Flow};
+use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
 use indexmap::IndexSet;
 use itertools::chain;
@@ -78,17 +79,15 @@ pub fn perform_agent_investment(
                     commodity_portion,
                 );
 
-                // Maximum capacity for candidate assets
-                let max_capacity = get_maximum_candidate_capacity(model, &demand_for_commodity);
-
                 // Existing and candidate assets from which to choose
                 let opt_assets = get_asset_options(
+                    model,
                     &existing_assets,
                     agent,
                     commodity_id,
                     region_id,
+                    &demand_for_commodity,
                     year,
-                    max_capacity,
                 )
                 .collect();
 
@@ -172,25 +171,51 @@ where
 }
 
 /// Get the maximum candidate asset capacity
-fn get_maximum_candidate_capacity(model: &Model, demand: &DemandMap) -> Capacity {
-    let peak_demand = *demand
-        .values()
-        .max_by(|flow1, flow2| flow1.total_cmp(flow2))
+fn get_maximum_candidate_capacity(
+    model: &Model,
+    process: &Process,
+    commodity_id: &CommodityID,
+    region_id: &RegionID,
+    demand: &DemandMap,
+    year: u32,
+) -> Capacity {
+    // Flow coefficient for this commodity
+    let coeff = process.flows[&(region_id.clone(), year)][commodity_id].coeff;
+
+    // Maximum required capacity to meet demand in any time slice
+    let max_capacity = model
+        .time_slice_info
+        .iter()
+        .map(|(time_slice, duration)| {
+            // Activity upper bound
+            let activity_upper =
+                *process.activity_limits[&(region_id.clone(), year, time_slice.clone())].end();
+
+            // Adjust for cap2act and time slice duration
+            let max_act_per_cap = activity_upper
+                * process.parameters[&(region_id.clone(), year)].capacity_to_activity
+                / Dimensionless(duration.value());
+
+            // `Mul` is not defined for these unit types, though the result would be `FlowPerCapacity`
+            let max_flow_per_cap = FlowPerCapacity(max_act_per_cap.value() * coeff.value());
+
+            demand[time_slice] / max_flow_per_cap
+        })
+        .max_by(|a, b| a.total_cmp(b))
         .unwrap();
 
-    // **HACK:** Ignore units for now
-    let value = model.parameters.capacity_limit_factor.value() * peak_demand.value();
-    Capacity(value)
+    model.parameters.capacity_limit_factor * max_capacity
 }
 
 /// Get options from existing and potential assets for the given parameters
 fn get_asset_options<'a>(
+    model: &'a Model,
     all_existing_assets: &'a [AssetRef],
     agent: &'a Agent,
     commodity_id: &'a CommodityID,
     region_id: &'a RegionID,
+    demand: &'a DemandMap,
     year: u32,
-    candidate_asset_capacity: Capacity,
 ) -> impl Iterator<Item = AssetRef> + 'a {
     // Get existing assets which produce the commodity of interest
     let existing_assets = all_existing_assets
@@ -201,24 +226,20 @@ fn get_asset_options<'a>(
         .cloned();
 
     // Get candidates assets which produce the commodity of interest
-    let candidate_assets = get_candidate_assets(
-        agent,
-        region_id,
-        commodity_id,
-        year,
-        candidate_asset_capacity,
-    );
+    let candidate_assets =
+        get_candidate_assets(model, agent, region_id, commodity_id, demand, year);
 
     chain(existing_assets, candidate_assets)
 }
 
 /// Get candidate assets which produce a particular commodity for a given agent
 fn get_candidate_assets<'a>(
+    model: &'a Model,
     agent: &'a Agent,
     region_id: &'a RegionID,
     commodity_id: &'a CommodityID,
+    demand: &'a DemandMap,
     year: u32,
-    candidate_asset_capacity: Capacity,
 ) -> impl Iterator<Item = AssetRef> + 'a {
     let flows_key = (region_id.clone(), year);
 
@@ -239,11 +260,13 @@ fn get_candidate_assets<'a>(
         });
 
     producers.map(move |process| {
+        let capacity =
+            get_maximum_candidate_capacity(model, process, commodity_id, region_id, demand, year);
         Asset::new(
             Some(agent.id.clone()),
             process.clone(),
             region_id.clone(),
-            candidate_asset_capacity,
+            capacity,
             year,
         )
         .unwrap()
