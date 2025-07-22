@@ -1,3 +1,4 @@
+exclude: ^schemas/table-schema.json$
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
@@ -5,6 +6,30 @@ repos:
       - id: check-merge-conflict
       - id: trailing-whitespace
       - id: end-of-file-fixer
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.33.2
+    hooks:
+      - id: check-dependabot
+      - id: check-github-actions
+      - id: check-github-workflows
+      - id: check-metaschema
+        name: Validate JSON schemas
+        files: ^schemas/(settings|input/model|output/metadata)\.yaml$
+      - id: check-jsonschema
+        name: Validate table schemas
+        args: ["--schemafile", "schemas/table-schema.json"]
+        files: ^schemas/input/
+        exclude: /model\.yaml$
+      - id: check-jsonschema
+        name: Validate model.toml files
+        args: ["--schemafile", "schemas/input/model.yaml"]
+        files: /model\.toml$
+        types_or: [toml]
+      - id: check-jsonschema
+        name: Validate settings.toml files
+        args: ["--schemafile", "schemas/settings.yaml"]
+        files: /settings\.toml$
+        types_or: [toml]
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.38.0
     hooks:

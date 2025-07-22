@@ -100,6 +100,31 @@ You can then view the documentation in your browser like so:
 mdbook serve -o
 ```
 
+### Documenting file formats
+
+Documentation for file formats of different input and output files used by MUSE 2.0 is automatically
+generated from schemas, stored in the
+[`schemas/`](https://github.com/EnergySystemsModellingLab/MUSE_2.0/tree/main/schemas) folder.
+
+Files are either in [TOML](https://toml.io/en/) or
+[CSV](https://en.wikipedia.org/wiki/Comma-separated_values) format. For TOML files, we use [JSON
+schemas](https://json-schema.org/) and for CSV files we use [table
+schemas](https://specs.frictionlessdata.io//table-schema/) (a similar format).
+
+The documentation is generated with the
+[`docs/file_formats/generate_docs.py`](https://github.com/EnergySystemsModellingLab/MUSE_2.0/tree/main/docs/file_formats/generate_docs.py)
+script. To generate all docs, run:
+
+```sh
+python docs/file_formats/generate_docs.py
+```
+
+To generate just one kind of docs (e.g. for input files only), run:
+
+```sh
+python docs/file_formats/generate_docs.py input
+```
+
 ### Recreate the `command_line_help.md` file
 
 This file is created automatically. In order to update it if needed, due to changes in

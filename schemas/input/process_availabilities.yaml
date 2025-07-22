@@ -1,3 +1,4 @@
+$schema: https://specs.frictionlessdata.io/schemas/table-schema.json
 description: |
   Defines how much of a process's capacity is available throughout the year.
 

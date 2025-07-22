@@ -1,3 +1,4 @@
+$schema: https://specs.frictionlessdata.io/schemas/table-schema.json
 description: |
   The commodity flows for each process
 

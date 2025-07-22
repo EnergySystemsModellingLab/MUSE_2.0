@@ -1,3 +1,4 @@
+$schema: https://specs.frictionlessdata.io/schemas/table-schema.json
 description: Defines assets in the system
 
 fields:
