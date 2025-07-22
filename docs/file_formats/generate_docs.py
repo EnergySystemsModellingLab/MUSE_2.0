@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 #
-# A script to generate markdown documentation from table schemas.
+# A script to generate markdown documentation from table schemas. If invoked without any arguments,
+# it will generate all file format documentation. Alternatively, you can specify one or more type
+# (e.g. "input") as an argument and just those files will be written.
 
 from pathlib import Path
 import sys
