@@ -12,9 +12,9 @@ properties:
   candidate_asset_capacity:
     type: number
     description: Capacity to give to candidate assets in dispatch optimisation
+    default: 0.0001
     notes: |
-      Optional. The default value should work. Do not change this value unless you know what you're
-      doing!
+      The default value should work. Do not change this value unless you know what you're doing!
   pricing_strategy:
     type: string
     enum: [shadow_prices, scarcity_adjusted]
