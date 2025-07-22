@@ -1,14 +1,12 @@
 //! Calculation for investment tools such as Levelised Cost of X (LCOX) and Net Present Value (NPV).
 use crate::agent::ObjectiveType;
-use crate::asset::{Asset, AssetRef};
-use crate::commodity::CommodityID;
+use crate::asset::AssetRef;
 use crate::finance::{lcox, profitability_index};
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::{Activity, Capacity, Dimensionless, Flow, MoneyPerActivity};
+use crate::units::{Capacity, Dimensionless, Flow, MoneyPerActivity};
 use anyhow::Result;
 use indexmap::IndexMap;
-use std::collections::HashMap;
 
 mod coefficients;
 mod constraints;
@@ -18,7 +16,7 @@ use coefficients::{calculate_coefficients_for_lcox, calculate_coefficients_for_n
 use optimisation::perform_optimisation;
 
 /// A map of demand across time slices
-pub type DemandMap = HashMap<TimeSliceID, Flow>;
+pub type DemandMap = IndexMap<TimeSliceID, Flow>;
 
 /// The output of investment appraisal
 pub struct AppraisalOutput {
@@ -37,14 +35,9 @@ impl AppraisalOutput {
     }
 
     /// Convert this [`AppraisalOutput`] into an asset, the required capacity and unmet demand
-    pub fn into_parts(
-        mut self,
-        commodity_id: &CommodityID,
-        previous_demand: DemandMap,
-    ) -> (AssetRef, Capacity, DemandMap) {
+    pub fn into_parts(mut self, previous_demand: DemandMap) -> (AssetRef, Capacity, DemandMap) {
         let mut demand = previous_demand;
-        self.tool_output
-            .update_demand(&self.asset, commodity_id, &mut demand);
+        self.tool_output.update_demand(&mut demand);
 
         (self.asset, self.capacity, demand)
     }
@@ -63,13 +56,13 @@ pub trait ToolOutput {
     /// Update the demand, if the appraised asset is selected.
     ///
     /// This function should only be called once and may panic if called subsequently.
-    fn update_demand(&mut self, asset: &Asset, commodity_id: &CommodityID, demand: &mut DemandMap);
+    fn update_demand(&mut self, demand: &mut DemandMap);
 }
 
 /// Additional output data for LCOX
 struct LCOXOutput {
     cost_index: MoneyPerActivity,
-    unmet_demand: HashMap<TimeSliceID, Flow>,
+    unmet_demand: IndexMap<TimeSliceID, Flow>,
 }
 
 impl ToolOutput for LCOXOutput {
@@ -77,12 +70,7 @@ impl ToolOutput for LCOXOutput {
         self.cost_index.value()
     }
 
-    fn update_demand(
-        &mut self,
-        _asset: &Asset,
-        _commodity_id: &CommodityID,
-        demand: &mut DemandMap,
-    ) {
+    fn update_demand(&mut self, demand: &mut DemandMap) {
         assert!(!self.unmet_demand.is_empty(), "update_demand called twice");
         *demand = std::mem::take(&mut self.unmet_demand);
     }
@@ -91,7 +79,7 @@ impl ToolOutput for LCOXOutput {
 /// Additional output data for NPV
 struct NPVOutput {
     profitability_index: Dimensionless,
-    activity: IndexMap<TimeSliceID, Activity>,
+    unmet_demand: IndexMap<TimeSliceID, Flow>,
 }
 
 impl ToolOutput for NPVOutput {
@@ -101,14 +89,9 @@ impl ToolOutput for NPVOutput {
         -self.profitability_index.value()
     }
 
-    fn update_demand(&mut self, asset: &Asset, commodity_id: &CommodityID, demand: &mut DemandMap) {
-        let coeff = asset.get_flow(commodity_id).unwrap().coeff;
-
-        // Subtract the flow produced by this asset for this commodity from previous demand
-        for (time_slice, demand) in demand.iter_mut() {
-            let activity = self.activity.get(time_slice).unwrap();
-            *demand -= *activity * coeff;
-        }
+    fn update_demand(&mut self, demand: &mut DemandMap) {
+        assert!(!self.unmet_demand.is_empty(), "update_demand called twice");
+        *demand = std::mem::take(&mut self.unmet_demand);
     }
 }
 
@@ -130,7 +113,7 @@ fn calculate_lcox(
     // Calculate coefficients
     let coefficients = calculate_coefficients_for_lcox(asset, time_slice_info, reduced_costs);
 
-    // Perform optimisation to calculate capacity and activity
+    // Perform optimisation to calculate capacity, activity and unmet demand
     let results = perform_optimisation(
         asset,
         &coefficients,
@@ -150,14 +133,11 @@ fn calculate_lcox(
         &activity_costs,
     );
 
-    // Placeholder for unmet demand (**TODO.**)
-    let unmet_demand = demand.keys().cloned().map(|ts| (ts, Flow(0.0))).collect();
-
     Ok((
         results.capacity,
         LCOXOutput {
             cost_index,
-            unmet_demand,
+            unmet_demand: results.unmet_demand,
         },
     ))
 }
@@ -177,7 +157,7 @@ fn calculate_npv(
     // Calculate coefficients
     let coefficients = calculate_coefficients_for_npv(asset, time_slice_info, reduced_costs);
 
-    // Perform optimisation to calculate capacity and activity
+    // Perform optimisation to calculate capacity, activity and unmet demand
     let results = perform_optimisation(
         asset,
         &coefficients,
@@ -201,7 +181,7 @@ fn calculate_npv(
         results.capacity,
         NPVOutput {
             profitability_index,
-            activity: results.activity,
+            unmet_demand: results.unmet_demand,
         },
     ))
 }
@@ -249,7 +229,7 @@ mod tests {
     use crate::process::{FlowType, Process, ProcessFlow};
     use crate::region::RegionID;
     use crate::time_slice::TimeSliceLevel;
-    use crate::units::{FlowPerActivity, MoneyPerFlow};
+    use crate::units::{Activity, FlowPerActivity, MoneyPerFlow};
     use indexmap::IndexMap;
     use rstest::rstest;
     use std::collections::HashMap;
@@ -259,7 +239,7 @@ mod tests {
     fn test_lcoxoutput_comparison_metric() {
         let output = LCOXOutput {
             cost_index: MoneyPerActivity::new(42.0),
-            unmet_demand: HashMap::new(),
+            unmet_demand: IndexMap::new(),
         };
         assert_eq!(output.comparison_metric(), 42.0);
     }
@@ -270,14 +250,14 @@ mod tests {
         commodity_id: CommodityID,
         time_slice: TimeSliceID,
     ) {
-        let mut demand = HashMap::new();
+        let mut demand = IndexMap::new();
         demand.insert(time_slice.clone(), Flow::new(3.0));
         let demand2 = demand.clone();
         let mut output = LCOXOutput {
             cost_index: MoneyPerActivity::new(1.0),
             unmet_demand: demand.clone(),
         };
-        output.update_demand(&asset, &commodity_id, &mut demand);
+        output.update_demand(&mut demand);
         assert_eq!(demand, demand2);
     }
 
@@ -285,7 +265,7 @@ mod tests {
     fn test_npvoutput_comparison_metric() {
         let output = NPVOutput {
             profitability_index: Dimensionless::new(7.0),
-            activity: IndexMap::new(),
+            unmet_demand: IndexMap::new(),
         };
         // Should be negative of profitability_index
         assert_eq!(output.comparison_metric(), -7.0);
@@ -330,7 +310,7 @@ mod tests {
             profitability_index: Dimensionless::new(1.0),
             activity,
         };
-        output.update_demand(&asset, &commodity_id, &mut demand);
+        output.update_demand(&mut demand);
         // Should subtract activity * coeff from prev_demand
         let expected = 20.0 - 5.0 * 2.0;
         assert_eq!(demand[&time_slice], Flow::new(expected));

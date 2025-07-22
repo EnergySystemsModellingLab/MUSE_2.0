@@ -1,11 +1,11 @@
 //! Constraints for the optimisation problem.
 use super::optimisation::Variable;
+use super::DemandMap;
 use crate::asset::AssetRef;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::Flow;
 use highs::RowProblem as Problem;
 use indexmap::IndexMap;
-use std::collections::HashMap;
 
 /// Adds a capacity constraint to the problem.
 ///
@@ -86,7 +86,7 @@ pub fn add_demand_constraints(
     problem: &mut Problem,
     time_slice_level: TimeSliceLevel,
     time_slice_info: &TimeSliceInfo,
-    demand: &HashMap<TimeSliceID, Flow>,
+    demand: &DemandMap,
     activity_vars: &IndexMap<TimeSliceID, Variable>,
 ) {
     for ts_selection in time_slice_info.iter_selections_at_level(time_slice_level) {
