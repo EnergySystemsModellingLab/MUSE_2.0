@@ -302,7 +302,7 @@ fn select_best_assets(
         let mut current_best: Option<AppraisalOutput> = None;
         for asset in opt_assets.iter() {
             let output = appraise_investment(
-                asset,
+                asset.clone(),
                 objective_type,
                 reduced_costs,
                 &demand,

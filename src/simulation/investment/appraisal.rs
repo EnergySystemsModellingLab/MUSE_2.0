@@ -206,7 +206,7 @@ fn calculate_npv(
 
 /// Appraise the given investment with the specified objective type
 pub fn appraise_investment(
-    asset: &AssetRef,
+    asset: AssetRef,
     objective_type: &ObjectiveType,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
@@ -217,7 +217,7 @@ pub fn appraise_investment(
     macro_rules! appraisal_method {
         ($fn: ident) => {{
             let (capacity, output) = $fn(
-                asset,
+                &asset,
                 reduced_costs,
                 demand,
                 time_slice_info,
@@ -225,7 +225,7 @@ pub fn appraise_investment(
             )?;
 
             Ok(AppraisalOutput {
-                asset: asset.clone(),
+                asset,
                 capacity,
                 tool_output: Box::new(output),
             })
