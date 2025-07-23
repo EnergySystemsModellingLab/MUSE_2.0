@@ -183,7 +183,6 @@ where
     let coeff = asset.get_flow(commodity_id).unwrap().coeff;
 
     // Required capacity to meet demand in any time slice
-    // iter_max_activity_per_capacity(time_slice_info, process, region_id, year).map(
     act_per_cap
         .into_iter()
         .map(move |(time_slice, max_act_per_cap)| {
