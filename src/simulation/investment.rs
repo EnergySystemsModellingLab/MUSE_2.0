@@ -70,7 +70,7 @@ pub fn perform_agent_investment(
                     &agent.id, commodity_id, region_id
                 );
 
-                let demand_for_commodity = get_demand_for_commodity(
+                let demand_for_commodity = get_demand_portion_for_commodity(
                     &model.time_slice_info,
                     &demand,
                     commodity_id,
@@ -129,7 +129,7 @@ fn get_demand_profile(commodities: &IndexSet<CommodityID>, flow_map: &FlowMap) -
 }
 
 /// Get a portion of the demand profile for this commodity and region
-fn get_demand_for_commodity(
+fn get_demand_portion_for_commodity(
     time_slice_info: &TimeSliceInfo,
     demand: &AllDemandMap,
     commodity_id: &CommodityID,
