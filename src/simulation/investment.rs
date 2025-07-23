@@ -80,7 +80,7 @@ pub fn perform_agent_investment(
 
                 // Existing and candidate assets from which to choose
                 let opt_assets = get_asset_options(
-                    model,
+                    &model.time_slice_info,
                     &existing_assets,
                     agent,
                     commodity_id,
@@ -212,7 +212,7 @@ fn get_demand_limiting_capacity(
 
 /// Get options from existing and potential assets for the given parameters
 fn get_asset_options<'a>(
-    model: &'a Model,
+    time_slice_info: &'a TimeSliceInfo,
     all_existing_assets: &'a [AssetRef],
     agent: &'a Agent,
     commodity_id: &'a CommodityID,
@@ -229,15 +229,21 @@ fn get_asset_options<'a>(
         .cloned();
 
     // Get candidates assets which produce the commodity of interest
-    let candidate_assets =
-        get_candidate_assets(model, agent, region_id, commodity_id, demand, year);
+    let candidate_assets = get_candidate_assets(
+        time_slice_info,
+        agent,
+        region_id,
+        commodity_id,
+        demand,
+        year,
+    );
 
     chain(existing_assets, candidate_assets)
 }
 
 /// Get candidate assets which produce a particular commodity for a given agent
 fn get_candidate_assets<'a>(
-    model: &'a Model,
+    time_slice_info: &'a TimeSliceInfo,
     agent: &'a Agent,
     region_id: &'a RegionID,
     commodity_id: &'a CommodityID,
@@ -268,15 +274,7 @@ fn get_candidate_assets<'a>(
             process.clone(),
             region_id.clone(),
             year,
-            |asset| {
-                model.parameters.capacity_limit_factor
-                    * get_demand_limiting_capacity(
-                        &model.time_slice_info,
-                        asset,
-                        commodity_id,
-                        demand,
-                    )
-            },
+            |asset| get_demand_limiting_capacity(time_slice_info, asset, commodity_id, demand),
         )
         .unwrap()
         .into()
