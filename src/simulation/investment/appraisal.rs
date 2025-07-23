@@ -5,7 +5,7 @@ use crate::commodity::CommodityID;
 use crate::finance::{lcox, profitability_index};
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::{Capacity, Dimensionless, Flow, MoneyPerActivity};
+use crate::units::{Capacity, Flow};
 use anyhow::Result;
 use indexmap::IndexMap;
 
@@ -19,91 +19,22 @@ use optimisation::perform_optimisation;
 /// A map of demand across time slices
 pub type DemandMap = IndexMap<TimeSliceID, Flow>;
 
-/// The output of investment appraisal
+/// The output of investment appraisal required to compare potential investment decisions
 pub struct AppraisalOutput {
     /// The asset being appraised
     pub asset: AssetRef,
-    /// The required capacity for the asset
+    /// The hypothetical capacity to install
     pub capacity: Capacity,
-    /// Additional, tool-specific output information
-    pub tool_output: Box<dyn ToolOutput>,
+    /// The hypothetical unmet demand following investment in this asset
+    pub unmet_demand: DemandMap,
+    /// The comparison metric to compare investment decisions (lower is better)
+    pub metric: f64,
 }
 
-impl AppraisalOutput {
-    /// Whether this [`AppraisalOutput`] indicates a better result than `other`
-    pub fn is_better_than(&self, other: &AppraisalOutput) -> bool {
-        self.tool_output.comparison_metric() < other.tool_output.comparison_metric()
-    }
-
-    /// Convert this [`AppraisalOutput`] into an asset, the required capacity and unmet demand
-    pub fn into_parts(mut self, previous_demand: DemandMap) -> (AssetRef, Capacity, DemandMap) {
-        let mut demand = previous_demand;
-        self.tool_output.update_demand(&mut demand);
-
-        (self.asset, self.capacity, demand)
-    }
-}
-
-/// A trait representing tool-specific output information for a particular asset
-pub trait ToolOutput {
-    /// Return the comparison metric for this output.
-    ///
-    /// A lower value of this number indicates a better result, but may not have any meaning beyond
-    /// that.
-    ///
-    /// It is a logic error to compare comparison metrics returned by different appraisal tools.
-    fn comparison_metric(&self) -> f64;
-
-    /// Update the demand, if the appraised asset is selected.
-    ///
-    /// This function should only be called once and may panic if called subsequently.
-    fn update_demand(&mut self, demand: &mut DemandMap);
-}
-
-/// Additional output data for LCOX
-struct LCOXOutput {
-    cost_index: MoneyPerActivity,
-    unmet_demand: IndexMap<TimeSliceID, Flow>,
-}
-
-impl ToolOutput for LCOXOutput {
-    fn comparison_metric(&self) -> f64 {
-        self.cost_index.value()
-    }
-
-    fn update_demand(&mut self, demand: &mut DemandMap) {
-        assert!(!self.unmet_demand.is_empty(), "update_demand called twice");
-        *demand = std::mem::take(&mut self.unmet_demand);
-    }
-}
-
-/// Additional output data for NPV
-struct NPVOutput {
-    profitability_index: Dimensionless,
-    unmet_demand: IndexMap<TimeSliceID, Flow>,
-}
-
-impl ToolOutput for NPVOutput {
-    fn comparison_metric(&self) -> f64 {
-        // A higher profitability index indicates a better result, so we make it negative for
-        // comparing
-        -self.profitability_index.value()
-    }
-
-    fn update_demand(&mut self, demand: &mut DemandMap) {
-        assert!(!self.unmet_demand.is_empty(), "update_demand called twice");
-        *demand = std::mem::take(&mut self.unmet_demand);
-    }
-}
-
-/// Calculate LCOX based on the specified reduced costs and demand for a particular tranche.
+/// Calculate LCOX for a hypothetical investment in the given asset.
 ///
 /// This is more commonly referred to as Levelised Cost of *Electricity*, but as the model can
 /// include other flows, we use the term LCOX.
-///
-/// # Returns
-///
-/// Required capacity for asset and additional information in [`LCOXOutput`].
 fn calculate_lcox(
     asset: &AssetRef,
     commodity_id: &CommodityID,
@@ -111,7 +42,7 @@ fn calculate_lcox(
     demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
-) -> Result<(Capacity, LCOXOutput)> {
+) -> Result<AppraisalOutput> {
     // Calculate coefficients
     let coefficients = calculate_coefficients_for_lcox(asset, time_slice_info, reduced_costs);
 
@@ -126,7 +57,7 @@ fn calculate_lcox(
         highs::Sense::Minimise,
     )?;
 
-    // Calculate LCOX
+    // Calculate LCOX for the hypothetical investment
     let annual_fixed_cost = coefficients.capacity_coefficient;
     let activity_costs = coefficients.activity_coefficients;
     let cost_index = lcox(
@@ -136,20 +67,16 @@ fn calculate_lcox(
         &activity_costs,
     );
 
-    Ok((
-        results.capacity,
-        LCOXOutput {
-            cost_index,
-            unmet_demand: results.unmet_demand,
-        },
-    ))
+    // Return appraisal output
+    Ok(AppraisalOutput {
+        asset: asset.clone(),
+        capacity: results.capacity,
+        unmet_demand: results.unmet_demand,
+        metric: cost_index.value(),
+    })
 }
 
-/// Calculate NPV based on the specified reduced costs and demand for a particular tranche.
-///
-/// # Returns
-///
-/// Required capacity for asset and additional information in [`NPVOutput`].
+/// Calculate NPV for a hypothetical investment in the given asset.
 fn calculate_npv(
     asset: &AssetRef,
     commodity_id: &CommodityID,
@@ -157,7 +84,7 @@ fn calculate_npv(
     demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
-) -> Result<(Capacity, NPVOutput)> {
+) -> Result<AppraisalOutput> {
     // Calculate coefficients
     let coefficients = calculate_coefficients_for_npv(asset, time_slice_info, reduced_costs);
 
@@ -172,7 +99,7 @@ fn calculate_npv(
         highs::Sense::Maximise,
     )?;
 
-    // Calculate profitability index
+    // Calculate profitability index for the hypothetical investment
     let annual_fixed_cost = -coefficients.capacity_coefficient;
     let activity_surpluses = coefficients.activity_coefficients;
     let profitability_index = profitability_index(
@@ -182,13 +109,14 @@ fn calculate_npv(
         &activity_surpluses,
     );
 
-    Ok((
-        results.capacity,
-        NPVOutput {
-            profitability_index,
-            unmet_demand: results.unmet_demand,
-        },
-    ))
+    // Return appraisal output
+    // Higher profitability index is better, so we make it negative for comparison
+    Ok(AppraisalOutput {
+        asset: asset.clone(),
+        capacity: results.capacity,
+        unmet_demand: results.unmet_demand,
+        metric: -profitability_index.value(),
+    })
 }
 
 /// Appraise the given investment with the specified objective type
@@ -201,31 +129,18 @@ pub fn appraise_investment(
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
 ) -> Result<AppraisalOutput> {
-    // Macro to reduce boilerplate
-    macro_rules! appraisal_method {
-        ($fn: ident) => {{
-            let (capacity, output) = $fn(
-                asset,
-                commodity_id,
-                reduced_costs,
-                demand,
-                time_slice_info,
-                time_slice_level,
-            )?;
-
-            Ok(AppraisalOutput {
-                asset: asset.clone(),
-                capacity,
-                tool_output: Box::new(output),
-            })
-        }};
-    }
-
-    // Delegate appraisal to relevant function
-    match objective_type {
-        ObjectiveType::LevelisedCostOfX => appraisal_method!(calculate_lcox),
-        ObjectiveType::NetPresentValue => appraisal_method!(calculate_npv),
-    }
+    let appraisal_method = match objective_type {
+        ObjectiveType::LevelisedCostOfX => calculate_lcox,
+        ObjectiveType::NetPresentValue => calculate_npv,
+    };
+    appraisal_method(
+        asset,
+        commodity_id,
+        reduced_costs,
+        demand,
+        time_slice_info,
+        time_slice_level,
+    )
 }
 
 #[cfg(test)]
