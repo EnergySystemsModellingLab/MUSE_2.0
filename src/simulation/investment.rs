@@ -194,7 +194,7 @@ where
 }
 
 /// Get the maximum required capacity across time slices
-fn get_max_capacity(
+fn get_demand_limiting_capacity(
     time_slice_info: &TimeSliceInfo,
     asset: &Asset,
     commodity_id: &CommodityID,
@@ -270,7 +270,12 @@ fn get_candidate_assets<'a>(
             year,
             |asset| {
                 model.parameters.capacity_limit_factor
-                    * get_max_capacity(&model.time_slice_info, asset, commodity_id, demand)
+                    * get_demand_limiting_capacity(
+                        &model.time_slice_info,
+                        asset,
+                        commodity_id,
+                        demand,
+                    )
             },
         )
         .unwrap()
