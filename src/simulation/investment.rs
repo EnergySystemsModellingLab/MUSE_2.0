@@ -92,12 +92,12 @@ pub fn perform_agent_investment(
 
                 // Choose assets from among existing pool and candidates
                 let best_assets = select_best_assets(
+                    model,
                     opt_assets,
                     commodity_id,
                     objective_type,
                     reduced_costs,
                     demand_for_commodity,
-                    &model.time_slice_info,
                     time_slice_level,
                 )?;
 
@@ -284,16 +284,22 @@ fn get_candidate_assets<'a>(
 
 /// Get the best assets for meeting demand for the given commodity
 fn select_best_assets(
+    model: &Model,
     mut opt_assets: Vec<AssetRef>,
     commodity_id: &CommodityID,
     objective_type: &ObjectiveType,
     reduced_costs: &ReducedCosts,
     mut demand: DemandMap,
-    time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
 ) -> Result<Vec<AssetRef>> {
     let mut best_assets: Vec<AssetRef> = Vec::new();
 
+    let mut remaining_candidate_capacity = HashMap::from_iter(
+        opt_assets
+            .iter()
+            .filter(|asset| !asset.is_commissioned())
+            .map(|asset| (asset.clone(), asset.capacity)),
+    );
     while is_remaining_unmet_demand(&demand) {
         ensure!(
             !opt_assets.is_empty(),
@@ -302,12 +308,21 @@ fn select_best_assets(
 
         let mut current_best: Option<AppraisalOutput> = None;
         for asset in opt_assets.iter() {
+            let asset = if asset.is_commissioned() {
+                asset.clone()
+            } else {
+                let max_capacity = model.parameters.capacity_limit_factor * asset.capacity;
+                let remaining_capacity = remaining_candidate_capacity[asset];
+                let capacity = max_capacity.min(remaining_capacity);
+                Asset::clone(asset).with_capacity(capacity).into()
+            };
+
             let output = appraise_investment(
-                asset.clone(),
+                asset,
                 objective_type,
                 reduced_costs,
                 &demand,
-                time_slice_info,
+                &model.time_slice_info,
                 time_slice_level,
             )?;
 
@@ -333,7 +348,13 @@ fn select_best_assets(
             commissioned_txt, &asset.process.id
         );
 
-        update_assets(asset, capacity, &mut opt_assets, &mut best_assets);
+        update_assets(
+            asset,
+            capacity,
+            &mut opt_assets,
+            &mut remaining_candidate_capacity,
+            &mut best_assets,
+        );
     }
 
     Ok(best_assets)
@@ -349,22 +370,21 @@ fn update_assets(
     mut best_asset: AssetRef,
     capacity: Capacity,
     opt_assets: &mut Vec<AssetRef>,
+    remaining_candidate_capacity: &mut HashMap<AssetRef, Capacity>,
     best_assets: &mut Vec<AssetRef>,
 ) {
     // New capacity given for candidates only
     if !best_asset.is_commissioned() {
-        // Get a reference to the copy of the asset in opt_assets
-        let (old_idx, old) = opt_assets
-            .iter_mut()
-            .enumerate()
-            .find(|(_, asset)| **asset == best_asset)
-            .unwrap();
-
         // Remove this capacity from the available remaining capacity for this asset
-        old.make_mut().capacity -= capacity;
+        let remaining_capacity = remaining_candidate_capacity.get_mut(&best_asset).unwrap();
+        *remaining_capacity -= capacity;
 
         // If there's no capacity remaining, remove the asset from the options
-        if old.capacity <= Capacity(0.0) {
+        if *remaining_capacity <= Capacity(0.0) {
+            let old_idx = opt_assets
+                .iter()
+                .position(|asset| *asset == best_asset)
+                .unwrap();
             opt_assets.swap_remove(old_idx);
         }
 
