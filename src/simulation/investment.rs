@@ -359,6 +359,7 @@ fn update_assets(
 
         // Remove this capacity from the available remaining capacity for this asset
         old.make_mut().capacity -= capacity;
+        debug!("REMAINING CAPACITY FOR CANDIDATE: {}", old.capacity);
 
         // If there's no capacity remaining, remove the asset from the options
         if old.capacity <= Capacity(0.0) {
@@ -368,9 +369,11 @@ fn update_assets(
         if let Some(existing_asset) = best_assets.iter_mut().find(|asset| **asset == best_asset) {
             // Add the additional required capacity
             existing_asset.make_mut().capacity += capacity;
+            debug!("ADDING CAPACITY; new capacity: {}", existing_asset.capacity);
         } else {
             // Update the capacity of the chosen asset
             best_asset.make_mut().capacity = capacity;
+            debug!("SETTING CAPACITY; new capacity: {}", best_asset.capacity);
 
             best_assets.push(best_asset);
         };
