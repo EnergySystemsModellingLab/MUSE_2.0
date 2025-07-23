@@ -73,8 +73,8 @@ impl Asset {
 
     /// Create a new [`Asset`] without any capacity.
     ///
-    /// This is an internal function that should not be made public.
-    fn new_without_capacity(
+    /// Only candidate assets should have no capacity.
+    pub fn new_without_capacity(
         agent_id: Option<AgentID>,
         process: Rc<Process>,
         region_id: RegionID,
