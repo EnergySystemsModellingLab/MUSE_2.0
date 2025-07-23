@@ -269,15 +269,16 @@ fn get_candidate_assets<'a>(
         });
 
     producers.map(move |process| {
-        Asset::new_and_set_capacity(
+        let asset = Asset::new_without_capacity(
             Some(agent.id.clone()),
             process.clone(),
             region_id.clone(),
             year,
-            |asset| get_demand_limiting_capacity(time_slice_info, asset, commodity_id, demand),
         )
-        .unwrap()
-        .into()
+        .unwrap();
+
+        let capacity = get_demand_limiting_capacity(time_slice_info, &asset, commodity_id, demand);
+        asset.with_capacity(capacity).into()
     })
 }
 

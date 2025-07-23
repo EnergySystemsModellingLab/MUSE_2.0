@@ -50,24 +50,9 @@ impl Asset {
         capacity: Capacity,
         commission_year: u32,
     ) -> Result<Self> {
-        Self::new_and_set_capacity(agent_id, process, region_id, commission_year, |_| capacity)
-    }
-
-    /// Create a new [`Asset`] then invoke another method to calculate the capacity for it
-    pub fn new_and_set_capacity<F>(
-        agent_id: Option<AgentID>,
-        process: Rc<Process>,
-        region_id: RegionID,
-        commission_year: u32,
-        capacity_set_fn: F,
-    ) -> Result<Self>
-    where
-        F: Fn(&Asset) -> Capacity,
-    {
         let asset = Self::new_without_capacity(agent_id, process, region_id, commission_year)?;
-        let capacity = capacity_set_fn(&asset);
-        check_capacity_valid_for_asset(capacity)?;
 
+        check_capacity_valid_for_asset(capacity)?;
         Ok(Self { capacity, ..asset })
     }
 
@@ -107,6 +92,17 @@ impl Asset {
             capacity: Capacity(0.0),
             commission_year,
         })
+    }
+
+    /// Consume this asset and return another with the specified capacity.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the capacity is invalid.
+    pub fn with_capacity(self, capacity: Capacity) -> Self {
+        check_capacity_valid_for_asset(capacity).unwrap();
+
+        Self { capacity, ..self }
     }
 
     /// The last year in which this asset should be decommissioned
