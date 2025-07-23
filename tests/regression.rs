@@ -13,7 +13,7 @@ const FLOAT_CMP_TOLERANCE: f64 = 1e-10;
 
 /// Regression tests for the example models.
 pub fn run_regression_test(example_name: &str) {
-    std::env::set_var("MUSE2_LOG_LEVEL", "off");
+    // std::env::set_var("MUSE2_LOG_LEVEL", "off");
 
     let tempdir = tempdir().unwrap();
     let output_dir = tempdir.path();
