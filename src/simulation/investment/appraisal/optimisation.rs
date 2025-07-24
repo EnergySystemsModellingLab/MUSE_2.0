@@ -3,13 +3,14 @@ use super::coefficients::CoefficientsMap;
 use super::constraints::{
     add_activity_constraints, add_capacity_constraint, add_demand_constraints,
 };
+use super::DemandMap;
 use crate::asset::AssetRef;
+use crate::commodity::CommodityID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{Activity, Capacity, Flow};
 use anyhow::{anyhow, Result};
 use highs::{RowProblem as Problem, Sense};
 use indexmap::IndexMap;
-use std::collections::HashMap;
 
 /// A decision variable in the optimisation
 pub type Variable = highs::Col;
@@ -20,7 +21,8 @@ struct VariableMap {
     capacity_var: Variable,
     /// Activity variables in each time slice
     activity_vars: IndexMap<TimeSliceID, Variable>,
-    // **TODO.**: VoLL variables (for LCOX)
+    // Unmet demand variables
+    unmet_demand_vars: IndexMap<TimeSliceID, Variable>,
 }
 
 /// Map containing optimisation results and coefficients
@@ -29,6 +31,8 @@ pub struct ResultsMap {
     pub capacity: Capacity,
     /// Activity variables in each time slice
     pub activity: IndexMap<TimeSliceID, Activity>,
+    /// Unmet demand variables
+    pub unmet_demand: IndexMap<TimeSliceID, Flow>,
 }
 
 /// Add variables to the problem based on cost coefficients
@@ -43,9 +47,18 @@ fn add_variables(problem: &mut Problem, cost_coefficients: &CoefficientsMap) -> 
         activity_vars.insert(time_slice.clone(), var);
     }
 
+    // Create unmet demand variables
+    // One per time slice, all of which use the same coefficient
+    let mut unmet_demand_vars = IndexMap::new();
+    for time_slice in cost_coefficients.activity_coefficients.keys() {
+        let var = problem.add_column(cost_coefficients.unmet_demand_coefficient.value(), 0.0..);
+        unmet_demand_vars.insert(time_slice.clone(), var);
+    }
+
     VariableMap {
         capacity_var,
         activity_vars,
+        unmet_demand_vars,
     }
 }
 
@@ -53,8 +66,9 @@ fn add_variables(problem: &mut Problem, cost_coefficients: &CoefficientsMap) -> 
 fn add_constraints(
     problem: &mut Problem,
     asset: &AssetRef,
+    commodity_id: &CommodityID,
     variables: &VariableMap,
-    demand: &HashMap<TimeSliceID, Flow>,
+    demand: &DemandMap,
     time_slice_level: TimeSliceLevel,
     time_slice_info: &TimeSliceInfo,
 ) {
@@ -67,10 +81,13 @@ fn add_constraints(
     );
     add_demand_constraints(
         problem,
+        asset,
+        commodity_id,
         time_slice_level,
         time_slice_info,
         demand,
         &variables.activity_vars,
+        &variables.unmet_demand_vars,
     );
 }
 
@@ -81,8 +98,9 @@ fn add_constraints(
 /// **TODO.**: Will need to modify constraints to handle unmet demand variables in LCOX case
 pub fn perform_optimisation(
     asset: &AssetRef,
+    commodity_id: &CommodityID,
     coefficients: &CoefficientsMap,
-    demand: &HashMap<TimeSliceID, Flow>,
+    demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
     sense: Sense,
@@ -97,6 +115,7 @@ pub fn perform_optimisation(
     add_constraints(
         &mut problem,
         asset,
+        commodity_id,
         &variables,
         demand,
         time_slice_level,
@@ -117,6 +136,12 @@ pub fn perform_optimisation(
             .keys()
             .zip(solution_values[1..].iter())
             .map(|(time_slice, &value)| (time_slice.clone(), Activity::new(value)))
+            .collect(),
+        unmet_demand: variables
+            .unmet_demand_vars
+            .keys()
+            .zip(solution_values[variables.activity_vars.len() + 1..].iter())
+            .map(|(time_slice, &value)| (time_slice.clone(), Flow::new(value)))
             .collect(),
     })
 }

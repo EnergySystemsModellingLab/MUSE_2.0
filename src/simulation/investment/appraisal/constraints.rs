@@ -1,11 +1,12 @@
 //! Constraints for the optimisation problem.
 use super::optimisation::Variable;
+use super::DemandMap;
 use crate::asset::AssetRef;
+use crate::commodity::CommodityID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::Flow;
 use highs::RowProblem as Problem;
 use indexmap::IndexMap;
-use std::collections::HashMap;
 
 /// Adds a capacity constraint to the problem.
 ///
@@ -80,23 +81,29 @@ fn add_activity_constraints_for_candidate(
 ///
 /// Constrains supply to be less than or equal to demand, which adapts based on the commodity's
 /// balance level.
-///
-/// **TODO:** For LCOX this will need to include unmet demand variables.
+#[allow(clippy::too_many_arguments)]
 pub fn add_demand_constraints(
     problem: &mut Problem,
+    asset: &AssetRef,
+    commodity_id: &CommodityID,
     time_slice_level: TimeSliceLevel,
     time_slice_info: &TimeSliceInfo,
-    demand: &HashMap<TimeSliceID, Flow>,
+    demand: &DemandMap,
     activity_vars: &IndexMap<TimeSliceID, Variable>,
+    unmet_demand_vars: &IndexMap<TimeSliceID, Variable>,
 ) {
     for ts_selection in time_slice_info.iter_selections_at_level(time_slice_level) {
         let mut demand_for_ts_selection = Flow(0.0);
         let mut terms = Vec::new();
         for (time_slice, _) in ts_selection.iter(time_slice_info) {
             demand_for_ts_selection += *demand.get(time_slice).unwrap();
-            let var = activity_vars.get(time_slice).unwrap();
-            terms.push((*var, 1.0));
+            let flow_coeff = asset.get_flow(commodity_id).unwrap().coeff;
+            terms.push((*activity_vars.get(time_slice).unwrap(), flow_coeff.value()));
+            terms.push((*unmet_demand_vars.get(time_slice).unwrap(), 1.0));
         }
-        problem.add_row(0.0..=demand_for_ts_selection.value(), terms);
+        problem.add_row(
+            demand_for_ts_selection.value()..=demand_for_ts_selection.value(),
+            terms,
+        );
     }
 }
