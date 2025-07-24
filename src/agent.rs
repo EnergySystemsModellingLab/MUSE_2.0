@@ -1,7 +1,7 @@
 //! Agents drive the economy of the MUSE 2.0 simulation, through relative investment in different
 //! assets.
 use crate::commodity::CommodityID;
-use crate::id::{define_id_getter, define_id_type};
+use crate::id::define_id_type;
 use crate::process::Process;
 use crate::region::RegionID;
 use crate::units::{Dimensionless, Money};
@@ -50,7 +50,6 @@ pub struct Agent {
     /// The agent's objectives.
     pub objectives: AgentObjectiveMap,
 }
-define_id_getter! {Agent, AgentID}
 
 /// The cost limits for an agent in a particular year
 #[derive(Debug, Clone, PartialEq)]
