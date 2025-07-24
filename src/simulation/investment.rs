@@ -79,25 +79,18 @@ pub fn perform_agent_investment(
                 );
 
                 // Existing and candidate assets from which to choose
-                let opt_assets = get_asset_options(
-                    &model.time_slice_info,
-                    &existing_assets,
-                    agent,
-                    commodity_id,
-                    region_id,
-                    &demand_for_commodity,
-                    year,
-                )
-                .collect();
+                let opt_assets =
+                    get_asset_options(&existing_assets, agent, commodity_id, region_id, year)
+                        .collect();
 
                 // Choose assets from among existing pool and candidates
                 let best_assets = select_best_assets(
+                    model,
                     opt_assets,
                     commodity_id,
                     objective_type,
                     reduced_costs,
                     demand_for_commodity,
-                    &model.time_slice_info,
                     time_slice_level,
                 )?;
 
@@ -212,12 +205,10 @@ fn get_demand_limiting_capacity(
 
 /// Get options from existing and potential assets for the given parameters
 fn get_asset_options<'a>(
-    time_slice_info: &'a TimeSliceInfo,
     all_existing_assets: &'a [AssetRef],
     agent: &'a Agent,
     commodity_id: &'a CommodityID,
     region_id: &'a RegionID,
-    demand: &'a DemandMap,
     year: u32,
 ) -> impl Iterator<Item = AssetRef> + 'a {
     // Get existing assets which produce the commodity of interest
@@ -229,25 +220,16 @@ fn get_asset_options<'a>(
         .cloned();
 
     // Get candidates assets which produce the commodity of interest
-    let candidate_assets = get_candidate_assets(
-        time_slice_info,
-        agent,
-        region_id,
-        commodity_id,
-        demand,
-        year,
-    );
+    let candidate_assets = get_candidate_assets(agent, region_id, commodity_id, year);
 
     chain(existing_assets, candidate_assets)
 }
 
 /// Get candidate assets which produce a particular commodity for a given agent
 fn get_candidate_assets<'a>(
-    time_slice_info: &'a TimeSliceInfo,
     agent: &'a Agent,
     region_id: &'a RegionID,
     commodity_id: &'a CommodityID,
-    demand: &'a DemandMap,
     year: u32,
 ) -> impl Iterator<Item = AssetRef> + 'a {
     let flows_key = (region_id.clone(), year);
@@ -269,32 +251,44 @@ fn get_candidate_assets<'a>(
         });
 
     producers.map(move |process| {
-        let mut asset = Asset::new_without_capacity(
+        Asset::new_without_capacity(
             Some(agent.id.clone()),
             process.clone(),
             region_id.clone(),
             year,
         )
-        .unwrap();
-        asset.capacity =
-            get_demand_limiting_capacity(time_slice_info, &asset, commodity_id, demand);
-
-        asset.into()
+        .unwrap()
+        .into()
     })
 }
 
 /// Get the best assets for meeting demand for the given commodity
 fn select_best_assets(
+    model: &Model,
     mut opt_assets: Vec<AssetRef>,
     commodity_id: &CommodityID,
     objective_type: &ObjectiveType,
     reduced_costs: &ReducedCosts,
     mut demand: DemandMap,
-    time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
 ) -> Result<Vec<AssetRef>> {
     let mut best_assets: Vec<AssetRef> = Vec::new();
 
+    let mut remaining_candidate_capacity = HashMap::from_iter(
+        opt_assets
+            .iter()
+            .filter(|asset| !asset.is_commissioned())
+            .map(|asset| {
+                let capacity = get_demand_limiting_capacity(
+                    &model.time_slice_info,
+                    asset,
+                    commodity_id,
+                    &demand,
+                );
+
+                (asset.clone(), capacity)
+            }),
+    );
     while is_remaining_unmet_demand(&demand) {
         ensure!(
             !opt_assets.is_empty(),
@@ -303,13 +297,19 @@ fn select_best_assets(
 
         let mut current_best: Option<AppraisalOutput> = None;
         for asset in opt_assets.iter() {
+            let max_capacity = (!asset.is_commissioned()).then(|| {
+                let max_capacity = model.parameters.capacity_limit_factor * asset.capacity;
+                let remaining_capacity = remaining_candidate_capacity[asset];
+                max_capacity.min(remaining_capacity)
+            });
+
             let output = appraise_investment(
                 asset,
-                /*max_capacity=*/ None,
+                max_capacity,
                 objective_type,
                 reduced_costs,
                 &demand,
-                time_slice_info,
+                &model.time_slice_info,
                 time_slice_level,
             )?;
 
@@ -340,11 +340,17 @@ fn select_best_assets(
             "candidate"
         };
         debug!(
-            "Selected {} asset '{}'",
-            commissioned_txt, &asset.process.id
+            "Selected {} asset '{}' (capacity: {})",
+            commissioned_txt, &asset.process.id, capacity
         );
 
-        update_assets(asset, capacity, &mut opt_assets, &mut best_assets);
+        update_assets(
+            asset,
+            capacity,
+            &mut opt_assets,
+            &mut remaining_candidate_capacity,
+            &mut best_assets,
+        );
     }
 
     Ok(best_assets)
@@ -360,23 +366,23 @@ fn update_assets(
     mut best_asset: AssetRef,
     capacity: Capacity,
     opt_assets: &mut Vec<AssetRef>,
+    remaining_candidate_capacity: &mut HashMap<AssetRef, Capacity>,
     best_assets: &mut Vec<AssetRef>,
 ) {
     // New capacity given for candidates only
     if !best_asset.is_commissioned() {
-        // Get a reference to the copy of the asset in opt_assets
-        let (old_idx, old) = opt_assets
-            .iter_mut()
-            .enumerate()
-            .find(|(_, asset)| **asset == best_asset)
-            .unwrap();
-
         // Remove this capacity from the available remaining capacity for this asset
-        old.make_mut().capacity -= capacity;
+        let remaining_capacity = remaining_candidate_capacity.get_mut(&best_asset).unwrap();
+        *remaining_capacity -= capacity;
 
         // If there's no capacity remaining, remove the asset from the options
-        if old.capacity <= Capacity(0.0) {
+        if *remaining_capacity <= Capacity(0.0) {
+            let old_idx = opt_assets
+                .iter()
+                .position(|asset| *asset == best_asset)
+                .unwrap();
             opt_assets.swap_remove(old_idx);
+            remaining_candidate_capacity.remove(&best_asset);
         }
 
         if let Some(existing_asset) = best_assets.iter_mut().find(|asset| **asset == best_asset) {
