@@ -232,34 +232,18 @@ fn get_candidate_assets<'a>(
     commodity_id: &'a CommodityID,
     year: u32,
 ) -> impl Iterator<Item = AssetRef> + 'a {
-    let flows_key = (region_id.clone(), year);
-
-    // Get all the processes which produce the commodity in this year
-    let producers = agent
-        .search_space
-        .get(&(commodity_id.clone(), year))
-        .unwrap()
-        .iter()
-        .filter(move |process| {
-            process
-                .flows
-                .get(&flows_key)
-                .unwrap()
-                .get(commodity_id)
-                .unwrap()
-                .is_output()
-        });
-
-    producers.map(move |process| {
-        Asset::new_without_capacity(
-            Some(agent.id.clone()),
-            process.clone(),
-            region_id.clone(),
-            year,
-        )
-        .unwrap()
-        .into()
-    })
+    agent
+        .iter_possible_producers_of(region_id, commodity_id, year)
+        .map(move |process| {
+            Asset::new_without_capacity(
+                Some(agent.id.clone()),
+                process.clone(),
+                region_id.clone(),
+                year,
+            )
+            .unwrap()
+            .into()
+        })
 }
 
 /// Get the best assets for meeting demand for the given commodity
