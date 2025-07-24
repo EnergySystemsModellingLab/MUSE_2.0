@@ -75,9 +75,16 @@ pub fn perform_agent_investment(
                 );
 
                 // Existing and candidate assets from which to choose
-                let opt_assets =
-                    get_asset_options(&existing_assets, agent, commodity_id, region_id, year)
-                        .collect();
+                let opt_assets = get_asset_options(
+                    &model.time_slice_info,
+                    &existing_assets,
+                    &demand_for_commodity,
+                    agent,
+                    commodity_id,
+                    region_id,
+                    year,
+                )
+                .collect();
 
                 // Choose assets from among existing pool and candidates
                 let best_assets = select_best_assets(
@@ -178,7 +185,9 @@ fn get_demand_limiting_capacity(
 
 /// Get options from existing and potential assets for the given parameters
 fn get_asset_options<'a>(
+    time_slice_info: &'a TimeSliceInfo,
     all_existing_assets: &'a [AssetRef],
+    demand: &'a DemandMap,
     agent: &'a Agent,
     commodity_id: &'a CommodityID,
     region_id: &'a RegionID,
@@ -193,13 +202,22 @@ fn get_asset_options<'a>(
         .cloned();
 
     // Get candidates assets which produce the commodity of interest
-    let candidate_assets = get_candidate_assets(agent, region_id, commodity_id, year);
+    let candidate_assets = get_candidate_assets(
+        time_slice_info,
+        demand,
+        agent,
+        region_id,
+        commodity_id,
+        year,
+    );
 
     chain(existing_assets, candidate_assets)
 }
 
 /// Get candidate assets which produce a particular commodity for a given agent
 fn get_candidate_assets<'a>(
+    time_slice_info: &'a TimeSliceInfo,
+    demand: &'a DemandMap,
     agent: &'a Agent,
     region_id: &'a RegionID,
     commodity_id: &'a CommodityID,
@@ -208,14 +226,17 @@ fn get_candidate_assets<'a>(
     agent
         .iter_possible_producers_of(region_id, commodity_id, year)
         .map(move |process| {
-            Asset::new_without_capacity(
+            let mut asset = Asset::new_without_capacity(
                 Some(agent.id.clone()),
                 process.clone(),
                 region_id.clone(),
                 year,
             )
-            .unwrap()
-            .into()
+            .unwrap();
+            asset.capacity =
+                get_demand_limiting_capacity(time_slice_info, &asset, commodity_id, demand);
+
+            asset.into()
         })
 }
 
@@ -234,16 +255,7 @@ fn select_best_assets(
         opt_assets
             .iter()
             .filter(|asset| !asset.is_commissioned())
-            .map(|asset| {
-                let capacity = get_demand_limiting_capacity(
-                    &model.time_slice_info,
-                    asset,
-                    &commodity.id,
-                    &demand,
-                );
-
-                (asset.clone(), capacity)
-            }),
+            .map(|asset| (asset.clone(), asset.capacity)),
     );
     while is_any_remaining_demand(&demand) {
         ensure!(
