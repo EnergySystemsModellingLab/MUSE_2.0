@@ -552,7 +552,7 @@ mod tests {
             .iter()
             .map(|&year| (("GBR".into(), year), process_param.clone()))
             .collect();
-        let fraction_limits = Dimensionless(1.0)..=Dimensionless(f64::INFINITY);
+        let fraction_limits = Dimensionless(1.0)..=Dimensionless(2.0);
         let mut activity_limits = ProcessActivityLimitsMap::new();
         for year in [2010, 2020] {
             activity_limits.insert(
@@ -580,7 +580,7 @@ mod tests {
 
         assert_eq!(
             asset.get_activity_limits(&time_slice),
-            Activity(6.0)..=Activity(f64::INFINITY)
+            Activity(6.0)..=Activity(12.0)
         );
     }
 
