@@ -128,6 +128,7 @@ fn calculate_npv(
 }
 
 /// Appraise the given investment with the specified objective type
+#[allow(clippy::too_many_arguments)]
 pub fn appraise_investment(
     model: &Model,
     asset: &AssetRef,
