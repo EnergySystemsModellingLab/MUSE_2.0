@@ -316,6 +316,15 @@ fn select_best_assets(
                 .as_ref()
                 .is_none_or(|best_output| output.is_better_than(best_output))
             {
+                // Sanity check. We currently have no good way to handle this scenario and it can
+                // cause an infinite loop.
+                assert!(
+                    output.capacity > Capacity(0.0),
+                    "Attempted to select asset '{}' with zero capacity.\nSee: \
+                    https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/716",
+                    &output.asset.process.id
+                );
+
                 current_best = Some(output);
             }
         }
