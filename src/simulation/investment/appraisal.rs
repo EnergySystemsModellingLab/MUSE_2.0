@@ -6,7 +6,7 @@ use crate::commodity::CommodityID;
 use crate::finance::{lcox, profitability_index};
 use crate::model::Model;
 use crate::simulation::prices::ReducedCosts;
-use crate::time_slice::{TimeSliceInfo, TimeSliceLevel};
+use crate::time_slice::TimeSliceLevel;
 use crate::units::Capacity;
 use anyhow::Result;
 
@@ -33,7 +33,6 @@ pub struct AppraisalOutput {
 ///
 /// This is more commonly referred to as Levelised Cost of *Electricity*, but as the model can
 /// include other flows, we use the term LCOX.
-#[allow(clippy::too_many_arguments)]
 fn calculate_lcox(
     model: &Model,
     asset: &AssetRef,
@@ -41,13 +40,12 @@ fn calculate_lcox(
     commodity_id: &CommodityID,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
-    time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
 ) -> Result<AppraisalOutput> {
     // Calculate coefficients
     let coefficients = calculate_coefficients_for_lcox(
         asset,
-        time_slice_info,
+        &model.time_slice_info,
         reduced_costs,
         model.parameters.value_of_lost_load,
     );
@@ -59,7 +57,7 @@ fn calculate_lcox(
         commodity_id,
         &coefficients,
         demand,
-        time_slice_info,
+        &model.time_slice_info,
         time_slice_level,
         highs::Sense::Minimise,
     )?;
@@ -84,19 +82,17 @@ fn calculate_lcox(
 }
 
 /// Calculate NPV for a hypothetical investment in the given asset.
-#[allow(clippy::too_many_arguments)]
 fn calculate_npv(
-    _model: &Model,
+    model: &Model,
     asset: &AssetRef,
     max_capacity: Option<Capacity>,
     commodity_id: &CommodityID,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
-    time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
 ) -> Result<AppraisalOutput> {
     // Calculate coefficients
-    let coefficients = calculate_coefficients_for_npv(asset, time_slice_info, reduced_costs);
+    let coefficients = calculate_coefficients_for_npv(asset, &model.time_slice_info, reduced_costs);
 
     // Perform optimisation to calculate capacity, activity and unmet demand
     let results = perform_optimisation(
@@ -105,7 +101,7 @@ fn calculate_npv(
         commodity_id,
         &coefficients,
         demand,
-        time_slice_info,
+        &model.time_slice_info,
         time_slice_level,
         highs::Sense::Maximise,
     )?;
@@ -140,7 +136,6 @@ pub fn appraise_investment(
     objective_type: &ObjectiveType,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
-    time_slice_info: &TimeSliceInfo,
     time_slice_level: TimeSliceLevel,
 ) -> Result<AppraisalOutput> {
     let appraisal_method = match objective_type {
@@ -154,7 +149,6 @@ pub fn appraise_investment(
         commodity_id,
         reduced_costs,
         demand,
-        time_slice_info,
         time_slice_level,
     )
 }

@@ -273,7 +273,6 @@ fn select_best_assets(
                 objective_type,
                 reduced_costs,
                 &demand,
-                &model.time_slice_info,
                 time_slice_level,
             )?;
 
