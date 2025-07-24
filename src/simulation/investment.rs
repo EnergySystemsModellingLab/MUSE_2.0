@@ -266,8 +266,10 @@ fn select_best_assets(
             });
 
             let output = appraise_investment(
+                model,
                 asset,
                 max_capacity,
+                commodity_id,
                 objective_type,
                 reduced_costs,
                 &demand,
@@ -277,7 +279,7 @@ fn select_best_assets(
 
             if current_best
                 .as_ref()
-                .is_none_or(|best_output| output.is_better_than(best_output))
+                .is_none_or(|best_output| output.metric < best_output.metric)
             {
                 // Sanity check. We currently have no good way to handle this scenario and it can
                 // cause an infinite loop.
@@ -293,8 +295,9 @@ fn select_best_assets(
         }
 
         let best_output = current_best.expect("No assets given");
-        let (asset, capacity, unmet_demand) = best_output.into_parts(commodity_id, demand);
-        demand = unmet_demand;
+        let asset = best_output.asset;
+        let capacity = best_output.capacity;
+        demand = best_output.unmet_demand;
 
         let commissioned_txt = if asset.is_commissioned() {
             "existing"

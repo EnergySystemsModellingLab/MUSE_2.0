@@ -8,7 +8,7 @@ use crate::input::{
 use crate::process::ProcessMap;
 use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
-use crate::units::{Capacity, Dimensionless};
+use crate::units::{Capacity, Dimensionless, MoneyPerFlow};
 use anyhow::{ensure, Context, Result};
 use log::warn;
 use serde::Deserialize;
@@ -20,6 +20,7 @@ const MODEL_FILE_NAME: &str = "model.toml";
 // Default parameter values
 const DEFAULT_CANDIDATE_ASSET_CAPACITY: Capacity = Capacity(0.0001);
 const DEFAULT_CAPACITY_LIMIT_FACTOR: Dimensionless = Dimensionless(0.1);
+const DEFAULT_VALUE_OF_LOST_LOAD: MoneyPerFlow = MoneyPerFlow(1e9);
 
 /// Model definition
 pub struct Model {
@@ -58,6 +59,11 @@ pub struct ModelFile {
     #[serde(default = "default_capacity_limit_factor")]
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     pub capacity_limit_factor: Dimensionless,
+    /// The cost applied to unmet demand.
+    ///
+    /// Currently this only applies to the LCOX appraisal.
+    #[serde(default = "default_value_of_lost_load")]
+    pub value_of_lost_load: MoneyPerFlow,
 }
 
 /// The strategy used for calculating commodity prices
@@ -78,6 +84,10 @@ const fn default_candidate_asset_capacity() -> Capacity {
 
 const fn default_capacity_limit_factor() -> Dimensionless {
     DEFAULT_CAPACITY_LIMIT_FACTOR
+}
+
+const fn default_value_of_lost_load() -> MoneyPerFlow {
+    DEFAULT_VALUE_OF_LOST_LOAD
 }
 
 /// Check that the milestone years parameter is valid
