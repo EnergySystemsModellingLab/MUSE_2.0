@@ -48,9 +48,10 @@ fn add_variables(problem: &mut Problem, cost_coefficients: &CoefficientsMap) -> 
     }
 
     // Create unmet demand variables
+    // One per time slice, all of which use the same coefficient
     let mut unmet_demand_vars = IndexMap::new();
-    for (time_slice, cost) in cost_coefficients.unmet_demand_coefficients.iter() {
-        let var = problem.add_column(cost.value(), 0.0..);
+    for (time_slice, _) in cost_coefficients.activity_coefficients.iter() {
+        let var = problem.add_column(cost_coefficients.unmet_demand_coefficient.value(), 0.0..);
         unmet_demand_vars.insert(time_slice.clone(), var);
     }
 
