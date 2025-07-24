@@ -26,4 +26,10 @@ properties:
       The `scarcity_adjusted` option adjusts prices for scarcity. This may cause price instability
       for assets with more than one output commodity. Do not use this unless you know what you're
       doing!
+  value_of_lost_load:
+    type: number
+    description: The cost applied to unmet demand
+    default: 1e9
+    notes: |
+      Currently this only applies to the LCOX appraisal.
 required: [milestone_years]

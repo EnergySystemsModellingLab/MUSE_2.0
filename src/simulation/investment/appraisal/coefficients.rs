@@ -21,6 +21,7 @@ pub fn calculate_coefficients_for_lcox(
     asset: &AssetRef,
     time_slice_info: &TimeSliceInfo,
     reduced_costs: &ReducedCosts,
+    value_of_lost_load: MoneyPerFlow,
 ) -> CoefficientsMap {
     // Capacity coefficient
     let capacity_coefficient = annual_fixed_cost(asset);
@@ -32,8 +33,8 @@ pub fn calculate_coefficients_for_lcox(
         activity_coefficients.insert(time_slice.clone(), coefficient);
     }
 
-    // Unmet demand coefficient (zero for now **TODO.**)
-    let unmet_demand_coefficient = MoneyPerFlow(0.0);
+    // Unmet demand coefficient
+    let unmet_demand_coefficient = value_of_lost_load;
 
     CoefficientsMap {
         capacity_coefficient,

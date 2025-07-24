@@ -3,6 +3,7 @@ use crate::agent::ObjectiveType;
 use crate::asset::AssetRef;
 use crate::commodity::CommodityID;
 use crate::finance::{lcox, profitability_index};
+use crate::model::Model;
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
 use crate::units::{Capacity, Flow};
@@ -36,6 +37,7 @@ pub struct AppraisalOutput {
 /// This is more commonly referred to as Levelised Cost of *Electricity*, but as the model can
 /// include other flows, we use the term LCOX.
 fn calculate_lcox(
+    model: &Model,
     asset: &AssetRef,
     commodity_id: &CommodityID,
     reduced_costs: &ReducedCosts,
@@ -44,7 +46,12 @@ fn calculate_lcox(
     time_slice_level: TimeSliceLevel,
 ) -> Result<AppraisalOutput> {
     // Calculate coefficients
-    let coefficients = calculate_coefficients_for_lcox(asset, time_slice_info, reduced_costs);
+    let coefficients = calculate_coefficients_for_lcox(
+        asset,
+        time_slice_info,
+        reduced_costs,
+        model.parameters.value_of_lost_load,
+    );
 
     // Perform optimisation to calculate capacity, activity and unmet demand
     let results = perform_optimisation(
@@ -78,6 +85,7 @@ fn calculate_lcox(
 
 /// Calculate NPV for a hypothetical investment in the given asset.
 fn calculate_npv(
+    _model: &Model,
     asset: &AssetRef,
     commodity_id: &CommodityID,
     reduced_costs: &ReducedCosts,
@@ -121,6 +129,7 @@ fn calculate_npv(
 
 /// Appraise the given investment with the specified objective type
 pub fn appraise_investment(
+    model: &Model,
     asset: &AssetRef,
     commodity_id: &CommodityID,
     objective_type: &ObjectiveType,
@@ -134,6 +143,7 @@ pub fn appraise_investment(
         ObjectiveType::NetPresentValue => calculate_npv,
     };
     appraisal_method(
+        model,
         asset,
         commodity_id,
         reduced_costs,
