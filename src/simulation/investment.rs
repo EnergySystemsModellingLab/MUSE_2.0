@@ -245,7 +245,7 @@ fn select_best_assets(
                 (asset.clone(), capacity)
             }),
     );
-    while is_remaining_unmet_demand(&demand) {
+    while is_any_remaining_demand(&demand) {
         ensure!(
             !opt_assets.is_empty(),
             "Failed to meet demand for commodity '{}' with provided assets",
@@ -315,7 +315,7 @@ fn select_best_assets(
 }
 
 /// Check whether there is any remaining demand that is unmet in any time slice
-fn is_remaining_unmet_demand(demand: &HashMap<TimeSliceID, Flow>) -> bool {
+fn is_any_remaining_demand(demand: &HashMap<TimeSliceID, Flow>) -> bool {
     demand.values().any(|flow| *flow > Flow(0.0))
 }
 
