@@ -3,10 +3,10 @@ use super::optimisation::FlowMap;
 use super::prices::ReducedCosts;
 use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
-use crate::commodity::{CommodityID, CommodityType};
+use crate::commodity::{Commodity, CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
 use indexmap::IndexSet;
@@ -54,11 +54,7 @@ pub fn perform_agent_investment(
     let demand = get_demand_profile(&commodities_of_interest, flow_map);
 
     for commodity_id in commodities_of_interest.iter() {
-        let time_slice_level = model
-            .commodities
-            .get(commodity_id)
-            .unwrap()
-            .time_slice_level;
+        let commodity = &model.commodities[commodity_id];
         for (agent, commodity_portion) in
             get_responsible_agents(model.agents.values(), commodity_id, year)
         {
@@ -87,11 +83,10 @@ pub fn perform_agent_investment(
                 let best_assets = select_best_assets(
                     model,
                     opt_assets,
-                    commodity_id,
+                    commodity,
                     objective_type,
                     reduced_costs,
                     demand_for_commodity,
-                    time_slice_level,
                 )?;
 
                 // Add assets to pool
@@ -228,11 +223,10 @@ fn get_candidate_assets<'a>(
 fn select_best_assets(
     model: &Model,
     mut opt_assets: Vec<AssetRef>,
-    commodity_id: &CommodityID,
+    commodity: &Commodity,
     objective_type: &ObjectiveType,
     reduced_costs: &ReducedCosts,
     mut demand: DemandMap,
-    time_slice_level: TimeSliceLevel,
 ) -> Result<Vec<AssetRef>> {
     let mut best_assets: Vec<AssetRef> = Vec::new();
 
@@ -244,7 +238,7 @@ fn select_best_assets(
                 let capacity = get_demand_limiting_capacity(
                     &model.time_slice_info,
                     asset,
-                    commodity_id,
+                    &commodity.id,
                     &demand,
                 );
 
@@ -254,7 +248,8 @@ fn select_best_assets(
     while is_remaining_unmet_demand(&demand) {
         ensure!(
             !opt_assets.is_empty(),
-            "Failed to meet demand for commodity '{commodity_id}' with provided assets"
+            "Failed to meet demand for commodity '{}' with provided assets",
+            &commodity.id
         );
 
         let mut current_best: Option<AppraisalOutput> = None;
@@ -269,11 +264,10 @@ fn select_best_assets(
                 model,
                 asset,
                 max_capacity,
-                commodity_id,
+                commodity,
                 objective_type,
                 reduced_costs,
                 &demand,
-                time_slice_level,
             )?;
 
             if current_best

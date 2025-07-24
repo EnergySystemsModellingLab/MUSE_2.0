@@ -2,11 +2,10 @@
 use super::DemandMap;
 use crate::agent::ObjectiveType;
 use crate::asset::AssetRef;
-use crate::commodity::CommodityID;
+use crate::commodity::Commodity;
 use crate::finance::{lcox, profitability_index};
 use crate::model::Model;
 use crate::simulation::prices::ReducedCosts;
-use crate::time_slice::TimeSliceLevel;
 use crate::units::Capacity;
 use anyhow::Result;
 
@@ -37,10 +36,9 @@ fn calculate_lcox(
     model: &Model,
     asset: &AssetRef,
     max_capacity: Option<Capacity>,
-    commodity_id: &CommodityID,
+    commodity: &Commodity,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
-    time_slice_level: TimeSliceLevel,
 ) -> Result<AppraisalOutput> {
     // Calculate coefficients
     let coefficients = calculate_coefficients_for_lcox(
@@ -54,11 +52,10 @@ fn calculate_lcox(
     let results = perform_optimisation(
         asset,
         max_capacity,
-        commodity_id,
+        commodity,
         &coefficients,
         demand,
         &model.time_slice_info,
-        time_slice_level,
         highs::Sense::Minimise,
     )?;
 
@@ -86,10 +83,9 @@ fn calculate_npv(
     model: &Model,
     asset: &AssetRef,
     max_capacity: Option<Capacity>,
-    commodity_id: &CommodityID,
+    commodity: &Commodity,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
-    time_slice_level: TimeSliceLevel,
 ) -> Result<AppraisalOutput> {
     // Calculate coefficients
     let coefficients = calculate_coefficients_for_npv(asset, &model.time_slice_info, reduced_costs);
@@ -98,11 +94,10 @@ fn calculate_npv(
     let results = perform_optimisation(
         asset,
         max_capacity,
-        commodity_id,
+        commodity,
         &coefficients,
         demand,
         &model.time_slice_info,
-        time_slice_level,
         highs::Sense::Maximise,
     )?;
 
@@ -127,28 +122,18 @@ fn calculate_npv(
 }
 
 /// Appraise the given investment with the specified objective type
-#[allow(clippy::too_many_arguments)]
 pub fn appraise_investment(
     model: &Model,
     asset: &AssetRef,
     max_capacity: Option<Capacity>,
-    commodity_id: &CommodityID,
+    commodity: &Commodity,
     objective_type: &ObjectiveType,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
-    time_slice_level: TimeSliceLevel,
 ) -> Result<AppraisalOutput> {
     let appraisal_method = match objective_type {
         ObjectiveType::LevelisedCostOfX => calculate_lcox,
         ObjectiveType::NetPresentValue => calculate_npv,
     };
-    appraisal_method(
-        model,
-        asset,
-        max_capacity,
-        commodity_id,
-        reduced_costs,
-        demand,
-        time_slice_level,
-    )
+    appraisal_method(model, asset, max_capacity, commodity, reduced_costs, demand)
 }

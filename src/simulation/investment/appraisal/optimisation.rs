@@ -5,8 +5,8 @@ use super::constraints::{
 };
 use super::DemandMap;
 use crate::asset::AssetRef;
-use crate::commodity::CommodityID;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
+use crate::commodity::Commodity;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Activity, Capacity, Flow};
 use anyhow::{anyhow, Result};
 use highs::{RowProblem as Problem, Sense};
@@ -63,15 +63,13 @@ fn add_variables(problem: &mut Problem, cost_coefficients: &CoefficientsMap) -> 
 }
 
 /// Adds constraints to the problem.
-#[allow(clippy::too_many_arguments)]
 fn add_constraints(
     problem: &mut Problem,
     asset: &AssetRef,
     max_capacity: Option<Capacity>,
-    commodity_id: &CommodityID,
+    commodity: &Commodity,
     variables: &VariableMap,
     demand: &DemandMap,
-    time_slice_level: TimeSliceLevel,
     time_slice_info: &TimeSliceInfo,
 ) {
     add_capacity_constraint(problem, asset, max_capacity, variables.capacity_var);
@@ -84,8 +82,7 @@ fn add_constraints(
     add_demand_constraints(
         problem,
         asset,
-        commodity_id,
-        time_slice_level,
+        commodity,
         time_slice_info,
         demand,
         &variables.activity_vars,
@@ -96,15 +93,13 @@ fn add_constraints(
 /// Performs optimisation for an asset, given the coefficients and demand.
 ///
 /// Will either maximise or minimise the objective function, depending on the `sense` parameter.
-#[allow(clippy::too_many_arguments)]
 pub fn perform_optimisation(
     asset: &AssetRef,
     max_capacity: Option<Capacity>,
-    commodity_id: &CommodityID,
+    commodity: &Commodity,
     coefficients: &CoefficientsMap,
     demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
-    time_slice_level: TimeSliceLevel,
     sense: Sense,
 ) -> Result<ResultsMap> {
     // Set up problem
@@ -118,10 +113,9 @@ pub fn perform_optimisation(
         &mut problem,
         asset,
         max_capacity,
-        commodity_id,
+        commodity,
         &variables,
         demand,
-        time_slice_level,
         time_slice_info,
     );
 
