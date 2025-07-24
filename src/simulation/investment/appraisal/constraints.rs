@@ -2,7 +2,7 @@
 use super::optimisation::Variable;
 use crate::asset::AssetRef;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::Flow;
+use crate::units::{Capacity, Flow};
 use highs::RowProblem as Problem;
 use indexmap::IndexMap;
 use std::collections::HashMap;
@@ -12,8 +12,13 @@ use std::collections::HashMap;
 /// The behaviour depends on whether the asset is commissioned or a candidate:
 /// - For a commissioned asset, the capacity is fixed.
 /// - For a candidate asset, the capacity is variable between zero and an upper bound.
-pub fn add_capacity_constraint(problem: &mut Problem, asset: &AssetRef, capacity_var: Variable) {
-    let capacity = asset.capacity;
+pub fn add_capacity_constraint(
+    problem: &mut Problem,
+    asset: &AssetRef,
+    max_capacity: Option<Capacity>,
+    capacity_var: Variable,
+) {
+    let capacity = max_capacity.unwrap_or(asset.capacity);
     let bounds = if asset.is_commissioned() {
         capacity.value()..=capacity.value()
     } else {

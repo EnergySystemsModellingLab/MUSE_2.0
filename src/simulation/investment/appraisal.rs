@@ -120,6 +120,7 @@ impl ToolOutput for NPVOutput {
 /// Required capacity for asset and additional information in [`LCOXOutput`].
 fn calculate_lcox(
     asset: &AssetRef,
+    max_capacity: Option<Capacity>,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
@@ -131,6 +132,7 @@ fn calculate_lcox(
     // Perform optimisation to calculate capacity and activity
     let results = perform_optimisation(
         asset,
+        max_capacity,
         &coefficients,
         demand,
         time_slice_info,
@@ -167,6 +169,7 @@ fn calculate_lcox(
 /// Required capacity for asset and additional information in [`NPVOutput`].
 fn calculate_npv(
     asset: &AssetRef,
+    max_capacity: Option<Capacity>,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
@@ -178,6 +181,7 @@ fn calculate_npv(
     // Perform optimisation to calculate capacity and activity
     let results = perform_optimisation(
         asset,
+        max_capacity,
         &coefficients,
         demand,
         time_slice_info,
@@ -207,6 +211,7 @@ fn calculate_npv(
 /// Appraise the given investment with the specified objective type
 pub fn appraise_investment(
     asset: &AssetRef,
+    max_capacity: Option<Capacity>,
     objective_type: &ObjectiveType,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
@@ -218,6 +223,7 @@ pub fn appraise_investment(
         ($fn: ident) => {{
             let (capacity, output) = $fn(
                 asset,
+                max_capacity,
                 reduced_costs,
                 demand,
                 time_slice_info,

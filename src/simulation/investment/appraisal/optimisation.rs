@@ -53,12 +53,13 @@ fn add_variables(problem: &mut Problem, cost_coefficients: &CoefficientsMap) -> 
 fn add_constraints(
     problem: &mut Problem,
     asset: &AssetRef,
+    max_capacity: Option<Capacity>,
     variables: &VariableMap,
     demand: &HashMap<TimeSliceID, Flow>,
     time_slice_level: TimeSliceLevel,
     time_slice_info: &TimeSliceInfo,
 ) {
-    add_capacity_constraint(problem, asset, variables.capacity_var);
+    add_capacity_constraint(problem, asset, max_capacity, variables.capacity_var);
     add_activity_constraints(
         problem,
         asset,
@@ -81,6 +82,7 @@ fn add_constraints(
 /// **TODO.**: Will need to modify constraints to handle unmet demand variables in LCOX case
 pub fn perform_optimisation(
     asset: &AssetRef,
+    max_capacity: Option<Capacity>,
     coefficients: &CoefficientsMap,
     demand: &HashMap<TimeSliceID, Flow>,
     time_slice_info: &TimeSliceInfo,
@@ -97,6 +99,7 @@ pub fn perform_optimisation(
     add_constraints(
         &mut problem,
         asset,
+        max_capacity,
         &variables,
         demand,
         time_slice_level,

@@ -305,6 +305,7 @@ fn select_best_assets(
         for asset in opt_assets.iter() {
             let output = appraise_investment(
                 asset,
+                /*max_capacity=*/ None,
                 objective_type,
                 reduced_costs,
                 &demand,
