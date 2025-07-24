@@ -584,6 +584,57 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_asset_get_activity_per_capacity_limits() {
+        let time_slice = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "day".into(),
+        };
+        let process_param = Rc::new(ProcessParameter {
+            capital_cost: MoneyPerCapacity(5.0),
+            fixed_operating_cost: MoneyPerCapacityPerYear(2.0),
+            variable_operating_cost: MoneyPerActivity(1.0),
+            lifetime: 5,
+            discount_rate: Dimensionless(0.9),
+            capacity_to_activity: ActivityPerCapacity(3.0),
+        });
+        let years = RangeInclusive::new(2010, 2020).collect_vec();
+        let process_parameter_map: ProcessParameterMap = years
+            .iter()
+            .map(|&year| (("GBR".into(), year), process_param.clone()))
+            .collect();
+        let fraction_limits = Dimensionless(1.0)..=Dimensionless(2.0);
+        let mut activity_limits = ProcessActivityLimitsMap::new();
+        for year in [2010, 2020] {
+            activity_limits.insert(
+                ("GBR".into(), year, time_slice.clone()),
+                fraction_limits.clone(),
+            );
+        }
+        let process = Rc::new(Process {
+            id: "process1".into(),
+            description: "Description".into(),
+            years: vec![2010, 2020],
+            activity_limits,
+            flows: ProcessFlowsMap::new(),
+            parameters: process_parameter_map,
+            regions: IndexSet::from(["GBR".into()]),
+        });
+        let asset = Asset::new(
+            Some("agent1".into()),
+            Rc::clone(&process),
+            "GBR".into(),
+            Capacity(2.0),
+            2010,
+        )
+        .unwrap();
+
+        assert_eq!(
+            asset.get_activity_per_capacity_limits(&time_slice),
+            ActivityPerCapacity(3.0)..=ActivityPerCapacity(6.0)
+        );
+    }
+
     #[rstest]
     fn test_asset_pool_new(asset_pool: AssetPool) {
         // Should be in order of commission year
