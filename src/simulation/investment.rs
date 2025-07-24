@@ -7,7 +7,7 @@ use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::{Capacity, Dimensionless, Flow};
+use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
 use indexmap::IndexSet;
 use itertools::chain;
@@ -173,6 +173,9 @@ fn get_demand_limiting_capacity(
     let mut capacity = Capacity(0.0);
     for time_slice in time_slice_info.iter_ids() {
         let max_flow_per_cap = *asset.get_activity_per_capacity_limits(time_slice).end() * coeff;
+        if max_flow_per_cap == FlowPerCapacity(0.0) {
+            continue;
+        }
         capacity = capacity.max(demand[time_slice] / max_flow_per_cap);
     }
     capacity
