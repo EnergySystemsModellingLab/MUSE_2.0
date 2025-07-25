@@ -60,13 +60,11 @@ fn calculate_lcox(
     )?;
 
     // Calculate LCOX for the hypothetical investment
-    let annual_fixed_cost = coefficients.capacity_coefficient;
-    let activity_costs = coefficients.activity_coefficients;
     let cost_index = lcox(
-        results.capacity,
-        annual_fixed_cost,
         &results.activity,
-        &activity_costs,
+        &results.unmet_demand,
+        results.objective_value,
+        model.parameters.value_of_lost_load,
     );
 
     // Return appraisal output

@@ -1,6 +1,9 @@
 //! General functions related to finance.
 use crate::time_slice::TimeSliceID;
-use crate::units::{Activity, Capacity, Dimensionless, Money, MoneyPerActivity, MoneyPerCapacity};
+use crate::units::{
+    Activity, Capacity, Dimensionless, Flow, Money, MoneyPerActivity, MoneyPerCapacity,
+    MoneyPerFlow,
+};
 use indexmap::IndexMap;
 
 /// Calculates the capital recovery factor (CRF) for a given lifetime and discount rate.
@@ -38,24 +41,14 @@ pub fn profitability_index(
 
 /// Calculates annual LCOX based on capacity and activity.
 pub fn lcox(
-    capacity: Capacity,
-    annual_fixed_cost: MoneyPerCapacity,
     activity: &IndexMap<TimeSliceID, Activity>,
-    activity_costs: &IndexMap<TimeSliceID, MoneyPerActivity>,
+    unmet_demand: &IndexMap<TimeSliceID, Flow>,
+    objective_value: Money,
+    value_of_lost_load: MoneyPerFlow,
 ) -> MoneyPerActivity {
-    // Calculate the annualised fixed costs
-    let annualised_fixed_cost = annual_fixed_cost * capacity;
-
-    // Calculate the total activity costs
-    let mut total_activity_costs = Money(0.0);
-    let mut total_activity = Activity(0.0);
-    for (time_slice, activity) in activity.iter() {
-        let activity_cost = *activity_costs.get(time_slice).unwrap();
-        total_activity += *activity;
-        total_activity_costs += activity_cost * *activity;
-    }
-
-    (annualised_fixed_cost + total_activity_costs) / total_activity
+    let total_voll = value_of_lost_load * unmet_demand.values().copied().sum::<Flow>();
+    let total_activity: Activity = activity.values().copied().sum();
+    (objective_value - total_voll) / total_activity
 }
 
 #[cfg(test)]
