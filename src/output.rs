@@ -259,9 +259,8 @@ impl DebugDataWriter {
 
     /// Flush the underlying streams
     fn flush(&mut self) -> Result<()> {
-        self.activity_duals_writer.flush()?;
+        self.activity_writer.flush()?;
         self.commodity_balance_duals_writer.flush()?;
-        self.activity_duals_writer.flush()?;
 
         Ok(())
     }
