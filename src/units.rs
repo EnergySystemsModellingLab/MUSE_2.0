@@ -1,7 +1,9 @@
 //! This module defines various unit types and their conversions.
 
 use float_cmp::{ApproxEq, F64Margin};
+use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::fmt;
 use std::iter::Sum;
 use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
@@ -12,6 +14,8 @@ pub trait UnitType:
     + Copy
     + PartialEq
     + PartialOrd
+    + Eq
+    + Ord
     + Serialize
     + Add
     + Sub
@@ -45,15 +49,7 @@ macro_rules! base_unit_struct {
     ($name:ident) => {
         /// A unit type representing a dimensionless value.
         #[derive(
-            Debug,
-            Clone,
-            Copy,
-            PartialEq,
-            PartialOrd,
-            Serialize,
-            Deserialize,
-            derive_more::Add,
-            derive_more::Sub,
+            Debug, Clone, Copy, Serialize, Deserialize, derive_more::Add, derive_more::Sub,
         )]
         pub struct $name(pub f64);
 
@@ -93,6 +89,22 @@ macro_rules! base_unit_struct {
             type Output = $name;
             fn neg(self) -> $name {
                 $name(-self.0)
+            }
+        }
+        impl PartialEq for $name {
+            fn eq(&self, other: &Self) -> bool {
+                OrderedFloat(self.0) == OrderedFloat(other.0)
+            }
+        }
+        impl Eq for $name {}
+        impl PartialOrd<Self> for $name {
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                Some(self.cmp(&other))
+            }
+        }
+        impl Ord for $name {
+            fn cmp(&self, other: &Self) -> Ordering {
+                OrderedFloat(self.0).cmp(&OrderedFloat(other.0))
             }
         }
         impl $name {
