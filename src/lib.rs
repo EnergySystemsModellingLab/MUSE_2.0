@@ -5,6 +5,7 @@ pub mod asset;
 pub mod commands;
 pub mod commodity;
 pub mod finance;
+pub mod graph;
 pub mod id;
 pub mod input;
 pub mod log;
