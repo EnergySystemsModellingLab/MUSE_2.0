@@ -1,5 +1,6 @@
 //! Common routines for handling input data.
 use crate::asset::AssetPool;
+use crate::graph::create_flows_graph;
 use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
 use crate::units::{Dimensionless, UnitType};
@@ -198,6 +199,8 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     )?;
     let agent_ids = agents.keys().cloned().collect();
     let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
+
+    let _flows_graph = create_flows_graph(&commodities, &processes);
 
     let model_path = model_dir
         .as_ref()
