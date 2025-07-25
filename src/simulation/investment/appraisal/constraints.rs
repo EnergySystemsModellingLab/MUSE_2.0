@@ -2,9 +2,9 @@
 use super::optimisation::Variable;
 use super::DemandMap;
 use crate::asset::AssetRef;
-use crate::commodity::CommodityID;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::Flow;
+use crate::commodity::Commodity;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::units::{Capacity, Flow};
 use highs::RowProblem as Problem;
 use indexmap::IndexMap;
 
@@ -13,8 +13,13 @@ use indexmap::IndexMap;
 /// The behaviour depends on whether the asset is commissioned or a candidate:
 /// - For a commissioned asset, the capacity is fixed.
 /// - For a candidate asset, the capacity is variable between zero and an upper bound.
-pub fn add_capacity_constraint(problem: &mut Problem, asset: &AssetRef, capacity_var: Variable) {
-    let capacity = asset.capacity;
+pub fn add_capacity_constraint(
+    problem: &mut Problem,
+    asset: &AssetRef,
+    max_capacity: Option<Capacity>,
+    capacity_var: Variable,
+) {
+    let capacity = max_capacity.unwrap_or(asset.capacity);
     let bounds = if asset.is_commissioned() {
         capacity.value()..=capacity.value()
     } else {
@@ -81,23 +86,21 @@ fn add_activity_constraints_for_candidate(
 ///
 /// Constrains supply to be less than or equal to demand, which adapts based on the commodity's
 /// balance level.
-#[allow(clippy::too_many_arguments)]
 pub fn add_demand_constraints(
     problem: &mut Problem,
     asset: &AssetRef,
-    commodity_id: &CommodityID,
-    time_slice_level: TimeSliceLevel,
+    commodity: &Commodity,
     time_slice_info: &TimeSliceInfo,
     demand: &DemandMap,
     activity_vars: &IndexMap<TimeSliceID, Variable>,
     unmet_demand_vars: &IndexMap<TimeSliceID, Variable>,
 ) {
-    for ts_selection in time_slice_info.iter_selections_at_level(time_slice_level) {
+    for ts_selection in time_slice_info.iter_selections_at_level(commodity.time_slice_level) {
         let mut demand_for_ts_selection = Flow(0.0);
         let mut terms = Vec::new();
         for (time_slice, _) in ts_selection.iter(time_slice_info) {
             demand_for_ts_selection += *demand.get(time_slice).unwrap();
-            let flow_coeff = asset.get_flow(commodity_id).unwrap().coeff;
+            let flow_coeff = asset.get_flow(&commodity.id).unwrap().coeff;
             terms.push((*activity_vars.get(time_slice).unwrap(), flow_coeff.value()));
             terms.push((*unmet_demand_vars.get(time_slice).unwrap(), 1.0));
         }

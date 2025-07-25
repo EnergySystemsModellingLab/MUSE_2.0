@@ -5,8 +5,8 @@ use super::constraints::{
 };
 use super::DemandMap;
 use crate::asset::AssetRef;
-use crate::commodity::CommodityID;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
+use crate::commodity::Commodity;
+use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Activity, Capacity, Flow};
 use anyhow::{anyhow, Result};
 use highs::{RowProblem as Problem, Sense};
@@ -32,7 +32,7 @@ pub struct ResultsMap {
     /// Activity variables in each time slice
     pub activity: IndexMap<TimeSliceID, Activity>,
     /// Unmet demand variables
-    pub unmet_demand: IndexMap<TimeSliceID, Flow>,
+    pub unmet_demand: DemandMap,
 }
 
 /// Add variables to the problem based on cost coefficients
@@ -66,13 +66,13 @@ fn add_variables(problem: &mut Problem, cost_coefficients: &CoefficientsMap) -> 
 fn add_constraints(
     problem: &mut Problem,
     asset: &AssetRef,
-    commodity_id: &CommodityID,
+    max_capacity: Option<Capacity>,
+    commodity: &Commodity,
     variables: &VariableMap,
     demand: &DemandMap,
-    time_slice_level: TimeSliceLevel,
     time_slice_info: &TimeSliceInfo,
 ) {
-    add_capacity_constraint(problem, asset, variables.capacity_var);
+    add_capacity_constraint(problem, asset, max_capacity, variables.capacity_var);
     add_activity_constraints(
         problem,
         asset,
@@ -82,8 +82,7 @@ fn add_constraints(
     add_demand_constraints(
         problem,
         asset,
-        commodity_id,
-        time_slice_level,
+        commodity,
         time_slice_info,
         demand,
         &variables.activity_vars,
@@ -94,15 +93,13 @@ fn add_constraints(
 /// Performs optimisation for an asset, given the coefficients and demand.
 ///
 /// Will either maximise or minimise the objective function, depending on the `sense` parameter.
-///
-/// **TODO.**: Will need to modify constraints to handle unmet demand variables in LCOX case
 pub fn perform_optimisation(
     asset: &AssetRef,
-    commodity_id: &CommodityID,
+    max_capacity: Option<Capacity>,
+    commodity: &Commodity,
     coefficients: &CoefficientsMap,
     demand: &DemandMap,
     time_slice_info: &TimeSliceInfo,
-    time_slice_level: TimeSliceLevel,
     sense: Sense,
 ) -> Result<ResultsMap> {
     // Set up problem
@@ -115,10 +112,10 @@ pub fn perform_optimisation(
     add_constraints(
         &mut problem,
         asset,
-        commodity_id,
+        max_capacity,
+        commodity,
         &variables,
         demand,
-        time_slice_level,
         time_slice_info,
     );
 

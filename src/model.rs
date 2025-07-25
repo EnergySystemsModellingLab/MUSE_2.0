@@ -2,11 +2,13 @@
 use crate::agent::AgentMap;
 use crate::asset::check_capacity_valid_for_asset;
 use crate::commodity::CommodityMap;
-use crate::input::{input_err_msg, is_sorted_and_unique, read_toml};
+use crate::input::{
+    deserialise_proportion_nonzero, input_err_msg, is_sorted_and_unique, read_toml,
+};
 use crate::process::ProcessMap;
 use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
-use crate::units::{Capacity, MoneyPerFlow};
+use crate::units::{Capacity, Dimensionless, MoneyPerFlow};
 use anyhow::{ensure, Context, Result};
 use log::warn;
 use serde::Deserialize;
@@ -14,7 +16,10 @@ use serde_string_enum::DeserializeLabeledStringEnum;
 use std::path::{Path, PathBuf};
 
 const MODEL_FILE_NAME: &str = "model.toml";
+
+// Default parameter values
 const DEFAULT_CANDIDATE_ASSET_CAPACITY: Capacity = Capacity(0.0001);
+const DEFAULT_CAPACITY_LIMIT_FACTOR: Dimensionless = Dimensionless(0.1);
 const DEFAULT_VALUE_OF_LOST_LOAD: MoneyPerFlow = MoneyPerFlow(1e9);
 
 /// Model definition
@@ -48,6 +53,12 @@ pub struct ModelFile {
     /// Defines the strategy used for calculating commodity prices
     #[serde(default)]
     pub pricing_strategy: PricingStrategy,
+    /// Affects the maximum capacity that can be given to a newly created asset.
+    ///
+    /// It is the proportion of maximum capacity that could be required across time slices.
+    #[serde(default = "default_capacity_limit_factor")]
+    #[serde(deserialize_with = "deserialise_proportion_nonzero")]
+    pub capacity_limit_factor: Dimensionless,
     /// The cost applied to unmet demand.
     ///
     /// Currently this only applies to the LCOX appraisal.
@@ -69,6 +80,10 @@ pub enum PricingStrategy {
 
 const fn default_candidate_asset_capacity() -> Capacity {
     DEFAULT_CANDIDATE_ASSET_CAPACITY
+}
+
+const fn default_capacity_limit_factor() -> Dimensionless {
+    DEFAULT_CAPACITY_LIMIT_FACTOR
 }
 
 const fn default_value_of_lost_load() -> MoneyPerFlow {
