@@ -11,7 +11,6 @@ use crate::units::{Activity, Capacity, Flow};
 use anyhow::{anyhow, Result};
 use highs::{RowProblem as Problem, Sense};
 use indexmap::IndexMap;
-use std::collections::HashMap;
 
 /// A decision variable in the optimisation
 pub type Variable = highs::Col;
@@ -31,7 +30,7 @@ pub struct ResultsMap {
     /// Capacity variable
     pub capacity: Capacity,
     /// Activity variables in each time slice
-    pub activity: HashMap<TimeSliceID, Activity>,
+    pub activity: IndexMap<TimeSliceID, Activity>,
     /// Unmet demand variables
     pub unmet_demand: DemandMap,
 }

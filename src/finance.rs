@@ -2,7 +2,6 @@
 use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, Capacity, Dimensionless, Money, MoneyPerActivity, MoneyPerCapacity};
 use indexmap::IndexMap;
-use std::collections::HashMap;
 
 /// Calculates the capital recovery factor (CRF) for a given lifetime and discount rate.
 ///
@@ -33,7 +32,7 @@ pub fn annual_capital_cost(
 pub fn profitability_index(
     capacity: Capacity,
     annual_fixed_cost: MoneyPerCapacity,
-    activity: &HashMap<TimeSliceID, Activity>,
+    activity: &IndexMap<TimeSliceID, Activity>,
     activity_surpluses: &IndexMap<TimeSliceID, MoneyPerActivity>,
 ) -> Dimensionless {
     // Calculate the annualised fixed costs
@@ -53,7 +52,7 @@ pub fn profitability_index(
 pub fn lcox(
     capacity: Capacity,
     annual_fixed_cost: MoneyPerCapacity,
-    activity: &HashMap<TimeSliceID, Activity>,
+    activity: &IndexMap<TimeSliceID, Activity>,
     activity_costs: &IndexMap<TimeSliceID, MoneyPerActivity>,
 ) -> MoneyPerActivity {
     // Calculate the annualised fixed costs
