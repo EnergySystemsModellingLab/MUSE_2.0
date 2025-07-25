@@ -1,7 +1,5 @@
 //! Common routines for handling input data.
 use crate::asset::AssetPool;
-use crate::commodity::CommodityID;
-use crate::graph::{create_flows_graph, topo_sort_commodities};
 use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
 use crate::units::{Dimensionless, UnitType};
@@ -184,7 +182,6 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let years = &model_file.milestone_years;
 
     let commodities = read_commodities(model_dir.as_ref(), &region_ids, &time_slice_info, years)?;
-    let commodity_ids: Vec<CommodityID> = commodities.keys().cloned().collect();
     let processes = read_processes(
         model_dir.as_ref(),
         &commodities,
@@ -201,12 +198,6 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     )?;
     let agent_ids = agents.keys().cloned().collect();
     let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
-
-    let flows_graph = create_flows_graph(&commodity_ids, &processes);
-    let topo_sort = topo_sort_commodities(&flows_graph);
-
-    // Debug: print the flows graph
-    println!("Flows graph: {:?}", topo_sort);
 
     let model_path = model_dir
         .as_ref()
