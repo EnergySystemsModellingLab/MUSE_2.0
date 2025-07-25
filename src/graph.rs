@@ -58,8 +58,12 @@ pub fn create_commodities_graph_for_region_year(
 pub fn topo_sort_commodities(graph: &CommoditiesGraph) -> Vec<CommodityID> {
     // Will panic if there are cycles
     let order = toposort(graph, None).unwrap();
+
+    // Return the commodities in the order of the topological sort
+    // We return the order in reverse so that leaf-node commodities are solved first
     order
         .iter()
+        .rev()
         .map(|node| graph.node_weight(*node).unwrap().clone())
         .collect()
 }
