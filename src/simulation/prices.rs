@@ -104,7 +104,7 @@ impl CommodityPrices {
                     let key = (commodity.id.clone(), region_id.clone(), time_slice.clone());
                     self.0
                         .entry(key)
-                        .and_modify(|price| *price = price.max(levy.value))
+                        .and_modify(|price| *price = levy.value.max(*price))
                         .or_insert(levy.value);
                 }
             }
