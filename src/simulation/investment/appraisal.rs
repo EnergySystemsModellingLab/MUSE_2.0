@@ -103,13 +103,8 @@ fn calculate_npv(
 
     // Calculate profitability index for the hypothetical investment
     let annual_fixed_cost = -coefficients.capacity_coefficient;
-    let activity_surpluses = coefficients.activity_coefficients;
-    let profitability_index = profitability_index(
-        results.capacity,
-        annual_fixed_cost,
-        &results.activity,
-        &activity_surpluses,
-    );
+    let profitability_index =
+        profitability_index(results.capacity, annual_fixed_cost, results.objective_value);
 
     // Return appraisal output
     // Higher profitability index is better, so we make it negative for comparison

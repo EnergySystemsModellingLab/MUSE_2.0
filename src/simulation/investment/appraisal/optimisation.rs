@@ -34,7 +34,7 @@ pub struct ResultsMap {
     /// Unmet demand variables
     pub unmet_demand: DemandMap,
     /// Objective value for the problem
-    pub _objective_value: Money,
+    pub objective_value: Money,
 }
 
 /// Add variables to the problem based on cost coefficients
@@ -142,6 +142,6 @@ pub fn perform_optimisation(
             .zip(solution_values[variables.activity_vars.len() + 1..].iter())
             .map(|(time_slice, &value)| (time_slice.clone(), Flow::new(value)))
             .collect(),
-        _objective_value: Money(solved.objective_value()),
+        objective_value: Money(solved.objective_value()),
     })
 }

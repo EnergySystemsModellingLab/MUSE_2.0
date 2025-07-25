@@ -31,20 +31,9 @@ pub fn annual_capital_cost(
 pub fn profitability_index(
     capacity: Capacity,
     annual_fixed_cost: MoneyPerCapacity,
-    activity: &IndexMap<TimeSliceID, Activity>,
-    activity_surpluses: &IndexMap<TimeSliceID, MoneyPerActivity>,
+    objective_value: Money,
 ) -> Dimensionless {
-    // Calculate the annualised fixed costs
-    let annualised_fixed_cost = annual_fixed_cost * capacity;
-
-    // Calculate the total annualised surplus
-    let mut total_annualised_surplus = Money(0.0);
-    for (time_slice, activity) in activity.iter() {
-        let activity_surplus = *activity_surpluses.get(time_slice).unwrap();
-        total_annualised_surplus += activity_surplus * *activity;
-    }
-
-    total_annualised_surplus / annualised_fixed_cost
+    Dimensionless(1.0) + objective_value / (annual_fixed_cost * capacity)
 }
 
 /// Calculates annual LCOX based on capacity and activity.
