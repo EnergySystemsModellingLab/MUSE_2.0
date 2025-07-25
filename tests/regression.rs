@@ -2,11 +2,9 @@
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use muse2::commands::handle_example_run_command;
-use regex::Regex;
 use std::fs::{read_dir, File};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 use tempfile::tempdir;
 
 const FLOAT_CMP_TOLERANCE: f64 = 1e-10;
@@ -97,19 +95,14 @@ fn compare_line(
     })
 }
 
+/// Parse a string into an `f64`, returning `None` if parsing fails or value is infinite/NaN
+fn parse_finite(s: &str) -> Option<f64> {
+    s.parse().ok().filter(|f: &f64| f.is_finite())
+}
+
 fn try_compare_floats(s1: &str, s2: &str) -> Option<bool> {
-    // Use a regex to filter out non-floating point values, as well as things that are
-    // technically valid but have strange properties (e.g. inf, NaN)
-    static IS_FLOAT: OnceLock<Regex> = OnceLock::new();
-    let is_float = IS_FLOAT.get_or_init(|| Regex::new(r"^-?[0-9]+\.[0-9]+$").unwrap());
-
-    if !is_float.is_match(s1) || !is_float.is_match(s2) {
-        return None;
-    }
-
-    // We can safely unwrap because we know they're valid floats
-    let float1: f64 = s1.parse().unwrap();
-    let float2: f64 = s2.parse().unwrap();
+    let float1 = parse_finite(s1)?;
+    let float2 = parse_finite(s2)?;
 
     Some(approx_eq!(
         f64,
