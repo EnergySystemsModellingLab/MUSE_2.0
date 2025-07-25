@@ -7,7 +7,7 @@ use super::DemandMap;
 use crate::asset::AssetRef;
 use crate::commodity::Commodity;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{Activity, Capacity, Flow};
+use crate::units::{Activity, Capacity, Flow, Money};
 use anyhow::{anyhow, Result};
 use highs::{RowProblem as Problem, Sense};
 use indexmap::IndexMap;
@@ -33,6 +33,8 @@ pub struct ResultsMap {
     pub activity: IndexMap<TimeSliceID, Activity>,
     /// Unmet demand variables
     pub unmet_demand: DemandMap,
+    /// Objective value for the problem
+    pub _objective_value: Money,
 }
 
 /// Add variables to the problem based on cost coefficients
@@ -120,11 +122,11 @@ pub fn perform_optimisation(
     );
 
     // Solve model
-    let solution = problem
+    let solved = problem
         .optimise(sense)
         .try_solve()
-        .map_err(|status| anyhow!("Could not solve: {status:?}"))?
-        .get_solution();
+        .map_err(|status| anyhow!("Could not solve: {status:?}"))?;
+    let solution = solved.get_solution();
     let solution_values = solution.columns();
     Ok(ResultsMap {
         capacity: Capacity::new(solution_values[0]),
@@ -140,5 +142,6 @@ pub fn perform_optimisation(
             .zip(solution_values[variables.activity_vars.len() + 1..].iter())
             .map(|(time_slice, &value)| (time_slice.clone(), Flow::new(value)))
             .collect(),
+        _objective_value: Money(solved.objective_value()),
     })
 }
