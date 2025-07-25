@@ -73,7 +73,7 @@ pub fn lcox(
 mod tests {
     use super::*;
     use crate::time_slice::TimeSliceID;
-    use float_cmp::approx_eq;
+    use float_cmp::assert_approx_eq;
     use indexmap::indexmap;
     use rstest::rstest;
 
@@ -88,7 +88,7 @@ mod tests {
         #[case] expected: f64,
     ) {
         let result = capital_recovery_factor(lifetime, Dimensionless(discount_rate));
-        assert!(approx_eq!(f64, result.0, expected));
+        assert_approx_eq!(f64, result.0, expected);
     }
 
     #[rstest]
@@ -105,7 +105,7 @@ mod tests {
         let factor = (1.0 + r).powi(n);
         let expected_crf = Dimensionless(r * factor / (factor - 1.0));
 
-        assert!(approx_eq!(Dimensionless, result, expected_crf));
+        assert_approx_eq!(Dimensionless, result, expected_crf);
     }
 
     #[rstest]
@@ -125,12 +125,7 @@ mod tests {
             lifetime,
             Dimensionless(discount_rate),
         );
-        assert!(approx_eq!(
-            MoneyPerCapacity,
-            result,
-            expected,
-            epsilon = 1e-8
-        ));
+        assert_approx_eq!(MoneyPerCapacity, result, expected, epsilon = 1e-8);
     }
 
     #[rstest]
@@ -198,7 +193,7 @@ mod tests {
             &activity_surpluses,
         );
 
-        assert!(approx_eq!(Dimensionless, result, Dimensionless(expected)));
+        assert_approx_eq!(Dimensionless, result, Dimensionless(expected));
     }
 
     #[test]
@@ -279,6 +274,6 @@ mod tests {
         );
 
         let expected = MoneyPerActivity(expected);
-        assert!(approx_eq!(MoneyPerActivity, result, expected));
+        assert_approx_eq!(MoneyPerActivity, result, expected);
     }
 }
