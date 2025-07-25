@@ -41,8 +41,6 @@ pub trait UnitType:
     fn max(&self, other: Self) -> Self;
     /// Returns the min of two values
     fn min(&self, other: Self) -> Self;
-    /// Returns ordering between self and other
-    fn total_cmp(&self, other: &Self) -> std::cmp::Ordering;
 }
 
 macro_rules! base_unit_struct {
@@ -136,10 +134,6 @@ macro_rules! base_unit_struct {
             pub fn min(&self, other: Self) -> Self {
                 Self(self.0.min(other.0))
             }
-            /// Returns ordering between self and other
-            pub fn total_cmp(&self, other: &Self) -> std::cmp::Ordering {
-                self.0.total_cmp(&other.0)
-            }
         }
         impl UnitType for $name {
             /// Create from an f64 value
@@ -169,10 +163,6 @@ macro_rules! base_unit_struct {
             /// Returns the min of two values
             fn min(&self, other: Self) -> Self {
                 Self::min(&self, other)
-            }
-            /// Returns ordering between self and other
-            fn total_cmp(&self, other: &Self) -> std::cmp::Ordering {
-                Self::total_cmp(&self, other)
             }
         }
     };
