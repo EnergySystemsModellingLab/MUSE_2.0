@@ -24,8 +24,7 @@ pub fn annual_capital_cost(
     discount_rate: Dimensionless,
 ) -> MoneyPerCapacity {
     let crf = capital_recovery_factor(lifetime, discount_rate);
-    let total_capital_cost = capital_cost * crf;
-    total_capital_cost * crf
+    capital_cost * crf
 }
 
 /// Calculates an annual profitability index based on capacity and activity.
