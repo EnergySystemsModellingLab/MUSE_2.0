@@ -1,6 +1,6 @@
 //! WIP
-use crate::commodity::{CommodityID, CommodityMap};
-use crate::process::ProcessMap;
+use crate::commodity::CommodityID;
+use crate::process::{ProcessID, ProcessMap};
 use crate::units::FlowPerActivity;
 use petgraph::algo::toposort;
 use petgraph::graph::Graph;
@@ -8,15 +8,18 @@ use petgraph::Directed;
 use std::collections::HashMap;
 
 /// WIP
-pub fn create_flows_graph(commodities: &CommodityMap, processes: &ProcessMap) -> Vec<CommodityID> {
+pub fn create_flows_graph<'a>(
+    commodity_ids: &'a [CommodityID],
+    processes: &'a ProcessMap,
+) -> Graph<&'a CommodityID, &'a ProcessID, Directed> {
     // Create directed graph
-    let mut graph: Graph<&CommodityID, (), Directed> = Graph::new();
+    let mut graph: Graph<&CommodityID, &ProcessID, Directed> = Graph::new();
 
     // Create nodes for commodities
     let mut commodity_to_node_index = HashMap::new();
-    for commodity in commodities.values() {
-        let node_index = graph.add_node(&commodity.id);
-        commodity_to_node_index.insert(commodity.id.clone(), node_index);
+    for commodity_id in commodity_ids {
+        let node_index = graph.add_node(commodity_id);
+        commodity_to_node_index.insert(commodity_id.clone(), node_index);
     }
 
     // Create edges from process flows
@@ -45,16 +48,22 @@ pub fn create_flows_graph(commodities: &CommodityMap, processes: &ProcessMap) ->
                     graph.add_edge(
                         commodity_to_node_index[&input],
                         commodity_to_node_index[&primary_output],
-                        (),
+                        &process.id,
                     );
                 }
             }
         }
     }
 
-    // Perform topological sort, returning the commodities in their topological order
+    graph
+}
+
+/// WIP
+pub fn topo_sort_commodities(
+    graph: &Graph<&CommodityID, &ProcessID, Directed>,
+) -> Vec<CommodityID> {
     // Will panic if there are cycles
-    let order = toposort(&graph, None).unwrap();
+    let order = toposort(graph, None).unwrap();
     order
         .iter()
         .map(|node| (*graph.node_weight(*node).unwrap()).clone())
