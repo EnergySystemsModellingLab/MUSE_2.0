@@ -123,6 +123,15 @@ impl CommodityPrices {
         self
     }
 
+    /// Include any missing prices from another map
+    pub fn with_missing_from(mut self, other: &CommodityPrices) -> Self {
+        for (key, price) in other.0.iter() {
+            self.0.entry(key.clone()).or_insert(*price);
+        }
+
+        self
+    }
+
     /// Insert a price for the given commodity, region and time slice
     pub fn insert(
         &mut self,
