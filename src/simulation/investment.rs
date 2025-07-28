@@ -54,12 +54,10 @@ pub fn perform_agent_investment(
         .map(|(id, _)| id);
     for commodity_id in commodities_of_interest {
         let commodity = &model.commodities[commodity_id];
-        for (agent, commodity_portion) in
-            get_responsible_agents(model.agents.values(), commodity_id, year)
-        {
-            let objective_type = agent.objectives.get(&year).unwrap();
-
-            for region_id in agent.regions.iter() {
+        for region_id in model.iter_regions() {
+            for (agent, commodity_portion) in
+                get_responsible_agents(model.agents.values(), commodity_id, region_id, year)
+            {
                 debug!(
                     "Running investment for agent '{}' with commodity '{}' in region '{}'",
                     &agent.id, commodity_id, region_id
@@ -90,7 +88,7 @@ pub fn perform_agent_investment(
                     model,
                     opt_assets,
                     commodity,
-                    objective_type,
+                    &agent.objectives[&year],
                     reduced_costs,
                     demand_for_commodity,
                 )?;
@@ -152,12 +150,16 @@ fn get_demand_portion_for_commodity(
 fn get_responsible_agents<'a, I>(
     agents: I,
     commodity_id: &'a CommodityID,
+    region_id: &'a RegionID,
     year: u32,
 ) -> impl Iterator<Item = (&'a Agent, Dimensionless)>
 where
     I: Iterator<Item = &'a Agent>,
 {
     agents.filter_map(move |agent| {
+        if !agent.regions.contains(region_id) {
+            return None;
+        }
         let portion = agent
             .commodity_portions
             .get(&(commodity_id.clone(), year))?;
