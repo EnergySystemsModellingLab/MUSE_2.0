@@ -8,7 +8,6 @@ use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
 use itertools::Itertools;
-use petgraph::dot::Dot; // For debugging
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -201,15 +200,16 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let agent_ids = agents.keys().cloned().collect();
     let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
 
-    // Debug: print the order of commodities for each region and year
-    for region_id in region_ids {
-        for year in years {
+    // Determine commodity ordering for each region and year
+    let commodity_order = region_ids
+        .into_iter()
+        .cartesian_product(years.iter())
+        .map(|(region_id, year)| {
             let graph = create_commodities_graph_for_region_year(&processes, &region_id, *year);
-            let order = topo_sort_commodities(&graph);
-            println!("{}", Dot::with_config(&graph, &[]));
-            println!("Order for {region_id} in {year}: {:?}", order);
-        }
-    }
+            let order = topo_sort_commodities(&graph).unwrap();
+            ((region_id, *year), order)
+        })
+        .collect();
 
     let model_path = model_dir
         .as_ref()
@@ -223,6 +223,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
         processes,
         time_slice_info,
         regions,
+        commodity_order,
     };
     Ok((model, AssetPool::new(assets)))
 }

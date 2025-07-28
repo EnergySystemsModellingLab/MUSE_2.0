@@ -1,7 +1,7 @@
 //! The model represents the static input data provided by the user.
 use crate::agent::AgentMap;
 use crate::asset::check_capacity_valid_for_asset;
-use crate::commodity::CommodityMap;
+use crate::commodity::{CommodityID, CommodityMap};
 use crate::input::{input_err_msg, is_sorted_and_unique, read_toml};
 use crate::process::ProcessMap;
 use crate::region::{RegionID, RegionMap};
@@ -11,6 +11,7 @@ use anyhow::{ensure, Context, Result};
 use log::warn;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 const MODEL_FILE_NAME: &str = "model.toml";
@@ -33,6 +34,8 @@ pub struct Model {
     pub time_slice_info: TimeSliceInfo,
     /// Regions for the simulation
     pub regions: RegionMap,
+    /// Commodity ordering for each region and year
+    pub commodity_order: HashMap<(RegionID, u32), Vec<CommodityID>>,
 }
 
 /// Represents the contents of the entire model file.

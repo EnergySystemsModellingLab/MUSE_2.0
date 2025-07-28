@@ -3,6 +3,7 @@ use crate::commodity::CommodityID;
 use crate::process::{ProcessID, ProcessMap};
 use crate::region::RegionID;
 use crate::units::FlowPerActivity;
+use anyhow::{anyhow, Result};
 use petgraph::algo::toposort;
 use petgraph::graph::Graph;
 use petgraph::Directed;
@@ -55,15 +56,62 @@ pub fn create_commodities_graph_for_region_year(
 }
 
 /// Performs topological sort on the commodity graph
-pub fn topo_sort_commodities(graph: &CommoditiesGraph) -> Vec<CommodityID> {
-    // Will panic if there are cycles
-    let order = toposort(graph, None).unwrap();
+pub fn topo_sort_commodities(graph: &CommoditiesGraph) -> Result<Vec<CommodityID>> {
+    // Perform a topological sort on the graph
+    let order = toposort(graph, None)
+        .map_err(|cycle| anyhow!("Cycle detected in commodity graph: {:?}", cycle))?;
 
-    // Return the commodities in the order of the topological sort
     // We return the order in reverse so that leaf-node commodities are solved first
-    order
+    let order = order
         .iter()
         .rev()
         .map(|node| graph.node_weight(*node).unwrap().clone())
-        .collect()
+        .collect();
+    Ok(order)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use petgraph::graph::Graph;
+
+    #[test]
+    fn test_topo_sort_linear_graph() {
+        // Create a simple linear graph: A -> B -> C
+        let mut graph = Graph::new();
+
+        let node_a = graph.add_node(CommodityID::from("A"));
+        let node_b = graph.add_node(CommodityID::from("B"));
+        let node_c = graph.add_node(CommodityID::from("C"));
+
+        // Add edges: A -> B -> C
+        graph.add_edge(node_a, node_b, ProcessID::from("process1"));
+        graph.add_edge(node_b, node_c, ProcessID::from("process2"));
+
+        let result = topo_sort_commodities(&graph).unwrap();
+
+        // Expected order: C, B, A (leaf nodes first)
+        assert_eq!(result.len(), 3);
+        assert_eq!(result[0], CommodityID::from("C"));
+        assert_eq!(result[1], CommodityID::from("B"));
+        assert_eq!(result[2], CommodityID::from("A"));
+    }
+
+    #[test]
+    fn test_topo_sort_cyclic_graph() {
+        // Create a simple cyclic graph: A -> B -> A
+        let mut graph = Graph::new();
+
+        let node_a = graph.add_node(CommodityID::from("A"));
+        let node_b = graph.add_node(CommodityID::from("B"));
+
+        // Add edges creating a cycle: A -> B -> A
+        graph.add_edge(node_a, node_b, ProcessID::from("process1"));
+        graph.add_edge(node_b, node_a, ProcessID::from("process2"));
+
+        // This should return an error due to the cycle
+        let result = topo_sort_commodities(&graph);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Cycled detected"));
+    }
 }
