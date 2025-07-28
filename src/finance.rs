@@ -24,8 +24,7 @@ pub fn annual_capital_cost(
     discount_rate: Dimensionless,
 ) -> MoneyPerCapacity {
     let crf = capital_recovery_factor(lifetime, discount_rate);
-    let total_capital_cost = capital_cost * crf;
-    total_capital_cost * crf
+    capital_cost * crf
 }
 
 /// Calculates an annual profitability index based on capacity and activity.
@@ -68,4 +67,178 @@ pub fn lcox(
     }
 
     (annualised_fixed_cost + total_activity_costs) / total_activity
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::time_slice::TimeSliceID;
+    use float_cmp::assert_approx_eq;
+    use indexmap::indexmap;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case(0, 0.05, 0.0)] // Edge case: lifetime==0
+    #[case(10, 0.0, 0.1)] // Other edge case: discount_rate==0
+    #[case(10, 0.05, 0.1295045749654567)]
+    #[case(5, 0.03, 0.2183545714005762)]
+    fn test_capital_recovery_factor(
+        #[case] lifetime: u32,
+        #[case] discount_rate: f64,
+        #[case] expected: f64,
+    ) {
+        let result = capital_recovery_factor(lifetime, Dimensionless(discount_rate));
+        assert_approx_eq!(f64, result.0, expected, epsilon = 1e-10);
+    }
+
+    #[rstest]
+    #[case(1000.0, 10, 0.05, 129.5045749654567)]
+    #[case(500.0, 5, 0.03, 109.17728570028798)]
+    #[case(1000.0, 0, 0.05, 0.0)] // Zero lifetime
+    #[case(2000.0, 20, 0.0, 100.0)] // Zero discount rate
+    fn test_annual_capital_cost(
+        #[case] capital_cost: f64,
+        #[case] lifetime: u32,
+        #[case] discount_rate: f64,
+        #[case] expected: f64,
+    ) {
+        let expected = MoneyPerCapacity(expected);
+        let result = annual_capital_cost(
+            MoneyPerCapacity(capital_cost),
+            lifetime,
+            Dimensionless(discount_rate),
+        );
+        assert_approx_eq!(MoneyPerCapacity, result, expected, epsilon = 1e-8);
+    }
+
+    #[rstest]
+    #[case(
+        100.0, 50.0,
+        vec![("winter", "day", 10.0), ("summer", "night", 15.0)],
+        vec![("winter", "day", 30.0), ("summer", "night", 20.0)],
+        0.12 // Expected PI: (10*30 + 15*20) / (100*50) = 600/5000 = 0.12
+    )]
+    #[case(
+        50.0, 100.0,
+        vec![("q1", "peak", 5.0)],
+        vec![("q1", "peak", 40.0)],
+        0.04 // Expected PI: (5*40) / (50*100) = 200/5000 = 0.04
+    )]
+    #[case(
+        0.0, 100.0,
+        vec![("winter", "day", 10.0)],
+        vec![("winter", "day", 50.0)],
+        f64::INFINITY // Zero capacity case
+    )]
+    fn test_profitability_index(
+        #[case] capacity: f64,
+        #[case] annual_fixed_cost: f64,
+        #[case] activity_data: Vec<(&str, &str, f64)>,
+        #[case] surplus_data: Vec<(&str, &str, f64)>,
+        #[case] expected: f64,
+    ) {
+        let activity = activity_data
+            .into_iter()
+            .map(|(season, time_of_day, value)| {
+                (
+                    TimeSliceID {
+                        season: season.into(),
+                        time_of_day: time_of_day.into(),
+                    },
+                    Activity(value),
+                )
+            })
+            .collect();
+
+        let activity_surpluses = surplus_data
+            .into_iter()
+            .map(|(season, time_of_day, value)| {
+                (
+                    TimeSliceID {
+                        season: season.into(),
+                        time_of_day: time_of_day.into(),
+                    },
+                    MoneyPerActivity(value),
+                )
+            })
+            .collect();
+
+        let result = profitability_index(
+            Capacity(capacity),
+            MoneyPerCapacity(annual_fixed_cost),
+            &activity,
+            &activity_surpluses,
+        );
+
+        assert_approx_eq!(Dimensionless, result, Dimensionless(expected));
+    }
+
+    #[test]
+    fn test_profitability_index_zero_activity() {
+        let capacity = Capacity(100.0);
+        let annual_fixed_cost = MoneyPerCapacity(50.0);
+        let activity = indexmap! {};
+        let activity_surpluses = indexmap! {};
+
+        let result =
+            profitability_index(capacity, annual_fixed_cost, &activity, &activity_surpluses);
+        assert_eq!(result, Dimensionless(0.0));
+    }
+
+    #[rstest]
+    #[case(
+        100.0, 50.0,
+        vec![("winter", "day", 10.0), ("summer", "night", 20.0)],
+        vec![("winter", "day", 5.0), ("summer", "night", 3.0)],
+        170.33333333333334 // (100*50 + 10*5 + 20*3) / (10+20) = 5110/30
+    )]
+    #[case(
+        50.0, 100.0,
+        vec![("winter", "day", 25.0)],
+        vec![("winter", "day", 0.0)],
+        200.0 // (50*100 + 25*0) / 25 = 5000/25
+    )]
+    fn test_lcox(
+        #[case] capacity: f64,
+        #[case] annual_fixed_cost: f64,
+        #[case] activity_data: Vec<(&str, &str, f64)>,
+        #[case] cost_data: Vec<(&str, &str, f64)>,
+        #[case] expected: f64,
+    ) {
+        let activity = activity_data
+            .into_iter()
+            .map(|(season, time_of_day, value)| {
+                (
+                    TimeSliceID {
+                        season: season.into(),
+                        time_of_day: time_of_day.into(),
+                    },
+                    Activity(value),
+                )
+            })
+            .collect();
+
+        let activity_costs = cost_data
+            .into_iter()
+            .map(|(season, time_of_day, value)| {
+                (
+                    TimeSliceID {
+                        season: season.into(),
+                        time_of_day: time_of_day.into(),
+                    },
+                    MoneyPerActivity(value),
+                )
+            })
+            .collect();
+
+        let result = lcox(
+            Capacity(capacity),
+            MoneyPerCapacity(annual_fixed_cost),
+            &activity,
+            &activity_costs,
+        );
+
+        let expected = MoneyPerActivity(expected);
+        assert_approx_eq!(MoneyPerActivity, result, expected);
+    }
 }
