@@ -139,7 +139,7 @@ fn get_demand_portion_for_commodity(
                 commodity_portion
                     * *demand
                         .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
-                        .unwrap(),
+                        .unwrap_or(&Flow(0.0)),
             )
         })
         .collect()
