@@ -360,20 +360,14 @@ impl AssetPool {
 
     /// Decommission old assets for the specified milestone year
     pub fn decommission_old(&mut self, year: u32) {
-        // Figure out which assets to decommission
+        // Remove assets which are due for decommissioning
         let to_decommission = self
             .active
-            .iter()
-            .filter(|asset| asset.max_decommission_year() <= year)
-            .cloned();
+            .extract_if(.., |asset| asset.max_decommission_year() <= year);
 
         // Set `decommission_year` and copy to `self.decommissioned`
         let decommissioned = decommission_assets(to_decommission, year);
         self.decommissioned.extend(decommissioned);
-
-        // Remove from active pool
-        self.active
-            .retain(|asset| asset.max_decommission_year() > year);
     }
 
     /// Decommission the specified assets if they are no longer in the active pool.
