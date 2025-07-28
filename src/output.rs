@@ -285,6 +285,7 @@ impl DebugDataWriter {
             objective_value,
         };
         self.solver_values_writer.serialize(row)?;
+        self.solver_values_writer.flush()?;
 
         Ok(())
     }
