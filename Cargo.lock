@@ -822,7 +822,6 @@ dependencies = [
  "itertools 0.14.0",
  "log",
  "platform-info",
- "regex",
  "rstest",
  "serde",
  "serde_string_enum",

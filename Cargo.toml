@@ -35,7 +35,6 @@ derive_more = {version = "2.0", features = ["add"]}
 
 [dev-dependencies]
 current_dir = "0.1.2"
-regex = "1.11.1"
 rstest = {version = "0.25.0", default-features = false, features = ["crate-name"]}
 
 [build-dependencies]
