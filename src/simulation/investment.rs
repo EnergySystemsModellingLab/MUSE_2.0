@@ -3,7 +3,7 @@ use super::optimisation::FlowMap;
 use super::prices::ReducedCosts;
 use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
-use crate::commodity::{Commodity, CommodityID, CommodityType};
+use crate::commodity::{Commodity, CommodityID};
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
@@ -47,14 +47,9 @@ pub fn perform_agent_investment(
     let demand = get_demand_profile(flow_map);
 
     // We consider SVD commodities first
-    let commodities_of_interest = model
-        .commodities
-        .iter()
-        .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
-        .map(|(id, _)| id);
-    for commodity_id in commodities_of_interest {
-        let commodity = &model.commodities[commodity_id];
-        for region_id in model.iter_regions() {
+    for region_id in model.iter_regions() {
+        for commodity_id in model.commodity_order[&(region_id.clone(), year)].iter() {
+            let commodity = &model.commodities[commodity_id];
             for (agent, commodity_portion) in
                 get_responsible_agents(model.agents.values(), commodity_id, region_id, year)
             {
