@@ -58,8 +58,13 @@ pub fn create_commodities_graph_for_region_year(
 /// Performs topological sort on the commodity graph
 pub fn topo_sort_commodities(graph: &CommoditiesGraph) -> Result<Vec<CommodityID>> {
     // Perform a topological sort on the graph
-    let order = toposort(graph, None)
-        .map_err(|cycle| anyhow!("Cycle detected in commodity graph: {:?}", cycle))?;
+    let order = toposort(graph, None).map_err(|cycle| {
+        let cycle_commodity = graph.node_weight(cycle.node_id()).unwrap().clone();
+        anyhow!(
+            "Cycle detected in commodity graph for commodity: {}",
+            cycle_commodity
+        )
+    })?;
 
     // We return the order in reverse so that leaf-node commodities are solved first
     let order = order
@@ -112,6 +117,10 @@ mod tests {
         // This should return an error due to the cycle
         let result = topo_sort_commodities(&graph);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Cycled detected"));
+
+        // The error message should flag either commodity A or B since both are involved in the cycle
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.starts_with("Cycle detected in commodity graph for commodity: "));
+        assert!(error_msg.ends_with("A") || error_msg.ends_with("B"));
     }
 }
