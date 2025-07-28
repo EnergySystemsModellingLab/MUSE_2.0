@@ -60,7 +60,7 @@ pub fn topo_sort_commodities(graph: &CommoditiesGraph) -> Result<Vec<CommodityID
     let order = toposort(graph, None).map_err(|cycle| {
         let cycle_commodity = graph.node_weight(cycle.node_id()).unwrap().clone();
         anyhow!(
-            "Cycle detected in commodity graph for commodity: {}",
+            "Cycle detected in commodity graph for commodity {}",
             cycle_commodity
         )
     })?;
@@ -117,9 +117,12 @@ mod tests {
         let result = topo_sort_commodities(&graph);
         assert!(result.is_err());
 
-        // The error message should flag either commodity A or B since both are involved in the cycle
+        // The error message should flag commodity B
+        // Note: A is also involved in the cycle, but B is flagged as it is encountered first
         let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.starts_with("Cycle detected in commodity graph for commodity: "));
-        assert!(error_msg.ends_with("A") || error_msg.ends_with("B"));
+        assert_eq!(
+            error_msg,
+            "Cycle detected in commodity graph for commodity B"
+        );
     }
 }
