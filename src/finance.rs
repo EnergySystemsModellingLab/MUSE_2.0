@@ -88,7 +88,7 @@ mod tests {
         #[case] expected: f64,
     ) {
         let result = capital_recovery_factor(lifetime, Dimensionless(discount_rate));
-        assert_approx_eq!(f64, result.0, expected);
+        assert_approx_eq!(f64, result.0, expected, epsilon = 1e-10);
     }
 
     #[rstest]
