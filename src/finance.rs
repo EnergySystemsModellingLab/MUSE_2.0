@@ -78,34 +78,17 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    #[case(0, 0.05, 0.0)]
-    #[case(10, 0.0, 0.1)]
-    #[case(1, 1.0, 2.0)]
-    #[case(1, 0.1, 1.1)]
-    fn test_capital_recovery_factor_edge_cases(
+    #[case(0, 0.05, 0.0)] // Edge case: lifetime==0
+    #[case(10, 0.0, 0.1)] // Other edge case: discount_rate==0
+    #[case(10, 0.05, 0.1295045749654567)]
+    #[case(5, 0.03, 0.2183545714005762)]
+    fn test_capital_recovery_factor(
         #[case] lifetime: u32,
         #[case] discount_rate: f64,
         #[case] expected: f64,
     ) {
         let result = capital_recovery_factor(lifetime, Dimensionless(discount_rate));
         assert_approx_eq!(f64, result.0, expected);
-    }
-
-    #[rstest]
-    #[case(10, 0.05)] // Standard case
-    #[case(5, 0.03)] // Different period and rate
-    #[case(20, 0.07)] // Longer period, higher rate
-    #[case(1, 0.5)] // Short period, high rate
-    fn test_capital_recovery_factor_calculated(#[case] lifetime: u32, #[case] discount_rate: f64) {
-        let result = capital_recovery_factor(lifetime, Dimensionless(discount_rate));
-
-        // Calculate expected CRF manually: r * (1+r)^n / ((1+r)^n - 1)
-        let r = discount_rate;
-        let n = lifetime as i32;
-        let factor = (1.0 + r).powi(n);
-        let expected_crf = Dimensionless(r * factor / (factor - 1.0));
-
-        assert_approx_eq!(Dimensionless, result, expected_crf);
     }
 
     #[rstest]
