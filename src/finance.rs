@@ -93,7 +93,7 @@ mod tests {
 
     #[rstest]
     #[case(1000.0, 10, 0.05, 129.5045749654567)]
-    #[case(500.0, 5, 0.03, 109.17728570028798)] // Corrected expected value
+    #[case(500.0, 5, 0.03, 109.17728570028798)]
     #[case(1000.0, 0, 0.05, 0.0)] // Zero lifetime
     #[case(2000.0, 20, 0.0, 100.0)] // Zero discount rate
     fn test_annual_capital_cost(
