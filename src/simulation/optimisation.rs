@@ -7,11 +7,12 @@ use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{Activity, Flow, MoneyPerActivity, MoneyPerFlow, UnitType};
+use crate::units::{Activity, Flow, Money, MoneyPerActivity, MoneyPerFlow, UnitType};
 use anyhow::{anyhow, Result};
-use highs::{HighsModelStatus, RowProblem as Problem, Sense};
+use highs::{RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
+use log::debug;
 use std::ops::Range;
 
 mod constraints;
@@ -65,6 +66,8 @@ pub struct Solution<'a> {
     candidate_asset_var_idx: Range<usize>,
     time_slice_info: &'a TimeSliceInfo,
     constraint_keys: ConstraintKeys,
+    /// The objective value for the solution
+    pub objective_value: Money,
 }
 
 impl Solution<'_> {
@@ -219,43 +222,24 @@ fn perform_dispatch_optimisation_no_save<'a>(
     let all_assets = chain(asset_pool.iter(), candidate_assets.iter());
     let constraint_keys = add_asset_constraints(&mut problem, &variables, model, all_assets, year);
 
-    // Solve problem
-    let mut highs_model = problem.optimise(Sense::Minimise);
-
-    // **HACK**: Dump output of HiGHS solver to stdout. Among other things, this includes the
-    // objective value for the solution. Sadly it doesn't go via our logger, so this information
-    // will not be included in the log file.
-    //
-    // Should be removed when we write the objective value to output data properly. See:
-    //   https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/428
-    enable_highs_logging(&mut highs_model);
-
     // Solve model
-    let solution = highs_model.solve();
-    match solution.status() {
-        HighsModelStatus::Optimal => Ok(Solution {
-            solution: solution.get_solution(),
-            variables,
-            active_asset_var_idx,
-            candidate_asset_var_idx,
-            time_slice_info: &model.time_slice_info,
-            constraint_keys,
-        }),
-        status => Err(anyhow!("Could not solve: {status:?}")),
-    }
-}
+    let solution = problem
+        .optimise(Sense::Minimise)
+        .try_solve()
+        .map_err(|err| anyhow!("Could not solve: {err:?}"))?;
 
-/// Enable logging for the HiGHS solver
-fn enable_highs_logging(model: &mut highs::Model) {
-    // **HACK**: Skip this step if logging is disabled (e.g. when running tests)
-    if let Ok(log_level) = std::env::var("MUSE2_LOG_LEVEL") {
-        if log_level.eq_ignore_ascii_case("off") {
-            return;
-        }
-    }
+    let objective_value = Money(solution.objective_value());
+    debug!("Objective value: {objective_value}");
 
-    model.set_option("log_to_console", true);
-    model.set_option("output_flag", true);
+    Ok(Solution {
+        solution: solution.get_solution(),
+        variables,
+        active_asset_var_idx,
+        candidate_asset_var_idx,
+        time_slice_info: &model.time_slice_info,
+        constraint_keys,
+        objective_value,
+    })
 }
 
 /// Add variables to the optimisation problem.
