@@ -237,6 +237,7 @@ unit_struct!(MoneyPerCapacityPerYear);
 unit_struct!(MoneyPerActivity);
 unit_struct!(ActivityPerCapacity);
 unit_struct!(FlowPerActivity);
+unit_struct!(FlowPerCapacity);
 
 macro_rules! impl_div {
     ($Lhs:ident, $Rhs:ident, $Out:ident) => {
@@ -244,6 +245,12 @@ macro_rules! impl_div {
             type Output = $Out;
             fn div(self, rhs: $Rhs) -> $Out {
                 $Out(self.0 / rhs.0)
+            }
+        }
+        impl std::ops::Div<$Out> for $Lhs {
+            type Output = $Rhs;
+            fn div(self, rhs: $Out) -> $Rhs {
+                $Rhs(self.0 / rhs.0)
             }
         }
         impl std::ops::Mul<$Rhs> for $Out {
@@ -275,6 +282,7 @@ macro_rules! impl_div {
 
 // Division rules for derived quantities
 impl_div!(Flow, Activity, FlowPerActivity);
+impl_div!(Flow, Capacity, FlowPerCapacity);
 impl_div!(Money, Year, MoneyPerYear);
 impl_div!(Money, Flow, MoneyPerFlow);
 impl_div!(Money, Capacity, MoneyPerCapacity);
@@ -283,3 +291,4 @@ impl_div!(Activity, Capacity, ActivityPerCapacity);
 impl_div!(MoneyPerYear, Capacity, MoneyPerCapacityPerYear);
 impl_div!(MoneyPerActivity, FlowPerActivity, MoneyPerFlow);
 impl_div!(MoneyPerCapacity, Year, MoneyPerCapacityPerYear);
+impl_div!(FlowPerCapacity, ActivityPerCapacity, FlowPerActivity);

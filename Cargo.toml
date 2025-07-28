@@ -36,7 +36,6 @@ petgraph = "0.8.2"
 
 [dev-dependencies]
 current_dir = "0.1.2"
-regex = "1.11.1"
 rstest = {version = "0.25.0", default-features = false, features = ["crate-name"]}
 
 [build-dependencies]

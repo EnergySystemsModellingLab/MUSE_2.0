@@ -1,14 +1,13 @@
 //! Calculation for investment tools such as Levelised Cost of X (LCOX) and Net Present Value (NPV).
+use super::DemandMap;
 use crate::agent::ObjectiveType;
 use crate::asset::AssetRef;
-use crate::commodity::CommodityID;
+use crate::commodity::Commodity;
 use crate::finance::{lcox, profitability_index};
 use crate::model::Model;
 use crate::simulation::prices::ReducedCosts;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceLevel};
-use crate::units::{Capacity, Flow};
+use crate::units::Capacity;
 use anyhow::Result;
-use indexmap::IndexMap;
 
 mod coefficients;
 mod constraints;
@@ -16,9 +15,6 @@ mod costs;
 mod optimisation;
 use coefficients::{calculate_coefficients_for_lcox, calculate_coefficients_for_npv};
 use optimisation::perform_optimisation;
-
-/// A map of demand across time slices
-pub type DemandMap = IndexMap<TimeSliceID, Flow>;
 
 /// The output of investment appraisal required to compare potential investment decisions
 pub struct AppraisalOutput {
@@ -39,16 +35,15 @@ pub struct AppraisalOutput {
 fn calculate_lcox(
     model: &Model,
     asset: &AssetRef,
-    commodity_id: &CommodityID,
+    max_capacity: Option<Capacity>,
+    commodity: &Commodity,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
-    time_slice_info: &TimeSliceInfo,
-    time_slice_level: TimeSliceLevel,
 ) -> Result<AppraisalOutput> {
     // Calculate coefficients
     let coefficients = calculate_coefficients_for_lcox(
         asset,
-        time_slice_info,
+        &model.time_slice_info,
         reduced_costs,
         model.parameters.value_of_lost_load,
     );
@@ -56,11 +51,11 @@ fn calculate_lcox(
     // Perform optimisation to calculate capacity, activity and unmet demand
     let results = perform_optimisation(
         asset,
-        commodity_id,
+        max_capacity,
+        commodity,
         &coefficients,
         demand,
-        time_slice_info,
-        time_slice_level,
+        &model.time_slice_info,
         highs::Sense::Minimise,
     )?;
 
@@ -85,25 +80,24 @@ fn calculate_lcox(
 
 /// Calculate NPV for a hypothetical investment in the given asset.
 fn calculate_npv(
-    _model: &Model,
+    model: &Model,
     asset: &AssetRef,
-    commodity_id: &CommodityID,
+    max_capacity: Option<Capacity>,
+    commodity: &Commodity,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
-    time_slice_info: &TimeSliceInfo,
-    time_slice_level: TimeSliceLevel,
 ) -> Result<AppraisalOutput> {
     // Calculate coefficients
-    let coefficients = calculate_coefficients_for_npv(asset, time_slice_info, reduced_costs);
+    let coefficients = calculate_coefficients_for_npv(asset, &model.time_slice_info, reduced_costs);
 
     // Perform optimisation to calculate capacity, activity and unmet demand
     let results = perform_optimisation(
         asset,
-        commodity_id,
+        max_capacity,
+        commodity,
         &coefficients,
         demand,
-        time_slice_info,
-        time_slice_level,
+        &model.time_slice_info,
         highs::Sense::Maximise,
     )?;
 
@@ -128,28 +122,18 @@ fn calculate_npv(
 }
 
 /// Appraise the given investment with the specified objective type
-#[allow(clippy::too_many_arguments)]
 pub fn appraise_investment(
     model: &Model,
     asset: &AssetRef,
-    commodity_id: &CommodityID,
+    max_capacity: Option<Capacity>,
+    commodity: &Commodity,
     objective_type: &ObjectiveType,
     reduced_costs: &ReducedCosts,
     demand: &DemandMap,
-    time_slice_info: &TimeSliceInfo,
-    time_slice_level: TimeSliceLevel,
 ) -> Result<AppraisalOutput> {
     let appraisal_method = match objective_type {
         ObjectiveType::LevelisedCostOfX => calculate_lcox,
         ObjectiveType::NetPresentValue => calculate_npv,
     };
-    appraisal_method(
-        model,
-        asset,
-        commodity_id,
-        reduced_costs,
-        demand,
-        time_slice_info,
-        time_slice_level,
-    )
+    appraisal_method(model, asset, max_capacity, commodity, reduced_costs, demand)
 }

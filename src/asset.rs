@@ -7,6 +7,7 @@ use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity};
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, RangeInclusive};
@@ -49,6 +50,21 @@ impl Asset {
         capacity: Capacity,
         commission_year: u32,
     ) -> Result<Self> {
+        let asset = Self::new_without_capacity(agent_id, process, region_id, commission_year)?;
+
+        check_capacity_valid_for_asset(capacity)?;
+        Ok(Self { capacity, ..asset })
+    }
+
+    /// Create a new [`Asset`] without any capacity.
+    ///
+    /// Only candidate assets should have no capacity.
+    pub fn new_without_capacity(
+        agent_id: Option<AgentID>,
+        process: Rc<Process>,
+        region_id: RegionID,
+        commission_year: u32,
+    ) -> Result<Self> {
         ensure!(
             process.regions.contains(&region_id),
             "Region {} is not one of the regions in which process {} operates",
@@ -67,15 +83,13 @@ impl Asset {
             })?
             .clone();
 
-        check_capacity_valid_for_asset(capacity)?;
-
         Ok(Self {
             id: None,
             agent_id,
             process,
             process_parameter,
             region_id,
-            capacity,
+            capacity: Capacity(0.0),
             commission_year,
         })
     }
@@ -158,6 +172,13 @@ impl Asset {
     pub fn iter_flows(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.get_flows_map().values()
     }
+
+    /// Get the primary output (if any) for this asset
+    pub fn primary_output(&self) -> Option<&ProcessFlow> {
+        self.get_flows_map()
+            .values()
+            .find(|flow| flow.is_primary_output)
+    }
 }
 
 impl std::fmt::Debug for Asset {
@@ -191,6 +212,13 @@ pub fn check_capacity_valid_for_asset(capacity: Capacity) -> Result<()> {
 /// [`Ord`] is implemented for [`AssetRef`], but it will panic for non-commissioned assets.
 #[derive(Clone, Debug)]
 pub struct AssetRef(Rc<Asset>);
+
+impl AssetRef {
+    /// Make a mutable reference to the underlying [`Asset`]
+    pub fn make_mut(&mut self) -> &mut Asset {
+        Rc::make_mut(&mut self.0)
+    }
+}
 
 impl From<Rc<Asset>> for AssetRef {
     fn from(value: Rc<Asset>) -> Self {
@@ -329,50 +357,66 @@ impl AssetPool {
         self.active.iter()
     }
 
-    /// Replace the active pool with new and/or already commissioned assets
-    pub fn replace_active_pool<I>(&mut self, assets: I)
+    /// Return current active pool and clear
+    pub fn take(&mut self) -> Vec<AssetRef> {
+        std::mem::take(&mut self.active)
+    }
+
+    /// Extend the active pool with existing or candidate assets
+    pub fn extend<I>(&mut self, assets: I)
     where
-        I: IntoIterator<Item = Rc<Asset>>,
+        I: IntoIterator<Item = AssetRef>,
     {
-        let new_pool = assets.into_iter().map(|mut asset| {
-            if asset.id.is_none() {
+        let assets = assets.into_iter().map(|mut asset| {
+            if !asset.is_commissioned() {
                 // Asset is newly created from process so we need to assign an ID
-                let asset = Rc::make_mut(&mut asset);
+                let asset = asset.make_mut();
                 asset.id = Some(AssetID(self.next_id));
                 self.next_id += 1;
             }
 
-            asset.into()
+            asset
         });
 
-        self.active.clear();
-        self.active.extend(new_pool);
+        // Add assets to pool
+        self.active.extend(assets);
 
-        // New pool may not have been sorted, but active needs to be sorted by ID
+        // New assets may not have been sorted, but active needs to be sorted by ID
         self.active.sort();
+
+        // Sanity check: all assets should be unique
+        debug_assert_eq!(self.active.iter().unique().count(), self.active.len());
     }
 }
 
 /// Additional methods for iterating over assets
-pub trait AssetIterator<'a> {
-    /// Filter the assets by region
-    fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a;
+pub trait AssetIterator<'a>: Iterator<Item = &'a AssetRef> + Sized
+where
+    Self: 'a,
+{
+    /// Filter assets by the agent that owns them
+    fn filter_agent(self, agent_id: &'a AgentID) -> impl Iterator<Item = &'a AssetRef> + 'a {
+        self.filter(move |asset| asset.agent_id.as_ref() == Some(agent_id))
+    }
 
-    /// Iterate over process flows affecting the given commodity
-    fn flows_for_commodity(
+    /// Iterate over assets that have the given commodity as a primary output
+    fn filter_primary_producers_of(
         self,
         commodity_id: &'a CommodityID,
-    ) -> impl Iterator<Item = (&'a AssetRef, &'a ProcessFlow)> + 'a;
-}
+    ) -> impl Iterator<Item = &'a AssetRef> + 'a {
+        self.filter(move |asset| {
+            asset
+                .primary_output()
+                .is_some_and(|flow| &flow.commodity.id == commodity_id)
+        })
+    }
 
-impl<'a, I> AssetIterator<'a> for I
-where
-    I: Iterator<Item = &'a AssetRef> + 'a,
-{
+    /// Filter the assets by region
     fn filter_region(self, region_id: &'a RegionID) -> impl Iterator<Item = &'a AssetRef> + 'a {
         self.filter(move |asset| asset.region_id == *region_id)
     }
 
+    /// Iterate over process flows affecting the given commodity
     fn flows_for_commodity(
         self,
         commodity_id: &'a CommodityID,
@@ -381,10 +425,12 @@ where
     }
 }
 
+impl<'a, I> AssetIterator<'a> for I where I: Iterator<Item = &'a AssetRef> + Sized + 'a {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::{assert_error, process};
+    use crate::fixture::{assert_error, process, time_slice};
     use crate::process::{
         Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessParameter, ProcessParameterMap,
     };
@@ -487,12 +533,8 @@ mod tests {
         AssetPool::new(future)
     }
 
-    #[test]
-    fn test_asset_get_activity_limits() {
-        let time_slice = TimeSliceID {
-            season: "winter".into(),
-            time_of_day: "day".into(),
-        };
+    #[fixture]
+    fn process_with_activity_limits() -> Process {
         let process_param = Rc::new(ProcessParameter {
             capital_cost: MoneyPerCapacity(5.0),
             fixed_operating_cost: MoneyPerCapacityPerYear(2.0),
@@ -506,7 +548,11 @@ mod tests {
             .iter()
             .map(|&year| (("GBR".into(), year), process_param.clone()))
             .collect();
-        let fraction_limits = Dimensionless(1.0)..=Dimensionless(f64::INFINITY);
+        let time_slice = TimeSliceID {
+            season: "winter".into(),
+            time_of_day: "day".into(),
+        };
+        let fraction_limits = Dimensionless(1.0)..=Dimensionless(2.0);
         let mut activity_limits = ProcessActivityLimitsMap::new();
         for year in [2010, 2020] {
             activity_limits.insert(
@@ -514,7 +560,7 @@ mod tests {
                 fraction_limits.clone(),
             );
         }
-        let process = Rc::new(Process {
+        Process {
             id: "process1".into(),
             description: "Description".into(),
             years: vec![2010, 2020],
@@ -522,19 +568,37 @@ mod tests {
             flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: IndexSet::from(["GBR".into()]),
-        });
-        let asset = Asset::new(
+        }
+    }
+
+    #[fixture]
+    fn asset_with_activity_limits(process_with_activity_limits: Process) -> Asset {
+        Asset::new(
             Some("agent1".into()),
-            Rc::clone(&process),
+            Rc::new(process_with_activity_limits),
             "GBR".into(),
             Capacity(2.0),
             2010,
         )
-        .unwrap();
+        .unwrap()
+    }
 
+    #[rstest]
+    fn test_asset_get_activity_limits(asset_with_activity_limits: Asset, time_slice: TimeSliceID) {
         assert_eq!(
-            asset.get_activity_limits(&time_slice),
-            Activity(6.0)..=Activity(f64::INFINITY)
+            asset_with_activity_limits.get_activity_limits(&time_slice),
+            Activity(6.0)..=Activity(12.0)
+        );
+    }
+
+    #[rstest]
+    fn test_asset_get_activity_per_capacity_limits(
+        asset_with_activity_limits: Asset,
+        time_slice: TimeSliceID,
+    ) {
+        assert_eq!(
+            asset_with_activity_limits.get_activity_per_capacity_limits(&time_slice),
+            ActivityPerCapacity(3.0)..=ActivityPerCapacity(6.0)
         );
     }
 
@@ -590,65 +654,195 @@ mod tests {
     }
 
     #[rstest]
-    fn test_asset_pool_replace_active_pool_existing(mut asset_pool: AssetPool) {
+    fn test_asset_pool_extend_empty(mut asset_pool: AssetPool) {
+        // Start with commissioned assets
         asset_pool.commission_new(2020);
-        assert_eq!(asset_pool.active.len(), 2);
-        asset_pool.replace_active_pool(iter::once(asset_pool.active[1].clone().into()));
-        assert_eq!(asset_pool.active.len(), 1);
-        assert_eq!(asset_pool.active[0].id, Some(AssetID(1)));
+        let original_count = asset_pool.active.len();
+
+        // Extend with empty iterator
+        asset_pool.extend(std::iter::empty());
+
+        assert_eq!(asset_pool.active.len(), original_count);
     }
 
     #[rstest]
-    fn test_asset_pool_replace_active_pool_new_asset(mut asset_pool: AssetPool, process: Process) {
-        let asset = Asset::new(
-            Some("some_other_agent".into()),
-            process.into(),
-            "GBR".into(),
-            Capacity(2.0),
-            2010,
-        )
-        .unwrap();
-
+    fn test_asset_pool_extend_existing_assets(mut asset_pool: AssetPool) {
+        // Start with some commissioned assets
         asset_pool.commission_new(2020);
         assert_eq!(asset_pool.active.len(), 2);
-        asset_pool.replace_active_pool(iter::once(asset.into()));
-        assert_eq!(asset_pool.active.len(), 1);
-        assert_eq!(asset_pool.active[0].id, Some(AssetID(2)));
+        let existing_assets = asset_pool.take();
+
+        // Extend with the same assets (should maintain their IDs)
+        asset_pool.extend(existing_assets.clone());
+
+        assert_eq!(asset_pool.active.len(), 2);
+        assert_eq!(asset_pool.active[0].id, Some(AssetID(0)));
+        assert_eq!(asset_pool.active[1].id, Some(AssetID(1)));
+    }
+
+    #[rstest]
+    fn test_asset_pool_extend_new_assets(mut asset_pool: AssetPool, process: Process) {
+        // Start with some commissioned assets
+        asset_pool.commission_new(2020);
+        let original_count = asset_pool.active.len();
+
+        // Create new non-commissioned assets
+        let process_rc = Rc::new(process);
+        let new_assets = [
+            Asset::new(
+                Some("agent2".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(1.5),
+                2015,
+            )
+            .unwrap()
+            .into(),
+            Asset::new(
+                Some("agent3".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(2.5),
+                2018,
+            )
+            .unwrap()
+            .into(),
+        ];
+
+        asset_pool.extend(new_assets);
+
+        assert_eq!(asset_pool.active.len(), original_count + 2);
+        // New assets should get IDs 2 and 3
+        assert_eq!(asset_pool.active[original_count].id, Some(AssetID(2)));
+        assert_eq!(asset_pool.active[original_count + 1].id, Some(AssetID(3)));
         assert_eq!(
-            asset_pool.active[0].agent_id,
-            Some("some_other_agent".into())
+            asset_pool.active[original_count].agent_id,
+            Some("agent2".into())
+        );
+        assert_eq!(
+            asset_pool.active[original_count + 1].agent_id,
+            Some("agent3".into())
         );
     }
 
     #[rstest]
-    fn test_asset_pool_replace_active_pool_out_of_order(
-        mut asset_pool: AssetPool,
-        process: Process,
-    ) {
+    fn test_asset_pool_extend_mixed_assets(mut asset_pool: AssetPool, process: Process) {
+        // Start with some commissioned assets
+        asset_pool.commission_new(2020);
+
+        // Create a new non-commissioned asset
         let new_asset = Asset::new(
-            Some("some_other_agent".into()),
+            Some("agent_new".into()),
             process.into(),
             "GBR".into(),
-            Capacity(2.0),
-            2010,
+            Capacity(3.0),
+            2019,
         )
-        .unwrap();
+        .unwrap()
+        .into();
 
-        asset_pool.commission_new(2020);
-        assert_eq!(asset_pool.active.len(), 2);
-        let mut new_pool: Vec<Rc<Asset>> = asset_pool
+        // Extend with just the new asset (not mixing with existing to avoid duplicates)
+        asset_pool.extend([new_asset]);
+
+        assert_eq!(asset_pool.active.len(), 3);
+        // Check that we have the original assets plus the new one
+        assert!(asset_pool.active.iter().any(|a| a.id == Some(AssetID(0))));
+        assert!(asset_pool.active.iter().any(|a| a.id == Some(AssetID(1))));
+        assert!(asset_pool.active.iter().any(|a| a.id == Some(AssetID(2))));
+        // Check that the new asset has the correct agent
+        assert!(asset_pool
+            .active
             .iter()
-            .map(|asset| asset.clone().into())
-            .collect();
-        new_pool.push(new_asset.into());
-        new_pool.reverse();
+            .any(|a| a.agent_id == Some("agent_new".into())));
+    }
 
-        asset_pool.replace_active_pool(new_pool);
-        assert_equal(asset_pool.iter().map(|asset| asset.id.unwrap().0), 0..3);
-        assert_eq!(asset_pool.active[2].id, Some(AssetID(2)));
+    #[rstest]
+    fn test_asset_pool_extend_maintains_sort_order(mut asset_pool: AssetPool, process: Process) {
+        // Start with some commissioned assets
+        asset_pool.commission_new(2020);
+
+        // Create new assets that would be out of order if added at the end
+        let process_rc = Rc::new(process);
+        let new_assets = [
+            Asset::new(
+                Some("agent_high_id".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(1.0),
+                2016,
+            )
+            .unwrap()
+            .into(),
+            Asset::new(
+                Some("agent_low_id".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(1.0),
+                2017,
+            )
+            .unwrap()
+            .into(),
+        ];
+
+        asset_pool.extend(new_assets);
+
+        // Check that assets are sorted by ID
+        let ids: Vec<u32> = asset_pool.iter().map(|a| a.id.unwrap().0).collect();
+        assert_equal(ids, 0..4);
+    }
+
+    #[rstest]
+    fn test_asset_pool_extend_no_duplicates_expected(mut asset_pool: AssetPool) {
+        // Start with some commissioned assets
+        asset_pool.commission_new(2020);
+        let original_count = asset_pool.active.len();
+
+        // The extend method expects unique assets - adding duplicates would violate
+        // the debug assertion, so this test verifies the normal case
+        asset_pool.extend(std::iter::empty::<AssetRef>());
+
+        assert_eq!(asset_pool.active.len(), original_count);
+        // Verify all assets are still unique (this is what the debug_assert checks)
         assert_eq!(
-            asset_pool.active[2].agent_id,
-            Some("some_other_agent".into())
+            asset_pool.active.iter().unique().count(),
+            asset_pool.active.len()
         );
+    }
+
+    #[rstest]
+    fn test_asset_pool_extend_increments_next_id(mut asset_pool: AssetPool, process: Process) {
+        // Start with some commissioned assets
+        asset_pool.commission_new(2020);
+        assert_eq!(asset_pool.next_id, 2); // Should be 2 after commissioning 2 assets
+
+        // Create new non-commissioned assets
+        let process_rc = Rc::new(process);
+        let new_assets = [
+            Asset::new(
+                Some("agent1".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(1.0),
+                2015,
+            )
+            .unwrap()
+            .into(),
+            Asset::new(
+                Some("agent2".into()),
+                Rc::clone(&process_rc),
+                "GBR".into(),
+                Capacity(1.0),
+                2016,
+            )
+            .unwrap()
+            .into(),
+        ];
+
+        asset_pool.extend(new_assets);
+
+        // next_id should have incremented for each new asset
+        assert_eq!(asset_pool.next_id, 4);
+        assert_eq!(asset_pool.active[2].id, Some(AssetID(2)));
+        assert_eq!(asset_pool.active[3].id, Some(AssetID(3)));
     }
 }

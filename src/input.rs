@@ -82,7 +82,7 @@ pub fn read_toml<T: DeserializeOwned>(file_path: &Path) -> Result<T> {
 }
 
 /// Read a Dimensionless float, checking that it is between 0 and 1
-fn deserialise_proportion_nonzero<'de, D, T>(deserialiser: D) -> Result<T, D::Error>
+pub fn deserialise_proportion_nonzero<'de, D, T>(deserialiser: D) -> Result<T, D::Error>
 where
     T: UnitType,
     D: Deserializer<'de>,

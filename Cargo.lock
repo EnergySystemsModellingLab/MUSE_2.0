@@ -846,7 +846,6 @@ dependencies = [
  "log",
  "petgraph",
  "platform-info",
- "regex",
  "rstest",
  "serde",
  "serde_string_enum",

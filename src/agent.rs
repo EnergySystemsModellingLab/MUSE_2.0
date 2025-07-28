@@ -1,7 +1,7 @@
 //! Agents drive the economy of the MUSE 2.0 simulation, through relative investment in different
 //! assets.
 use crate::commodity::CommodityID;
-use crate::id::{define_id_getter, define_id_type};
+use crate::id::define_id_type;
 use crate::process::Process;
 use crate::region::RegionID;
 use crate::units::{Dimensionless, Money};
@@ -50,7 +50,22 @@ pub struct Agent {
     /// The agent's objectives.
     pub objectives: AgentObjectiveMap,
 }
-define_id_getter! {Agent, AgentID}
+
+impl Agent {
+    /// Get all the processes in this agent's search space which produce the commodity in the given
+    /// year
+    pub fn iter_possible_producers_of<'a>(
+        &'a self,
+        region_id: &RegionID,
+        commodity_id: &'a CommodityID,
+        year: u32,
+    ) -> impl Iterator<Item = &'a Rc<Process>> {
+        let flows_key = (region_id.clone(), year);
+        self.search_space[&(commodity_id.clone(), year)]
+            .iter()
+            .filter(move |process| process.flows[&flows_key][commodity_id].is_output())
+    }
+}
 
 /// The cost limits for an agent in a particular year
 #[derive(Debug, Clone, PartialEq)]
