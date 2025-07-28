@@ -204,12 +204,13 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let commodity_order = region_ids
         .into_iter()
         .cartesian_product(years.iter())
-        .map(|(region_id, year)| {
+        .map(|(region_id, year)| -> Result<_> {
             let graph = create_commodities_graph_for_region_year(&processes, &region_id, *year);
-            let order = topo_sort_commodities(&graph).unwrap();
-            ((region_id, *year), order)
+            let order = topo_sort_commodities(&graph)
+                .with_context(|| format!("Error with commodity graph for {region_id} in {year}"))?;
+            Ok(((region_id, *year), order))
         })
-        .collect();
+        .try_collect()?;
 
     let model_path = model_dir
         .as_ref()
