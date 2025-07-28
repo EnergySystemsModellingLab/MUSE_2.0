@@ -32,7 +32,7 @@ pub fn create_commodities_graph_for_region_year(
                 .collect();
             let inputs: Vec<_> = flows
                 .values()
-                .filter(|flow| flow.coeff < FlowPerActivity(0.0))
+                .filter(|flow| flow.is_input())
                 .map(|flow| flow.commodity.id.clone())
                 .collect();
 
