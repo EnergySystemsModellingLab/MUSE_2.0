@@ -3,13 +3,12 @@ use super::optimisation::FlowMap;
 use super::prices::ReducedCosts;
 use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
-use crate::commodity::{Commodity, CommodityID, CommodityType};
+use crate::commodity::{Commodity, CommodityID};
 use crate::model::Model;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
-use indexmap::IndexSet;
 use itertools::chain;
 use log::{debug, info};
 use std::collections::HashMap;
@@ -44,23 +43,16 @@ pub fn perform_agent_investment(
     // Get all existing assets and clear pool
     let existing_assets = assets.take();
 
+    // Demand profile for commodities
+    let demand = get_demand_profile(flow_map);
+
     // We consider SVD commodities first
-    let commodities_of_interest = model
-        .commodities
-        .iter()
-        .filter(|(_, commodity)| commodity.kind == CommodityType::ServiceDemand)
-        .map(|(id, _)| id.clone())
-        .collect();
-    let demand = get_demand_profile(&commodities_of_interest, flow_map);
-
-    for commodity_id in commodities_of_interest.iter() {
-        let commodity = &model.commodities[commodity_id];
-        for (agent, commodity_portion) in
-            get_responsible_agents(model.agents.values(), commodity_id, year)
-        {
-            let objective_type = agent.objectives.get(&year).unwrap();
-
-            for region_id in agent.regions.iter() {
+    for region_id in model.iter_regions() {
+        for commodity_id in model.commodity_order[&(region_id.clone(), year)].iter() {
+            let commodity = &model.commodities[commodity_id];
+            for (agent, commodity_portion) in
+                get_responsible_agents(model.agents.values(), commodity_id, region_id, year)
+            {
                 debug!(
                     "Running investment for agent '{}' with commodity '{}' in region '{}'",
                     &agent.id, commodity_id, region_id
@@ -91,7 +83,7 @@ pub fn perform_agent_investment(
                     model,
                     opt_assets,
                     commodity,
-                    objective_type,
+                    &agent.objectives[&year],
                     reduced_costs,
                     demand_for_commodity,
                 )?;
@@ -108,11 +100,11 @@ pub fn perform_agent_investment(
     Ok(())
 }
 
-/// Get demand per time slice for specified commodities
-fn get_demand_profile(commodities: &IndexSet<CommodityID>, flow_map: &FlowMap) -> AllDemandMap {
+/// Get demand per time slice for every commodity
+fn get_demand_profile(flow_map: &FlowMap) -> AllDemandMap {
     let mut map = HashMap::new();
     for ((asset, commodity_id, time_slice), &flow) in flow_map.iter() {
-        if commodities.contains(commodity_id) && flow > Flow(0.0) {
+        if flow > Flow(0.0) {
             map.entry((
                 commodity_id.clone(),
                 asset.region_id.clone(),
@@ -142,7 +134,7 @@ fn get_demand_portion_for_commodity(
                 commodity_portion
                     * *demand
                         .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
-                        .unwrap(),
+                        .unwrap_or(&Flow(0.0)),
             )
         })
         .collect()
@@ -153,12 +145,16 @@ fn get_demand_portion_for_commodity(
 fn get_responsible_agents<'a, I>(
     agents: I,
     commodity_id: &'a CommodityID,
+    region_id: &'a RegionID,
     year: u32,
 ) -> impl Iterator<Item = (&'a Agent, Dimensionless)>
 where
     I: Iterator<Item = &'a Agent>,
 {
     agents.filter_map(move |agent| {
+        if !agent.regions.contains(region_id) {
+            return None;
+        }
         let portion = agent
             .commodity_portions
             .get(&(commodity_id.clone(), year))?;
@@ -415,10 +411,6 @@ mod tests {
         time_slice: TimeSliceID,
         asset: Asset,
     ) {
-        // Setup test commodities
-        let mut commodities = IndexSet::new();
-        commodities.insert(commodity_id.clone());
-
         // Setup test asset and AssetRef
         let asset_ref1 = AssetRef::from(asset.clone());
         // Create a second asset with the same region, commodity, and time_slice
@@ -439,14 +431,6 @@ mod tests {
         flow_map.insert(
             (
                 asset_ref1.clone(),
-                CommodityID("C2".to_string().into()),
-                time_slice.clone(),
-            ),
-            Flow(5.0),
-        ); // Should be ignored
-        flow_map.insert(
-            (
-                asset_ref1.clone(),
                 commodity_id.clone(),
                 TimeSliceID {
                     season: "summer".into(),
@@ -457,7 +441,7 @@ mod tests {
         ); // Should be ignored
 
         // Call get_demand_profile
-        let result = get_demand_profile(&commodities, &flow_map);
+        let result = get_demand_profile(&flow_map);
 
         // Check result
         let mut expected = HashMap::new();
