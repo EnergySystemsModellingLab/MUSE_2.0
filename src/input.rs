@@ -7,7 +7,7 @@ use crate::units::{Dimensionless, UnitType};
 use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
-use itertools::Itertools;
+use itertools::{iproduct, Itertools};
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -201,9 +201,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
 
     // Determine commodity ordering for each region and year
-    let commodity_order = region_ids
-        .into_iter()
-        .cartesian_product(years.iter())
+    let commodity_order = iproduct!(region_ids, years.iter())
         .map(|(region_id, year)| -> Result<_> {
             let graph = create_commodities_graph_for_region_year(&processes, &region_id, *year);
             let order = topo_sort_commodities(&graph)

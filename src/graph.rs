@@ -2,7 +2,6 @@
 use crate::commodity::CommodityID;
 use crate::process::{ProcessID, ProcessMap};
 use crate::region::RegionID;
-use crate::units::FlowPerActivity;
 use anyhow::{anyhow, Result};
 use petgraph::algo::toposort;
 use petgraph::graph::Graph;
