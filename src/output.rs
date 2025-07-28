@@ -651,4 +651,35 @@ mod tests {
             .unwrap();
         assert_equal(records, iter::once(expected));
     }
+
+    #[rstest]
+    fn test_write_solver_values() {
+        let milestone_year = 2020;
+        let run_number = 42;
+        let objective_value = Money(1234.56);
+        let dir = tempdir().unwrap();
+
+        // Write solver values
+        {
+            let mut writer = DebugDataWriter::create(dir.path()).unwrap();
+            writer
+                .write_solver_values(milestone_year, run_number, objective_value)
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        // Read back and compare
+        let expected = SolverValuesRow {
+            milestone_year,
+            run_number,
+            objective_value,
+        };
+        let records: Vec<SolverValuesRow> =
+            csv::Reader::from_path(dir.path().join(SOLVER_VALUES_FILE_NAME))
+                .unwrap()
+                .into_deserialize()
+                .try_collect()
+                .unwrap();
+        assert_equal(records, iter::once(expected));
+    }
 }
