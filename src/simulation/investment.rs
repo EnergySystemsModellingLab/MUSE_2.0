@@ -100,7 +100,8 @@ pub fn perform_agent_investment(
 
             // Perform dispatch optimisation with assets that have been selected so far
             seen_commodities.push(commodity_id.clone());
-            let solution = dispatch.run(model, assets, &[], Some(&seen_commodities), writer)?;
+            let solution =
+                dispatch.run_for_commodities(model, assets, &seen_commodities, writer)?;
             output.flow_map = solution.create_flow_map();
             update_prices_and_reduced_costs(
                 model,

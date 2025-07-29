@@ -202,7 +202,6 @@ impl DispatchRunner {
     ///
     /// * `model` - The model
     /// * `asset_pool` - The asset pool
-    /// * `candidate_assets` - Candidate assets for inclusion in active pool
     /// * `writer` - Data writer
     ///
     /// # Returns
@@ -210,6 +209,39 @@ impl DispatchRunner {
     /// A solution containing new commodity flows for assets and prices for (some) commodities or an
     /// error.
     pub fn run<'a>(
+        &mut self,
+        model: &'a Model,
+        asset_pool: &AssetPool,
+        writer: &mut DataWriter,
+    ) -> Result<Solution<'a>> {
+        self.run_internal(model, asset_pool, &[], None, writer)
+    }
+
+    /// Run the dispatch optimisation for a subset of commodities
+    pub fn run_for_commodities<'a>(
+        &mut self,
+        model: &'a Model,
+        asset_pool: &AssetPool,
+        commodities: &[CommodityID],
+        writer: &mut DataWriter,
+    ) -> Result<Solution<'a>> {
+        self.run_internal(model, asset_pool, &[], Some(commodities), writer)
+    }
+
+    /// Run the dispatch optimisation with candidate assets and save debug information to file.
+    ///
+    /// See [`DispatchRunner::run`].
+    pub fn run_with_candidates<'a>(
+        &mut self,
+        model: &'a Model,
+        asset_pool: &AssetPool,
+        candidate_assets: &[AssetRef],
+        writer: &mut DataWriter,
+    ) -> Result<Solution<'a>> {
+        self.run_internal(model, asset_pool, candidate_assets, None, writer)
+    }
+
+    fn run_internal<'a>(
         &mut self,
         model: &'a Model,
         asset_pool: &AssetPool,
