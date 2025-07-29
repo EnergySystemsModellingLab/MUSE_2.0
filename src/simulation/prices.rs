@@ -17,6 +17,18 @@ pub type ReducedCosts = HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
 ///
 /// Note that the behaviour will be different depending on the [`PricingStrategy`] the user has
 /// selected.
+///
+/// # Arguments
+///
+/// * `model` - The model
+/// * `solution` - Solution to dispatch optimisation
+/// * `assets` - Asset pool
+/// * `year` - Current milestone year
+///
+/// # Returns
+///
+/// Commodity prices and reduced costs, calculated using the appropriate pricing strategy from input
+/// data and the results of the dispatch optimisation.
 pub fn get_prices_and_reduced_costs(
     model: &Model,
     solution: &Solution,
