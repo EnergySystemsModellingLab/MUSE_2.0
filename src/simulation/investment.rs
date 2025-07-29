@@ -1,5 +1,5 @@
 //! Code for performing agent investment.
-use super::optimisation::{perform_dispatch_optimisation, FlowMap};
+use super::optimisation::FlowMap;
 use super::prices::{update_prices_and_reduced_costs, ReducedCosts};
 use super::DispatchOutput;
 use crate::agent::{Agent, ObjectiveType};
@@ -8,6 +8,7 @@ use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
+use crate::simulation::optimisation::DispatchRunner;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
@@ -48,8 +49,8 @@ pub fn perform_agent_investment(
     // Demand profile for commodities
     let mut demand = get_demand_profile(&output.flow_map, &model.commodities);
 
-    // Which dispatch run for current year
-    let mut run_number = 0;
+    // For running dispatch optimisation
+    let mut dispatch = DispatchRunner::new(year);
 
     for region_id in model.iter_regions() {
         let mut seen_commodities = Vec::new();
@@ -99,16 +100,7 @@ pub fn perform_agent_investment(
 
             // Perform dispatch optimisation with assets that have been selected so far
             seen_commodities.push(commodity_id.clone());
-            let solution = perform_dispatch_optimisation(
-                model,
-                assets,
-                &[],
-                Some(&seen_commodities),
-                year,
-                run_number,
-                writer,
-            )?;
-            run_number += 1;
+            let solution = dispatch.run(model, assets, &[], Some(&seen_commodities), writer)?;
             output.flow_map = solution.create_flow_map();
             update_prices_and_reduced_costs(
                 model,

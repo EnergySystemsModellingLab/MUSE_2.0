@@ -3,7 +3,7 @@ use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
-use crate::simulation::optimisation::FlowMap;
+use crate::simulation::optimisation::{DispatchRunner, FlowMap};
 use crate::simulation::prices::{update_prices_and_reduced_costs, ReducedCosts};
 use crate::units::Capacity;
 use anyhow::{Context, Result};
@@ -11,9 +11,8 @@ use log::info;
 use std::path::Path;
 use std::rc::Rc;
 
-pub mod optimisation;
-use optimisation::perform_dispatch_optimisation;
 pub mod investment;
+pub mod optimisation;
 use investment::perform_agent_investment;
 pub mod prices;
 pub use prices::CommodityPrices;
@@ -89,9 +88,10 @@ fn run_dispatch_for_base_year(
     next_year: Option<u32>,
     writer: &mut DataWriter,
 ) -> Result<DispatchOutput> {
+    let mut dispatch = DispatchRunner::new(year);
+
     // Dispatch optimisation with existing assets only
-    let solution_existing =
-        perform_dispatch_optimisation(model, assets, &[], None, year, 0, writer)?;
+    let solution_existing = dispatch.run(model, assets, &[], None, writer)?;
     let flow_map = solution_existing.create_flow_map();
 
     // Get candidate assets for next year, if any
@@ -109,7 +109,7 @@ fn run_dispatch_for_base_year(
     let solution = if candidates.is_empty() {
         solution_existing
     } else {
-        perform_dispatch_optimisation(model, assets, &candidates, None, year, 1, writer)?
+        dispatch.run(model, assets, &candidates, None, writer)?
     };
 
     // Calculate commodity prices and asset reduced costs
