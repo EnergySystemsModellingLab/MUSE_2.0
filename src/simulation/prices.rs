@@ -18,11 +18,15 @@ pub type ReducedCosts = HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
 /// Note that the behaviour will be different depending on the [`PricingStrategy`] the user has
 /// selected.
 ///
+/// If prices are missing for any commodity prices, prices from `old_prices` will be used.
+/// `old_prices` can be empty.
+///
 /// # Arguments
 ///
 /// * `model` - The model
 /// * `solution` - Solution to dispatch optimisation
 /// * `assets` - Asset pool
+/// * `old_prices` - Commodity prices from previous milestone year, if any
 /// * `year` - Current milestone year
 ///
 /// # Returns
@@ -33,6 +37,7 @@ pub fn get_prices_and_reduced_costs(
     model: &Model,
     solution: &Solution,
     assets: &AssetPool,
+    old_prices: &CommodityPrices,
     year: u32,
 ) -> (CommodityPrices, ReducedCosts) {
     let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
@@ -44,7 +49,9 @@ pub fn get_prices_and_reduced_costs(
     let (prices, reduced_costs_for_candidates) = match model.parameters.pricing_strategy {
         // Use raw shadow prices and reduced costs
         PricingStrategy::ShadowPrices => (
-            shadow_prices.with_levies(model, year),
+            shadow_prices
+                .with_levies(model, year)
+                .with_missing_from(old_prices),
             reduced_costs_for_candidates,
         ),
         // Adjust prices for scarcity and then remove this adjustment from reduced costs
@@ -52,8 +59,11 @@ pub fn get_prices_and_reduced_costs(
             let adjusted_prices = shadow_prices
                 .clone()
                 .with_scarcity_adjustment(solution.iter_activity_duals())
-                .with_levies(model, year);
-            let unadjusted_prices = shadow_prices.with_levies(model, year);
+                .with_levies(model, year)
+                .with_missing_from(old_prices);
+            let unadjusted_prices = shadow_prices
+                .with_levies(model, year)
+                .with_missing_from(old_prices);
             let mut reduced_costs_for_candidates = reduced_costs_for_candidates;
 
             // Remove adjustment
