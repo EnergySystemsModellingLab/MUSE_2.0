@@ -61,9 +61,21 @@ pub fn perform_agent_investment(
         writer,
         dispatch: DispatchRunner::new(year),
     };
-    investment.run()?;
+    let ordered_commodities = get_ordered_commodities(model, year);
+    investment.run(ordered_commodities)?;
 
     Ok(())
+}
+
+fn get_ordered_commodities(
+    model: &Model,
+    year: u32,
+) -> impl Iterator<Item = (&RegionID, &CommodityID)> {
+    model.iter_regions().flat_map(move |region_id| {
+        model.commodity_order[&(region_id.clone(), year)]
+            .iter()
+            .map(move |commodity_id| (region_id, commodity_id))
+    })
 }
 
 /// Houses the state for investment
@@ -80,14 +92,15 @@ struct InvestmentRunner<'a> {
 }
 
 impl<'a> InvestmentRunner<'a> {
-    fn run(&mut self) -> Result<()> {
+    fn run<'b, I>(&mut self, regions_commodities: I) -> Result<()>
+    where
+        I: Iterator<Item = (&'b RegionID, &'b CommodityID)>,
+    {
         // Demand profile for commodities
         let mut demand = get_demand_profile(self.flow_map);
 
-        for region_id in self.model.iter_regions() {
-            for commodity_id in self.model.commodity_order[&(region_id.clone(), self.year)].iter() {
-                self.run_for_commodity(commodity_id, region_id, &mut demand)?;
-            }
+        for (region_id, commodity_id) in regions_commodities {
+            self.run_for_commodity(commodity_id, region_id, &mut demand)?;
         }
 
         Ok(())
