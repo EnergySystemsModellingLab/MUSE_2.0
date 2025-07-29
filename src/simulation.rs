@@ -1,15 +1,12 @@
 //! Functionality for running the MUSE 2.0 simulation.
-use crate::asset::{Asset, AssetPool, AssetRef};
+use crate::asset::AssetPool;
 use crate::model::Model;
 use crate::output::DataWriter;
-use crate::process::ProcessMap;
 use crate::simulation::optimisation::{DispatchRunner, FlowMap};
 use crate::simulation::prices::{get_prices_and_reduced_costs, ReducedCosts};
-use crate::units::Capacity;
 use anyhow::{Context, Result};
 use log::info;
 use std::path::Path;
-use std::rc::Rc;
 
 pub mod investment;
 pub mod optimisation;
@@ -98,13 +95,7 @@ fn run_dispatch_for_baseline_year(
 
     // Get candidate assets for next year, if any
     let candidates = next_year
-        .map(|next_year| {
-            candidate_assets_for_year(
-                &model.processes,
-                next_year,
-                model.parameters.candidate_asset_capacity,
-            )
-        })
+        .map(|next_year| model.create_candidate_assets_for_year(next_year))
         .unwrap_or_default();
 
     // Perform a separate dispatch run with existing assets and candidates (if there are any)
@@ -122,33 +113,4 @@ fn run_dispatch_for_baseline_year(
     writer.write(year, assets, &flow_map, &prices)?;
 
     Ok((flow_map, prices, reduced_costs))
-}
-
-/// Get all candidate assets for a specified year
-fn candidate_assets_for_year(
-    processes: &ProcessMap,
-    year: u32,
-    candidate_asset_capacity: Capacity,
-) -> Vec<AssetRef> {
-    let mut candidates = Vec::new();
-    for process in processes
-        .values()
-        .filter(move |process| process.active_for_year(year))
-    {
-        for region_id in process.regions.iter() {
-            candidates.push(
-                Asset::new(
-                    None,
-                    Rc::clone(process),
-                    region_id.clone(),
-                    candidate_asset_capacity,
-                    year,
-                )
-                .unwrap()
-                .into(),
-            );
-        }
-    }
-
-    candidates
 }
