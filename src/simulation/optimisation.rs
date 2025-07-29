@@ -202,10 +202,42 @@ impl DispatchRunner {
         self.run_with_candidates(model, asset_pool, &[], writer)
     }
 
+    /// Try to run the dispatch optimisation with candidates for the next year.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The model
+    /// * `asset_pool` - The asset pool
+    /// * `next_year` - The next milestone year in the simulation
+    /// * `writer` - Data writer
+    ///
+    /// # Returns
+    ///
+    /// If `next_year` is provided and there are candidates for that year, then the [`Solution`] is
+    /// returned (or an error, if the optimisation fails). Returns `Ok(None)` if `next_year` is
+    /// `None` or there are no candidates for the next year.
+    pub fn try_run_with_candidates<'a>(
+        &mut self,
+        model: &'a Model,
+        asset_pool: &AssetPool,
+        next_year: Option<u32>,
+        writer: &mut DataWriter,
+    ) -> Result<Option<Solution<'a>>> {
+        let get_candidates = || {
+            let next_year = next_year?;
+            let candidates = model.create_candidate_assets_for_year(next_year);
+            (!candidates.is_empty()).then_some(candidates)
+        };
+
+        get_candidates()
+            .map(|candidates| self.run_with_candidates(model, asset_pool, &candidates, writer))
+            .transpose()
+    }
+
     /// Run the dispatch optimisation with candidate assets and save debug information to file.
     ///
     /// See [`DispatchRunner::run`].
-    pub fn run_with_candidates<'a>(
+    fn run_with_candidates<'a>(
         &mut self,
         model: &'a Model,
         asset_pool: &AssetPool,
