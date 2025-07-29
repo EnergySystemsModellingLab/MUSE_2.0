@@ -8,8 +8,8 @@ use crate::output::DataWriter;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Activity, Flow, Money, MoneyPerActivity, MoneyPerFlow, UnitType};
-use anyhow::{anyhow, Result};
-use highs::{RowProblem as Problem, Sense};
+use anyhow::{anyhow, ensure, Result};
+use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
 use log::debug;
@@ -159,6 +159,21 @@ impl Solution<'_> {
     }
 }
 
+/// Try to solve the model, returning an error if the model is incoherent or result is non-optimal
+pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
+    let solved = model
+        .try_solve()
+        .map_err(|err| anyhow!("Incoherent model: {err:?}"))?;
+
+    let status = solved.status();
+    ensure!(
+        status == HighsModelStatus::Optimal,
+        "Could not find optimal result for model: {status:?}"
+    );
+
+    Ok(solved)
+}
+
 /// Perform the dispatch optimisation.
 ///
 /// If `commodities` is provided, the commodity balance constraints will only be added for these
@@ -246,10 +261,7 @@ fn perform_dispatch_optimisation_no_save<'a>(
     );
 
     // Solve model
-    let solution = problem
-        .optimise(Sense::Minimise)
-        .try_solve()
-        .map_err(|err| anyhow!("Could not solve: {err:?}"))?;
+    let solution = solve_optimal(problem.optimise(Sense::Minimise))?;
 
     let objective_value = Money(solution.objective_value());
     debug!("Objective value: {objective_value}");
