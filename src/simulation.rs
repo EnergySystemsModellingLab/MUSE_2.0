@@ -31,8 +31,8 @@ pub fn run(
     let mut writer = DataWriter::create(output_path, &model.model_path, debug_model)?;
 
     // Iterate over milestone years
-    let mut year_iter = model.iter_years().peekable();
-    let year = year_iter.next().unwrap(); // NB: There will be at least one year
+    let mut year_iter = model.iter_years();
+    let (year, next_year) = year_iter.next().unwrap(); // NB: There will be at least one year
 
     info!("Milestone year: {year}");
 
@@ -43,11 +43,10 @@ pub fn run(
     assets.commission_new(year);
 
     // Run dispatch to get flows, prices and reduced costs
-    let next_year = year_iter.peek().copied();
     let (mut flow_map, prices, mut reduced_costs) =
         run_dispatch_for_baseline_year(&model, &assets, year, next_year, &mut writer)?;
 
-    for year in year_iter {
+    for (year, _next_year) in year_iter {
         info!("Milestone year: {year}");
 
         // Decommission assets whose lifetime has passed. We do this *before* agent investment, to

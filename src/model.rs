@@ -14,6 +14,7 @@ use log::warn;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -183,9 +184,12 @@ impl Model {
         candidates
     }
 
-    /// Iterate over the model's milestone years.
-    pub fn iter_years(&self) -> impl Iterator<Item = u32> + '_ {
-        self.parameters.milestone_years.iter().copied()
+    /// Iterate over the model's milestone years along with the next year, if present.
+    pub fn iter_years(&self) -> impl Iterator<Item = (u32, Option<u32>)> + '_ {
+        let all_years = self.parameters.milestone_years.iter().copied();
+        all_years
+            .clone()
+            .zip(all_years.map(Some).chain(iter::once(None)))
     }
 
     /// Iterate over the model's regions (region IDs).
