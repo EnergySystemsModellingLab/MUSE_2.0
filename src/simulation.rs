@@ -89,8 +89,6 @@ pub fn run(
         // year.
         assets.decommission_old(year);
 
-        // NB: Agent investment will actually be in a loop with more calls to
-        // `perform_dispatch_optimisation`, but let's leave this as a placeholder for now
         perform_agent_investment(
             &model,
             year,
