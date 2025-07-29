@@ -1,5 +1,5 @@
 //! Code for performing agent investment.
-use super::optimisation::{perform_dispatch_optimisation, FlowMap};
+use super::optimisation::FlowMap;
 use super::prices::{get_prices_and_reduced_costs, ReducedCosts};
 use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
@@ -7,6 +7,7 @@ use crate::commodity::{Commodity, CommodityID};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
+use crate::simulation::optimisation::DispatchRunner;
 use crate::simulation::CommodityPrices;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
@@ -52,8 +53,8 @@ pub fn perform_agent_investment(
     // Demand profile for commodities
     let mut demand = get_demand_profile(flow_map);
 
-    // Which dispatch run for current year
-    let mut run_number = 0;
+    // For running dispatch optimisation
+    let mut dispatch = DispatchRunner::new(model, year);
 
     // We consider SVD commodities first
     for region_id in model.iter_regions() {
@@ -102,9 +103,8 @@ pub fn perform_agent_investment(
             }
 
             // Perform dispatch optimisation with assets that have been selected so far
-            let solution =
-                perform_dispatch_optimisation(model, assets, &[], year, run_number, writer)?;
-            run_number += 1;
+            let solution = dispatch.run(assets, &[], writer)?;
+
             *flow_map = solution.create_flow_map();
             let (_cur_prices, cur_reduced_costs) =
                 get_prices_and_reduced_costs(model, &solution, assets, prices, year);

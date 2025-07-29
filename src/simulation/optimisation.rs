@@ -159,6 +159,58 @@ impl Solution<'_> {
     }
 }
 
+/// An object responsible for running the dispatch optimisation within a given milestone year.
+///
+/// We track how many times the optimisation has been run for the current year in order to
+/// distinguish between different runs in output files.
+pub struct DispatchRunner<'a> {
+    model: &'a Model,
+    year: u32,
+    run_number: u32,
+}
+
+impl<'a> DispatchRunner<'a> {
+    /// Create a new [`DispatchRunner`] for the given milestone year
+    pub fn new(model: &'a Model, year: u32) -> Self {
+        Self {
+            model,
+            year,
+            run_number: 0,
+        }
+    }
+
+    /// Run the dispatch optimisation and save debug information to file.
+    ///
+    /// For a detailed description, please see the [dispatch optimisation formulation][1].
+    ///
+    /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/model/dispatch_optimisation.html
+    ///
+    /// # Arguments
+    ///
+    /// * `asset_pool` - The asset pool
+    /// * `candidate_assets` - Candidate assets for inclusion in active pool
+    /// * `writer` - Data writer
+    ///
+    /// # Returns
+    ///
+    /// A solution containing new commodity flows for assets and prices for (some) commodities or an
+    /// error.
+    pub fn run(
+        &mut self,
+        asset_pool: &AssetPool,
+        candidate_assets: &[AssetRef],
+        writer: &mut DataWriter,
+    ) -> Result<Solution> {
+        let solution =
+            perform_dispatch_optimisation(self.model, asset_pool, candidate_assets, self.year)?;
+
+        writer.write_debug_info(self.year, self.run_number, &solution)?;
+        self.run_number += 1;
+
+        Ok(solution)
+    }
+}
+
 /// Perform the dispatch optimisation.
 ///
 /// For a detailed description, please see the [dispatch optimisation formulation][1].
@@ -171,30 +223,12 @@ impl Solution<'_> {
 /// * `asset_pool` - The asset pool
 /// * `candidate_assets` - Candidate assets for inclusion in active pool
 /// * `year` - Current milestone year
-/// * `run_number` - Which dispatch run for the current year this is
-/// * `data_writer` - For saving output data
 ///
 /// # Returns
 ///
-/// A solution containing new commodity flows for assets and prices for (some) commodities.
-pub fn perform_dispatch_optimisation<'a>(
-    model: &'a Model,
-    asset_pool: &AssetPool,
-    candidate_assets: &[AssetRef],
-    year: u32,
-    run_number: u32,
-    writer: &mut DataWriter,
-) -> Result<Solution<'a>> {
-    let solution =
-        perform_dispatch_optimisation_no_save(model, asset_pool, candidate_assets, year)?;
-
-    writer.write_debug_info(year, run_number, &solution)?;
-
-    Ok(solution)
-}
-
-/// Perform the dispatch optimisation without saving output data
-fn perform_dispatch_optimisation_no_save<'a>(
+/// A solution containing new commodity flows for assets and prices for (some) commodities or an
+/// error.
+fn perform_dispatch_optimisation<'a>(
     model: &'a Model,
     asset_pool: &AssetPool,
     candidate_assets: &[AssetRef],
