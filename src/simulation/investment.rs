@@ -86,69 +86,80 @@ impl<'a> InvestmentRunner<'a> {
 
         for region_id in self.model.iter_regions() {
             for commodity_id in self.model.commodity_order[&(region_id.clone(), self.year)].iter() {
-                let commodity = &self.model.commodities[commodity_id];
-                for (agent, commodity_portion) in get_responsible_agents(
-                    self.model.agents.values(),
-                    commodity_id,
-                    region_id,
-                    self.year,
-                ) {
-                    debug!(
-                        "Running investment for agent '{}' with commodity '{}' in region '{}'",
-                        &agent.id, commodity_id, region_id
-                    );
-
-                    let demand_for_commodity = get_demand_portion_for_commodity(
-                        &self.model.time_slice_info,
-                        &demand,
-                        commodity_id,
-                        region_id,
-                        commodity_portion,
-                    );
-
-                    // Existing and candidate assets from which to choose
-                    let opt_assets = get_asset_options(
-                        &self.model.time_slice_info,
-                        &self.existing_assets,
-                        &demand_for_commodity,
-                        agent,
-                        commodity_id,
-                        region_id,
-                        self.year,
-                    )
-                    .collect();
-
-                    // Choose assets from among existing pool and candidates
-                    let best_assets = select_best_assets(
-                        self.model,
-                        opt_assets,
-                        commodity,
-                        &agent.objectives[&self.year],
-                        self.reduced_costs,
-                        demand_for_commodity,
-                    )?;
-
-                    // Add assets to pool
-                    self.assets.extend(best_assets);
-                }
-
-                // Perform dispatch optimisation with assets that have been selected so far
-                let solution = self.dispatch.run(self.model, self.assets, self.writer)?;
-
-                *self.flow_map = solution.create_flow_map();
-                let (_cur_prices, cur_reduced_costs) = get_prices_and_reduced_costs(
-                    self.model,
-                    &solution,
-                    self.assets,
-                    self.prices,
-                    self.year,
-                );
-                *self.reduced_costs = cur_reduced_costs;
-
-                // Update demand profile
-                demand = get_demand_profile(self.flow_map);
+                self.run_for_commodity(commodity_id, region_id, &mut demand)?;
             }
         }
+
+        Ok(())
+    }
+
+    fn run_for_commodity(
+        &mut self,
+        commodity_id: &CommodityID,
+        region_id: &RegionID,
+        demand: &mut AllDemandMap,
+    ) -> Result<()> {
+        let commodity = &self.model.commodities[commodity_id];
+        for (agent, commodity_portion) in get_responsible_agents(
+            self.model.agents.values(),
+            commodity_id,
+            region_id,
+            self.year,
+        ) {
+            debug!(
+                "Running investment for agent '{}' with commodity '{}' in region '{}'",
+                &agent.id, commodity_id, region_id
+            );
+
+            let demand_for_commodity = get_demand_portion_for_commodity(
+                &self.model.time_slice_info,
+                demand,
+                commodity_id,
+                region_id,
+                commodity_portion,
+            );
+
+            // Existing and candidate assets from which to choose
+            let opt_assets = get_asset_options(
+                &self.model.time_slice_info,
+                &self.existing_assets,
+                &demand_for_commodity,
+                agent,
+                commodity_id,
+                region_id,
+                self.year,
+            )
+            .collect();
+
+            // Choose assets from among existing pool and candidates
+            let best_assets = select_best_assets(
+                self.model,
+                opt_assets,
+                commodity,
+                &agent.objectives[&self.year],
+                self.reduced_costs,
+                demand_for_commodity,
+            )?;
+
+            // Add assets to pool
+            self.assets.extend(best_assets);
+        }
+
+        // Perform dispatch optimisation with assets that have been selected so far
+        let solution = self.dispatch.run(self.model, self.assets, self.writer)?;
+
+        *self.flow_map = solution.create_flow_map();
+        let (_cur_prices, cur_reduced_costs) = get_prices_and_reduced_costs(
+            self.model,
+            &solution,
+            self.assets,
+            self.prices,
+            self.year,
+        );
+        *self.reduced_costs = cur_reduced_costs;
+
+        // Update demand profile
+        *demand = get_demand_profile(self.flow_map);
 
         Ok(())
     }
