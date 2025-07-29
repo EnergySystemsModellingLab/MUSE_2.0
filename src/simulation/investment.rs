@@ -50,11 +50,41 @@ pub fn perform_agent_investment(
     // Get all existing assets and clear pool
     let existing_assets = assets.take();
 
-    // Demand profile for commodities
-    let mut demand = get_demand_profile(flow_map);
-
     // For running dispatch optimisation
     let mut dispatch = DispatchRunner::new(year);
+
+    run_investment(
+        model,
+        year,
+        assets,
+        &existing_assets,
+        flow_map,
+        prices,
+        reduced_costs,
+        &mut dispatch,
+        writer,
+    )?;
+
+    // Decommission non-selected assets
+    assets.decommission_if_not_active(existing_assets, year);
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_investment(
+    model: &Model,
+    year: u32,
+    assets: &mut AssetPool,
+    existing_assets: &[AssetRef],
+    flow_map: &mut FlowMap,
+    prices: &CommodityPrices,
+    reduced_costs: &mut ReducedCosts,
+    dispatch: &mut DispatchRunner,
+    writer: &mut DataWriter,
+) -> Result<()> {
+    // Demand profile for commodities
+    let mut demand = get_demand_profile(flow_map);
 
     for region_id in model.iter_regions() {
         for commodity_id in model.commodity_order[&(region_id.clone(), year)].iter() {
@@ -78,7 +108,7 @@ pub fn perform_agent_investment(
                 // Existing and candidate assets from which to choose
                 let opt_assets = get_asset_options(
                     &model.time_slice_info,
-                    &existing_assets,
+                    existing_assets,
                     &demand_for_commodity,
                     agent,
                     commodity_id,
@@ -113,9 +143,6 @@ pub fn perform_agent_investment(
             demand = get_demand_profile(flow_map);
         }
     }
-
-    // Decommission non-selected assets
-    assets.decommission_if_not_active(existing_assets, year);
 
     Ok(())
 }
