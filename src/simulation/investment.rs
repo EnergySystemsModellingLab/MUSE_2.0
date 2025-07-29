@@ -50,101 +50,117 @@ pub fn perform_agent_investment(
     // Get all existing assets and clear pool
     let existing_assets = assets.take();
 
-    // For running dispatch optimisation
-    let mut dispatch = DispatchRunner::new(year);
-
-    run_investment(
+    let mut investment = InvestmentRunner {
         model,
         year,
         assets,
-        &existing_assets,
+        existing_assets,
         flow_map,
         prices,
         reduced_costs,
-        &mut dispatch,
         writer,
-    )?;
-
-    // Decommission non-selected assets
-    assets.decommission_if_not_active(existing_assets, year);
+        dispatch: DispatchRunner::new(year),
+    };
+    investment.run()?;
 
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-fn run_investment(
-    model: &Model,
+/// Houses the state for investment
+struct InvestmentRunner<'a> {
+    model: &'a Model,
     year: u32,
-    assets: &mut AssetPool,
-    existing_assets: &[AssetRef],
-    flow_map: &mut FlowMap,
-    prices: &CommodityPrices,
-    reduced_costs: &mut ReducedCosts,
-    dispatch: &mut DispatchRunner,
-    writer: &mut DataWriter,
-) -> Result<()> {
-    // Demand profile for commodities
-    let mut demand = get_demand_profile(flow_map);
+    assets: &'a mut AssetPool,
+    existing_assets: Vec<AssetRef>,
+    flow_map: &'a mut FlowMap,
+    prices: &'a CommodityPrices,
+    reduced_costs: &'a mut ReducedCosts,
+    writer: &'a mut DataWriter,
+    dispatch: DispatchRunner,
+}
 
-    for region_id in model.iter_regions() {
-        for commodity_id in model.commodity_order[&(region_id.clone(), year)].iter() {
-            let commodity = &model.commodities[commodity_id];
-            for (agent, commodity_portion) in
-                get_responsible_agents(model.agents.values(), commodity_id, region_id, year)
-            {
-                debug!(
-                    "Running investment for agent '{}' with commodity '{}' in region '{}'",
-                    &agent.id, commodity_id, region_id
-                );
+impl<'a> InvestmentRunner<'a> {
+    fn run(&mut self) -> Result<()> {
+        // Demand profile for commodities
+        let mut demand = get_demand_profile(self.flow_map);
 
-                let demand_for_commodity = get_demand_portion_for_commodity(
-                    &model.time_slice_info,
-                    &demand,
+        for region_id in self.model.iter_regions() {
+            for commodity_id in self.model.commodity_order[&(region_id.clone(), self.year)].iter() {
+                let commodity = &self.model.commodities[commodity_id];
+                for (agent, commodity_portion) in get_responsible_agents(
+                    self.model.agents.values(),
                     commodity_id,
                     region_id,
-                    commodity_portion,
+                    self.year,
+                ) {
+                    debug!(
+                        "Running investment for agent '{}' with commodity '{}' in region '{}'",
+                        &agent.id, commodity_id, region_id
+                    );
+
+                    let demand_for_commodity = get_demand_portion_for_commodity(
+                        &self.model.time_slice_info,
+                        &demand,
+                        commodity_id,
+                        region_id,
+                        commodity_portion,
+                    );
+
+                    // Existing and candidate assets from which to choose
+                    let opt_assets = get_asset_options(
+                        &self.model.time_slice_info,
+                        &self.existing_assets,
+                        &demand_for_commodity,
+                        agent,
+                        commodity_id,
+                        region_id,
+                        self.year,
+                    )
+                    .collect();
+
+                    // Choose assets from among existing pool and candidates
+                    let best_assets = select_best_assets(
+                        self.model,
+                        opt_assets,
+                        commodity,
+                        &agent.objectives[&self.year],
+                        self.reduced_costs,
+                        demand_for_commodity,
+                    )?;
+
+                    // Add assets to pool
+                    self.assets.extend(best_assets);
+                }
+
+                // Perform dispatch optimisation with assets that have been selected so far
+                let solution = self.dispatch.run(self.model, self.assets, self.writer)?;
+
+                *self.flow_map = solution.create_flow_map();
+                let (_cur_prices, cur_reduced_costs) = get_prices_and_reduced_costs(
+                    self.model,
+                    &solution,
+                    self.assets,
+                    self.prices,
+                    self.year,
                 );
+                *self.reduced_costs = cur_reduced_costs;
 
-                // Existing and candidate assets from which to choose
-                let opt_assets = get_asset_options(
-                    &model.time_slice_info,
-                    existing_assets,
-                    &demand_for_commodity,
-                    agent,
-                    commodity_id,
-                    region_id,
-                    year,
-                )
-                .collect();
-
-                // Choose assets from among existing pool and candidates
-                let best_assets = select_best_assets(
-                    model,
-                    opt_assets,
-                    commodity,
-                    &agent.objectives[&year],
-                    reduced_costs,
-                    demand_for_commodity,
-                )?;
-
-                // Add assets to pool
-                assets.extend(best_assets);
+                // Update demand profile
+                demand = get_demand_profile(self.flow_map);
             }
-
-            // Perform dispatch optimisation with assets that have been selected so far
-            let solution = dispatch.run(model, assets, writer)?;
-
-            *flow_map = solution.create_flow_map();
-            let (_cur_prices, cur_reduced_costs) =
-                get_prices_and_reduced_costs(model, &solution, assets, prices, year);
-            *reduced_costs = cur_reduced_costs;
-
-            // Update demand profile
-            demand = get_demand_profile(flow_map);
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
+}
+
+impl<'a> Drop for InvestmentRunner<'a> {
+    fn drop(&mut self) {
+        let existing = std::mem::take(&mut self.existing_assets);
+
+        // Decommission non-selected assets
+        self.assets.decommission_if_not_active(existing, self.year);
+    }
 }
 
 /// Get demand per time slice for every commodity
