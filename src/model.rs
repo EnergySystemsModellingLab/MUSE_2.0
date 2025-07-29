@@ -18,10 +18,17 @@ use std::path::{Path, PathBuf};
 
 const MODEL_FILE_NAME: &str = "model.toml";
 
-// Default parameter values
-const DEFAULT_CANDIDATE_ASSET_CAPACITY: Capacity = Capacity(0.0001);
-const DEFAULT_CAPACITY_LIMIT_FACTOR: Dimensionless = Dimensionless(0.1);
-const DEFAULT_VALUE_OF_LOST_LOAD: MoneyPerFlow = MoneyPerFlow(1e9);
+macro_rules! define_unit_param_default {
+    ($name:ident, $type: ty, $value: expr) => {
+        fn $name() -> $type {
+            <$type>::new($value)
+        }
+    };
+}
+
+define_unit_param_default!(default_candidate_asset_capacity, Capacity, 0.0001);
+define_unit_param_default!(default_capacity_limit_factor, Dimensionless, 0.1);
+define_unit_param_default!(default_value_of_lost_load, MoneyPerFlow, 1e9);
 
 /// Model definition
 pub struct Model {
@@ -79,18 +86,6 @@ pub enum PricingStrategy {
     /// Adjust shadow prices for scarcity
     #[string = "scarcity_adjusted"]
     ScarcityAdjusted,
-}
-
-const fn default_candidate_asset_capacity() -> Capacity {
-    DEFAULT_CANDIDATE_ASSET_CAPACITY
-}
-
-const fn default_capacity_limit_factor() -> Dimensionless {
-    DEFAULT_CAPACITY_LIMIT_FACTOR
-}
-
-const fn default_value_of_lost_load() -> MoneyPerFlow {
-    DEFAULT_VALUE_OF_LOST_LOAD
 }
 
 /// Check that the milestone years parameter is valid
