@@ -55,7 +55,6 @@ pub fn perform_agent_investment(
     // Which dispatch run for current year
     let mut run_number = 0;
 
-    // We consider SVD commodities first
     for region_id in model.iter_regions() {
         for commodity_id in model.commodity_order[&(region_id.clone(), year)].iter() {
             let commodity = &model.commodities[commodity_id];
