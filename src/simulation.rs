@@ -3,7 +3,8 @@ use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
-use crate::simulation::prices::get_prices_and_reduced_costs;
+use crate::simulation::optimisation::FlowMap;
+use crate::simulation::prices::{get_prices_and_reduced_costs, ReducedCosts};
 use crate::units::Capacity;
 use anyhow::{Context, Result};
 use log::info;
@@ -42,38 +43,13 @@ pub fn run(
     // There shouldn't be assets already commissioned, but let's do this just in case
     assets.decommission_old(year);
 
-    // Commission assets for baseline year
+    // Commission assets for base year
     assets.commission_new(year);
 
-    // Dispatch optimisation with existing assets only
-    let solution_existing =
-        perform_dispatch_optimisation(&model, &assets, &[], year, 0, &mut writer)?;
-    let flow_map = solution_existing.create_flow_map();
-
-    // Get candidate assets for next year, if any
-    let candidates = year_iter
-        .peek()
-        .map(|next_year| {
-            candidate_assets_for_year(
-                &model.processes,
-                *next_year,
-                model.parameters.candidate_asset_capacity,
-            )
-        })
-        .unwrap_or_default();
-
-    // Perform a separate dispatch run with existing assets and candidates (if there are any)
-    let solution = if candidates.is_empty() {
-        solution_existing
-    } else {
-        perform_dispatch_optimisation(&model, &assets, &candidates, year, 1, &mut writer)?
-    };
-
-    // Calculate commodity prices and asset reduced costs
-    let (prices, reduced_costs) = get_prices_and_reduced_costs(&model, &solution, &assets, year);
-
-    // Write active assets and results of dispatch optimisation to file
-    writer.write(year, &assets, &flow_map, &prices)?;
+    // Run dispatch to get flows, prices and reduced costs
+    let next_year = year_iter.peek().copied();
+    let (flow_map, _prices, reduced_costs) =
+        run_dispatch_for_base_year(&model, &assets, year, next_year, &mut writer)?;
 
     for year in year_iter {
         info!("Milestone year: {year}");
@@ -99,6 +75,45 @@ pub fn run(
     writer.flush()?;
 
     Ok(())
+}
+
+// Run dispatch to get flows, prices and reduced costs for first milestone year
+fn run_dispatch_for_base_year(
+    model: &Model,
+    assets: &AssetPool,
+    year: u32,
+    next_year: Option<u32>,
+    writer: &mut DataWriter,
+) -> Result<(FlowMap, CommodityPrices, ReducedCosts)> {
+    // Dispatch optimisation with existing assets only
+    let solution_existing = perform_dispatch_optimisation(model, assets, &[], year, 0, writer)?;
+    let flow_map = solution_existing.create_flow_map();
+
+    // Get candidate assets for next year, if any
+    let candidates = next_year
+        .map(|next_year| {
+            candidate_assets_for_year(
+                &model.processes,
+                next_year,
+                model.parameters.candidate_asset_capacity,
+            )
+        })
+        .unwrap_or_default();
+
+    // Perform a separate dispatch run with existing assets and candidates (if there are any)
+    let solution = if candidates.is_empty() {
+        solution_existing
+    } else {
+        perform_dispatch_optimisation(model, assets, &candidates, year, 1, writer)?
+    };
+
+    // Calculate commodity prices and asset reduced costs
+    let (prices, reduced_costs) = get_prices_and_reduced_costs(model, &solution, assets, year);
+
+    // Write active assets and results of dispatch optimisation to file
+    writer.write(year, assets, &flow_map, &prices)?;
+
+    Ok((flow_map, prices, reduced_costs))
 }
 
 /// Get all candidate assets for a specified year
