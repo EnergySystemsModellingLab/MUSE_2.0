@@ -4,7 +4,7 @@ use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
 use crate::simulation::optimisation::FlowMap;
-use crate::simulation::prices::{get_prices_and_reduced_costs, ReducedCosts};
+use crate::simulation::prices::{update_prices_and_reduced_costs, ReducedCosts};
 use crate::units::Capacity;
 use anyhow::{Context, Result};
 use log::info;
@@ -108,7 +108,16 @@ fn run_dispatch_for_base_year(
     };
 
     // Calculate commodity prices and asset reduced costs
-    let (prices, reduced_costs) = get_prices_and_reduced_costs(model, &solution, assets, year);
+    let mut prices = CommodityPrices::default();
+    let mut reduced_costs = ReducedCosts::default();
+    update_prices_and_reduced_costs(
+        model,
+        &solution,
+        assets,
+        year,
+        &mut prices,
+        &mut reduced_costs,
+    );
 
     // Write active assets and results of dispatch optimisation to file
     writer.write(year, assets, &flow_map, &prices)?;

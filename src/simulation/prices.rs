@@ -13,23 +13,34 @@ use std::collections::{BTreeMap, HashMap};
 /// A map of reduced costs for different assets in different time slices
 pub type ReducedCosts = HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
 
-/// Get commodity prices and reduced costs for assets
+/// Update commodity prices and reduced costs for assets.
 ///
 /// Note that the behaviour will be different depending on the [`PricingStrategy`] the user has
 /// selected.
-pub fn get_prices_and_reduced_costs(
+///
+/// # Arguments
+///
+/// * `model` - The model
+/// * `solution` - Solution to dispatch optimisation
+/// * `assets` - Asset pool
+/// * `year` - Current milestone year
+/// * `prices` - Commodity prices
+/// * `reduced_costs` - Reduced costs for assets
+pub fn update_prices_and_reduced_costs(
     model: &Model,
     solution: &Solution,
     assets: &AssetPool,
     year: u32,
-) -> (CommodityPrices, ReducedCosts) {
+    prices: &mut CommodityPrices,
+    reduced_costs: &mut ReducedCosts,
+) {
     let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
     let reduced_costs_for_candidates: HashMap<_, _> = solution
         .iter_reduced_costs_for_candidates()
         .map(|(asset, time_slice, cost)| ((asset.clone(), time_slice.clone()), cost))
         .collect();
 
-    let (prices, reduced_costs_for_candidates) = match model.parameters.pricing_strategy {
+    let (new_prices, reduced_costs_for_candidates) = match model.parameters.pricing_strategy {
         // Use raw shadow prices and reduced costs
         PricingStrategy::ShadowPrices => (
             shadow_prices.with_levies(model, year),
@@ -55,16 +66,17 @@ pub fn get_prices_and_reduced_costs(
         }
     };
 
-    // Add reduced costs for existing assets
-    let mut reduced_costs = reduced_costs_for_candidates;
+    // Use old prices for any commodities for which price is missing
+    prices.extend(new_prices);
+
+    // Add new reduced costs, using old values if not provided
+    reduced_costs.extend(reduced_costs_for_candidates);
     reduced_costs.extend(reduced_costs_for_existing(
         &model.time_slice_info,
         assets,
-        &prices,
+        prices,
         year,
     ));
-
-    (prices, reduced_costs)
 }
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
