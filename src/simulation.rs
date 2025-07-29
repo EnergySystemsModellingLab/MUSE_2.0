@@ -109,7 +109,8 @@ fn run_dispatch_for_baseline_year(
     };
 
     // Calculate commodity prices and asset reduced costs
-    let (prices, reduced_costs) = get_prices_and_reduced_costs(model, &solution, assets, year);
+    let (prices, reduced_costs) =
+        get_prices_and_reduced_costs(model, &solution, assets, &CommodityPrices::default(), year);
 
     // Write active assets and results of dispatch optimisation to file
     writer.write(year, assets, &flow_map, &prices)?;
