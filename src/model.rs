@@ -26,6 +26,15 @@ macro_rules! define_unit_param_default {
     };
 }
 
+#[allow(unused_macros)]
+macro_rules! define_param_default {
+    ($name:ident, $type: ty, $value: expr) => {
+        fn $name() -> $type {
+            $value
+        }
+    };
+}
+
 define_unit_param_default!(default_candidate_asset_capacity, Capacity, 0.0001);
 define_unit_param_default!(default_capacity_limit_factor, Dimensionless, 0.1);
 define_unit_param_default!(default_value_of_lost_load, MoneyPerFlow, 1e9);
