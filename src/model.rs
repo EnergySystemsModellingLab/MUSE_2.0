@@ -26,7 +26,6 @@ macro_rules! define_unit_param_default {
     };
 }
 
-#[allow(unused_macros)]
 macro_rules! define_param_default {
     ($name:ident, $type: ty, $value: expr) => {
         fn $name() -> $type {
@@ -38,6 +37,7 @@ macro_rules! define_param_default {
 define_unit_param_default!(default_candidate_asset_capacity, Capacity, 0.0001);
 define_unit_param_default!(default_capacity_limit_factor, Dimensionless, 0.1);
 define_unit_param_default!(default_value_of_lost_load, MoneyPerFlow, 1e9);
+define_param_default!(default_max_ironing_out_iterations, u32, 100);
 
 /// Model definition
 pub struct Model {
@@ -83,6 +83,9 @@ pub struct ModelFile {
     /// Currently this only applies to the LCOX appraisal.
     #[serde(default = "default_value_of_lost_load")]
     pub value_of_lost_load: MoneyPerFlow,
+    /// The maximum number of iterations to run the "ironing out" step of agent investment for
+    #[serde(default = "default_max_ironing_out_iterations")]
+    pub max_ironing_out_iterations: u32,
 }
 
 /// The strategy used for calculating commodity prices
