@@ -1,6 +1,6 @@
 //! The model represents the static input data provided by the user.
 use crate::agent::AgentMap;
-use crate::asset::check_capacity_valid_for_asset;
+use crate::asset::{check_capacity_valid_for_asset, Asset, AssetRef};
 use crate::commodity::{CommodityID, CommodityMap};
 use crate::input::{
     deserialise_proportion_nonzero, input_err_msg, is_sorted_and_unique, read_toml,
@@ -15,6 +15,7 @@ use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 const MODEL_FILE_NAME: &str = "model.toml";
 
@@ -149,6 +150,32 @@ impl ModelFile {
 }
 
 impl Model {
+    /// Create candidate assets for a specified year
+    pub fn create_candidate_assets_for_year(&self, year: u32) -> Vec<AssetRef> {
+        let mut candidates = Vec::new();
+        for process in self
+            .processes
+            .values()
+            .filter(move |process| process.active_for_year(year))
+        {
+            for region_id in process.regions.iter() {
+                candidates.push(
+                    Asset::new(
+                        None,
+                        Rc::clone(process),
+                        region_id.clone(),
+                        self.parameters.candidate_asset_capacity,
+                        year,
+                    )
+                    .unwrap()
+                    .into(),
+                );
+            }
+        }
+
+        candidates
+    }
+
     /// Iterate over the model's milestone years.
     pub fn iter_years(&self) -> impl Iterator<Item = u32> + '_ {
         self.parameters.milestone_years.iter().copied()
