@@ -188,14 +188,20 @@ impl<'a> DispatchRunner<'a> {
     /// # Arguments
     ///
     /// * `asset_pool` - The asset pool
-    /// * `candidate_assets` - Candidate assets for inclusion in active pool
     /// * `writer` - Data writer
     ///
     /// # Returns
     ///
     /// A solution containing new commodity flows for assets and prices for (some) commodities or an
     /// error.
-    pub fn run(
+    pub fn run(&mut self, asset_pool: &AssetPool, writer: &mut DataWriter) -> Result<Solution> {
+        self.run_with_candidates(asset_pool, &[], writer)
+    }
+
+    /// Run the dispatch optimisation with candidate assets and save debug information to file.
+    ///
+    /// See [`DispatchRunner::run`].
+    pub fn run_with_candidates(
         &mut self,
         asset_pool: &AssetPool,
         candidate_assets: &[AssetRef],
