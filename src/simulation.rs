@@ -93,7 +93,7 @@ fn run_dispatch_for_baseline_year(
     let mut dispatch = DispatchRunner::new(year);
 
     // Dispatch optimisation with existing assets only
-    let solution_existing = dispatch.run(model, assets, &[], writer)?;
+    let solution_existing = dispatch.run(model, assets, writer)?;
     let flow_map = solution_existing.create_flow_map();
 
     // Get candidate assets for next year, if any
@@ -111,7 +111,7 @@ fn run_dispatch_for_baseline_year(
     let solution = if candidates.is_empty() {
         solution_existing
     } else {
-        dispatch.run(model, assets, &candidates, writer)?
+        dispatch.run_with_candidates(model, assets, &candidates, writer)?
     };
 
     // Calculate commodity prices and asset reduced costs

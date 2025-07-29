@@ -102,7 +102,7 @@ pub fn perform_agent_investment(
             }
 
             // Perform dispatch optimisation with assets that have been selected so far
-            let solution = dispatch.run(model, assets, &[], writer)?;
+            let solution = dispatch.run(model, assets, writer)?;
 
             *flow_map = solution.create_flow_map();
             let (_cur_prices, cur_reduced_costs) =
