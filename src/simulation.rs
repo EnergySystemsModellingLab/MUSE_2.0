@@ -91,17 +91,10 @@ fn run_dispatch_for_base_year(
     let solution_existing = dispatch.run(model, assets, writer)?;
     let flow_map = solution_existing.create_flow_map();
 
-    // Get candidate assets for next year, if any
-    let candidates = next_year
-        .map(|next_year| model.create_candidate_assets_for_year(next_year))
-        .unwrap_or_default();
-
     // Perform a separate dispatch run with existing assets and candidates (if there are any)
-    let solution = if candidates.is_empty() {
-        solution_existing
-    } else {
-        dispatch.run_with_candidates(model, assets, &candidates, writer)?
-    };
+    let solution = dispatch
+        .try_run_with_candidates(model, assets, next_year, writer)?
+        .unwrap_or(solution_existing);
 
     // Calculate commodity prices and asset reduced costs
     let mut prices = CommodityPrices::default();
