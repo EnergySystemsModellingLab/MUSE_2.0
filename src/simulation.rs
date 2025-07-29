@@ -46,7 +46,7 @@ pub fn run(
     let (mut flow_map, prices, mut reduced_costs) =
         run_dispatch_for_baseline_year(&model, &assets, year, next_year, &mut writer)?;
 
-    for (year, _next_year) in year_iter {
+    for (year, next_year) in year_iter {
         info!("Milestone year: {year}");
 
         // Decommission assets whose lifetime has passed. We do this *before* agent investment, to
@@ -57,6 +57,7 @@ pub fn run(
         perform_agent_investment(
             &model,
             year,
+            next_year,
             &mut assets,
             &mut flow_map,
             &prices,

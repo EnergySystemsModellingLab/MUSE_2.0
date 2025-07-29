@@ -11,7 +11,7 @@ use crate::simulation::optimisation::DispatchRunner;
 use crate::simulation::CommodityPrices;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
-use anyhow::{ensure, Result};
+use anyhow::{bail, ensure, Result};
 use itertools::chain;
 use log::{debug, info};
 use std::collections::HashMap;
@@ -31,14 +31,17 @@ type AllDemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 ///
 /// * `model` - The model
 /// * `year` - Current milestone year
+/// * `next_year` - Next milestone year
 /// * `assets` - The asset pool
 /// * `flow_map` - Map of commodity flows
 /// * `prices` - Commodity prices
 /// * `reduced_costs` - Reduced costs for assets
 /// * `writer` - Data writer
+#[allow(clippy::too_many_arguments)]
 pub fn perform_agent_investment(
     model: &Model,
     year: u32,
+    next_year: Option<u32>,
     assets: &mut AssetPool,
     flow_map: &mut FlowMap,
     prices: &CommodityPrices,
@@ -63,6 +66,8 @@ pub fn perform_agent_investment(
     };
     let ordered_commodities = get_ordered_commodities(model, year);
     investment.run(ordered_commodities)?;
+
+    investment.run_ironing_out_loop(next_year)?;
 
     Ok(())
 }
@@ -104,6 +109,24 @@ impl<'a> InvestmentRunner<'a> {
         }
 
         Ok(())
+    }
+
+    fn run_ironing_out_loop(&mut self, next_year: Option<u32>) -> Result<()> {
+        let max_iters = self.model.parameters.max_ironing_out_iterations;
+
+        let solution = self.dispatch.try_run_with_candidates(
+            self.model,
+            self.assets,
+            next_year,
+            self.writer,
+        )?;
+        let Some(_solution) = solution else {
+            return Ok(());
+        };
+
+        for _ in 1..=max_iters {}
+
+        bail!("Failed to converge after {max_iters} iterations");
     }
 
     fn run_for_commodity(
