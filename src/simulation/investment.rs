@@ -75,8 +75,6 @@ fn run_agent_investment(
     writer: &mut DataWriter,
     dispatch: &mut DispatchRunner,
 ) -> Result<()> {
-    info!("Performing agent investment...");
-
     // Demand profile for commodities
     let mut demand = get_demand_profile(&output.flow_map, &model.commodities);
 
