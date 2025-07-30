@@ -3,7 +3,7 @@ use super::optimisation::{perform_dispatch_optimisation, FlowMap};
 use super::prices::{get_prices_and_reduced_costs, ReducedCosts};
 use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
-use crate::commodity::{Commodity, CommodityID};
+use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
@@ -50,7 +50,7 @@ pub fn perform_agent_investment(
     let existing_assets = assets.take();
 
     // Demand profile for commodities
-    let mut demand = get_demand_profile(flow_map);
+    let mut demand = get_demand_profile(flow_map, &model.commodities);
 
     // Which dispatch run for current year
     let mut run_number = 0;
@@ -119,7 +119,7 @@ pub fn perform_agent_investment(
             *reduced_costs = cur_reduced_costs;
 
             // Update demand profile
-            demand = get_demand_profile(flow_map);
+            demand = get_demand_profile(flow_map, &model.commodities);
         }
     }
 
@@ -130,18 +130,22 @@ pub fn perform_agent_investment(
 }
 
 /// Get demand per time slice for every commodity
-fn get_demand_profile(flow_map: &FlowMap) -> AllDemandMap {
+fn get_demand_profile(flow_map: &FlowMap, commodities: &CommodityMap) -> AllDemandMap {
     let mut map = HashMap::new();
     for ((asset, commodity_id, time_slice), &flow) in flow_map.iter() {
-        if flow > Flow(0.0) {
-            map.entry((
-                commodity_id.clone(),
-                asset.region_id.clone(),
-                time_slice.clone(),
-            ))
-            .and_modify(|value| *value += flow)
-            .or_insert(flow);
-        }
+        let demand = match commodities[commodity_id].kind {
+            CommodityType::ServiceDemand if flow > Flow(0.0) => flow,
+            CommodityType::SupplyEqualsDemand if flow < Flow(0.0) => -flow,
+            _ => continue,
+        };
+
+        map.entry((
+            commodity_id.clone(),
+            asset.region_id.clone(),
+            time_slice.clone(),
+        ))
+        .and_modify(|value| *value += demand)
+        .or_insert(demand);
     }
 
     map
@@ -416,6 +420,7 @@ mod tests {
         ActivityPerCapacity, Dimensionless, Flow, FlowPerActivity, MoneyPerActivity,
         MoneyPerCapacity, MoneyPerCapacityPerYear, MoneyPerFlow,
     };
+    use indexmap::IndexMap;
     use itertools::Itertools;
     use rstest::rstest;
     use std::collections::HashMap;
@@ -439,6 +444,7 @@ mod tests {
         region_id: RegionID,
         time_slice: TimeSliceID,
         asset: Asset,
+        svd_commodity: Commodity,
     ) {
         // Setup test asset and AssetRef
         let asset_ref1 = AssetRef::from(asset.clone());
@@ -469,8 +475,12 @@ mod tests {
             Flow(0.0),
         ); // Should be ignored
 
+        // Create commodities map for the test
+        let mut commodities = IndexMap::new();
+        commodities.insert(commodity_id.clone(), Rc::new(svd_commodity));
+
         // Call get_demand_profile
-        let result = get_demand_profile(&flow_map);
+        let result = get_demand_profile(&flow_map, &commodities);
 
         // Check result
         let mut expected = HashMap::new();
