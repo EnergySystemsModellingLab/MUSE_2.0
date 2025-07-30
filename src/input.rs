@@ -174,31 +174,25 @@ where
 /// # Returns
 ///
 /// The static model data ([`Model`]) and an [`AssetPool`] struct or an error.
-pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
-    let model_file = ModelFile::from_path(&model_dir)?;
+pub fn load_model(model_dir: &Path) -> Result<(Model, AssetPool)> {
+    let model_file = ModelFile::from_path(model_dir)?;
 
-    let time_slice_info = read_time_slice_info(model_dir.as_ref())?;
-    let regions = read_regions(model_dir.as_ref())?;
+    let time_slice_info = read_time_slice_info(model_dir)?;
+    let regions = read_regions(model_dir)?;
     let region_ids = regions.keys().cloned().collect();
     let years = &model_file.milestone_years;
 
-    let commodities = read_commodities(model_dir.as_ref(), &region_ids, &time_slice_info, years)?;
+    let commodities = read_commodities(model_dir, &region_ids, &time_slice_info, years)?;
     let processes = read_processes(
-        model_dir.as_ref(),
+        model_dir,
         &commodities,
         &region_ids,
         &time_slice_info,
         years,
     )?;
-    let agents = read_agents(
-        model_dir.as_ref(),
-        &commodities,
-        &processes,
-        &region_ids,
-        years,
-    )?;
+    let agents = read_agents(model_dir, &commodities, &processes, &region_ids, years)?;
     let agent_ids = agents.keys().cloned().collect();
-    let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
+    let assets = read_assets(model_dir, &agent_ids, &processes, &region_ids)?;
 
     // Determine commodity ordering for each region and year
     let commodity_order = iproduct!(region_ids, years.iter())
@@ -211,7 +205,6 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
         .try_collect()?;
 
     let model_path = model_dir
-        .as_ref()
         .canonicalize()
         .context("Could not parse path to model")?;
     let model = Model {
