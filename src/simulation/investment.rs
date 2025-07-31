@@ -46,11 +46,39 @@ pub fn perform_agent_investment(
     // Get all existing assets and clear pool
     let existing_assets = assets.take();
 
-    // Demand profile for commodities
-    let mut demand = get_demand_profile(&output.flow_map, &model.commodities);
-
     // For running dispatch optimisation
     let mut dispatch = DispatchRunner::new(year);
+
+    run_agent_investment(
+        model,
+        year,
+        assets,
+        &existing_assets,
+        output,
+        writer,
+        &mut dispatch,
+    )?;
+
+    // Decommission non-selected assets
+    assets.decommission_if_not_active(existing_assets, year);
+
+    Ok(())
+}
+
+/// Main loop for agent investment
+fn run_agent_investment(
+    model: &Model,
+    year: u32,
+    assets: &mut AssetPool,
+    existing_assets: &[AssetRef],
+    output: &mut DispatchOutput,
+    writer: &mut DataWriter,
+    dispatch: &mut DispatchRunner,
+) -> Result<()> {
+    info!("Performing agent investment...");
+
+    // Demand profile for commodities
+    let mut demand = get_demand_profile(&output.flow_map, &model.commodities);
 
     for region_id in model.iter_regions() {
         let mut seen_commodities = Vec::new();
@@ -75,7 +103,7 @@ pub fn perform_agent_investment(
                 // Existing and candidate assets from which to choose
                 let opt_assets = get_asset_options(
                     &model.time_slice_info,
-                    &existing_assets,
+                    existing_assets,
                     &demand_for_commodity,
                     agent,
                     commodity_id,
@@ -116,9 +144,6 @@ pub fn perform_agent_investment(
             demand = get_demand_profile(&output.flow_map, &model.commodities);
         }
     }
-
-    // Decommission non-selected assets
-    assets.decommission_if_not_active(existing_assets, year);
 
     Ok(())
 }
