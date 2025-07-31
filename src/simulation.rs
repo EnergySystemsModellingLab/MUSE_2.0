@@ -74,8 +74,8 @@ pub fn run(
         // year before agents have the option of decommissioning them
         assets.commission_new(year);
 
-        // **TODO:** Write output data for this milestone year. Skipping for now as agent investment
-        // is not implemented, so data will just be a duplicate of first milestone year.
+        // Write assets and results of dispatch optimisation to file
+        writer.write(year, &assets, &flow_map, &prices)?;
     }
 
     writer.flush()?;
@@ -126,7 +126,7 @@ fn run_dispatch_for_base_year(
         &mut reduced_costs,
     );
 
-    // Write active assets and results of dispatch optimisation to file
+    // Write assets and results of dispatch optimisation to file
     writer.write(year, assets, &flow_map, &prices)?;
 
     Ok((flow_map, prices, reduced_costs))
