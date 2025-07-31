@@ -1,5 +1,5 @@
 //! Code for updating the simulation state.
-use crate::asset::{AssetPool, AssetRef};
+use crate::asset::AssetRef;
 use crate::commodity::CommodityID;
 use crate::model::{Model, PricingStrategy};
 use crate::process::ProcessFlow;
@@ -25,7 +25,7 @@ pub type ReducedCosts = HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
 ///
 /// * `model` - The model
 /// * `solution` - Solution to dispatch optimisation
-/// * `assets` - Asset pool
+/// * `existing_assets` - Existing assets
 /// * `old_prices` - Commodity prices from previous milestone year, if any
 /// * `year` - Current milestone year
 ///
@@ -33,13 +33,16 @@ pub type ReducedCosts = HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
 ///
 /// Commodity prices and reduced costs, calculated using the appropriate pricing strategy from input
 /// data and the results of the dispatch optimisation.
-pub fn get_prices_and_reduced_costs(
+pub fn get_prices_and_reduced_costs<'a, I>(
     model: &Model,
     solution: &Solution,
-    assets: &AssetPool,
+    existing_assets: I,
     old_prices: &CommodityPrices,
     year: u32,
-) -> (CommodityPrices, ReducedCosts) {
+) -> (CommodityPrices, ReducedCosts)
+where
+    I: Iterator<Item = &'a AssetRef>,
+{
     let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
     let reduced_costs_for_candidates: HashMap<_, _> = solution
         .iter_reduced_costs_for_candidates()
@@ -82,7 +85,7 @@ pub fn get_prices_and_reduced_costs(
     add_reduced_costs_for_existing(
         &mut reduced_costs,
         &model.time_slice_info,
-        assets,
+        existing_assets,
         &prices,
         year,
     );
@@ -285,14 +288,18 @@ fn get_scarcity_adjustment(
 }
 
 /// Calculate reduced costs for existing assets
-fn add_reduced_costs_for_existing(
+fn add_reduced_costs_for_existing<'a, I>(
     reduced_costs: &mut ReducedCosts,
     time_slice_info: &TimeSliceInfo,
-    assets: &AssetPool,
+    assets: I,
     prices: &CommodityPrices,
     year: u32,
-) {
-    for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
+) where
+    I: Iterator<Item = &'a AssetRef>,
+{
+    for (asset, time_slice) in iproduct!(assets, time_slice_info.iter_ids()) {
+        assert!(asset.is_commissioned());
+
         let operating_cost = asset.get_operating_cost(year, time_slice);
         let revenue_from_flows = asset
             .iter_flows()
