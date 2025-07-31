@@ -105,7 +105,7 @@ pub fn perform_agent_investment(
             seen_commodities.push(commodity_id.clone());
             let solution = perform_dispatch_optimisation(
                 model,
-                assets,
+                assets.iter(),
                 &[],
                 Some(&seen_commodities),
                 year,

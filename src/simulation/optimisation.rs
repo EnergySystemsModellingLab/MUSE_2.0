@@ -1,7 +1,7 @@
 //! Code for performing dispatch optimisation.
 //!
 //! This is used to calculate commodity flows and prices.
-use crate::asset::{Asset, AssetPool, AssetRef};
+use crate::asset::{Asset, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::output::DataWriter;
@@ -11,7 +11,7 @@ use crate::units::{Activity, Flow, Money, MoneyPerActivity, MoneyPerFlow, UnitTy
 use anyhow::{anyhow, ensure, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
-use itertools::{chain, iproduct};
+use itertools::iproduct;
 use log::debug;
 use std::ops::Range;
 
@@ -186,7 +186,7 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
 /// # Arguments
 ///
 /// * `model` - The model
-/// * `asset_pool` - The asset pool
+/// * `existing_assets` - Assets that have already been commissioned or chosen
 /// * `candidate_assets` - Candidate assets for inclusion in active pool
 /// * `commodities` - The subset of commodities to apply constraints to
 /// * `year` - Current milestone year
@@ -196,18 +196,21 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
 /// # Returns
 ///
 /// A solution containing new commodity flows for assets and prices for (some) commodities.
-pub fn perform_dispatch_optimisation<'a>(
+pub fn perform_dispatch_optimisation<'a, 'b, I>(
     model: &'a Model,
-    asset_pool: &AssetPool,
+    existing_assets: I,
     candidate_assets: &[AssetRef],
     commodities: Option<&[CommodityID]>,
     year: u32,
     run_number: u32,
     writer: &mut DataWriter,
-) -> Result<Solution<'a>> {
+) -> Result<Solution<'a>>
+where
+    I: Iterator<Item = &'b AssetRef>,
+{
     let solution = perform_dispatch_optimisation_no_save(
         model,
-        asset_pool,
+        existing_assets.cloned().collect(),
         candidate_assets,
         commodities,
         year,
@@ -221,7 +224,7 @@ pub fn perform_dispatch_optimisation<'a>(
 /// Perform the dispatch optimisation without saving output data
 fn perform_dispatch_optimisation_no_save<'a>(
     model: &'a Model,
-    asset_pool: &AssetPool,
+    existing_assets: Vec<AssetRef>,
     candidate_assets: &[AssetRef],
     commodities: Option<&[CommodityID]>,
     year: u32,
@@ -233,7 +236,7 @@ fn perform_dispatch_optimisation_no_save<'a>(
         &mut problem,
         &mut variables,
         &model.time_slice_info,
-        asset_pool.as_slice(),
+        &existing_assets,
         year,
     );
     let candidate_asset_var_idx = add_variables(
@@ -244,18 +247,23 @@ fn perform_dispatch_optimisation_no_save<'a>(
         year,
     );
 
-    // Add constraints
-    let all_assets = chain(asset_pool.iter(), candidate_assets.iter());
+    // Concatenate assets
+    let mut all_assets = existing_assets;
+    all_assets.extend_from_slice(candidate_assets);
+
+    // If commodities weren't explicitly specified, include constraints for all
     let mut all_commodities = Vec::new();
     let commodities = commodities.unwrap_or_else(|| {
         all_commodities = model.commodities.keys().cloned().collect();
         &all_commodities
     });
+
+    // Add constraints
     let constraint_keys = add_asset_constraints(
         &mut problem,
         &variables,
         model,
-        all_assets,
+        &all_assets,
         commodities,
         year,
     );

@@ -56,32 +56,23 @@ pub struct ConstraintKeys {
 /// * `problem` - The optimisation problem
 /// * `variables` - The variables in the problem
 /// * `model` - The model
-/// * `assets` - The asset pool
+/// * `assets` - Assets included in optimisation
 /// * `commodities` - The subset of commodities to apply constraints to
 /// * `year` - Current milestone year
 ///
 /// # Returns
 ///
 /// Keys for the different constraints.
-pub fn add_asset_constraints<'a, I>(
+pub fn add_asset_constraints(
     problem: &mut Problem,
     variables: &VariableMap,
-    model: &'a Model,
-    assets: I,
-    commodities: &'a [CommodityID],
+    model: &Model,
+    assets: &[AssetRef],
+    commodities: &[CommodityID],
     year: u32,
-) -> ConstraintKeys
-where
-    I: Iterator<Item = &'a AssetRef> + Clone + 'a,
-{
-    let commodity_balance_keys = add_commodity_balance_constraints(
-        problem,
-        variables,
-        model,
-        assets.clone(),
-        commodities,
-        year,
-    );
+) -> ConstraintKeys {
+    let commodity_balance_keys =
+        add_commodity_balance_constraints(problem, variables, model, assets, commodities, year);
 
     let activity_keys = add_activity_constraints(problem, variables);
 
@@ -99,17 +90,14 @@ where
 /// See description in [the dispatch optimisation documentation][1].
 ///
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/model/dispatch_optimisation.html#commodity-balance-for--cin-mathbfcmathrmsed-
-fn add_commodity_balance_constraints<'a, I>(
+fn add_commodity_balance_constraints(
     problem: &mut Problem,
     variables: &VariableMap,
-    model: &'a Model,
-    assets: I,
-    commodities: &'a [CommodityID],
+    model: &Model,
+    assets: &[AssetRef],
+    commodities: &[CommodityID],
     year: u32,
-) -> CommodityBalanceKeys
-where
-    I: Iterator<Item = &'a AssetRef> + Clone + 'a,
-{
+) -> CommodityBalanceKeys {
     // Row offset in problem. This line **must** come before we add more constraints.
     let offset = problem.num_rows();
 
@@ -130,7 +118,7 @@ where
                 .iter_selections_at_level(commodity.time_slice_level)
             {
                 for (asset, flow) in assets
-                    .clone()
+                    .iter()
                     .filter_region(region_id)
                     .flows_for_commodity(commodity_id)
                 {
