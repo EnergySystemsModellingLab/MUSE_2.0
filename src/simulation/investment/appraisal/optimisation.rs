@@ -6,9 +6,10 @@ use super::constraints::{
 use super::DemandMap;
 use crate::asset::AssetRef;
 use crate::commodity::Commodity;
+use crate::simulation::optimisation::solve_optimal;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Activity, Capacity, Flow};
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use highs::{RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 
@@ -120,11 +121,7 @@ pub fn perform_optimisation(
     );
 
     // Solve model
-    let solution = problem
-        .optimise(sense)
-        .try_solve()
-        .map_err(|status| anyhow!("Could not solve: {status:?}"))?
-        .get_solution();
+    let solution = solve_optimal(problem.optimise(sense))?.get_solution();
     let solution_values = solution.columns();
     Ok(ResultsMap {
         capacity: Capacity::new(solution_values[0]),
