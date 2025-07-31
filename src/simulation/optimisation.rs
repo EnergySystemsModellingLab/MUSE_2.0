@@ -1,6 +1,7 @@
 //! Code for performing dispatch optimisation.
 //!
 //! This is used to calculate commodity flows and prices.
+use crate::agent::AgentID;
 use crate::asset::{Asset, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
@@ -37,12 +38,12 @@ type Variable = highs::Col;
 /// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
 ///    are reading the results of the optimisation.
 #[derive(Default)]
-pub struct VariableMap(IndexMap<(AssetRef, TimeSliceID), Variable>);
+pub struct VariableMap(IndexMap<(AssetRef, Option<AgentID>, TimeSliceID), Variable>);
 
 impl VariableMap {
     /// Get the [`Variable`] corresponding to the given parameters.
     fn get(&self, asset: &AssetRef, time_slice: &TimeSliceID) -> Variable {
-        let key = (asset.clone(), time_slice.clone());
+        let key = (asset.clone(), asset.agent_id.clone(), time_slice.clone());
 
         *self
             .0
@@ -54,7 +55,7 @@ impl VariableMap {
     fn iter(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Variable)> {
         self.0
             .iter()
-            .map(|((asset, time_slice), var)| (asset, time_slice, *var))
+            .map(|((asset, _, time_slice), var)| (asset, time_slice, *var))
     }
 }
 
@@ -96,7 +97,7 @@ impl Solution<'_> {
             .0
             .keys()
             .zip(self.solution.columns())
-            .map(|((asset, time_slice), activity)| (asset, time_slice, Activity(*activity)))
+            .map(|((asset, _, time_slice), activity)| (asset, time_slice, Activity(*activity)))
     }
 
     /// Activity for each existing asset
@@ -155,7 +156,7 @@ impl Solution<'_> {
         assert!(keys.len() >= variable_idx.len());
 
         keys.zip(output[variable_idx.clone()].iter())
-            .map(|((asset, time_slice), value)| (asset, time_slice, T::new(*value)))
+            .map(|((asset, _, time_slice), value)| (asset, time_slice, T::new(*value)))
     }
 }
 
@@ -307,7 +308,7 @@ fn add_variables(
     for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
         let coeff = calculate_cost_coefficient(asset, year, time_slice);
         let var = problem.add_column(coeff.value(), 0.0..);
-        let key = (asset.clone(), time_slice.clone());
+        let key = (asset.clone(), asset.agent_id.clone(), time_slice.clone());
         let existing = variables.0.insert(key, var).is_some();
         assert!(!existing, "Duplicate entry for var");
     }
