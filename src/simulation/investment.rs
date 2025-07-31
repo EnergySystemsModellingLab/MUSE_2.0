@@ -1,13 +1,13 @@
 //! Code for performing agent investment.
 use super::optimisation::{perform_dispatch_optimisation, FlowMap};
 use super::prices::{update_prices_and_reduced_costs, ReducedCosts};
+use super::DispatchOutput;
 use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
 use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
-use crate::simulation::CommodityPrices;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
@@ -31,17 +31,13 @@ type AllDemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 /// * `model` - The model
 /// * `year` - Current milestone year
 /// * `assets` - The asset pool
-/// * `flow_map` - Map of commodity flows
-/// * `prices` - Commodity prices
-/// * `reduced_costs` - Reduced costs for assets
+/// * `output` - Dispatch output from previous run
 /// * `writer` - Data writer
 pub fn perform_agent_investment(
     model: &Model,
     year: u32,
     assets: &mut AssetPool,
-    flow_map: &mut FlowMap,
-    prices: &mut CommodityPrices,
-    reduced_costs: &mut ReducedCosts,
+    output: &mut DispatchOutput,
     writer: &mut DataWriter,
 ) -> Result<()> {
     info!("Performing agent investment...");
@@ -50,7 +46,7 @@ pub fn perform_agent_investment(
     let existing_assets = assets.take();
 
     // Demand profile for commodities
-    let mut demand = get_demand_profile(flow_map, &model.commodities);
+    let mut demand = get_demand_profile(&output.flow_map, &model.commodities);
 
     // Which dispatch run for current year
     let mut run_number = 0;
@@ -93,7 +89,7 @@ pub fn perform_agent_investment(
                     opt_assets,
                     commodity,
                     &agent.objectives[&year],
-                    reduced_costs,
+                    &output.reduced_costs,
                     demand_for_commodity,
                 )?;
 
@@ -113,11 +109,18 @@ pub fn perform_agent_investment(
                 writer,
             )?;
             run_number += 1;
-            *flow_map = solution.create_flow_map();
-            update_prices_and_reduced_costs(model, &solution, assets, year, prices, reduced_costs);
+            output.flow_map = solution.create_flow_map();
+            update_prices_and_reduced_costs(
+                model,
+                &solution,
+                assets,
+                year,
+                &mut output.prices,
+                &mut output.reduced_costs,
+            );
 
             // Update demand profile
-            demand = get_demand_profile(flow_map, &model.commodities);
+            demand = get_demand_profile(&output.flow_map, &model.commodities);
         }
     }
 

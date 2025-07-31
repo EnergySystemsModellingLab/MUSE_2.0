@@ -18,6 +18,13 @@ use investment::perform_agent_investment;
 pub mod prices;
 pub use prices::CommodityPrices;
 
+/// The outputs of the dispatch optimisation and price calculation steps
+pub struct DispatchOutput {
+    flow_map: FlowMap,
+    prices: CommodityPrices,
+    reduced_costs: ReducedCosts,
+}
+
 /// Run the simulation.
 ///
 /// # Arguments:
@@ -48,8 +55,7 @@ pub fn run(
 
     // Run dispatch to get flows, prices and reduced costs
     let next_year = year_iter.peek().copied();
-    let (mut flow_map, mut prices, mut reduced_costs) =
-        run_dispatch_for_base_year(&model, &assets, year, next_year, &mut writer)?;
+    let mut output = run_dispatch_for_base_year(&model, &assets, year, next_year, &mut writer)?;
 
     for year in year_iter {
         info!("Milestone year: {year}");
@@ -59,23 +65,15 @@ pub fn run(
         // year.
         assets.decommission_old(year);
 
-        perform_agent_investment(
-            &model,
-            year,
-            &mut assets,
-            &mut flow_map,
-            &mut prices,
-            &mut reduced_costs,
-            &mut writer,
-        )
-        .context("Agent investment failed")?;
+        perform_agent_investment(&model, year, &mut assets, &mut output, &mut writer)
+            .context("Agent investment failed")?;
 
         // Newly commissioned assets will be included in optimisation for at least one milestone
         // year before agents have the option of decommissioning them
         assets.commission_new(year);
 
         // Write assets and results of dispatch optimisation to file
-        writer.write(year, &assets, &flow_map, &prices)?;
+        writer.write(year, &assets, &output.flow_map, &output.prices)?;
     }
 
     writer.flush()?;
@@ -90,7 +88,7 @@ fn run_dispatch_for_base_year(
     year: u32,
     next_year: Option<u32>,
     writer: &mut DataWriter,
-) -> Result<(FlowMap, CommodityPrices, ReducedCosts)> {
+) -> Result<DispatchOutput> {
     // Dispatch optimisation with existing assets only
     let solution_existing =
         perform_dispatch_optimisation(model, assets, &[], None, year, 0, writer)?;
@@ -129,7 +127,11 @@ fn run_dispatch_for_base_year(
     // Write assets and results of dispatch optimisation to file
     writer.write(year, assets, &flow_map, &prices)?;
 
-    Ok((flow_map, prices, reduced_costs))
+    Ok(DispatchOutput {
+        flow_map,
+        prices,
+        reduced_costs,
+    })
 }
 
 /// Get all candidate assets for a specified year
