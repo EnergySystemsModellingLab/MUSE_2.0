@@ -181,6 +181,16 @@ impl<'a> FromIterator<(&'a CommodityID, &'a RegionID, &'a TimeSliceID, MoneyPerF
     }
 }
 
+impl IntoIterator for CommodityPrices {
+    type Item = ((CommodityID, RegionID, TimeSliceID), MoneyPerFlow);
+    type IntoIter =
+        std::collections::btree_map::IntoIter<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 fn get_highest_activity_duals<'a, I>(
     activity_duals: I,
 ) -> HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerActivity>
