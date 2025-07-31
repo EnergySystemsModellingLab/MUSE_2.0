@@ -11,7 +11,7 @@ use crate::region::RegionID;
 use crate::simulation::optimisation::DispatchRunner;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
-use anyhow::{ensure, Result};
+use anyhow::{bail, ensure, Result};
 use itertools::chain;
 use log::{debug, info};
 use std::collections::HashMap;
@@ -31,12 +31,14 @@ type AllDemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 ///
 /// * `model` - The model
 /// * `year` - Current milestone year
+/// * `next_year` - Next milestone year (if any)
 /// * `assets` - The asset pool
 /// * `output` - Dispatch output from previous run
 /// * `writer` - Data writer
 pub fn perform_agent_investment(
     model: &Model,
     year: u32,
+    next_year: Option<u32>,
     assets: &mut AssetPool,
     output: &mut DispatchOutput,
     writer: &mut DataWriter,
@@ -144,6 +146,29 @@ fn run_agent_investment(
     }
 
     Ok(())
+}
+
+fn run_ironing_out_loop(
+    model: &Model,
+    year: u32,
+    next_year: Option<u32>,
+    assets: &mut AssetPool,
+    existing_assets: &[AssetRef],
+    output: &mut DispatchOutput,
+    writer: &mut DataWriter,
+    dispatch: &mut DispatchRunner,
+) -> Result<()> {
+    let max_iters = model.parameters.max_ironing_out_iterations;
+
+    let solution = dispatch.try_run_with_candidates(model, assets, next_year, writer)?;
+    let Some(_solution) = solution else {
+        return Ok(());
+    };
+
+    let old_prices = output.prices.clone();
+    // for _ in 1..=max_iters {}
+
+    bail!("Failed to converge after {max_iters} iterations");
 }
 
 /// Get demand per time slice for every commodity

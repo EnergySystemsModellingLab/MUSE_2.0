@@ -52,7 +52,7 @@ pub fn run(
     // Run dispatch to get flows, prices and reduced costs
     let mut output = run_dispatch_for_base_year(&model, &assets, year, next_year, &mut writer)?;
 
-    for (year, _next_year) in year_iter {
+    for (year, next_year) in year_iter {
         info!("Milestone year: {year}");
 
         // Decommission assets whose lifetime has passed. We do this *before* agent investment, to
@@ -60,8 +60,15 @@ pub fn run(
         // year.
         assets.decommission_old(year);
 
-        perform_agent_investment(&model, year, &mut assets, &mut output, &mut writer)
-            .context("Agent investment failed")?;
+        perform_agent_investment(
+            &model,
+            year,
+            next_year,
+            &mut assets,
+            &mut output,
+            &mut writer,
+        )
+        .context("Agent investment failed")?;
 
         // Newly commissioned assets will be included in optimisation for at least one milestone
         // year before agents have the option of decommissioning them
