@@ -123,6 +123,14 @@ impl CommodityPrices {
         self
     }
 
+    /// Extend the prices map, possibly overwriting values
+    pub fn extend<T>(&mut self, iter: T)
+    where
+        T: IntoIterator<Item = ((CommodityID, RegionID, TimeSliceID), MoneyPerFlow)>,
+    {
+        self.0.extend(iter);
+    }
+
     /// Insert a price for the given commodity, region and time slice
     pub fn insert(
         &mut self,
