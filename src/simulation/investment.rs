@@ -114,8 +114,13 @@ pub fn perform_agent_investment(
             )?;
             run_number += 1;
             *flow_map = solution.create_flow_map();
-            let (_cur_prices, cur_reduced_costs) =
-                get_prices_and_reduced_costs(model, &solution, assets.iter(), prices, year);
+            let (_cur_prices, cur_reduced_costs) = get_prices_and_reduced_costs(
+                model,
+                &solution,
+                chain(assets.iter(), existing_assets.iter()),
+                prices,
+                year,
+            );
             *reduced_costs = cur_reduced_costs;
 
             // Update demand profile
