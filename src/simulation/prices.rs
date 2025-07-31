@@ -79,12 +79,13 @@ pub fn get_prices_and_reduced_costs(
 
     // Add reduced costs for existing assets
     let mut reduced_costs = reduced_costs_for_candidates;
-    reduced_costs.extend(reduced_costs_for_existing(
+    add_reduced_costs_for_existing(
+        &mut reduced_costs,
         &model.time_slice_info,
         assets,
         &prices,
         year,
-    ));
+    );
 
     (prices, reduced_costs)
 }
@@ -284,13 +285,14 @@ fn get_scarcity_adjustment(
 }
 
 /// Calculate reduced costs for existing assets
-fn reduced_costs_for_existing<'a>(
-    time_slice_info: &'a TimeSliceInfo,
-    assets: &'a AssetPool,
-    prices: &'a CommodityPrices,
+fn add_reduced_costs_for_existing(
+    reduced_costs: &mut ReducedCosts,
+    time_slice_info: &TimeSliceInfo,
+    assets: &AssetPool,
+    prices: &CommodityPrices,
     year: u32,
-) -> impl Iterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)> + 'a {
-    iproduct!(assets.iter(), time_slice_info.iter_ids()).map(move |(asset, time_slice)| {
+) {
+    for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
         let operating_cost = asset.get_operating_cost(year, time_slice);
         let revenue_from_flows = asset
             .iter_flows()
@@ -303,6 +305,6 @@ fn reduced_costs_for_existing<'a>(
             .sum();
         let reduced_cost = operating_cost - revenue_from_flows;
 
-        ((asset.clone(), time_slice.clone()), reduced_cost)
-    })
+        reduced_costs.insert((asset.clone(), time_slice.clone()), reduced_cost);
+    }
 }
