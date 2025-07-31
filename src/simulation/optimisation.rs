@@ -176,6 +176,9 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
 
 /// Perform the dispatch optimisation.
 ///
+/// If `commodities` is provided, the commodity balance constraints will only be added for these
+/// commodities, else they will be added for all commodities.
+///
 /// For a detailed description, please see the [dispatch optimisation formulation][1].
 ///
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/model/dispatch_optimisation.html
@@ -185,6 +188,7 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
 /// * `model` - The model
 /// * `asset_pool` - The asset pool
 /// * `candidate_assets` - Candidate assets for inclusion in active pool
+/// * `commodities` - The subset of commodities to apply constraints to
 /// * `year` - Current milestone year
 /// * `run_number` - Which dispatch run for the current year this is
 /// * `data_writer` - For saving output data
@@ -196,12 +200,18 @@ pub fn perform_dispatch_optimisation<'a>(
     model: &'a Model,
     asset_pool: &AssetPool,
     candidate_assets: &[AssetRef],
+    commodities: Option<&[CommodityID]>,
     year: u32,
     run_number: u32,
     writer: &mut DataWriter,
 ) -> Result<Solution<'a>> {
-    let solution =
-        perform_dispatch_optimisation_no_save(model, asset_pool, candidate_assets, year)?;
+    let solution = perform_dispatch_optimisation_no_save(
+        model,
+        asset_pool,
+        candidate_assets,
+        commodities,
+        year,
+    )?;
 
     writer.write_debug_info(year, run_number, &solution)?;
 
@@ -213,6 +223,7 @@ fn perform_dispatch_optimisation_no_save<'a>(
     model: &'a Model,
     asset_pool: &AssetPool,
     candidate_assets: &[AssetRef],
+    commodities: Option<&[CommodityID]>,
     year: u32,
 ) -> Result<Solution<'a>> {
     // Set up problem
@@ -235,7 +246,19 @@ fn perform_dispatch_optimisation_no_save<'a>(
 
     // Add constraints
     let all_assets = chain(asset_pool.iter(), candidate_assets.iter());
-    let constraint_keys = add_asset_constraints(&mut problem, &variables, model, all_assets, year);
+    let mut all_commodities = Vec::new();
+    let commodities = commodities.unwrap_or_else(|| {
+        all_commodities = model.commodities.keys().cloned().collect();
+        &all_commodities
+    });
+    let constraint_keys = add_asset_constraints(
+        &mut problem,
+        &variables,
+        model,
+        all_assets,
+        commodities,
+        year,
+    );
 
     // Solve model
     let solution = solve_optimal(problem.optimise(Sense::Minimise))?;

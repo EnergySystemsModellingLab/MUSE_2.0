@@ -72,6 +72,30 @@ pub fn svd_commodity() -> Commodity {
     }
 }
 
+#[fixture]
+pub fn sed_commodity() -> Commodity {
+    Commodity {
+        id: "sed_commodity".into(),
+        description: "Test SED commodity".into(),
+        kind: CommodityType::SupplyEqualsDemand,
+        time_slice_level: TimeSliceLevel::DayNight,
+        levies: CommodityLevyMap::new(),
+        demand: DemandMap::new(),
+    }
+}
+
+#[fixture]
+pub fn other_commodity() -> Commodity {
+    Commodity {
+        id: "other_commodity".into(),
+        description: "Test other commodity".into(),
+        kind: CommodityType::Other,
+        time_slice_level: TimeSliceLevel::DayNight,
+        levies: CommodityLevyMap::new(),
+        demand: DemandMap::new(),
+    }
+}
+
 pub fn get_svd_map(commodity: &Commodity) -> HashMap<CommodityID, &Commodity> {
     iter::once((commodity.id.clone(), commodity)).collect()
 }
