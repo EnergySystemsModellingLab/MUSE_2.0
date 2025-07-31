@@ -62,7 +62,7 @@ impl VariableMap {
 pub struct Solution<'a> {
     solution: highs::Solution,
     variables: VariableMap,
-    active_asset_var_idx: Range<usize>,
+    existing_asset_var_idx: Range<usize>,
     candidate_asset_var_idx: Range<usize>,
     time_slice_info: &'a TimeSliceInfo,
     constraint_keys: ConstraintKeys,
@@ -79,7 +79,7 @@ impl Solution<'_> {
         // The decision variables represent assets' activity levels, not commodity flows. We
         // multiply this value by the flow coeffs to get commodity flows.
         let mut flows = FlowMap::new();
-        for (asset, time_slice, activity) in self.iter_activity_for_active() {
+        for (asset, time_slice, activity) in self.iter_activity_for_existing() {
             for flow in asset.iter_flows() {
                 let flow_key = (asset.clone(), flow.commodity.id.clone(), time_slice.clone());
                 let flow_value = activity * flow.coeff;
@@ -90,7 +90,7 @@ impl Solution<'_> {
         flows
     }
 
-    /// Activity for each active asset
+    /// Activity for all assets
     pub fn iter_activity(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Activity)> {
         self.variables
             .0
@@ -99,11 +99,11 @@ impl Solution<'_> {
             .map(|((asset, time_slice), activity)| (asset, time_slice, Activity(*activity)))
     }
 
-    /// Activity for each active asset
-    fn iter_activity_for_active(
+    /// Activity for each existing asset
+    fn iter_activity_for_existing(
         &self,
     ) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Activity)> {
-        self.zip_var_keys_with_output(&self.active_asset_var_idx, self.solution.columns())
+        self.zip_var_keys_with_output(&self.existing_asset_var_idx, self.solution.columns())
     }
 
     /// Reduced costs for candidate assets
@@ -229,7 +229,7 @@ fn perform_dispatch_optimisation_no_save<'a>(
     // Set up problem
     let mut problem = Problem::default();
     let mut variables = VariableMap::default();
-    let active_asset_var_idx = add_variables(
+    let existing_asset_var_idx = add_variables(
         &mut problem,
         &mut variables,
         &model.time_slice_info,
@@ -269,7 +269,7 @@ fn perform_dispatch_optimisation_no_save<'a>(
     Ok(Solution {
         solution: solution.get_solution(),
         variables,
-        active_asset_var_idx,
+        existing_asset_var_idx,
         candidate_asset_var_idx,
         time_slice_info: &model.time_slice_info,
         constraint_keys,
