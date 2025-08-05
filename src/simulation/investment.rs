@@ -1,9 +1,9 @@
 //! Code for performing agent investment.
-use super::optimisation::perform_dispatch_optimisation;
+use super::optimisation::{perform_dispatch_optimisation, FlowMap};
 use super::prices::ReducedCosts;
 use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
-use crate::commodity::{Commodity, CommodityID};
+use crate::commodity::{Commodity, CommodityID, CommodityMap};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
@@ -49,9 +49,9 @@ pub fn perform_agent_investment(
     // Which dispatch run for current year
     let mut run_number = 0;
 
-    // Initialise demand map (TODO: mutable)
-    // TODO: This will be a flattened version of input commodity demands
-    let demand = AllDemandMap::new();
+    // Initialise demand map
+    let mut demand =
+        flatten_preset_demands_for_year(&model.commodities, &model.time_slice_info, year);
 
     for region_id in model.iter_regions() {
         let mut seen_commodities = Vec::new();
@@ -112,9 +112,9 @@ pub fn perform_agent_investment(
                 writer,
             )?;
             run_number += 1;
-            let _flow_map = solution.create_flow_map();
 
-            // TODO: Modify the demand map to include all input flows from these assets
+            // Modify the demand map to include all input flows from these assets
+            update_demand_map_with_flows(&mut demand, &solution.create_flow_map());
         }
     }
 
@@ -122,6 +122,61 @@ pub fn perform_agent_investment(
     assets.decommission_if_not_active(existing_assets, year);
 
     Ok(())
+}
+
+/// Flatten the preset commodity demands for a given year into a map of commodity, region and
+/// time slice to demand.
+///
+/// Since demands for some commodities may be specified at a coarser timeslice level, we need to
+/// distribute these demands over all timeslices. Note: the way that we do this distribution is
+/// irrelevant, as demands will only be balanced to the appropriate level, but we still need to do
+/// this for the solver to work.
+fn flatten_preset_demands_for_year(
+    commodities: &CommodityMap,
+    time_slice_info: &TimeSliceInfo,
+    year: u32,
+) -> AllDemandMap {
+    let mut demand_map = AllDemandMap::new();
+    for (commodity_id, commodity) in commodities.iter() {
+        for ((region_id, _year, time_slice_selection), demand) in commodity.demand.iter() {
+            if *_year != year {
+                continue;
+            }
+
+            // We split the demand equally over al timeslices in the selection
+            // NOTE: since demands will only be balanced to the timeslice level of the commodity
+            // it doesn't matter how we do this distribution, only the total matters.
+            let n_timeslices = time_slice_selection.iter(time_slice_info).count() as f64;
+            let demand_per_slice = *demand / Dimensionless(n_timeslices);
+            for (time_slice, _) in time_slice_selection.iter(time_slice_info) {
+                demand_map.insert(
+                    (commodity_id.clone(), region_id.clone(), time_slice.clone()),
+                    demand_per_slice,
+                );
+            }
+        }
+    }
+    demand_map
+}
+
+/// Update the demand map with the flows from the dispatch solution.
+///
+/// These will then form the basis of investments in a future iteration of the investment loop.
+/// Note: we use the negative of the flow as input flows are negative in the flow map.
+fn update_demand_map_with_flows(demand: &mut AllDemandMap, flows: &FlowMap) {
+    flows.iter().filter(|(_, &flow)| flow < Flow(0.0)).for_each(
+        |((asset, commodity_id, time_slice), &flow)| {
+            let key = (
+                commodity_id.clone(),
+                asset.region_id.clone(),
+                time_slice.clone(),
+            );
+            demand
+                .entry(key)
+                .and_modify(|value| *value -= flow)
+                .or_insert(-flow);
+        },
+    );
 }
 
 /// Get a portion of the demand profile for this commodity and region
@@ -381,11 +436,10 @@ fn update_assets(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::asset::{Asset, AssetRef};
     use crate::commodity::{Commodity, CommodityID};
     use crate::fixture::{
-        asset, commodity_id, other_commodity, process, process_parameter_map, region_id,
-        sed_commodity, svd_commodity, time_slice, time_slice_info, time_slice_info2,
+        asset, commodity_id, process, process_parameter_map, region_id, svd_commodity, time_slice,
+        time_slice_info, time_slice_info2,
     };
     use crate::process::{FlowType, ProcessFlow, ProcessParameter};
     use crate::region::RegionID;
@@ -394,7 +448,6 @@ mod tests {
         ActivityPerCapacity, Dimensionless, Flow, FlowPerActivity, MoneyPerActivity,
         MoneyPerCapacity, MoneyPerCapacityPerYear, MoneyPerFlow,
     };
-    use indexmap::IndexMap;
     use itertools::Itertools;
     use rstest::rstest;
     use std::collections::HashMap;
@@ -410,153 +463,6 @@ mod tests {
             discount_rate: Dimensionless(1.0),
             capacity_to_activity: ActivityPerCapacity(1.0), // Non-zero value
         })
-    }
-
-    #[rstest]
-    fn test_get_demand_profile(
-        region_id: RegionID,
-        time_slice: TimeSliceID,
-        asset: Asset,
-        svd_commodity: Commodity,
-        sed_commodity: Commodity,
-        other_commodity: Commodity,
-    ) {
-        // Setup test asset and AssetRef
-        let asset_ref1 = AssetRef::from(asset.clone());
-        // Create a second asset with the same region, commodity, and time_slice
-        let mut asset2 = asset.clone();
-        asset2.id = None; // Ensure it's treated as a different asset
-        asset2.commission_year += 1; // Make it unique
-        let asset_ref2 = AssetRef::from(asset2);
-
-        let svd_commodity_id = svd_commodity.id.clone();
-        let sed_commodity_id = sed_commodity.id.clone();
-        let other_commodity_id = other_commodity.id.clone();
-
-        let mut flow_map = FlowMap::new();
-
-        // ServiceDemand commodity flows (positive flows should be included)
-        flow_map.insert(
-            (
-                asset_ref1.clone(),
-                svd_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(10.0),
-        );
-        flow_map.insert(
-            (
-                asset_ref2.clone(),
-                svd_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(7.0),
-        );
-        // Zero flow should be ignored
-        flow_map.insert(
-            (
-                asset_ref1.clone(),
-                svd_commodity_id.clone(),
-                TimeSliceID {
-                    season: "summer".into(),
-                    time_of_day: "night".into(),
-                },
-            ),
-            Flow(0.0),
-        );
-        // Negative flow should be ignored for ServiceDemand
-        flow_map.insert(
-            (
-                asset_ref2.clone(),
-                svd_commodity_id.clone(),
-                TimeSliceID {
-                    season: "summer".into(),
-                    time_of_day: "night".into(),
-                },
-            ),
-            Flow(-5.0),
-        );
-
-        // SupplyEqualsDemand commodity flows (negative flows should be included as positive)
-        flow_map.insert(
-            (
-                asset_ref1.clone(),
-                sed_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(-15.0), // Should become 15.0 in demand
-        );
-        flow_map.insert(
-            (
-                asset_ref2.clone(),
-                sed_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(-8.0), // Should become 8.0 in demand
-        );
-        // Positive flow should be ignored for SupplyEqualsDemand
-        flow_map.insert(
-            (
-                asset_ref1.clone(),
-                sed_commodity_id.clone(),
-                TimeSliceID {
-                    season: "summer".into(),
-                    time_of_day: "night".into(),
-                },
-            ),
-            Flow(12.0),
-        );
-
-        // Other commodity type flows (should all be ignored)
-        flow_map.insert(
-            (
-                asset_ref1.clone(),
-                other_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(20.0),
-        );
-        flow_map.insert(
-            (
-                asset_ref2.clone(),
-                other_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(-25.0),
-        );
-
-        // Create commodities map for the test
-        let mut commodities = IndexMap::new();
-        commodities.insert(svd_commodity_id.clone(), Rc::new(svd_commodity));
-        commodities.insert(sed_commodity_id.clone(), Rc::new(sed_commodity));
-        commodities.insert(other_commodity_id.clone(), Rc::new(other_commodity));
-
-        // Call get_demand_profile
-        let result = get_demand_profile(&flow_map, &commodities);
-
-        // Check result
-        let mut expected = HashMap::new();
-        // ServiceDemand: 10.0 + 7.0 = 17.0 (only positive flows)
-        expected.insert(
-            (
-                svd_commodity_id.clone(),
-                region_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(17.0),
-        );
-        // SupplyEqualsDemand: |-15.0| + |-8.0| = 15.0 + 8.0 = 23.0 (only negative flows, converted to positive)
-        expected.insert(
-            (
-                sed_commodity_id.clone(),
-                region_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(23.0),
-        );
-        // Other commodity type should not appear in results (all flows ignored)
-
-        assert_eq!(result, expected);
     }
 
     #[rstest]
