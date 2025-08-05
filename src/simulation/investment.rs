@@ -1,13 +1,12 @@
 //! Code for performing agent investment.
-use super::optimisation::{perform_dispatch_optimisation, FlowMap};
-use super::prices::{update_prices_and_reduced_costs, ReducedCosts};
+use super::optimisation::perform_dispatch_optimisation;
+use super::prices::ReducedCosts;
 use crate::agent::{Agent, ObjectiveType};
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
-use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
+use crate::commodity::{Commodity, CommodityID};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
-use crate::simulation::CommodityPrices;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
@@ -39,9 +38,7 @@ pub fn perform_agent_investment(
     model: &Model,
     year: u32,
     assets: &mut AssetPool,
-    flow_map: &mut FlowMap,
-    prices: &mut CommodityPrices,
-    reduced_costs: &mut ReducedCosts,
+    reduced_costs: &ReducedCosts,
     writer: &mut DataWriter,
 ) -> Result<()> {
     info!("Performing agent investment...");
@@ -49,11 +46,12 @@ pub fn perform_agent_investment(
     // Get all existing assets and clear pool
     let existing_assets = assets.take();
 
-    // Demand profile for commodities
-    let mut demand = get_demand_profile(flow_map, &model.commodities);
-
     // Which dispatch run for current year
     let mut run_number = 0;
+
+    // Initialise demand map (TODO: mutable)
+    // TODO: This will be a flattened version of input commodity demands
+    let demand = AllDemandMap::new();
 
     for region_id in model.iter_regions() {
         let mut seen_commodities = Vec::new();
@@ -67,6 +65,7 @@ pub fn perform_agent_investment(
                     &agent.id, commodity_id, region_id
                 );
 
+                // Get demand portion for this commodity for this agent in this region/year
                 let demand_for_commodity = get_demand_portion_for_commodity(
                     &model.time_slice_info,
                     &demand,
@@ -113,11 +112,9 @@ pub fn perform_agent_investment(
                 writer,
             )?;
             run_number += 1;
-            *flow_map = solution.create_flow_map();
-            update_prices_and_reduced_costs(model, &solution, assets, year, prices, reduced_costs);
+            let _flow_map = solution.create_flow_map();
 
-            // Update demand profile
-            demand = get_demand_profile(flow_map, &model.commodities);
+            // TODO: Modify the demand map to include all input flows from these assets
         }
     }
 
@@ -125,28 +122,6 @@ pub fn perform_agent_investment(
     assets.decommission_if_not_active(existing_assets, year);
 
     Ok(())
-}
-
-/// Get demand per time slice for every commodity
-fn get_demand_profile(flow_map: &FlowMap, commodities: &CommodityMap) -> AllDemandMap {
-    let mut map = HashMap::new();
-    for ((asset, commodity_id, time_slice), &flow) in flow_map.iter() {
-        let demand = match commodities[commodity_id].kind {
-            CommodityType::ServiceDemand if flow > Flow(0.0) => flow,
-            CommodityType::SupplyEqualsDemand if flow < Flow(0.0) => -flow,
-            _ => continue,
-        };
-
-        map.entry((
-            commodity_id.clone(),
-            asset.region_id.clone(),
-            time_slice.clone(),
-        ))
-        .and_modify(|value| *value += demand)
-        .or_insert(demand);
-    }
-
-    map
 }
 
 /// Get a portion of the demand profile for this commodity and region
@@ -195,6 +170,7 @@ where
 }
 
 /// Get the maximum required capacity across time slices
+/// TODO: this isn't quite right for commodities with a coarse timeslice level
 fn get_demand_limiting_capacity(
     time_slice_info: &TimeSliceInfo,
     asset: &Asset,

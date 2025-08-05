@@ -46,12 +46,12 @@ pub fn run(
     // Commission assets for base year
     assets.commission_new(year);
 
-    // Run dispatch to get flows, prices and reduced costs
+    // Run dispatch to get reduced costs
     let next_year = year_iter.peek().copied();
-    let (mut flow_map, mut prices, mut reduced_costs) =
-        run_dispatch_for_base_year(&model, &assets, year, next_year, &mut writer)?;
+    let (_, _, mut reduced_costs) =
+        run_dispatch_for_year(&model, &assets, year, next_year, &mut writer)?;
 
-    for year in year_iter {
+    while let Some(year) = year_iter.next() {
         info!("Milestone year: {year}");
 
         // Decommission assets whose lifetime has passed. We do this *before* agent investment, to
@@ -59,23 +59,21 @@ pub fn run(
         // year.
         assets.decommission_old(year);
 
-        perform_agent_investment(
-            &model,
-            year,
-            &mut assets,
-            &mut flow_map,
-            &mut prices,
-            &mut reduced_costs,
-            &mut writer,
-        )
-        .context("Agent investment failed")?;
-
         // Newly commissioned assets will be included in optimisation for at least one milestone
         // year before agents have the option of decommissioning them
         assets.commission_new(year);
 
-        // Write assets and results of dispatch optimisation to file
-        writer.write(year, &assets, &flow_map, &prices)?;
+        // Perform agent investment
+        perform_agent_investment(&model, year, &mut assets, &reduced_costs, &mut writer)
+            .context("Agent investment failed")?;
+
+        // Run dispatch optimisation
+        let next_year = year_iter.peek().copied();
+        let (_, _, new_reduced_costs) =
+            run_dispatch_for_year(&model, &assets, year, next_year, &mut writer)?;
+
+        // Update reduced costs
+        reduced_costs = new_reduced_costs;
     }
 
     writer.flush()?;
@@ -83,8 +81,8 @@ pub fn run(
     Ok(())
 }
 
-// Run dispatch to get flows, prices and reduced costs for first milestone year
-fn run_dispatch_for_base_year(
+// Run dispatch to get flows, prices and reduced costs for a milestone year
+fn run_dispatch_for_year(
     model: &Model,
     assets: &AssetPool,
     year: u32,
