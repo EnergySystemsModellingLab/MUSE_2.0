@@ -80,7 +80,7 @@ pub fn perform_agent_investment(
                     &existing_assets,
                     &demand_for_commodity,
                     agent,
-                    commodity_id,
+                    commodity,
                     region_id,
                     year,
                 )
@@ -229,18 +229,31 @@ where
 fn get_demand_limiting_capacity(
     time_slice_info: &TimeSliceInfo,
     asset: &Asset,
-    commodity_id: &CommodityID,
+    commodity: &Commodity,
     demand: &DemandMap,
 ) -> Capacity {
-    let coeff = asset.get_flow(commodity_id).unwrap().coeff;
+    let coeff = asset.get_flow(&commodity.id).unwrap().coeff;
     let mut capacity = Capacity(0.0);
-    for time_slice in time_slice_info.iter_ids() {
-        let max_flow_per_cap = *asset.get_activity_per_capacity_limits(time_slice).end() * coeff;
-        if max_flow_per_cap == FlowPerCapacity(0.0) {
-            continue;
+
+    for time_slice_selection in time_slice_info.iter_selections_at_level(commodity.time_slice_level)
+    {
+        let demand_agg: Flow = time_slice_selection
+            .iter(time_slice_info)
+            .map(|(time_slice, _)| demand[time_slice])
+            .sum();
+
+        // Calculate max capacity required for this time slice selection
+        // For commodities with a coarse timeslice level, we have to allow the possibility that all
+        // of the demand gets served by production in a single timeslice
+        for (time_slice, _) in time_slice_selection.iter(time_slice_info) {
+            let max_flow_per_cap =
+                *asset.get_activity_per_capacity_limits(time_slice).end() * coeff;
+            if max_flow_per_cap != FlowPerCapacity(0.0) {
+                capacity = capacity.max(demand_agg / max_flow_per_cap);
+            }
         }
-        capacity = capacity.max(demand[time_slice] / max_flow_per_cap);
     }
+
     capacity
 }
 
@@ -250,7 +263,7 @@ fn get_asset_options<'a>(
     all_existing_assets: &'a [AssetRef],
     demand: &'a DemandMap,
     agent: &'a Agent,
-    commodity_id: &'a CommodityID,
+    commodity: &'a Commodity,
     region_id: &'a RegionID,
     year: u32,
 ) -> impl Iterator<Item = AssetRef> + 'a {
@@ -259,18 +272,12 @@ fn get_asset_options<'a>(
         .iter()
         .filter_agent(&agent.id)
         .filter_region(region_id)
-        .filter_primary_producers_of(commodity_id)
+        .filter_primary_producers_of(&commodity.id)
         .cloned();
 
     // Get candidates assets which produce the commodity of interest
-    let candidate_assets = get_candidate_assets(
-        time_slice_info,
-        demand,
-        agent,
-        region_id,
-        commodity_id,
-        year,
-    );
+    let candidate_assets =
+        get_candidate_assets(time_slice_info, demand, agent, region_id, commodity, year);
 
     chain(existing_assets, candidate_assets)
 }
@@ -281,11 +288,11 @@ fn get_candidate_assets<'a>(
     demand: &'a DemandMap,
     agent: &'a Agent,
     region_id: &'a RegionID,
-    commodity_id: &'a CommodityID,
+    commodity: &'a Commodity,
     year: u32,
 ) -> impl Iterator<Item = AssetRef> + 'a {
     agent
-        .iter_possible_producers_of(region_id, commodity_id, year)
+        .iter_possible_producers_of(region_id, &commodity.id, year)
         .map(move |process| {
             let mut asset = Asset::new_without_capacity(
                 Some(agent.id.clone()),
@@ -295,7 +302,7 @@ fn get_candidate_assets<'a>(
             )
             .unwrap();
             asset.capacity =
-                get_demand_limiting_capacity(time_slice_info, &asset, commodity_id, demand);
+                get_demand_limiting_capacity(time_slice_info, &asset, commodity, demand);
 
             asset.into()
         })
