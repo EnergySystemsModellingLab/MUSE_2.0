@@ -225,7 +225,6 @@ where
 }
 
 /// Get the maximum required capacity across time slices
-/// TODO: this isn't quite right for commodities with a coarse timeslice level
 fn get_demand_limiting_capacity(
     time_slice_info: &TimeSliceInfo,
     asset: &Asset,
