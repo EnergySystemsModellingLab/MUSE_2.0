@@ -21,6 +21,9 @@ use constraints::{add_asset_constraints, ConstraintKeys};
 /// A map of commodity flows calculated during the optimisation
 pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), Flow>;
 
+/// A nested flow map, with flows grouped by commodity and region
+pub type NestedFlowMap = IndexMap<(CommodityID, RegionID), IndexMap<TimeSliceID, Flow>>;
+
 /// A decision variable in the optimisation
 ///
 /// Note that this type does **not** include the value of the variable; it just refers to a
@@ -88,6 +91,20 @@ impl Solution<'_> {
         }
 
         flows
+    }
+
+    /// Create a nested flow map, with flows grouped by commodity and region
+    pub fn create_nested_flow_map(&self) -> NestedFlowMap {
+        let flow_map = self.create_flow_map();
+        let mut nested_flow_map = NestedFlowMap::new();
+        for ((asset, commodity_id, time_slice), flow) in flow_map.iter() {
+            *nested_flow_map
+                .entry((commodity_id.clone(), asset.region_id.clone()))
+                .or_default()
+                .entry(time_slice.clone())
+                .or_insert(Flow(0.0)) += *flow;
+        }
+        nested_flow_map
     }
 
     /// Activity for each active asset

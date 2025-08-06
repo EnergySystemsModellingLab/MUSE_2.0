@@ -3,8 +3,8 @@ use super::optimisation::Variable;
 use super::DemandMap;
 use crate::asset::AssetRef;
 use crate::commodity::Commodity;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{Capacity, Flow};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
+use crate::units::Capacity;
 use highs::RowProblem as Problem;
 use indexmap::IndexMap;
 
@@ -93,17 +93,15 @@ pub fn add_demand_constraints(
     time_slice_info: &TimeSliceInfo,
     demand: &DemandMap,
     activity_vars: &IndexMap<TimeSliceID, Variable>,
-    unmet_demand_vars: &IndexMap<TimeSliceID, Variable>,
+    unmet_demand_vars: &IndexMap<TimeSliceSelection, Variable>,
 ) {
-    for ts_selection in time_slice_info.iter_selections_at_level(commodity.time_slice_level) {
-        let mut demand_for_ts_selection = Flow(0.0);
+    let flow_coeff = asset.get_flow(&commodity.id).unwrap().coeff;
+    for (ts_selection, demand_for_ts_selection) in demand {
         let mut terms = Vec::new();
         for (time_slice, _) in ts_selection.iter(time_slice_info) {
-            demand_for_ts_selection += *demand.get(time_slice).unwrap();
-            let flow_coeff = asset.get_flow(&commodity.id).unwrap().coeff;
             terms.push((*activity_vars.get(time_slice).unwrap(), flow_coeff.value()));
-            terms.push((*unmet_demand_vars.get(time_slice).unwrap(), 1.0));
         }
+        terms.push((*unmet_demand_vars.get(ts_selection).unwrap(), 1.0));
         problem.add_row(
             demand_for_ts_selection.value()..=demand_for_ts_selection.value(),
             terms,

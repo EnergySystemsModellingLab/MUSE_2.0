@@ -7,7 +7,7 @@ use super::DemandMap;
 use crate::asset::AssetRef;
 use crate::commodity::Commodity;
 use crate::simulation::optimisation::solve_optimal;
-use crate::time_slice::{TimeSliceID, TimeSliceInfo};
+use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
 use crate::units::{Activity, Capacity, Flow};
 use anyhow::Result;
 use highs::{RowProblem as Problem, Sense};
@@ -23,7 +23,7 @@ struct VariableMap {
     /// Activity variables in each time slice
     activity_vars: IndexMap<TimeSliceID, Variable>,
     // Unmet demand variables
-    unmet_demand_vars: IndexMap<TimeSliceID, Variable>,
+    unmet_demand_vars: IndexMap<TimeSliceSelection, Variable>,
 }
 
 /// Map containing optimisation results and coefficients
@@ -37,7 +37,12 @@ pub struct ResultsMap {
 }
 
 /// Add variables to the problem based on cost coefficients
-fn add_variables(problem: &mut Problem, cost_coefficients: &CoefficientsMap) -> VariableMap {
+fn add_variables(
+    problem: &mut Problem,
+    cost_coefficients: &CoefficientsMap,
+    commodity: &Commodity,
+    time_slice_info: &TimeSliceInfo,
+) -> VariableMap {
     // Create capacity variable
     let capacity_var = problem.add_column(cost_coefficients.capacity_coefficient.value(), 0.0..);
 
@@ -49,11 +54,13 @@ fn add_variables(problem: &mut Problem, cost_coefficients: &CoefficientsMap) -> 
     }
 
     // Create unmet demand variables
-    // One per time slice, all of which use the same coefficient
+    // One per time slice selection (depends on the commodity's time_slice_level), all of which use
+    // the same coefficient
     let mut unmet_demand_vars = IndexMap::new();
-    for time_slice in cost_coefficients.activity_coefficients.keys() {
+    for time_slice_selection in time_slice_info.iter_selections_at_level(commodity.time_slice_level)
+    {
         let var = problem.add_column(cost_coefficients.unmet_demand_coefficient.value(), 0.0..);
-        unmet_demand_vars.insert(time_slice.clone(), var);
+        unmet_demand_vars.insert(time_slice_selection.clone(), var);
     }
 
     VariableMap {
@@ -107,7 +114,7 @@ pub fn perform_optimisation(
     let mut problem = Problem::default();
 
     // Add variables
-    let variables = add_variables(&mut problem, coefficients);
+    let variables = add_variables(&mut problem, coefficients, commodity, time_slice_info);
 
     // Add constraints
     add_constraints(
