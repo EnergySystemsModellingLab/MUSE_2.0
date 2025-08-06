@@ -103,6 +103,9 @@ pub fn perform_agent_investment(
                 continue;
             }
 
+            // Add assets to pool
+            new_assets = assets.extend(new_assets);
+
             // Perform dispatch optimisation with assets that have been selected so far
             debug!("Running dispatch for commodity '{commodity_id}' in region '{region_id}'");
             let solution = perform_dispatch_optimisation(
@@ -115,9 +118,6 @@ pub fn perform_agent_investment(
                 writer,
             )?;
             run_number += 1;
-
-            // Add assets to pool
-            assets.extend(new_assets);
 
             // Update demand map with flows from this dispatch run
             update_demand_map(&mut demand, &solution.create_flow_map());

@@ -436,29 +436,30 @@ impl AssetPool {
     }
 
     /// Extend the active pool with existing or candidate assets
-    pub fn extend<I>(&mut self, assets: I)
+    ///
+    /// Returns the same assets after ID assignment.
+    pub fn extend<I>(&mut self, assets: I) -> Vec<AssetRef>
     where
         I: IntoIterator<Item = AssetRef>,
     {
-        let assets = assets.into_iter().map(|mut asset| {
+        let mut collected_assets = Vec::new();
+        for mut asset in assets {
             if !asset.is_commissioned() {
                 // Asset is newly created from process so we need to assign an ID
-                let asset = asset.make_mut();
-                asset.id = Some(AssetID(self.next_id));
+                let asset_mut = asset.make_mut();
+                asset_mut.id = Some(AssetID(self.next_id));
                 self.next_id += 1;
             }
-
-            asset
-        });
-
-        // Add assets to pool
-        self.active.extend(assets);
+            collected_assets.push(asset.clone());
+            self.active.push(asset);
+        }
 
         // New assets may not have been sorted, but active needs to be sorted by ID
         self.active.sort();
 
         // Sanity check: all assets should be unique
         debug_assert_eq!(self.active.iter().unique().count(), self.active.len());
+        collected_assets
     }
 }
 
