@@ -131,6 +131,8 @@ pub fn perform_agent_investment(
 /// distribute these demands over all timeslices. Note: the way that we do this distribution is
 /// irrelevant, as demands will only be balanced to the appropriate level, but we still need to do
 /// this for the solver to work.
+///
+/// **TODO**: these assumptions may need to be revisited, e.g. when we come to storage technologies
 fn flatten_preset_demands_for_year(
     commodities: &CommodityMap,
     time_slice_info: &TimeSliceInfo,
