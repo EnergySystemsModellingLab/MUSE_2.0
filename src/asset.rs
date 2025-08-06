@@ -313,7 +313,7 @@ where
 /// A pool of [`Asset`]s
 pub struct AssetPool {
     /// The pool of active assets, sorted by ID
-    active: Vec<AssetRef>,
+    pub active: Vec<AssetRef>,
     /// Assets that have not yet been commissioned, sorted by commission year
     future: Vec<Asset>,
     /// Assets that have been decommissioned
@@ -334,11 +334,6 @@ impl AssetPool {
             decommissioned: Vec::new(),
             next_id: 0,
         }
-    }
-
-    /// Get the active pool as a slice of [`AssetRef`]s
-    pub fn as_slice(&self) -> &[AssetRef] {
-        &self.active
     }
 
     /// Commission new assets for the specified milestone year from the input data
@@ -419,7 +414,7 @@ impl AssetPool {
     }
 
     /// Iterate over active assets
-    pub fn iter(&self) -> slice::Iter<AssetRef> {
+    pub fn iter_active(&self) -> slice::Iter<AssetRef> {
         self.active.iter()
     }
 
@@ -432,7 +427,7 @@ impl AssetPool {
     ///
     /// NB: Not-yet-commissioned assets are not included.
     pub fn iter_all(&self) -> impl Iterator<Item = &AssetRef> {
-        chain(self.iter(), self.iter_decommissioned())
+        chain(self.iter_active(), self.iter_decommissioned())
     }
 
     /// Return current active pool and clear
@@ -693,21 +688,21 @@ mod tests {
     fn test_asset_pool_commission_new1(mut asset_pool: AssetPool) {
         // Asset to be commissioned in this year
         asset_pool.commission_new(2010);
-        assert_equal(asset_pool.iter(), iter::once(&asset_pool.active[0]));
+        assert_equal(asset_pool.iter_active(), iter::once(&asset_pool.active[0]));
     }
 
     #[rstest]
     fn test_asset_pool_commission_new2(mut asset_pool: AssetPool) {
         // Commission year has passed
         asset_pool.commission_new(2011);
-        assert_equal(asset_pool.iter(), iter::once(&asset_pool.active[0]));
+        assert_equal(asset_pool.iter_active(), iter::once(&asset_pool.active[0]));
     }
 
     #[rstest]
     fn test_asset_pool_commission_new3(mut asset_pool: AssetPool) {
         // Nothing to commission for this year
         asset_pool.commission_new(2000);
-        assert!(asset_pool.iter().next().is_none()); // no active assets
+        assert!(asset_pool.iter_active().next().is_none()); // no active assets
     }
 
     #[rstest]
@@ -876,7 +871,7 @@ mod tests {
         asset_pool.extend(new_assets);
 
         // Check that assets are sorted by ID
-        let ids: Vec<u32> = asset_pool.iter().map(|a| a.id.unwrap().0).collect();
+        let ids: Vec<u32> = asset_pool.iter_active().map(|a| a.id.unwrap().0).collect();
         assert_equal(ids, 0..4);
     }
 

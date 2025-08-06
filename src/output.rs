@@ -457,12 +457,12 @@ mod tests {
         // Write an asset
         {
             let mut writer = DataWriter::create(dir.path(), dir.path(), false).unwrap();
-            writer.write_assets(assets.iter()).unwrap();
+            writer.write_assets(assets.iter_active()).unwrap();
             writer.flush().unwrap();
         }
 
         // Read back and compare
-        let asset = assets.iter().next().unwrap();
+        let asset = assets.iter_active().next().unwrap();
         let expected = AssetRow::new(asset);
         let records: Vec<AssetRow> = csv::Reader::from_path(dir.path().join(ASSETS_FILE_NAME))
             .unwrap()
@@ -475,7 +475,7 @@ mod tests {
     #[rstest]
     fn test_write_flows(assets: AssetPool, commodity_id: CommodityID, time_slice: TimeSliceID) {
         let milestone_year = 2020;
-        let asset = assets.iter().next().unwrap();
+        let asset = assets.iter_active().next().unwrap();
         let flow_map = indexmap! {
             (asset.clone(), commodity_id.clone(), time_slice.clone()) => Flow(42.0)
         };
@@ -586,7 +586,7 @@ mod tests {
         let run_number = 42;
         let value = MoneyPerActivity(0.5);
         let dir = tempdir().unwrap();
-        let asset = assets.iter().next().unwrap();
+        let asset = assets.iter_active().next().unwrap();
 
         // Write activity dual
         {
@@ -624,7 +624,7 @@ mod tests {
         let run_number = 42;
         let activity = Activity(100.5);
         let dir = tempdir().unwrap();
-        let asset = assets.iter().next().unwrap();
+        let asset = assets.iter_active().next().unwrap();
 
         // Write activity
         {

@@ -48,8 +48,11 @@ pub fn run(
 
     // Run dispatch to get reduced costs
     let next_year = year_iter.peek().copied();
-    let (_, _, mut reduced_costs) =
-        run_dispatch_for_year(&model, &assets, year, next_year, &mut writer)?;
+    let (flow_map, prices, mut reduced_costs) =
+        run_dispatch_for_year(&model, &assets.active, year, next_year, &mut writer)?;
+
+    // Write assets and results of dispatch optimisation to file
+    writer.write(year, &assets, &flow_map, &prices)?;
 
     while let Some(year) = year_iter.next() {
         info!("Milestone year: {year}");
@@ -64,13 +67,18 @@ pub fn run(
         assets.commission_new(year);
 
         // Perform agent investment
+        info!("Running agent investment...");
         perform_agent_investment(&model, year, &mut assets, &reduced_costs, &mut writer)
             .context("Agent investment failed")?;
 
         // Run dispatch optimisation
+        info!("Running dispatch optimisation...");
         let next_year = year_iter.peek().copied();
-        let (_, _, new_reduced_costs) =
-            run_dispatch_for_year(&model, &assets, year, next_year, &mut writer)?;
+        let (flow_map, prices, new_reduced_costs) =
+            run_dispatch_for_year(&model, &assets.active, year, next_year, &mut writer)?;
+
+        // Write assets and results of dispatch optimisation to file
+        writer.write(year, &assets, &flow_map, &prices)?;
 
         // Update reduced costs
         reduced_costs = new_reduced_costs;
@@ -84,7 +92,7 @@ pub fn run(
 // Run dispatch to get flows, prices and reduced costs for a milestone year
 fn run_dispatch_for_year(
     model: &Model,
-    assets: &AssetPool,
+    assets: &[AssetRef],
     year: u32,
     next_year: Option<u32>,
     writer: &mut DataWriter,
@@ -123,9 +131,6 @@ fn run_dispatch_for_year(
         &mut prices,
         &mut reduced_costs,
     );
-
-    // Write assets and results of dispatch optimisation to file
-    writer.write(year, assets, &flow_map, &prices)?;
 
     Ok((flow_map, prices, reduced_costs))
 }
