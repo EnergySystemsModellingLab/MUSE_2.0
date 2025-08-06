@@ -46,13 +46,17 @@ pub fn run(
     // Commission assets for base year
     assets.commission_new(year);
 
-    // Run dispatch to get reduced costs
+    // Write assets to file
+    writer.write_assets(assets.iter_all())?;
+
+    // Run dispatch optimisation
     let next_year = year_iter.peek().copied();
     let (flow_map, prices, mut reduced_costs) =
         run_dispatch_for_year(&model, &assets.active, year, next_year, &mut writer)?;
 
-    // Write assets and results of dispatch optimisation to file
-    writer.write(year, &assets, &flow_map, &prices)?;
+    // Write results of dispatch optimisation to file
+    writer.write_flows(year, &flow_map)?;
+    writer.write_prices(year, &prices)?;
 
     while let Some(year) = year_iter.next() {
         info!("Milestone year: {year}");
@@ -71,16 +75,20 @@ pub fn run(
         perform_agent_investment(&model, year, &mut assets, &reduced_costs, &mut writer)
             .context("Agent investment failed")?;
 
+        // Write assets
+        writer.write_assets(assets.iter_all())?;
+
         // Run dispatch optimisation
         info!("Running dispatch optimisation...");
         let next_year = year_iter.peek().copied();
         let (flow_map, prices, new_reduced_costs) =
             run_dispatch_for_year(&model, &assets.active, year, next_year, &mut writer)?;
 
-        // Write assets and results of dispatch optimisation to file
-        writer.write(year, &assets, &flow_map, &prices)?;
+        // Write results of dispatch optimisation to file
+        writer.write_flows(year, &flow_map)?;
+        writer.write_prices(year, &prices)?;
 
-        // Update reduced costs
+        // Reduced costs for the next year
         reduced_costs = new_reduced_costs;
     }
 
