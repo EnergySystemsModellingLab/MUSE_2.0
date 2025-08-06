@@ -66,7 +66,7 @@ pub fn perform_agent_investment(
                 );
 
                 // Get demand portion for this commodity for this agent in this region/year
-                let demand_for_commodity = get_demand_portion_for_commodity(
+                let demand_portion_for_commodity = get_demand_portion_for_commodity(
                     &model.time_slice_info,
                     &demand,
                     commodity_id,
@@ -78,7 +78,7 @@ pub fn perform_agent_investment(
                 let opt_assets = get_asset_options(
                     &model.time_slice_info,
                     &existing_assets,
-                    &demand_for_commodity,
+                    &demand_portion_for_commodity,
                     agent,
                     commodity,
                     region_id,
@@ -93,7 +93,7 @@ pub fn perform_agent_investment(
                     commodity,
                     &agent.objectives[&year],
                     reduced_costs,
-                    demand_for_commodity,
+                    demand_portion_for_commodity,
                 )?;
 
                 // Add assets to pool
@@ -113,8 +113,8 @@ pub fn perform_agent_investment(
             )?;
             run_number += 1;
 
-            // Modify the demand map to include all input flows from these assets
-            update_demand_map_with_flows(&mut demand, &solution.create_flow_map());
+            // Create new demand map for next iteration of investment loop
+            demand = get_demand_profile(&solution.create_flow_map(), &seen_commodities);
         }
     }
 
@@ -143,7 +143,7 @@ fn flatten_preset_demands_for_year(
                 continue;
             }
 
-            // We split the demand equally over al timeslices in the selection
+            // We split the demand equally over all timeslices in the selection
             // NOTE: since demands will only be balanced to the timeslice level of the commodity
             // it doesn't matter how we do this distribution, only the total matters.
             let n_timeslices = time_slice_selection.iter(time_slice_info).count() as f64;
@@ -159,24 +159,27 @@ fn flatten_preset_demands_for_year(
     demand_map
 }
 
-/// Update the demand map with the flows from the dispatch solution.
-///
-/// These will then form the basis of investments in a future iteration of the investment loop.
-/// Note: we use the negative of the flow as input flows are negative in the flow map.
-fn update_demand_map_with_flows(demand: &mut AllDemandMap, flows: &FlowMap) {
-    flows.iter().filter(|(_, &flow)| flow < Flow(0.0)).for_each(
-        |((asset, commodity_id, time_slice), &flow)| {
+/// Create a demand map from the commodity flows of a dispatch run.
+fn get_demand_profile(flows: &FlowMap, exclude_commodities: &[CommodityID]) -> AllDemandMap {
+    let mut demand = AllDemandMap::new();
+    flows
+        .iter()
+        .filter(|((_, commodity_id, _), _)| !exclude_commodities.contains(commodity_id))
+        .for_each(|((asset, commodity_id, time_slice), flow)| {
             let key = (
                 commodity_id.clone(),
                 asset.region_id.clone(),
                 time_slice.clone(),
             );
+
+            // Note: we use the negative of the flow as input flows are negative in the flow map.
             demand
                 .entry(key)
-                .and_modify(|value| *value -= flow)
-                .or_insert(-flow);
-        },
-    );
+                .and_modify(|value| *value -= *flow)
+                .or_insert(-*flow);
+        });
+
+    demand
 }
 
 /// Get a portion of the demand profile for this commodity and region
@@ -236,7 +239,7 @@ fn get_demand_limiting_capacity(
 
     for time_slice_selection in time_slice_info.iter_selections_at_level(commodity.time_slice_level)
     {
-        let demand_agg: Flow = time_slice_selection
+        let demand_for_selection: Flow = time_slice_selection
             .iter(time_slice_info)
             .map(|(time_slice, _)| demand[time_slice])
             .sum();
@@ -248,7 +251,7 @@ fn get_demand_limiting_capacity(
             let max_flow_per_cap =
                 *asset.get_activity_per_capacity_limits(time_slice).end() * coeff;
             if max_flow_per_cap != FlowPerCapacity(0.0) {
-                capacity = capacity.max(demand_agg / max_flow_per_cap);
+                capacity = capacity.max(demand_for_selection / max_flow_per_cap);
             }
         }
     }
