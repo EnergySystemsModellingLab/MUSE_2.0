@@ -50,6 +50,7 @@ pub fn run(
     writer.write_assets(assets.iter_all())?;
 
     // Run dispatch optimisation
+    info!("Running dispatch optimisation...");
     let next_year = year_iter.peek().copied();
     let (flow_map, prices, mut reduced_costs) =
         run_dispatch_for_year(&model, &assets.active, year, next_year, &mut writer)?;

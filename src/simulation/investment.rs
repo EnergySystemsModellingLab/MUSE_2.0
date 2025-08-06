@@ -52,7 +52,9 @@ pub fn perform_agent_investment(
         flatten_preset_demands_for_year(&model.commodities, &model.time_slice_info, year);
 
     for region_id in model.iter_regions() {
+        let mut seen_commodities = Vec::new();
         for commodity_id in model.commodity_order[&(region_id.clone(), year)].iter() {
+            seen_commodities.push(commodity_id.clone());
             let commodity = &model.commodities[commodity_id];
             let mut new_assets = Vec::new();
             for (agent, commodity_portion) in
@@ -107,20 +109,22 @@ pub fn perform_agent_investment(
             new_assets = assets.extend(new_assets);
 
             // Perform dispatch optimisation with assets that have been selected so far
-            debug!("Running dispatch for commodity '{commodity_id}' in region '{region_id}'");
+            // **TODO**: presumably we only need to do this for new_assets, as assets added in
+            // previous iterations should not change
+            debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
             let solution = perform_dispatch_optimisation(
                 model,
-                &new_assets,
+                &assets.active,
                 &[],
-                Some(&[commodity_id.clone()]),
+                Some(&seen_commodities),
                 year,
                 run_number,
                 writer,
             )?;
             run_number += 1;
 
-            // Update demand map with flows from this dispatch run
-            update_demand_map(&mut demand, &solution.create_flow_map());
+            // Update demand map with flows from newly added assets
+            update_demand_map(&mut demand, &solution.create_flow_map(), &new_assets);
         }
     }
 
@@ -167,10 +171,11 @@ fn flatten_preset_demands_for_year(
     demand_map
 }
 
-/// Update demand map with flows from a dispatch run
-fn update_demand_map(demand: &mut AllDemandMap, flows: &FlowMap) {
+/// Update demand map with flows from a set of assets
+fn update_demand_map(demand: &mut AllDemandMap, flows: &FlowMap, assets: &[AssetRef]) {
     flows
         .iter()
+        .filter(|((asset, _, _), _)| assets.contains(asset))
         .for_each(|((asset, commodity_id, time_slice), flow)| {
             let key = (
                 commodity_id.clone(),
