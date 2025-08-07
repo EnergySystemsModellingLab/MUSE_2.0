@@ -125,7 +125,7 @@ struct CommodityPriceRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ActivityRow {
     milestone_year: u32,
-    run_number: u32,
+    run_description: String,
     asset_id: Option<AssetID>,
     time_slice: TimeSliceID,
     activity: Activity,
@@ -135,7 +135,7 @@ struct ActivityRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ActivityDualsRow {
     milestone_year: u32,
-    run_number: u32,
+    run_description: String,
     asset_id: Option<AssetID>,
     time_slice: TimeSliceID,
     value: MoneyPerActivity,
@@ -145,7 +145,7 @@ struct ActivityDualsRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityBalanceDualsRow {
     milestone_year: u32,
-    run_number: u32,
+    run_description: String,
     commodity_id: CommodityID,
     region_id: RegionID,
     time_slice: TimeSliceID,
@@ -156,7 +156,7 @@ struct CommodityBalanceDualsRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct SolverValuesRow {
     milestone_year: u32,
-    run_number: u32,
+    run_description: String,
     objective_value: Money,
 }
 
@@ -192,29 +192,42 @@ impl DebugDataWriter {
     fn write_debug_info(
         &mut self,
         milestone_year: u32,
-        run_number: u32,
+        run_description: String,
         solution: &Solution,
     ) -> Result<()> {
-        self.write_activity(milestone_year, run_number, solution.iter_activity())?;
-        self.write_activity_duals(milestone_year, run_number, solution.iter_activity_duals())?;
+        self.write_activity(
+            milestone_year,
+            run_description.clone(),
+            solution.iter_activity(),
+        )?;
+        self.write_activity_duals(
+            milestone_year,
+            run_description.clone(),
+            solution.iter_activity_duals(),
+        )?;
         self.write_commodity_balance_duals(
             milestone_year,
-            run_number,
+            run_description.clone(),
             solution.iter_commodity_balance_duals(),
         )?;
-        self.write_solver_values(milestone_year, run_number, solution.objective_value)?;
+        self.write_solver_values(milestone_year, run_description, solution.objective_value)?;
         Ok(())
     }
 
     // Write activity to file
-    fn write_activity<'a, I>(&mut self, milestone_year: u32, run_number: u32, iter: I) -> Result<()>
+    fn write_activity<'a, I>(
+        &mut self,
+        milestone_year: u32,
+        run_description: String,
+        iter: I,
+    ) -> Result<()>
     where
         I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, Activity)>,
     {
         for (asset, time_slice, activity) in iter {
             let row = ActivityRow {
                 milestone_year,
-                run_number,
+                run_description: run_description.clone(),
                 asset_id: asset.id,
                 time_slice: time_slice.clone(),
                 activity,
@@ -229,7 +242,7 @@ impl DebugDataWriter {
     fn write_activity_duals<'a, I>(
         &mut self,
         milestone_year: u32,
-        run_number: u32,
+        run_description: String,
         iter: I,
     ) -> Result<()>
     where
@@ -238,7 +251,7 @@ impl DebugDataWriter {
         for (asset, time_slice, value) in iter {
             let row = ActivityDualsRow {
                 milestone_year,
-                run_number,
+                run_description: run_description.clone(),
                 asset_id: asset.id,
                 time_slice: time_slice.clone(),
                 value,
@@ -253,7 +266,7 @@ impl DebugDataWriter {
     fn write_commodity_balance_duals<'a, I>(
         &mut self,
         milestone_year: u32,
-        run_number: u32,
+        run_description: String,
         iter: I,
     ) -> Result<()>
     where
@@ -262,7 +275,7 @@ impl DebugDataWriter {
         for (commodity_id, region_id, time_slice, value) in iter {
             let row = CommodityBalanceDualsRow {
                 milestone_year,
-                run_number,
+                run_description: run_description.clone(),
                 commodity_id: commodity_id.clone(),
                 region_id: region_id.clone(),
                 time_slice: time_slice.clone(),
@@ -278,12 +291,12 @@ impl DebugDataWriter {
     fn write_solver_values(
         &mut self,
         milestone_year: u32,
-        run_number: u32,
+        run_description: String,
         objective_value: Money,
     ) -> Result<()> {
         let row = SolverValuesRow {
             milestone_year,
-            run_number,
+            run_description,
             objective_value,
         };
         self.solver_values_writer.serialize(row)?;
@@ -344,11 +357,11 @@ impl DataWriter {
     pub fn write_debug_info(
         &mut self,
         milestone_year: u32,
-        run_number: u32,
+        run_description: String,
         solution: &Solution,
     ) -> Result<()> {
         if let Some(ref mut wtr) = &mut self.debug_writer {
-            wtr.write_debug_info(milestone_year, run_number, solution)?;
+            wtr.write_debug_info(milestone_year, run_description, solution)?;
         }
 
         Ok(())
@@ -530,7 +543,7 @@ mod tests {
         time_slice: TimeSliceID,
     ) {
         let milestone_year = 2020;
-        let run_number = 42;
+        let run_description = "test_run".to_string();
         let value = MoneyPerFlow(0.5);
         let dir = tempdir().unwrap();
 
@@ -540,7 +553,7 @@ mod tests {
             writer
                 .write_commodity_balance_duals(
                     milestone_year,
-                    run_number,
+                    run_description.clone(),
                     iter::once((&commodity_id, &region_id, &time_slice, value)),
                 )
                 .unwrap();
@@ -550,7 +563,7 @@ mod tests {
         // Read back and compare
         let expected = CommodityBalanceDualsRow {
             milestone_year,
-            run_number,
+            run_description,
             commodity_id,
             region_id,
             time_slice,
@@ -568,7 +581,7 @@ mod tests {
     #[rstest]
     fn test_write_activity_duals(assets: AssetPool, time_slice: TimeSliceID) {
         let milestone_year = 2020;
-        let run_number = 42;
+        let run_description = "test_run".to_string();
         let value = MoneyPerActivity(0.5);
         let dir = tempdir().unwrap();
         let asset = assets.iter_active().next().unwrap();
@@ -579,7 +592,7 @@ mod tests {
             writer
                 .write_activity_duals(
                     milestone_year,
-                    run_number,
+                    run_description.clone(),
                     iter::once((asset, &time_slice, value)),
                 )
                 .unwrap();
@@ -589,7 +602,7 @@ mod tests {
         // Read back and compare
         let expected = ActivityDualsRow {
             milestone_year,
-            run_number,
+            run_description,
             asset_id: asset.id,
             time_slice,
             value,
@@ -606,7 +619,7 @@ mod tests {
     #[rstest]
     fn test_write_activity(assets: AssetPool, time_slice: TimeSliceID) {
         let milestone_year = 2020;
-        let run_number = 42;
+        let run_description = "test_run".to_string();
         let activity = Activity(100.5);
         let dir = tempdir().unwrap();
         let asset = assets.iter_active().next().unwrap();
@@ -617,7 +630,7 @@ mod tests {
             writer
                 .write_activity(
                     milestone_year,
-                    run_number,
+                    run_description.clone(),
                     iter::once((asset, &time_slice, activity)),
                 )
                 .unwrap();
@@ -627,7 +640,7 @@ mod tests {
         // Read back and compare
         let expected = ActivityRow {
             milestone_year,
-            run_number,
+            run_description,
             asset_id: asset.id,
             time_slice,
             activity,
@@ -643,7 +656,7 @@ mod tests {
     #[rstest]
     fn test_write_solver_values() {
         let milestone_year = 2020;
-        let run_number = 42;
+        let run_description = "test_run".to_string();
         let objective_value = Money(1234.56);
         let dir = tempdir().unwrap();
 
@@ -651,7 +664,7 @@ mod tests {
         {
             let mut writer = DebugDataWriter::create(dir.path()).unwrap();
             writer
-                .write_solver_values(milestone_year, run_number, objective_value)
+                .write_solver_values(milestone_year, run_description.clone(), objective_value)
                 .unwrap();
             writer.flush().unwrap();
         }
@@ -659,7 +672,7 @@ mod tests {
         // Read back and compare
         let expected = SolverValuesRow {
             milestone_year,
-            run_number,
+            run_description,
             objective_value,
         };
         let records: Vec<SolverValuesRow> =
