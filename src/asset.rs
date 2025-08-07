@@ -414,12 +414,12 @@ impl AssetPool {
     }
 
     /// Iterate over active assets
-    pub fn iter_active(&self) -> slice::Iter<AssetRef> {
+    pub fn iter_active(&self) -> slice::Iter<'_, AssetRef> {
         self.active.iter()
     }
 
     /// Iterate over decommissioned assets
-    pub fn iter_decommissioned(&self) -> slice::Iter<AssetRef> {
+    pub fn iter_decommissioned(&self) -> slice::Iter<'_, AssetRef> {
         self.decommissioned.iter()
     }
 
