@@ -170,7 +170,9 @@ struct AppraisalResultsRow {
     milestone_year: u32,
     run_description: String,
     asset_id: Option<AssetID>,
+    process_id: ProcessID,
     capacity: Capacity,
+    unmet_demand: Flow,
     metric: f64,
 }
 
@@ -333,7 +335,9 @@ impl DebugDataWriter {
                 milestone_year,
                 run_description: run_description.clone(),
                 asset_id: result.asset.id,
+                process_id: result.asset.process.id.clone(),
                 capacity: result.capacity,
+                unmet_demand: result.unmet_demand.values().copied().sum(),
                 metric: result.metric,
             };
             self.appraisal_results_writer.serialize(row)?;
