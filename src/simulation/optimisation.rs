@@ -213,7 +213,7 @@ pub fn perform_dispatch_optimisation<'a>(
         year,
     )?;
 
-    writer.write_debug_info(year, run_description, &solution)?;
+    writer.write_dispatch_debug_info(year, run_description, &solution)?;
 
     Ok(solution)
 }

@@ -1,7 +1,7 @@
 //! Code for performing agent investment.
 use super::optimisation::{perform_dispatch_optimisation, FlowMap};
 use super::prices::ReducedCosts;
-use crate::agent::{Agent, ObjectiveType};
+use crate::agent::Agent;
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
 use crate::commodity::{Commodity, CommodityID, CommodityMap};
 use crate::model::Model;
@@ -15,7 +15,7 @@ use log::debug;
 use std::collections::HashMap;
 
 pub mod appraisal;
-use appraisal::{appraise_investment, AppraisalOutput};
+use appraisal::appraise_investment;
 
 /// A map of demand across time slices for a specific commodity and region
 type DemandMap = HashMap<TimeSliceID, Flow>;
@@ -88,9 +88,11 @@ pub fn perform_agent_investment(
                     model,
                     opt_assets,
                     commodity,
-                    &agent.objectives[&year],
+                    agent,
                     reduced_costs,
                     demand_portion_for_commodity,
+                    year,
+                    writer,
                 )?;
                 new_assets.extend(best_assets);
             }
@@ -316,13 +318,16 @@ fn get_candidate_assets<'a>(
 }
 
 /// Get the best assets for meeting demand for the given commodity
+#[allow(clippy::too_many_arguments)]
 fn select_best_assets(
     model: &Model,
     mut opt_assets: Vec<AssetRef>,
     commodity: &Commodity,
-    objective_type: &ObjectiveType,
+    agent: &Agent,
     reduced_costs: &ReducedCosts,
     mut demand: DemandMap,
+    year: u32,
+    writer: &mut DataWriter,
 ) -> Result<Vec<AssetRef>> {
     let mut best_assets: Vec<AssetRef> = Vec::new();
 
@@ -332,6 +337,8 @@ fn select_best_assets(
             .filter(|asset| !asset.is_commissioned())
             .map(|asset| (asset.clone(), asset.capacity)),
     );
+
+    let mut round = 0;
     while is_any_remaining_demand(&demand) {
         ensure!(
             !opt_assets.is_empty(),
@@ -339,7 +346,8 @@ fn select_best_assets(
             &commodity.id
         );
 
-        let mut current_best: Option<AppraisalOutput> = None;
+        // Appraise all options
+        let mut outputs_for_opts = Vec::new();
         for asset in opt_assets.iter() {
             let max_capacity = (!asset.is_commissioned()).then(|| {
                 let max_capacity = model.parameters.capacity_limit_factor * asset.capacity;
@@ -352,50 +360,58 @@ fn select_best_assets(
                 asset,
                 max_capacity,
                 commodity,
-                objective_type,
+                &agent.objectives[&year],
                 reduced_costs,
                 &demand,
             )?;
 
-            if current_best
-                .as_ref()
-                .is_none_or(|best_output| output.metric < best_output.metric)
-            {
-                // Sanity check. We currently have no good way to handle this scenario and it can
-                // cause an infinite loop.
-                assert!(
-                    output.capacity > Capacity(0.0),
-                    "Attempted to select asset '{}' with zero capacity.\nSee: \
-                    https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/716",
-                    &output.asset.process.id
-                );
-
-                current_best = Some(output);
-            }
+            outputs_for_opts.push(output);
         }
 
-        let best_output = current_best.expect("No assets given");
-        let asset = best_output.asset;
-        let capacity = best_output.capacity;
-        demand = best_output.unmet_demand;
+        // Save appraisal results
+        writer.write_appraisal_debug_info(
+            year,
+            format!("{} {} round {}", &commodity.id, &agent.id, round),
+            &outputs_for_opts,
+        )?;
 
-        let commissioned_txt = if asset.is_commissioned() {
+        // Select the best investment option
+        let best_output = outputs_for_opts
+            .into_iter()
+            .min_by(|a, b| a.metric.partial_cmp(&b.metric).unwrap())
+            .expect("No outputs given");
+
+        // Sanity check. We currently have no good way to handle this scenario and it can
+        // cause an infinite loop.
+        assert!(
+            best_output.capacity > Capacity(0.0),
+            "Attempted to select asset '{}' with zero capacity.\nSee: \
+            https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/716",
+            &best_output.asset.process.id
+        );
+
+        // Log the selected asset
+        let commissioned_txt = if best_output.asset.is_commissioned() {
             "existing"
         } else {
             "candidate"
         };
         debug!(
             "Selected {} asset '{}' (capacity: {})",
-            commissioned_txt, &asset.process.id, capacity
+            commissioned_txt, &best_output.asset.process.id, best_output.capacity
         );
 
+        // Update the assets
         update_assets(
-            asset,
-            capacity,
+            best_output.asset,
+            best_output.capacity,
             &mut opt_assets,
             &mut remaining_candidate_capacity,
             &mut best_assets,
         );
+
+        demand = best_output.unmet_demand;
+        round += 1;
     }
 
     Ok(best_assets)
