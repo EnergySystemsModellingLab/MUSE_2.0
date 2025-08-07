@@ -454,9 +454,9 @@ fn update_assets(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commodity::{Commodity, CommodityID};
+    use crate::commodity::Commodity;
     use crate::fixture::{
-        asset, commodity_id, process, process_parameter_map, region_id, svd_commodity, time_slice,
+        asset, process, process_parameter_map, region_id, svd_commodity, time_slice,
         time_slice_info, time_slice_info2,
     };
     use crate::process::{FlowType, ProcessFlow, ProcessParameter};
@@ -485,15 +485,15 @@ mod tests {
 
     #[rstest]
     fn test_get_demand_limiting_capacity(
-        commodity_id: CommodityID,
         time_slice: TimeSliceID,
         region_id: RegionID,
         time_slice_info: TimeSliceInfo,
         svd_commodity: Commodity,
     ) {
         // Create a process flow using the existing commodity fixture
+        let commodity_rc = Rc::new(svd_commodity);
         let process_flow = ProcessFlow {
-            commodity: Rc::new(svd_commodity),
+            commodity: Rc::clone(&commodity_rc),
             coeff: FlowPerActivity(2.0), // 2 units of flow per unit of activity
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
@@ -509,7 +509,9 @@ mod tests {
         // Add the flow to the process
         process.flows.insert(
             (region_id.clone(), 2015), // Using default commission year from fixture
-            [(commodity_id.clone(), process_flow)].into_iter().collect(),
+            [(commodity_rc.id.clone(), process_flow)]
+                .into_iter()
+                .collect(),
         );
 
         // Add activity limits
@@ -532,7 +534,7 @@ mod tests {
         demand.insert(time_slice.clone(), Flow(10.0));
 
         // Call the function
-        let result = get_demand_limiting_capacity(&time_slice_info, &asset, &commodity_id, &demand);
+        let result = get_demand_limiting_capacity(&time_slice_info, &asset, &commodity_rc, &demand);
 
         // Expected calculation:
         // max_flow_per_cap = activity_per_capacity_limit (1.0) * coeff (2.0) = 2.0
@@ -544,7 +546,6 @@ mod tests {
     fn test_get_demand_limiting_capacity_multiple_time_slices(
         time_slice_info2: TimeSliceInfo,
         svd_commodity: Commodity,
-        commodity_id: CommodityID,
         region_id: RegionID,
     ) {
         // Create time slices from the fixture (day and night)
@@ -552,8 +553,9 @@ mod tests {
             time_slice_info2.time_slices.keys().collect_tuple().unwrap();
 
         // Create a process flow using the existing commodity fixture
+        let commodity_rc = Rc::new(svd_commodity);
         let process_flow = ProcessFlow {
-            commodity: Rc::new(svd_commodity),
+            commodity: Rc::clone(&commodity_rc),
             coeff: FlowPerActivity(1.0), // 1 unit of flow per unit of activity
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
@@ -569,7 +571,9 @@ mod tests {
         // Add the flow to the process
         process.flows.insert(
             (region_id.clone(), 2015), // Using default commission year from fixture
-            [(commodity_id.clone(), process_flow)].into_iter().collect(),
+            [(commodity_rc.id.clone(), process_flow)]
+                .into_iter()
+                .collect(),
         );
 
         // Add activity limits for both time slices with different limits
@@ -598,7 +602,7 @@ mod tests {
 
         // Call the function
         let result =
-            get_demand_limiting_capacity(&time_slice_info2, &asset, &commodity_id, &demand);
+            get_demand_limiting_capacity(&time_slice_info2, &asset, &commodity_rc, &demand);
 
         // Expected: maximum of the capacity requirements across time slices (excluding zero limit)
         // Time slice 1: demand (4.0) / (activity_limit (2.0) * coeff (1.0)) = 2.0
