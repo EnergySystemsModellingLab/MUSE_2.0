@@ -57,6 +57,7 @@ pub struct ConstraintKeys {
 /// * `variables` - The variables in the problem
 /// * `model` - The model
 /// * `assets` - The asset pool
+/// * `commodities` - The subset of commodities to apply constraints to
 /// * `year` - Current milestone year
 ///
 /// # Returns
@@ -67,13 +68,20 @@ pub fn add_asset_constraints<'a, I>(
     variables: &VariableMap,
     model: &'a Model,
     assets: I,
+    commodities: &'a [CommodityID],
     year: u32,
 ) -> ConstraintKeys
 where
     I: Iterator<Item = &'a AssetRef> + Clone + 'a,
 {
-    let commodity_balance_keys =
-        add_commodity_balance_constraints(problem, variables, model, assets.clone(), year);
+    let commodity_balance_keys = add_commodity_balance_constraints(
+        problem,
+        variables,
+        model,
+        assets.clone(),
+        commodities,
+        year,
+    );
 
     let activity_keys = add_activity_constraints(problem, variables);
 
@@ -96,6 +104,7 @@ fn add_commodity_balance_constraints<'a, I>(
     variables: &VariableMap,
     model: &'a Model,
     assets: I,
+    commodities: &'a [CommodityID],
     year: u32,
 ) -> CommodityBalanceKeys
 where
@@ -106,7 +115,8 @@ where
 
     let mut keys = Vec::new();
     let mut terms = Vec::new();
-    for (commodity_id, commodity) in model.commodities.iter() {
+    for commodity_id in commodities {
+        let commodity = &model.commodities[commodity_id];
         if !matches!(
             commodity.kind,
             CommodityType::SupplyEqualsDemand | CommodityType::ServiceDemand

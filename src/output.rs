@@ -7,7 +7,7 @@ use crate::region::RegionID;
 use crate::simulation::optimisation::{FlowMap, Solution};
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
-use crate::units::{Activity, Flow, Money, MoneyPerActivity, MoneyPerFlow};
+use crate::units::{Activity, Capacity, Flow, Money, MoneyPerActivity, MoneyPerFlow};
 use anyhow::{Context, Result};
 use csv;
 use itertools::Itertools;
@@ -83,6 +83,7 @@ struct AssetRow {
     agent_id: AgentID,
     commission_year: u32,
     decommission_year: Option<u32>,
+    capacity: Capacity,
 }
 
 impl AssetRow {
@@ -95,6 +96,7 @@ impl AssetRow {
             agent_id: asset.agent_id.clone().unwrap(),
             commission_year: asset.commission_year,
             decommission_year: asset.decommission_year,
+            capacity: asset.capacity,
         }
     }
 }
