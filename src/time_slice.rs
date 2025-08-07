@@ -277,7 +277,7 @@ impl TimeSliceInfo {
     }
 
     /// Iterate over all [`TimeSliceID`]s
-    pub fn iter_ids(&self) -> indexmap::map::Keys<TimeSliceID, Year> {
+    pub fn iter_ids(&self) -> indexmap::map::Keys<'_, TimeSliceID, Year> {
         self.time_slices.keys()
     }
 
