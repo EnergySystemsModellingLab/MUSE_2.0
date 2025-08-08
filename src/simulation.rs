@@ -58,6 +58,7 @@ pub fn run(
     // Write results of dispatch optimisation to file
     writer.write_flows(year, &flow_map)?;
     writer.write_prices(year, &prices)?;
+    writer.write_debug_reduced_costs(year, &reduced_costs)?;
 
     while let Some(year) = year_iter.next() {
         info!("Milestone year: {year}");
@@ -88,6 +89,7 @@ pub fn run(
         // Write results of dispatch optimisation to file
         writer.write_flows(year, &flow_map)?;
         writer.write_prices(year, &prices)?;
+        writer.write_debug_reduced_costs(year, &new_reduced_costs)?;
 
         // Reduced costs for the next year
         reduced_costs = new_reduced_costs;

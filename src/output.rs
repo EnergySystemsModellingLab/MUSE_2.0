@@ -6,6 +6,7 @@ use crate::process::ProcessID;
 use crate::region::RegionID;
 use crate::simulation::investment::appraisal::AppraisalOutput;
 use crate::simulation::optimisation::{FlowMap, Solution};
+use crate::simulation::prices::ReducedCosts;
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, Capacity, Flow, Money, MoneyPerActivity, MoneyPerFlow};
@@ -46,6 +47,9 @@ const SOLVER_VALUES_FILE_NAME: &str = "debug_solver.csv";
 
 /// The output file name for appraisal results
 const APPRAISAL_RESULTS_FILE_NAME: &str = "debug_appraisal_results.csv";
+
+/// The output file name for reduced costs
+const REDUCED_COSTS_FILE_NAME: &str = "debug_reduced_costs.csv";
 
 /// Get the model name from the specified directory path
 pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
@@ -176,6 +180,16 @@ struct AppraisalResultsRow {
     metric: f64,
 }
 
+/// Represents the reduced costs in a row of the reduced costs CSV file
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct ReducedCostsRow {
+    milestone_year: u32,
+    asset_id: Option<AssetID>,
+    process_id: ProcessID,
+    time_slice: TimeSliceID,
+    reduced_cost: MoneyPerActivity,
+}
+
 /// For writing extra debug information about the model
 struct DebugDataWriter {
     activity_writer: csv::Writer<File>,
@@ -183,6 +197,7 @@ struct DebugDataWriter {
     activity_duals_writer: csv::Writer<File>,
     solver_values_writer: csv::Writer<File>,
     appraisal_results_writer: csv::Writer<File>,
+    reduced_costs_writer: csv::Writer<File>,
 }
 
 impl DebugDataWriter {
@@ -203,6 +218,7 @@ impl DebugDataWriter {
             activity_duals_writer: new_writer(ACTIVITY_DUALS_FILE_NAME)?,
             solver_values_writer: new_writer(SOLVER_VALUES_FILE_NAME)?,
             appraisal_results_writer: new_writer(APPRAISAL_RESULTS_FILE_NAME)?,
+            reduced_costs_writer: new_writer(REDUCED_COSTS_FILE_NAME)?,
         })
     }
 
@@ -346,6 +362,26 @@ impl DebugDataWriter {
         Ok(())
     }
 
+    /// Write reduced costs to file
+    fn write_reduced_costs(
+        &mut self,
+        milestone_year: u32,
+        reduced_costs: &ReducedCosts,
+    ) -> Result<()> {
+        for ((asset, time_slice), reduced_cost) in reduced_costs {
+            let row = ReducedCostsRow {
+                milestone_year,
+                asset_id: asset.id,
+                process_id: asset.process.id.clone(),
+                time_slice: time_slice.clone(),
+                reduced_cost: *reduced_cost,
+            };
+            self.reduced_costs_writer.serialize(row)?;
+        }
+
+        Ok(())
+    }
+
     /// Flush the underlying streams
     fn flush(&mut self) -> Result<()> {
         self.activity_writer.flush()?;
@@ -476,6 +512,18 @@ impl DataWriter {
             self.prices_writer.serialize(row)?;
         }
 
+        Ok(())
+    }
+
+    /// Write reduced costs to a CSV file
+    pub fn write_debug_reduced_costs(
+        &mut self,
+        milestone_year: u32,
+        reduced_costs: &ReducedCosts,
+    ) -> Result<()> {
+        if let Some(ref mut wtr) = &mut self.debug_writer {
+            wtr.write_reduced_costs(milestone_year, reduced_costs)?;
+        }
         Ok(())
     }
 
