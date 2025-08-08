@@ -548,6 +548,7 @@ mod tests {
     use indexmap::indexmap;
     use itertools::{assert_equal, Itertools};
     use rstest::rstest;
+    use std::collections::HashMap;
     use std::iter;
     use tempfile::tempdir;
 
@@ -780,6 +781,82 @@ mod tests {
         };
         let records: Vec<SolverValuesRow> =
             csv::Reader::from_path(dir.path().join(SOLVER_VALUES_FILE_NAME))
+                .unwrap()
+                .into_deserialize()
+                .try_collect()
+                .unwrap();
+        assert_equal(records, iter::once(expected));
+    }
+
+    #[rstest]
+    fn test_write_appraisal_results(assets: AssetPool) {
+        let milestone_year = 2020;
+        let run_description = "test_run".to_string();
+        let dir = tempdir().unwrap();
+        let asset = assets.iter_active().next().unwrap();
+
+        // Write appraisal results
+        {
+            let mut writer = DebugDataWriter::create(dir.path()).unwrap();
+            let appraisal = AppraisalOutput {
+                asset: asset.clone(),
+                capacity: Capacity(42.0),
+                unmet_demand: HashMap::new(),
+                metric: 3.14,
+            };
+            writer
+                .write_appraisal_results(milestone_year, run_description.clone(), &[appraisal])
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        // Read back and compare
+        let expected = AppraisalResultsRow {
+            milestone_year,
+            run_description,
+            asset_id: asset.id,
+            process_id: asset.process.id.clone(),
+            capacity: Capacity(42.0),
+            unmet_demand: Flow(0.0),
+            metric: 3.14,
+        };
+        let records: Vec<AppraisalResultsRow> =
+            csv::Reader::from_path(dir.path().join(APPRAISAL_RESULTS_FILE_NAME))
+                .unwrap()
+                .into_deserialize()
+                .try_collect()
+                .unwrap();
+        assert_equal(records, iter::once(expected));
+    }
+
+    #[rstest]
+    fn test_write_reduced_costs(assets: AssetPool, time_slice: TimeSliceID) {
+        let milestone_year = 2020;
+        let dir = tempdir().unwrap();
+        let asset = assets.iter_active().next().unwrap();
+
+        // Write reduced costs
+        {
+            let mut writer = DebugDataWriter::create(dir.path()).unwrap();
+            let reduced_costs = indexmap! {
+                (asset.clone(), time_slice.clone()) => MoneyPerActivity(0.5)
+            };
+            writer
+                .write_reduced_costs(milestone_year, &reduced_costs)
+                .unwrap();
+            writer.flush().unwrap();
+        }
+
+        // Read back and compare
+        let expected = ReducedCostsRow {
+            milestone_year,
+            asset_id: asset.id,
+            process_id: asset.process.id.clone(),
+            time_slice,
+            reduced_cost: MoneyPerActivity(0.5),
+        };
+        let records: Vec<ReducedCostsRow> =
+            csv::Reader::from_path(dir.path().join(REDUCED_COSTS_FILE_NAME))
                 .unwrap()
                 .into_deserialize()
                 .try_collect()
