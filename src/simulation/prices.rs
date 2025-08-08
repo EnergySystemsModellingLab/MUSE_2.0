@@ -7,11 +7,12 @@ use crate::region::RegionID;
 use crate::simulation::optimisation::Solution;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{MoneyPerActivity, MoneyPerFlow};
+use indexmap::IndexMap;
 use itertools::iproduct;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 /// A map of reduced costs for different assets in different time slices
-pub type ReducedCosts = HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
+pub type ReducedCosts = IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
 
 /// Update commodity prices and reduced costs for assets.
 ///
@@ -35,7 +36,7 @@ pub fn update_prices_and_reduced_costs(
     reduced_costs: &mut ReducedCosts,
 ) {
     let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
-    let reduced_costs_for_candidates: HashMap<_, _> = solution
+    let reduced_costs_for_candidates: ReducedCosts = solution
         .iter_reduced_costs_for_candidates()
         .map(|(asset, time_slice, cost)| ((asset.clone(), time_slice.clone()), cost))
         .collect();
@@ -213,12 +214,12 @@ impl IntoIterator for CommodityPrices {
 
 fn get_highest_activity_duals<'a, I>(
     activity_duals: I,
-) -> HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerActivity>
+) -> IndexMap<(CommodityID, RegionID, TimeSliceID), MoneyPerActivity>
 where
     I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, MoneyPerActivity)>,
 {
     // Calculate highest activity dual for each commodity/region/timeslice
-    let mut highest_duals = HashMap::new();
+    let mut highest_duals = IndexMap::new();
     for (asset, time_slice, dual) in activity_duals {
         // Iterate over all output flows
         for flow in asset.iter_flows().filter(|flow| flow.is_output()) {
