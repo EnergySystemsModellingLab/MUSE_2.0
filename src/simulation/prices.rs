@@ -7,11 +7,12 @@ use crate::region::RegionID;
 use crate::simulation::optimisation::Solution;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{MoneyPerActivity, MoneyPerFlow};
+use indexmap::IndexMap;
 use itertools::iproduct;
 use std::collections::{BTreeMap, HashMap};
 
 /// A map of reduced costs for different assets in different time slices
-pub type ReducedCosts = HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
+pub type ReducedCosts = IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
 
 /// Update commodity prices and reduced costs for assets.
 ///
@@ -35,7 +36,7 @@ pub fn update_prices_and_reduced_costs(
     reduced_costs: &mut ReducedCosts,
 ) {
     let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
-    let reduced_costs_for_candidates: HashMap<_, _> = solution
+    let reduced_costs_for_candidates: ReducedCosts = solution
         .iter_reduced_costs_for_candidates()
         .map(|(asset, time_slice, cost)| ((asset.clone(), time_slice.clone()), cost))
         .collect();
