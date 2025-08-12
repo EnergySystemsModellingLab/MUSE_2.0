@@ -113,7 +113,7 @@ fn run_dispatch_for_year(
         &[],
         None,
         year,
-        "final without candidates".to_string(),
+        "final without candidates",
         writer,
     )?;
     let flow_map = solution_existing.create_flow_map();
@@ -139,7 +139,7 @@ fn run_dispatch_for_year(
             &candidates,
             None,
             year,
-            "final with candidates".to_string(),
+            "final with candidates",
             writer,
         )?
     };

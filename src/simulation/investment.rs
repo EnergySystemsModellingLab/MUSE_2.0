@@ -115,7 +115,7 @@ pub fn perform_agent_investment(
                 &[],
                 Some(&seen_commodities),
                 year,
-                format!("post {commodity_id}/{region_id} investment"),
+                &format!("post {commodity_id}/{region_id} investment"),
                 writer,
             )?;
 
