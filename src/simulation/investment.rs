@@ -44,9 +44,6 @@ pub fn perform_agent_investment(
     // Get all existing assets and clear pool
     let existing_assets = assets.take();
 
-    // Which dispatch run for current year
-    let mut run_number = 0;
-
     // Initialise demand map
     let mut demand =
         flatten_preset_demands_for_year(&model.commodities, &model.time_slice_info, year);
@@ -118,10 +115,9 @@ pub fn perform_agent_investment(
                 &[],
                 Some(&seen_commodities),
                 year,
-                run_number,
+                &format!("post {commodity_id}/{region_id} investment"),
                 writer,
             )?;
-            run_number += 1;
 
             // Update demand map with flows from newly added assets
             update_demand_map(&mut demand, &solution.create_flow_map(), &new_assets);

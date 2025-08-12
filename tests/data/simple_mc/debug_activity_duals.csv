@@ -1,1777 +1,1777 @@
-milestone_year,run_number,asset_id,time_slice,value
-2020,0,0,winter.night,-0.0
-2020,0,0,winter.day,-0.0
-2020,0,0,winter.peak,-0.0
-2020,0,0,winter.evening,-0.0
-2020,0,0,peak.night,-0.0
-2020,0,0,peak.day,-0.0
-2020,0,0,peak.peak,-0.0
-2020,0,0,peak.evening,-0.0
-2020,0,0,summer.night,-0.0
-2020,0,0,summer.day,-0.0
-2020,0,0,summer.peak,-0.0
-2020,0,0,summer.evening,-0.0
-2020,0,0,autumn.night,-0.0
-2020,0,0,autumn.day,-0.0
-2020,0,0,autumn.peak,-0.0
-2020,0,0,autumn.evening,-0.0
-2020,0,1,winter.night,-0.0
-2020,0,1,winter.day,-0.0
-2020,0,1,winter.peak,-0.0
-2020,0,1,winter.evening,-0.0
-2020,0,1,peak.night,-0.0
-2020,0,1,peak.day,-0.0
-2020,0,1,peak.peak,-0.0
-2020,0,1,peak.evening,-0.0
-2020,0,1,summer.night,-0.0
-2020,0,1,summer.day,-0.0
-2020,0,1,summer.peak,-0.0
-2020,0,1,summer.evening,-0.0
-2020,0,1,autumn.night,-0.0
-2020,0,1,autumn.day,-0.0
-2020,0,1,autumn.peak,-0.0
-2020,0,1,autumn.evening,-0.0
-2020,0,2,winter.night,-16.86223303030303
-2020,0,2,winter.day,-7.593308999999999
-2020,0,2,winter.peak,-7.593308999999999
-2020,0,2,winter.evening,-16.86223303030303
-2020,0,2,peak.night,-16.86223303030303
-2020,0,2,peak.day,-16.86223303030303
-2020,0,2,peak.peak,-16.86223303030303
-2020,0,2,peak.evening,-16.86223303030303
-2020,0,2,summer.night,-7.593308999999999
-2020,0,2,summer.day,-0.0
-2020,0,2,summer.peak,-0.0
-2020,0,2,summer.evening,-0.0
-2020,0,2,autumn.night,-16.86223303030303
-2020,0,2,autumn.day,-16.86223303030303
-2020,0,2,autumn.peak,-16.86223303030303
-2020,0,2,autumn.evening,-16.86223303030303
-2020,0,3,winter.night,-9.26892403030303
-2020,0,3,winter.day,-0.0
-2020,0,3,winter.peak,-0.0
-2020,0,3,winter.evening,-9.26892403030303
-2020,0,3,peak.night,-9.26892403030303
-2020,0,3,peak.day,-9.26892403030303
-2020,0,3,peak.peak,-9.26892403030303
-2020,0,3,peak.evening,-9.26892403030303
-2020,0,3,summer.night,-0.0
-2020,0,3,summer.day,-0.0
-2020,0,3,summer.peak,-0.0
-2020,0,3,summer.evening,-0.0
-2020,0,3,autumn.night,-9.26892403030303
-2020,0,3,autumn.day,-9.26892403030303
-2020,0,3,autumn.peak,-9.26892403030303
-2020,0,3,autumn.evening,-9.26892403030303
-2020,0,4,winter.night,-0.0
-2020,0,4,winter.day,-0.0
-2020,0,4,winter.peak,-0.0
-2020,0,4,winter.evening,-0.0
-2020,0,4,peak.night,-0.0
-2020,0,4,peak.day,-0.0
-2020,0,4,peak.peak,-0.0
-2020,0,4,peak.evening,-0.0
-2020,0,4,summer.night,-0.0
-2020,0,4,summer.day,-0.0
-2020,0,4,summer.peak,-0.0
-2020,0,4,summer.evening,-0.0
-2020,0,4,autumn.night,-0.0
-2020,0,4,autumn.day,-0.0
-2020,0,4,autumn.peak,-0.0
-2020,0,4,autumn.evening,-0.0
-2020,0,5,winter.night,-0.0
-2020,0,5,winter.day,-3.05874493
-2020,0,5,winter.peak,-3.05874493
-2020,0,5,winter.evening,-0.0
-2020,0,5,peak.night,-0.0
-2020,0,5,peak.day,-0.0
-2020,0,5,peak.peak,-0.0
-2020,0,5,peak.evening,-0.0
-2020,0,5,summer.night,-0.0
-2020,0,5,summer.day,-0.0
-2020,0,5,summer.peak,-0.0
-2020,0,5,summer.evening,-0.0
-2020,0,5,autumn.night,-0.0
-2020,0,5,autumn.day,-0.0
-2020,0,5,autumn.peak,-0.0
-2020,0,5,autumn.evening,-0.0
-2020,1,0,winter.night,-0.0
-2020,1,0,winter.day,-0.0
-2020,1,0,winter.peak,-0.0
-2020,1,0,winter.evening,-0.0
-2020,1,0,peak.night,-0.0
-2020,1,0,peak.day,-0.0
-2020,1,0,peak.peak,-0.0
-2020,1,0,peak.evening,-0.0
-2020,1,0,summer.night,-0.0
-2020,1,0,summer.day,-0.0
-2020,1,0,summer.peak,-0.0
-2020,1,0,summer.evening,-0.0
-2020,1,0,autumn.night,-0.0
-2020,1,0,autumn.day,-0.0
-2020,1,0,autumn.peak,-0.0
-2020,1,0,autumn.evening,-0.0
-2020,1,1,winter.night,-0.0
-2020,1,1,winter.day,-0.0
-2020,1,1,winter.peak,-0.0
-2020,1,1,winter.evening,-0.0
-2020,1,1,peak.night,-0.0
-2020,1,1,peak.day,-0.0
-2020,1,1,peak.peak,-0.0
-2020,1,1,peak.evening,-0.0
-2020,1,1,summer.night,-0.0
-2020,1,1,summer.day,-0.0
-2020,1,1,summer.peak,-0.0
-2020,1,1,summer.evening,-0.0
-2020,1,1,autumn.night,-0.0
-2020,1,1,autumn.day,-0.0
-2020,1,1,autumn.peak,-0.0
-2020,1,1,autumn.evening,-0.0
-2020,1,2,winter.night,-16.86223303030303
-2020,1,2,winter.day,-7.593308999999999
-2020,1,2,winter.peak,-7.593308999999999
-2020,1,2,winter.evening,-16.86223303030303
-2020,1,2,peak.night,-16.86223303030303
-2020,1,2,peak.day,-16.86223303030303
-2020,1,2,peak.peak,-16.86223303030303
-2020,1,2,peak.evening,-16.86223303030303
-2020,1,2,summer.night,-7.593308999999999
-2020,1,2,summer.day,-0.0
-2020,1,2,summer.peak,-0.0
-2020,1,2,summer.evening,-0.0
-2020,1,2,autumn.night,-16.86223303030303
-2020,1,2,autumn.day,-16.86223303030303
-2020,1,2,autumn.peak,-16.86223303030303
-2020,1,2,autumn.evening,-16.86223303030303
-2020,1,3,winter.night,-9.26892403030303
-2020,1,3,winter.day,-0.0
-2020,1,3,winter.peak,-0.0
-2020,1,3,winter.evening,-9.26892403030303
-2020,1,3,peak.night,-9.26892403030303
-2020,1,3,peak.day,-9.26892403030303
-2020,1,3,peak.peak,-9.26892403030303
-2020,1,3,peak.evening,-9.26892403030303
-2020,1,3,summer.night,-0.0
-2020,1,3,summer.day,-0.0
-2020,1,3,summer.peak,-0.0
-2020,1,3,summer.evening,-0.0
-2020,1,3,autumn.night,-9.26892403030303
-2020,1,3,autumn.day,-9.26892403030303
-2020,1,3,autumn.peak,-9.26892403030303
-2020,1,3,autumn.evening,-9.26892403030303
-2020,1,4,winter.night,-0.0
-2020,1,4,winter.day,-0.0
-2020,1,4,winter.peak,-0.0
-2020,1,4,winter.evening,-0.0
-2020,1,4,peak.night,-0.0
-2020,1,4,peak.day,-0.0
-2020,1,4,peak.peak,-0.0
-2020,1,4,peak.evening,-0.0
-2020,1,4,summer.night,-0.0
-2020,1,4,summer.day,-0.0
-2020,1,4,summer.peak,-0.0
-2020,1,4,summer.evening,-0.0
-2020,1,4,autumn.night,-0.0
-2020,1,4,autumn.day,-0.0
-2020,1,4,autumn.peak,-0.0
-2020,1,4,autumn.evening,-0.0
-2020,1,5,winter.night,-0.0
-2020,1,5,winter.day,-3.05874493
-2020,1,5,winter.peak,-3.05874493
-2020,1,5,winter.evening,-0.0
-2020,1,5,peak.night,-0.0
-2020,1,5,peak.day,-0.0
-2020,1,5,peak.peak,-0.0
-2020,1,5,peak.evening,-0.0
-2020,1,5,summer.night,-0.0
-2020,1,5,summer.day,-0.0
-2020,1,5,summer.peak,-0.0
-2020,1,5,summer.evening,-0.0
-2020,1,5,autumn.night,-0.0
-2020,1,5,autumn.day,-0.0
-2020,1,5,autumn.peak,-0.0
-2020,1,5,autumn.evening,-0.0
-2020,1,,winter.night,-0.0
-2020,1,,winter.day,-0.0
-2020,1,,winter.peak,-0.0
-2020,1,,winter.evening,-0.0
-2020,1,,peak.night,-0.0
-2020,1,,peak.day,-0.0
-2020,1,,peak.peak,-0.0
-2020,1,,peak.evening,-0.0
-2020,1,,summer.night,-0.0
-2020,1,,summer.day,-0.0
-2020,1,,summer.peak,-0.0
-2020,1,,summer.evening,-0.0
-2020,1,,autumn.night,-0.0
-2020,1,,autumn.day,-0.0
-2020,1,,autumn.peak,-0.0
-2020,1,,autumn.evening,-0.0
-2020,1,,winter.night,-0.0
-2020,1,,winter.day,-0.0
-2020,1,,winter.peak,-0.0
-2020,1,,winter.evening,-0.0
-2020,1,,peak.night,-0.0
-2020,1,,peak.day,-0.0
-2020,1,,peak.peak,-0.0
-2020,1,,peak.evening,-0.0
-2020,1,,summer.night,-0.0
-2020,1,,summer.day,-0.0
-2020,1,,summer.peak,-0.0
-2020,1,,summer.evening,-0.0
-2020,1,,autumn.night,-0.0
-2020,1,,autumn.day,-0.0
-2020,1,,autumn.peak,-0.0
-2020,1,,autumn.evening,-0.0
-2020,1,,winter.night,-0.0
-2020,1,,winter.day,-0.0
-2020,1,,winter.peak,-0.0
-2020,1,,winter.evening,-0.0
-2020,1,,peak.night,-0.0
-2020,1,,peak.day,-0.0
-2020,1,,peak.peak,-0.0
-2020,1,,peak.evening,-0.0
-2020,1,,summer.night,-0.0
-2020,1,,summer.day,-0.0
-2020,1,,summer.peak,-0.0
-2020,1,,summer.evening,-0.0
-2020,1,,autumn.night,-0.0
-2020,1,,autumn.day,-0.0
-2020,1,,autumn.peak,-0.0
-2020,1,,autumn.evening,-0.0
-2020,1,,winter.night,-4.1996140833333335
-2020,1,,winter.day,-4.1996140833333335
-2020,1,,winter.peak,-4.1996140833333335
-2020,1,,winter.evening,-4.1996140833333335
-2020,1,,peak.night,-4.1996140833333335
-2020,1,,peak.day,-4.1996140833333335
-2020,1,,peak.peak,-4.1996140833333335
-2020,1,,peak.evening,-4.1996140833333335
-2020,1,,summer.night,-0.0
-2020,1,,summer.day,-0.0
-2020,1,,summer.peak,-0.0
-2020,1,,summer.evening,-0.0
-2020,1,,autumn.night,-4.1996140833333335
-2020,1,,autumn.day,-4.1996140833333335
-2020,1,,autumn.peak,-4.1996140833333335
-2020,1,,autumn.evening,-4.1996140833333335
-2020,1,,winter.night,-16.86223303030303
-2020,1,,winter.day,-7.593308999999999
-2020,1,,winter.peak,-7.593308999999999
-2020,1,,winter.evening,-16.86223303030303
-2020,1,,peak.night,-16.86223303030303
-2020,1,,peak.day,-16.86223303030303
-2020,1,,peak.peak,-16.86223303030303
-2020,1,,peak.evening,-16.86223303030303
-2020,1,,summer.night,-7.593308999999999
-2020,1,,summer.day,-0.0
-2020,1,,summer.peak,-0.0
-2020,1,,summer.evening,-0.0
-2020,1,,autumn.night,-16.86223303030303
-2020,1,,autumn.day,-16.86223303030303
-2020,1,,autumn.peak,-16.86223303030303
-2020,1,,autumn.evening,-16.86223303030303
-2020,1,,winter.night,-9.26892403030303
-2020,1,,winter.day,-0.0
-2020,1,,winter.peak,-0.0
-2020,1,,winter.evening,-9.26892403030303
-2020,1,,peak.night,-9.26892403030303
-2020,1,,peak.day,-9.26892403030303
-2020,1,,peak.peak,-9.26892403030303
-2020,1,,peak.evening,-9.26892403030303
-2020,1,,summer.night,-0.0
-2020,1,,summer.day,-0.0
-2020,1,,summer.peak,-0.0
-2020,1,,summer.evening,-0.0
-2020,1,,autumn.night,-9.26892403030303
-2020,1,,autumn.day,-9.26892403030303
-2020,1,,autumn.peak,-9.26892403030303
-2020,1,,autumn.evening,-9.26892403030303
-2020,1,,winter.night,-0.0
-2020,1,,winter.day,-0.0
-2020,1,,winter.peak,-0.0
-2020,1,,winter.evening,-0.0
-2020,1,,peak.night,-0.0
-2020,1,,peak.day,-0.0
-2020,1,,peak.peak,-0.0
-2020,1,,peak.evening,-0.0
-2020,1,,summer.night,-0.0
-2020,1,,summer.day,-0.0
-2020,1,,summer.peak,-0.0
-2020,1,,summer.evening,-0.0
-2020,1,,autumn.night,-0.0
-2020,1,,autumn.day,-0.0
-2020,1,,autumn.peak,-0.0
-2020,1,,autumn.evening,-0.0
-2020,1,,winter.night,-0.0
-2020,1,,winter.day,-3.05874493
-2020,1,,winter.peak,-3.05874493
-2020,1,,winter.evening,-0.0
-2020,1,,peak.night,-0.0
-2020,1,,peak.day,-0.0
-2020,1,,peak.peak,-0.0
-2020,1,,peak.evening,-0.0
-2020,1,,summer.night,-0.0
-2020,1,,summer.day,-0.0
-2020,1,,summer.peak,-0.0
-2020,1,,summer.evening,-0.0
-2020,1,,autumn.night,-0.0
-2020,1,,autumn.day,-0.0
-2020,1,,autumn.peak,-0.0
-2020,1,,autumn.evening,-0.0
-2020,1,,winter.night,-0.0
-2020,1,,winter.day,-0.0
-2020,1,,winter.peak,-0.0
-2020,1,,winter.evening,-0.0
-2020,1,,peak.night,-0.0
-2020,1,,peak.day,-0.0
-2020,1,,peak.peak,-0.0
-2020,1,,peak.evening,-0.0
-2020,1,,summer.night,-1.9807919699999998
-2020,1,,summer.day,-0.0
-2020,1,,summer.peak,-0.0
-2020,1,,summer.evening,-0.0
-2020,1,,autumn.night,-0.0
-2020,1,,autumn.day,-0.0
-2020,1,,autumn.peak,-0.0
-2020,1,,autumn.evening,-0.0
-2030,0,4,winter.night,-0.0
-2030,0,4,winter.day,-0.0
-2030,0,4,winter.peak,-0.0
-2030,0,4,winter.evening,-0.0
-2030,0,4,peak.night,-0.0
-2030,0,4,peak.day,-0.0
-2030,0,4,peak.peak,-0.0
-2030,0,4,peak.evening,-0.0
-2030,0,4,summer.night,-0.0
-2030,0,4,summer.day,-0.0
-2030,0,4,summer.peak,-0.0
-2030,0,4,summer.evening,-0.0
-2030,0,4,autumn.night,-0.0
-2030,0,4,autumn.day,-0.0
-2030,0,4,autumn.peak,-0.0
-2030,0,4,autumn.evening,-0.0
-2030,0,5,winter.night,-2.3419800000000004
-2030,0,5,winter.day,-2.3419800000000004
-2030,0,5,winter.peak,-2.3419800000000004
-2030,0,5,winter.evening,-2.3419800000000004
-2030,0,5,peak.night,-0.03
-2030,0,5,peak.day,-2.3419800000000004
-2030,0,5,peak.peak,-2.3419800000000004
-2030,0,5,peak.evening,-2.3419800000000004
-2030,0,5,summer.night,-0.0
-2030,0,5,summer.day,-0.0
-2030,0,5,summer.peak,-0.0
-2030,0,5,summer.evening,-0.0
-2030,0,5,autumn.night,-0.03
-2030,0,5,autumn.day,-2.3419800000000004
-2030,0,5,autumn.peak,-2.3419800000000004
-2030,0,5,autumn.evening,-2.3419800000000004
-2030,0,6,winter.night,-2.31198
-2030,0,6,winter.day,-2.31198
-2030,0,6,winter.peak,-2.31198
-2030,0,6,winter.evening,-2.31198
-2030,0,6,peak.night,-0.0
-2030,0,6,peak.day,-2.31198
-2030,0,6,peak.peak,-2.31198
-2030,0,6,peak.evening,-2.31198
-2030,0,6,summer.night,-0.0
-2030,0,6,summer.day,-0.0
-2030,0,6,summer.peak,-0.0
-2030,0,6,summer.evening,-0.0
-2030,0,6,autumn.night,-0.0
-2030,0,6,autumn.day,-2.31198
-2030,0,6,autumn.peak,-2.31198
-2030,0,6,autumn.evening,-2.31198
-2030,1,2,winter.night,-3.2178
-2030,1,2,winter.day,-3.2178
-2030,1,2,winter.peak,-3.2178
-2030,1,2,winter.evening,-3.2178
-2030,1,2,peak.night,-3.2178
-2030,1,2,peak.day,-3.2178
-2030,1,2,peak.peak,-3.2178
-2030,1,2,peak.evening,-3.2178
-2030,1,2,summer.night,-0.0
-2030,1,2,summer.day,-0.0
-2030,1,2,summer.peak,-0.0
-2030,1,2,summer.evening,-0.0
-2030,1,2,autumn.night,-3.2178
-2030,1,2,autumn.day,-3.2178
-2030,1,2,autumn.peak,-3.2178
-2030,1,2,autumn.evening,-3.2178
-2030,1,3,winter.night,-0.0
-2030,1,3,winter.day,-0.0
-2030,1,3,winter.peak,-0.0
-2030,1,3,winter.evening,-0.0
-2030,1,3,peak.night,-0.0
-2030,1,3,peak.day,-0.0
-2030,1,3,peak.peak,-0.0
-2030,1,3,peak.evening,-0.0
-2030,1,3,summer.night,-0.0
-2030,1,3,summer.day,-0.0
-2030,1,3,summer.peak,-0.0
-2030,1,3,summer.evening,-0.0
-2030,1,3,autumn.night,-0.0
-2030,1,3,autumn.day,-0.0
-2030,1,3,autumn.peak,-0.0
-2030,1,3,autumn.evening,-0.0
-2030,1,4,winter.night,-0.0
-2030,1,4,winter.day,-0.0
-2030,1,4,winter.peak,-0.0
-2030,1,4,winter.evening,-0.0
-2030,1,4,peak.night,-0.0
-2030,1,4,peak.day,-0.0
-2030,1,4,peak.peak,-0.0
-2030,1,4,peak.evening,-0.0
-2030,1,4,summer.night,-0.0
-2030,1,4,summer.day,-0.0
-2030,1,4,summer.peak,-0.0
-2030,1,4,summer.evening,-0.0
-2030,1,4,autumn.night,-0.0
-2030,1,4,autumn.day,-0.0
-2030,1,4,autumn.peak,-0.0
-2030,1,4,autumn.evening,-0.0
-2030,1,5,winter.night,-1.1481060000000003
-2030,1,5,winter.day,-1.1481060000000003
-2030,1,5,winter.peak,-1.1481060000000003
-2030,1,5,winter.evening,-1.1481060000000003
-2030,1,5,peak.night,-0.0
-2030,1,5,peak.day,-1.1481060000000003
-2030,1,5,peak.peak,-1.1481060000000003
-2030,1,5,peak.evening,-1.1481060000000003
-2030,1,5,summer.night,-0.0
-2030,1,5,summer.day,-0.0
-2030,1,5,summer.peak,-0.0
-2030,1,5,summer.evening,-0.0
-2030,1,5,autumn.night,-0.0
-2030,1,5,autumn.day,-1.1481060000000003
-2030,1,5,autumn.peak,-1.1481060000000003
-2030,1,5,autumn.evening,-1.1481060000000003
-2030,1,6,winter.night,-2.31198
-2030,1,6,winter.day,-2.31198
-2030,1,6,winter.peak,-2.31198
-2030,1,6,winter.evening,-2.31198
-2030,1,6,peak.night,-1.163874
-2030,1,6,peak.day,-2.31198
-2030,1,6,peak.peak,-2.31198
-2030,1,6,peak.evening,-2.31198
-2030,1,6,summer.night,-0.0
-2030,1,6,summer.day,-0.0
-2030,1,6,summer.peak,-0.0
-2030,1,6,summer.evening,-0.0
-2030,1,6,autumn.night,-1.163874
-2030,1,6,autumn.day,-2.31198
-2030,1,6,autumn.peak,-2.31198
-2030,1,6,autumn.evening,-2.31198
-2030,1,7,winter.night,-0.0
-2030,1,7,winter.day,-0.0
-2030,1,7,winter.peak,-0.0
-2030,1,7,winter.evening,-0.0
-2030,1,7,peak.night,-0.0
-2030,1,7,peak.day,-0.0
-2030,1,7,peak.peak,-0.0
-2030,1,7,peak.evening,-0.0
-2030,1,7,summer.night,-0.0
-2030,1,7,summer.day,-0.0
-2030,1,7,summer.peak,-0.0
-2030,1,7,summer.evening,-0.0
-2030,1,7,autumn.night,-0.0
-2030,1,7,autumn.day,-0.0
-2030,1,7,autumn.peak,-0.0
-2030,1,7,autumn.evening,-0.0
-2030,2,1,winter.night,-0.0
-2030,2,1,winter.day,-0.0
-2030,2,1,winter.peak,-0.0
-2030,2,1,winter.evening,-0.0
-2030,2,1,peak.night,-0.0
-2030,2,1,peak.day,-0.0
-2030,2,1,peak.peak,-0.0
-2030,2,1,peak.evening,-0.0
-2030,2,1,summer.night,-0.0
-2030,2,1,summer.day,-0.0
-2030,2,1,summer.peak,-0.0
-2030,2,1,summer.evening,-0.0
-2030,2,1,autumn.night,-0.0
-2030,2,1,autumn.day,-0.0
-2030,2,1,autumn.peak,-0.0
-2030,2,1,autumn.evening,-0.0
-2030,2,2,winter.night,-4.1211899999999995
-2030,2,2,winter.day,-4.1211899999999995
-2030,2,2,winter.peak,-4.1211899999999995
-2030,2,2,winter.evening,-4.1211899999999995
-2030,2,2,peak.night,-4.1211899999999995
-2030,2,2,peak.day,-4.1211899999999995
-2030,2,2,peak.peak,-4.1211899999999995
-2030,2,2,peak.evening,-4.1211899999999995
-2030,2,2,summer.night,-0.0
-2030,2,2,summer.day,-0.0
-2030,2,2,summer.peak,-0.0
-2030,2,2,summer.evening,-0.0
-2030,2,2,autumn.night,-4.1211899999999995
-2030,2,2,autumn.day,-4.1211899999999995
-2030,2,2,autumn.peak,-4.1211899999999995
-2030,2,2,autumn.evening,-4.1211899999999995
-2030,2,3,winter.night,-0.0
-2030,2,3,winter.day,-0.0
-2030,2,3,winter.peak,-0.0
-2030,2,3,winter.evening,-0.0
-2030,2,3,peak.night,-0.0
-2030,2,3,peak.day,-0.0
-2030,2,3,peak.peak,-0.0
-2030,2,3,peak.evening,-0.0
-2030,2,3,summer.night,-0.0
-2030,2,3,summer.day,-0.0
-2030,2,3,summer.peak,-0.0
-2030,2,3,summer.evening,-0.0
-2030,2,3,autumn.night,-0.0
-2030,2,3,autumn.day,-0.0
-2030,2,3,autumn.peak,-0.0
-2030,2,3,autumn.evening,-0.0
-2030,2,4,winter.night,-0.0
-2030,2,4,winter.day,-0.0
-2030,2,4,winter.peak,-0.0
-2030,2,4,winter.evening,-0.0
-2030,2,4,peak.night,-0.0
-2030,2,4,peak.day,-0.0
-2030,2,4,peak.peak,-0.0
-2030,2,4,peak.evening,-0.0
-2030,2,4,summer.night,-0.0
-2030,2,4,summer.day,-0.0
-2030,2,4,summer.peak,-0.0
-2030,2,4,summer.evening,-0.0
-2030,2,4,autumn.night,-0.0
-2030,2,4,autumn.day,-0.0
-2030,2,4,autumn.peak,-0.0
-2030,2,4,autumn.evening,-0.0
-2030,2,5,winter.night,-1.5425863000000004
-2030,2,5,winter.day,-1.5425863000000004
-2030,2,5,winter.peak,-1.5425863000000004
-2030,2,5,winter.evening,-1.5425863000000004
-2030,2,5,peak.night,-0.0
-2030,2,5,peak.day,-1.5425863000000004
-2030,2,5,peak.peak,-1.5425863000000004
-2030,2,5,peak.evening,-1.5425863000000004
-2030,2,5,summer.night,-0.0
-2030,2,5,summer.day,-0.0
-2030,2,5,summer.peak,-0.0
-2030,2,5,summer.evening,-0.0
-2030,2,5,autumn.night,-0.0
-2030,2,5,autumn.day,-1.5425863000000004
-2030,2,5,autumn.peak,-1.5425863000000004
-2030,2,5,autumn.evening,-1.5425863000000004
-2030,2,6,winter.night,-3.004579
-2030,2,6,winter.day,-3.004579
-2030,2,6,winter.peak,-3.004579
-2030,2,6,winter.evening,-3.004579
-2030,2,6,peak.night,-1.4619927
-2030,2,6,peak.day,-3.004579
-2030,2,6,peak.peak,-3.004579
-2030,2,6,peak.evening,-3.004579
-2030,2,6,summer.night,-0.0
-2030,2,6,summer.day,-0.0
-2030,2,6,summer.peak,-0.0
-2030,2,6,summer.evening,-0.0
-2030,2,6,autumn.night,-1.4619927
-2030,2,6,autumn.day,-3.004579
-2030,2,6,autumn.peak,-3.004579
-2030,2,6,autumn.evening,-3.004579
-2030,2,7,winter.night,-0.0
-2030,2,7,winter.day,-0.0
-2030,2,7,winter.peak,-0.0
-2030,2,7,winter.evening,-0.0
-2030,2,7,peak.night,-0.0
-2030,2,7,peak.day,-0.0
-2030,2,7,peak.peak,-0.0
-2030,2,7,peak.evening,-0.0
-2030,2,7,summer.night,-0.0
-2030,2,7,summer.day,-0.0
-2030,2,7,summer.peak,-0.0
-2030,2,7,summer.evening,-0.0
-2030,2,7,autumn.night,-0.0
-2030,2,7,autumn.day,-0.0
-2030,2,7,autumn.peak,-0.0
-2030,2,7,autumn.evening,-0.0
-2030,3,0,winter.night,-0.0
-2030,3,0,winter.day,-0.0
-2030,3,0,winter.peak,-0.0
-2030,3,0,winter.evening,-0.0
-2030,3,0,peak.night,-0.0
-2030,3,0,peak.day,-0.0
-2030,3,0,peak.peak,-0.0
-2030,3,0,peak.evening,-0.0
-2030,3,0,summer.night,-0.0
-2030,3,0,summer.day,-0.0
-2030,3,0,summer.peak,-0.0
-2030,3,0,summer.evening,-0.0
-2030,3,0,autumn.night,-0.0
-2030,3,0,autumn.day,-0.0
-2030,3,0,autumn.peak,-0.0
-2030,3,0,autumn.evening,-0.0
-2030,3,1,winter.night,-0.0
-2030,3,1,winter.day,-0.0
-2030,3,1,winter.peak,-0.0
-2030,3,1,winter.evening,-0.0
-2030,3,1,peak.night,-0.0
-2030,3,1,peak.day,-0.0
-2030,3,1,peak.peak,-0.0
-2030,3,1,peak.evening,-0.0
-2030,3,1,summer.night,-0.0
-2030,3,1,summer.day,-0.0
-2030,3,1,summer.peak,-0.0
-2030,3,1,summer.evening,-0.0
-2030,3,1,autumn.night,-0.0
-2030,3,1,autumn.day,-0.0
-2030,3,1,autumn.peak,-0.0
-2030,3,1,autumn.evening,-0.0
-2030,3,2,winter.night,-7.593308999999999
-2030,3,2,winter.day,-7.593308999999999
-2030,3,2,winter.peak,-7.593308999999999
-2030,3,2,winter.evening,-7.593308999999999
-2030,3,2,peak.night,-7.593308999999999
-2030,3,2,peak.day,-7.593308999999999
-2030,3,2,peak.peak,-7.593308999999999
-2030,3,2,peak.evening,-7.593308999999999
-2030,3,2,summer.night,-0.0
-2030,3,2,summer.day,-0.0
-2030,3,2,summer.peak,-0.0
-2030,3,2,summer.evening,-0.0
-2030,3,2,autumn.night,-7.593308999999999
-2030,3,2,autumn.day,-7.593308999999999
-2030,3,2,autumn.peak,-7.593308999999999
-2030,3,2,autumn.evening,-7.593308999999999
-2030,3,3,winter.night,-0.0
-2030,3,3,winter.day,-0.0
-2030,3,3,winter.peak,-0.0
-2030,3,3,winter.evening,-0.0
-2030,3,3,peak.night,-0.0
-2030,3,3,peak.day,-0.0
-2030,3,3,peak.peak,-0.0
-2030,3,3,peak.evening,-0.0
-2030,3,3,summer.night,-0.0
-2030,3,3,summer.day,-0.0
-2030,3,3,summer.peak,-0.0
-2030,3,3,summer.evening,-0.0
-2030,3,3,autumn.night,-0.0
-2030,3,3,autumn.day,-0.0
-2030,3,3,autumn.peak,-0.0
-2030,3,3,autumn.evening,-0.0
-2030,3,4,winter.night,-0.0
-2030,3,4,winter.day,-0.0
-2030,3,4,winter.peak,-0.0
-2030,3,4,winter.evening,-0.0
-2030,3,4,peak.night,-0.0
-2030,3,4,peak.day,-0.0
-2030,3,4,peak.peak,-0.0
-2030,3,4,peak.evening,-0.0
-2030,3,4,summer.night,-0.0
-2030,3,4,summer.day,-0.0
-2030,3,4,summer.peak,-0.0
-2030,3,4,summer.evening,-0.0
-2030,3,4,autumn.night,-0.0
-2030,3,4,autumn.day,-0.0
-2030,3,4,autumn.peak,-0.0
-2030,3,4,autumn.evening,-0.0
-2030,3,5,winter.night,-3.05874493
-2030,3,5,winter.day,-3.05874493
-2030,3,5,winter.peak,-3.05874493
-2030,3,5,winter.evening,-3.05874493
-2030,3,5,peak.night,-0.0
-2030,3,5,peak.day,-3.05874493
-2030,3,5,peak.peak,-3.05874493
-2030,3,5,peak.evening,-3.05874493
-2030,3,5,summer.night,-0.0
-2030,3,5,summer.day,-0.0
-2030,3,5,summer.peak,-0.0
-2030,3,5,summer.evening,-0.0
-2030,3,5,autumn.night,-0.0
-2030,3,5,autumn.day,-3.05874493
-2030,3,5,autumn.peak,-3.05874493
-2030,3,5,autumn.evening,-3.05874493
-2030,3,6,winter.night,-5.6665369
-2030,3,6,winter.day,-5.6665369
-2030,3,6,winter.peak,-5.6665369
-2030,3,6,winter.evening,-5.6665369
-2030,3,6,peak.night,-2.6077919699999996
-2030,3,6,peak.day,-5.6665369
-2030,3,6,peak.peak,-5.6665369
-2030,3,6,peak.evening,-5.6665369
-2030,3,6,summer.night,-0.0
-2030,3,6,summer.day,-0.0
-2030,3,6,summer.peak,-0.0
-2030,3,6,summer.evening,-0.0
-2030,3,6,autumn.night,-2.6077919699999996
-2030,3,6,autumn.day,-5.6665369
-2030,3,6,autumn.peak,-5.6665369
-2030,3,6,autumn.evening,-5.6665369
-2030,3,7,winter.night,-0.0
-2030,3,7,winter.day,-0.0
-2030,3,7,winter.peak,-0.0
-2030,3,7,winter.evening,-0.0
-2030,3,7,peak.night,-0.0
-2030,3,7,peak.day,-0.0
-2030,3,7,peak.peak,-0.0
-2030,3,7,peak.evening,-0.0
-2030,3,7,summer.night,-0.0
-2030,3,7,summer.day,-0.0
-2030,3,7,summer.peak,-0.0
-2030,3,7,summer.evening,-0.0
-2030,3,7,autumn.night,-0.0
-2030,3,7,autumn.day,-0.0
-2030,3,7,autumn.peak,-0.0
-2030,3,7,autumn.evening,-0.0
-2030,4,0,winter.night,-0.0
-2030,4,0,winter.day,-0.0
-2030,4,0,winter.peak,-0.0
-2030,4,0,winter.evening,-0.0
-2030,4,0,peak.night,-0.0
-2030,4,0,peak.day,-0.0
-2030,4,0,peak.peak,-0.0
-2030,4,0,peak.evening,-0.0
-2030,4,0,summer.night,-0.0
-2030,4,0,summer.day,-0.0
-2030,4,0,summer.peak,-0.0
-2030,4,0,summer.evening,-0.0
-2030,4,0,autumn.night,-0.0
-2030,4,0,autumn.day,-0.0
-2030,4,0,autumn.peak,-0.0
-2030,4,0,autumn.evening,-0.0
-2030,4,1,winter.night,-0.0
-2030,4,1,winter.day,-0.0
-2030,4,1,winter.peak,-0.0
-2030,4,1,winter.evening,-0.0
-2030,4,1,peak.night,-0.0
-2030,4,1,peak.day,-0.0
-2030,4,1,peak.peak,-0.0
-2030,4,1,peak.evening,-0.0
-2030,4,1,summer.night,-0.0
-2030,4,1,summer.day,-0.0
-2030,4,1,summer.peak,-0.0
-2030,4,1,summer.evening,-0.0
-2030,4,1,autumn.night,-0.0
-2030,4,1,autumn.day,-0.0
-2030,4,1,autumn.peak,-0.0
-2030,4,1,autumn.evening,-0.0
-2030,4,2,winter.night,-7.593308999999999
-2030,4,2,winter.day,-7.593308999999999
-2030,4,2,winter.peak,-7.593308999999999
-2030,4,2,winter.evening,-7.593308999999999
-2030,4,2,peak.night,-7.593308999999999
-2030,4,2,peak.day,-7.593308999999999
-2030,4,2,peak.peak,-7.593308999999999
-2030,4,2,peak.evening,-7.593308999999999
-2030,4,2,summer.night,-0.6363636363636364
-2030,4,2,summer.day,-0.0
-2030,4,2,summer.peak,-0.0
-2030,4,2,summer.evening,-0.0
-2030,4,2,autumn.night,-7.593308999999999
-2030,4,2,autumn.day,-7.593308999999999
-2030,4,2,autumn.peak,-7.593308999999999
-2030,4,2,autumn.evening,-7.593308999999999
-2030,4,3,winter.night,-0.0
-2030,4,3,winter.day,-0.0
-2030,4,3,winter.peak,-0.0
-2030,4,3,winter.evening,-0.0
-2030,4,3,peak.night,-0.0
-2030,4,3,peak.day,-0.0
-2030,4,3,peak.peak,-0.0
-2030,4,3,peak.evening,-0.0
-2030,4,3,summer.night,-0.0
-2030,4,3,summer.day,-0.0
-2030,4,3,summer.peak,-0.0
-2030,4,3,summer.evening,-0.0
-2030,4,3,autumn.night,-0.0
-2030,4,3,autumn.day,-0.0
-2030,4,3,autumn.peak,-0.0
-2030,4,3,autumn.evening,-0.0
-2030,4,4,winter.night,-0.0
-2030,4,4,winter.day,-0.0
-2030,4,4,winter.peak,-0.0
-2030,4,4,winter.evening,-0.0
-2030,4,4,peak.night,-0.0
-2030,4,4,peak.day,-0.0
-2030,4,4,peak.peak,-0.0
-2030,4,4,peak.evening,-0.0
-2030,4,4,summer.night,-0.0
-2030,4,4,summer.day,-0.0
-2030,4,4,summer.peak,-0.0
-2030,4,4,summer.evening,-0.0
-2030,4,4,autumn.night,-0.0
-2030,4,4,autumn.day,-0.0
-2030,4,4,autumn.peak,-0.0
-2030,4,4,autumn.evening,-0.0
-2030,4,5,winter.night,-3.05874493
-2030,4,5,winter.day,-3.05874493
-2030,4,5,winter.peak,-3.05874493
-2030,4,5,winter.evening,-3.05874493
-2030,4,5,peak.night,-0.0
-2030,4,5,peak.day,-3.05874493
-2030,4,5,peak.peak,-3.05874493
-2030,4,5,peak.evening,-3.05874493
-2030,4,5,summer.night,-0.0
-2030,4,5,summer.day,-0.0
-2030,4,5,summer.peak,-0.0
-2030,4,5,summer.evening,-0.0
-2030,4,5,autumn.night,-0.0
-2030,4,5,autumn.day,-3.05874493
-2030,4,5,autumn.peak,-3.05874493
-2030,4,5,autumn.evening,-3.05874493
-2030,4,6,winter.night,-5.354536899999999
-2030,4,6,winter.day,-5.354536899999999
-2030,4,6,winter.peak,-5.354536899999999
-2030,4,6,winter.evening,-5.354536899999999
-2030,4,6,peak.night,-2.29579197
-2030,4,6,peak.day,-5.354536899999999
-2030,4,6,peak.peak,-5.354536899999999
-2030,4,6,peak.evening,-5.354536899999999
-2030,4,6,summer.night,-0.0
-2030,4,6,summer.day,-0.0
-2030,4,6,summer.peak,-0.0
-2030,4,6,summer.evening,-0.0
-2030,4,6,autumn.night,-2.29579197
-2030,4,6,autumn.day,-5.354536899999999
-2030,4,6,autumn.peak,-5.354536899999999
-2030,4,6,autumn.evening,-5.354536899999999
-2030,4,7,winter.night,-0.0
-2030,4,7,winter.day,-0.0
-2030,4,7,winter.peak,-0.0
-2030,4,7,winter.evening,-0.0
-2030,4,7,peak.night,-0.0
-2030,4,7,peak.day,-0.0
-2030,4,7,peak.peak,-0.0
-2030,4,7,peak.evening,-0.0
-2030,4,7,summer.night,-0.0
-2030,4,7,summer.day,-0.0
-2030,4,7,summer.peak,-0.0
-2030,4,7,summer.evening,-0.0
-2030,4,7,autumn.night,-0.0
-2030,4,7,autumn.day,-0.0
-2030,4,7,autumn.peak,-0.0
-2030,4,7,autumn.evening,-0.0
-2030,4,8,winter.night,-0.0
-2030,4,8,winter.day,-0.0
-2030,4,8,winter.peak,-0.0
-2030,4,8,winter.evening,-0.0
-2030,4,8,peak.night,-0.0
-2030,4,8,peak.day,-0.0
-2030,4,8,peak.peak,-0.0
-2030,4,8,peak.evening,-0.0
-2030,4,8,summer.night,-0.0
-2030,4,8,summer.day,-0.0
-2030,4,8,summer.peak,-0.0
-2030,4,8,summer.evening,-0.0
-2030,4,8,autumn.night,-0.0
-2030,4,8,autumn.day,-0.0
-2030,4,8,autumn.peak,-0.0
-2030,4,8,autumn.evening,-0.0
-2030,5,0,winter.night,-0.0
-2030,5,0,winter.day,-0.0
-2030,5,0,winter.peak,-0.0
-2030,5,0,winter.evening,-0.0
-2030,5,0,peak.night,-0.0
-2030,5,0,peak.day,-0.0
-2030,5,0,peak.peak,-0.0
-2030,5,0,peak.evening,-0.0
-2030,5,0,summer.night,-0.0
-2030,5,0,summer.day,-0.0
-2030,5,0,summer.peak,-0.0
-2030,5,0,summer.evening,-0.0
-2030,5,0,autumn.night,-0.0
-2030,5,0,autumn.day,-0.0
-2030,5,0,autumn.peak,-0.0
-2030,5,0,autumn.evening,-0.0
-2030,5,1,winter.night,-0.0
-2030,5,1,winter.day,-0.0
-2030,5,1,winter.peak,-0.0
-2030,5,1,winter.evening,-0.0
-2030,5,1,peak.night,-0.0
-2030,5,1,peak.day,-0.0
-2030,5,1,peak.peak,-0.0
-2030,5,1,peak.evening,-0.0
-2030,5,1,summer.night,-0.0
-2030,5,1,summer.day,-0.0
-2030,5,1,summer.peak,-0.0
-2030,5,1,summer.evening,-0.0
-2030,5,1,autumn.night,-0.0
-2030,5,1,autumn.day,-0.0
-2030,5,1,autumn.peak,-0.0
-2030,5,1,autumn.evening,-0.0
-2030,5,2,winter.night,-7.593308999999999
-2030,5,2,winter.day,-7.593308999999999
-2030,5,2,winter.peak,-7.593308999999999
-2030,5,2,winter.evening,-7.593308999999999
-2030,5,2,peak.night,-7.593308999999999
-2030,5,2,peak.day,-7.593308999999999
-2030,5,2,peak.peak,-7.593308999999999
-2030,5,2,peak.evening,-7.593308999999999
-2030,5,2,summer.night,-1.5909090909090908
-2030,5,2,summer.day,-0.0
-2030,5,2,summer.peak,-0.0
-2030,5,2,summer.evening,-0.0
-2030,5,2,autumn.night,-7.593308999999999
-2030,5,2,autumn.day,-7.593308999999999
-2030,5,2,autumn.peak,-7.593308999999999
-2030,5,2,autumn.evening,-7.593308999999999
-2030,5,3,winter.night,-0.0
-2030,5,3,winter.day,-0.0
-2030,5,3,winter.peak,-0.0
-2030,5,3,winter.evening,-0.0
-2030,5,3,peak.night,-0.0
-2030,5,3,peak.day,-0.0
-2030,5,3,peak.peak,-0.0
-2030,5,3,peak.evening,-0.0
-2030,5,3,summer.night,-0.0
-2030,5,3,summer.day,-0.0
-2030,5,3,summer.peak,-0.0
-2030,5,3,summer.evening,-0.0
-2030,5,3,autumn.night,-0.0
-2030,5,3,autumn.day,-0.0
-2030,5,3,autumn.peak,-0.0
-2030,5,3,autumn.evening,-0.0
-2030,5,4,winter.night,-0.0
-2030,5,4,winter.day,-0.0
-2030,5,4,winter.peak,-0.0
-2030,5,4,winter.evening,-0.0
-2030,5,4,peak.night,-0.0
-2030,5,4,peak.day,-0.0
-2030,5,4,peak.peak,-0.0
-2030,5,4,peak.evening,-0.0
-2030,5,4,summer.night,-0.0
-2030,5,4,summer.day,-0.0
-2030,5,4,summer.peak,-0.0
-2030,5,4,summer.evening,-0.0
-2030,5,4,autumn.night,-0.0
-2030,5,4,autumn.day,-0.0
-2030,5,4,autumn.peak,-0.0
-2030,5,4,autumn.evening,-0.0
-2030,5,5,winter.night,-3.05874493
-2030,5,5,winter.day,-3.05874493
-2030,5,5,winter.peak,-3.05874493
-2030,5,5,winter.evening,-3.05874493
-2030,5,5,peak.night,-0.0
-2030,5,5,peak.day,-3.05874493
-2030,5,5,peak.peak,-3.05874493
-2030,5,5,peak.evening,-3.05874493
-2030,5,5,summer.night,-0.0
-2030,5,5,summer.day,-0.0
-2030,5,5,summer.peak,-0.0
-2030,5,5,summer.evening,-0.0
-2030,5,5,autumn.night,-0.0
-2030,5,5,autumn.day,-3.05874493
-2030,5,5,autumn.peak,-3.05874493
-2030,5,5,autumn.evening,-3.05874493
-2030,5,6,winter.night,-0.0
-2030,5,6,winter.day,-0.0
-2030,5,6,winter.peak,-0.0
-2030,5,6,winter.evening,-0.0
-2030,5,6,peak.night,-1.9807919699999998
-2030,5,6,peak.day,-5.0395369
-2030,5,6,peak.peak,-5.0395369
-2030,5,6,peak.evening,-5.0395369
-2030,5,6,summer.night,-0.0
-2030,5,6,summer.day,-0.0
-2030,5,6,summer.peak,-0.0
-2030,5,6,summer.evening,-0.0
-2030,5,6,autumn.night,-1.9807919699999998
-2030,5,6,autumn.day,-5.0395369
-2030,5,6,autumn.peak,-5.0395369
-2030,5,6,autumn.evening,-5.0395369
-2030,5,7,winter.night,-0.0
-2030,5,7,winter.day,-0.0
-2030,5,7,winter.peak,-0.0
-2030,5,7,winter.evening,-0.0
-2030,5,7,peak.night,-0.0
-2030,5,7,peak.day,-0.0
-2030,5,7,peak.peak,-0.0
-2030,5,7,peak.evening,-0.0
-2030,5,7,summer.night,-0.0
-2030,5,7,summer.day,-0.0
-2030,5,7,summer.peak,-0.0
-2030,5,7,summer.evening,-0.0
-2030,5,7,autumn.night,-0.0
-2030,5,7,autumn.day,-0.0
-2030,5,7,autumn.peak,-0.0
-2030,5,7,autumn.evening,-0.0
-2030,5,8,winter.night,-4.1996140833333335
-2030,5,8,winter.day,-4.1996140833333335
-2030,5,8,winter.peak,-4.1996140833333335
-2030,5,8,winter.evening,-4.1996140833333335
-2030,5,8,peak.night,-0.0
-2030,5,8,peak.day,-0.0
-2030,5,8,peak.peak,-0.0
-2030,5,8,peak.evening,-0.0
-2030,5,8,summer.night,-0.0
-2030,5,8,summer.day,-0.0
-2030,5,8,summer.peak,-0.0
-2030,5,8,summer.evening,-0.0
-2030,5,8,autumn.night,-0.0
-2030,5,8,autumn.day,-0.0
-2030,5,8,autumn.peak,-0.0
-2030,5,8,autumn.evening,-0.0
-2030,5,9,winter.night,-0.0
-2030,5,9,winter.day,-0.0
-2030,5,9,winter.peak,-0.0
-2030,5,9,winter.evening,-0.0
-2030,5,9,peak.night,-0.0
-2030,5,9,peak.day,-0.0
-2030,5,9,peak.peak,-0.0
-2030,5,9,peak.evening,-0.0
-2030,5,9,summer.night,-0.0
-2030,5,9,summer.day,-0.0
-2030,5,9,summer.peak,-0.0
-2030,5,9,summer.evening,-0.0
-2030,5,9,autumn.night,-0.0
-2030,5,9,autumn.day,-0.0
-2030,5,9,autumn.peak,-0.0
-2030,5,9,autumn.evening,-0.0
-2030,0,0,winter.night,-0.0
-2030,0,0,winter.day,-0.0
-2030,0,0,winter.peak,-0.0
-2030,0,0,winter.evening,-0.0
-2030,0,0,peak.night,-0.0
-2030,0,0,peak.day,-0.0
-2030,0,0,peak.peak,-0.0
-2030,0,0,peak.evening,-0.0
-2030,0,0,summer.night,-0.0
-2030,0,0,summer.day,-0.0
-2030,0,0,summer.peak,-0.0
-2030,0,0,summer.evening,-0.0
-2030,0,0,autumn.night,-0.0
-2030,0,0,autumn.day,-0.0
-2030,0,0,autumn.peak,-0.0
-2030,0,0,autumn.evening,-0.0
-2030,0,1,winter.night,-0.0
-2030,0,1,winter.day,-0.0
-2030,0,1,winter.peak,-0.0
-2030,0,1,winter.evening,-0.0
-2030,0,1,peak.night,-0.0
-2030,0,1,peak.day,-0.0
-2030,0,1,peak.peak,-0.0
-2030,0,1,peak.evening,-0.0
-2030,0,1,summer.night,-0.0
-2030,0,1,summer.day,-0.0
-2030,0,1,summer.peak,-0.0
-2030,0,1,summer.evening,-0.0
-2030,0,1,autumn.night,-0.0
-2030,0,1,autumn.day,-0.0
-2030,0,1,autumn.peak,-0.0
-2030,0,1,autumn.evening,-0.0
-2030,0,2,winter.night,-7.593308999999999
-2030,0,2,winter.day,-7.593308999999999
-2030,0,2,winter.peak,-7.593308999999999
-2030,0,2,winter.evening,-7.593308999999999
-2030,0,2,peak.night,-7.593308999999999
-2030,0,2,peak.day,-7.593308999999999
-2030,0,2,peak.peak,-7.593308999999999
-2030,0,2,peak.evening,-7.593308999999999
-2030,0,2,summer.night,-1.5909090909090908
-2030,0,2,summer.day,-0.0
-2030,0,2,summer.peak,-0.0
-2030,0,2,summer.evening,-0.0
-2030,0,2,autumn.night,-7.593308999999999
-2030,0,2,autumn.day,-7.593308999999999
-2030,0,2,autumn.peak,-7.593308999999999
-2030,0,2,autumn.evening,-7.593308999999999
-2030,0,3,winter.night,-0.0
-2030,0,3,winter.day,-0.0
-2030,0,3,winter.peak,-0.0
-2030,0,3,winter.evening,-0.0
-2030,0,3,peak.night,-0.0
-2030,0,3,peak.day,-0.0
-2030,0,3,peak.peak,-0.0
-2030,0,3,peak.evening,-0.0
-2030,0,3,summer.night,-0.0
-2030,0,3,summer.day,-0.0
-2030,0,3,summer.peak,-0.0
-2030,0,3,summer.evening,-0.0
-2030,0,3,autumn.night,-0.0
-2030,0,3,autumn.day,-0.0
-2030,0,3,autumn.peak,-0.0
-2030,0,3,autumn.evening,-0.0
-2030,0,4,winter.night,-0.0
-2030,0,4,winter.day,-0.0
-2030,0,4,winter.peak,-0.0
-2030,0,4,winter.evening,-0.0
-2030,0,4,peak.night,-0.0
-2030,0,4,peak.day,-0.0
-2030,0,4,peak.peak,-0.0
-2030,0,4,peak.evening,-0.0
-2030,0,4,summer.night,-0.0
-2030,0,4,summer.day,-0.0
-2030,0,4,summer.peak,-0.0
-2030,0,4,summer.evening,-0.0
-2030,0,4,autumn.night,-0.0
-2030,0,4,autumn.day,-0.0
-2030,0,4,autumn.peak,-0.0
-2030,0,4,autumn.evening,-0.0
-2030,0,5,winter.night,-3.05874493
-2030,0,5,winter.day,-3.05874493
-2030,0,5,winter.peak,-3.05874493
-2030,0,5,winter.evening,-3.05874493
-2030,0,5,peak.night,-0.0
-2030,0,5,peak.day,-3.05874493
-2030,0,5,peak.peak,-3.05874493
-2030,0,5,peak.evening,-3.05874493
-2030,0,5,summer.night,-0.0
-2030,0,5,summer.day,-0.0
-2030,0,5,summer.peak,-0.0
-2030,0,5,summer.evening,-0.0
-2030,0,5,autumn.night,-0.0
-2030,0,5,autumn.day,-3.05874493
-2030,0,5,autumn.peak,-3.05874493
-2030,0,5,autumn.evening,-3.05874493
-2030,0,6,winter.night,-5.0395369
-2030,0,6,winter.day,-5.0395369
-2030,0,6,winter.peak,-5.0395369
-2030,0,6,winter.evening,-5.0395369
-2030,0,6,peak.night,-1.9807919699999998
-2030,0,6,peak.day,-5.0395369
-2030,0,6,peak.peak,-5.0395369
-2030,0,6,peak.evening,-5.0395369
-2030,0,6,summer.night,-0.0
-2030,0,6,summer.day,-0.0
-2030,0,6,summer.peak,-0.0
-2030,0,6,summer.evening,-0.0
-2030,0,6,autumn.night,-1.9807919699999998
-2030,0,6,autumn.day,-5.0395369
-2030,0,6,autumn.peak,-5.0395369
-2030,0,6,autumn.evening,-5.0395369
-2030,0,7,winter.night,-0.0
-2030,0,7,winter.day,-0.0
-2030,0,7,winter.peak,-0.0
-2030,0,7,winter.evening,-0.0
-2030,0,7,peak.night,-0.0
-2030,0,7,peak.day,-0.0
-2030,0,7,peak.peak,-0.0
-2030,0,7,peak.evening,-0.0
-2030,0,7,summer.night,-0.0
-2030,0,7,summer.day,-0.0
-2030,0,7,summer.peak,-0.0
-2030,0,7,summer.evening,-0.0
-2030,0,7,autumn.night,-0.0
-2030,0,7,autumn.day,-0.0
-2030,0,7,autumn.peak,-0.0
-2030,0,7,autumn.evening,-0.0
-2030,0,8,winter.night,-0.0
-2030,0,8,winter.day,-0.0
-2030,0,8,winter.peak,-0.0
-2030,0,8,winter.evening,-0.0
-2030,0,8,peak.night,-0.0
-2030,0,8,peak.day,-0.0
-2030,0,8,peak.peak,-0.0
-2030,0,8,peak.evening,-0.0
-2030,0,8,summer.night,-0.0
-2030,0,8,summer.day,-0.0
-2030,0,8,summer.peak,-0.0
-2030,0,8,summer.evening,-0.0
-2030,0,8,autumn.night,-0.0
-2030,0,8,autumn.day,-0.0
-2030,0,8,autumn.peak,-0.0
-2030,0,8,autumn.evening,-0.0
-2030,0,9,winter.night,-0.0
-2030,0,9,winter.day,-0.0
-2030,0,9,winter.peak,-0.0
-2030,0,9,winter.evening,-0.0
-2030,0,9,peak.night,-0.0
-2030,0,9,peak.day,-0.0
-2030,0,9,peak.peak,-0.0
-2030,0,9,peak.evening,-0.0
-2030,0,9,summer.night,-0.0
-2030,0,9,summer.day,-0.0
-2030,0,9,summer.peak,-0.0
-2030,0,9,summer.evening,-0.0
-2030,0,9,autumn.night,-0.0
-2030,0,9,autumn.day,-0.0
-2030,0,9,autumn.peak,-0.0
-2030,0,9,autumn.evening,-0.0
-2030,1,0,winter.night,-0.0
-2030,1,0,winter.day,-0.0
-2030,1,0,winter.peak,-0.0
-2030,1,0,winter.evening,-0.0
-2030,1,0,peak.night,-0.0
-2030,1,0,peak.day,-0.0
-2030,1,0,peak.peak,-0.0
-2030,1,0,peak.evening,-0.0
-2030,1,0,summer.night,-0.0
-2030,1,0,summer.day,-0.0
-2030,1,0,summer.peak,-0.0
-2030,1,0,summer.evening,-0.0
-2030,1,0,autumn.night,-0.0
-2030,1,0,autumn.day,-0.0
-2030,1,0,autumn.peak,-0.0
-2030,1,0,autumn.evening,-0.0
-2030,1,1,winter.night,-0.0
-2030,1,1,winter.day,-0.0
-2030,1,1,winter.peak,-0.0
-2030,1,1,winter.evening,-0.0
-2030,1,1,peak.night,-0.0
-2030,1,1,peak.day,-0.0
-2030,1,1,peak.peak,-0.0
-2030,1,1,peak.evening,-0.0
-2030,1,1,summer.night,-0.0
-2030,1,1,summer.day,-0.0
-2030,1,1,summer.peak,-0.0
-2030,1,1,summer.evening,-0.0
-2030,1,1,autumn.night,-0.0
-2030,1,1,autumn.day,-0.0
-2030,1,1,autumn.peak,-0.0
-2030,1,1,autumn.evening,-0.0
-2030,1,2,winter.night,-7.593308999999999
-2030,1,2,winter.day,-7.593308999999999
-2030,1,2,winter.peak,-7.593308999999999
-2030,1,2,winter.evening,-7.593308999999999
-2030,1,2,peak.night,-7.593308999999999
-2030,1,2,peak.day,-7.593308999999999
-2030,1,2,peak.peak,-7.593308999999999
-2030,1,2,peak.evening,-7.593308999999999
-2030,1,2,summer.night,-1.5909090909090908
-2030,1,2,summer.day,-0.0
-2030,1,2,summer.peak,-0.0
-2030,1,2,summer.evening,-0.0
-2030,1,2,autumn.night,-7.593308999999999
-2030,1,2,autumn.day,-7.593308999999999
-2030,1,2,autumn.peak,-7.593308999999999
-2030,1,2,autumn.evening,-7.593308999999999
-2030,1,3,winter.night,-0.0
-2030,1,3,winter.day,-0.0
-2030,1,3,winter.peak,-0.0
-2030,1,3,winter.evening,-0.0
-2030,1,3,peak.night,-0.0
-2030,1,3,peak.day,-0.0
-2030,1,3,peak.peak,-0.0
-2030,1,3,peak.evening,-0.0
-2030,1,3,summer.night,-0.0
-2030,1,3,summer.day,-0.0
-2030,1,3,summer.peak,-0.0
-2030,1,3,summer.evening,-0.0
-2030,1,3,autumn.night,-0.0
-2030,1,3,autumn.day,-0.0
-2030,1,3,autumn.peak,-0.0
-2030,1,3,autumn.evening,-0.0
-2030,1,4,winter.night,-0.0
-2030,1,4,winter.day,-0.0
-2030,1,4,winter.peak,-0.0
-2030,1,4,winter.evening,-0.0
-2030,1,4,peak.night,-0.0
-2030,1,4,peak.day,-0.0
-2030,1,4,peak.peak,-0.0
-2030,1,4,peak.evening,-0.0
-2030,1,4,summer.night,-0.0
-2030,1,4,summer.day,-0.0
-2030,1,4,summer.peak,-0.0
-2030,1,4,summer.evening,-0.0
-2030,1,4,autumn.night,-0.0
-2030,1,4,autumn.day,-0.0
-2030,1,4,autumn.peak,-0.0
-2030,1,4,autumn.evening,-0.0
-2030,1,5,winter.night,-3.05874493
-2030,1,5,winter.day,-3.05874493
-2030,1,5,winter.peak,-3.05874493
-2030,1,5,winter.evening,-3.05874493
-2030,1,5,peak.night,-0.0
-2030,1,5,peak.day,-3.05874493
-2030,1,5,peak.peak,-3.05874493
-2030,1,5,peak.evening,-3.05874493
-2030,1,5,summer.night,-0.0
-2030,1,5,summer.day,-0.0
-2030,1,5,summer.peak,-0.0
-2030,1,5,summer.evening,-0.0
-2030,1,5,autumn.night,-0.0
-2030,1,5,autumn.day,-3.05874493
-2030,1,5,autumn.peak,-3.05874493
-2030,1,5,autumn.evening,-3.05874493
-2030,1,6,winter.night,-0.0
-2030,1,6,winter.day,-0.0
-2030,1,6,winter.peak,-0.0
-2030,1,6,winter.evening,-0.0
-2030,1,6,peak.night,-0.0
-2030,1,6,peak.day,-3.05874493
-2030,1,6,peak.peak,-3.05874493
-2030,1,6,peak.evening,-3.05874493
-2030,1,6,summer.night,-0.0
-2030,1,6,summer.day,-0.0
-2030,1,6,summer.peak,-0.0
-2030,1,6,summer.evening,-0.0
-2030,1,6,autumn.night,-0.0
-2030,1,6,autumn.day,-3.05874493
-2030,1,6,autumn.peak,-3.05874493
-2030,1,6,autumn.evening,-3.05874493
-2030,1,7,winter.night,-0.0
-2030,1,7,winter.day,-0.0
-2030,1,7,winter.peak,-0.0
-2030,1,7,winter.evening,-0.0
-2030,1,7,peak.night,-0.0
-2030,1,7,peak.day,-0.0
-2030,1,7,peak.peak,-0.0
-2030,1,7,peak.evening,-0.0
-2030,1,7,summer.night,-0.0
-2030,1,7,summer.day,-0.0
-2030,1,7,summer.peak,-0.0
-2030,1,7,summer.evening,-0.0
-2030,1,7,autumn.night,-0.0
-2030,1,7,autumn.day,-0.0
-2030,1,7,autumn.peak,-0.0
-2030,1,7,autumn.evening,-0.0
-2030,1,8,winter.night,-4.1996140833333335
-2030,1,8,winter.day,-4.1996140833333335
-2030,1,8,winter.peak,-4.1996140833333335
-2030,1,8,winter.evening,-4.1996140833333335
-2030,1,8,peak.night,-1.650659975
-2030,1,8,peak.day,-1.650659975
-2030,1,8,peak.peak,-1.650659975
-2030,1,8,peak.evening,-1.650659975
-2030,1,8,summer.night,-0.0
-2030,1,8,summer.day,-0.0
-2030,1,8,summer.peak,-0.0
-2030,1,8,summer.evening,-0.0
-2030,1,8,autumn.night,-1.650659975
-2030,1,8,autumn.day,-1.650659975
-2030,1,8,autumn.peak,-1.650659975
-2030,1,8,autumn.evening,-1.650659975
-2030,1,9,winter.night,-0.0
-2030,1,9,winter.day,-0.0
-2030,1,9,winter.peak,-0.0
-2030,1,9,winter.evening,-0.0
-2030,1,9,peak.night,-0.0
-2030,1,9,peak.day,-0.0
-2030,1,9,peak.peak,-0.0
-2030,1,9,peak.evening,-0.0
-2030,1,9,summer.night,-0.0
-2030,1,9,summer.day,-0.0
-2030,1,9,summer.peak,-0.0
-2030,1,9,summer.evening,-0.0
-2030,1,9,autumn.night,-0.0
-2030,1,9,autumn.day,-0.0
-2030,1,9,autumn.peak,-0.0
-2030,1,9,autumn.evening,-0.0
-2030,1,,winter.night,-0.0
-2030,1,,winter.day,-0.0
-2030,1,,winter.peak,-0.0
-2030,1,,winter.evening,-0.0
-2030,1,,peak.night,-0.0
-2030,1,,peak.day,-0.0
-2030,1,,peak.peak,-0.0
-2030,1,,peak.evening,-0.0
-2030,1,,summer.night,-0.0
-2030,1,,summer.day,-0.0
-2030,1,,summer.peak,-0.0
-2030,1,,summer.evening,-0.0
-2030,1,,autumn.night,-0.0
-2030,1,,autumn.day,-0.0
-2030,1,,autumn.peak,-0.0
-2030,1,,autumn.evening,-0.0
-2030,1,,winter.night,-0.0
-2030,1,,winter.day,-0.0
-2030,1,,winter.peak,-0.0
-2030,1,,winter.evening,-0.0
-2030,1,,peak.night,-0.0
-2030,1,,peak.day,-0.0
-2030,1,,peak.peak,-0.0
-2030,1,,peak.evening,-0.0
-2030,1,,summer.night,-0.0
-2030,1,,summer.day,-0.0
-2030,1,,summer.peak,-0.0
-2030,1,,summer.evening,-0.0
-2030,1,,autumn.night,-0.0
-2030,1,,autumn.day,-0.0
-2030,1,,autumn.peak,-0.0
-2030,1,,autumn.evening,-0.0
-2030,1,,winter.night,-0.0
-2030,1,,winter.day,-0.0
-2030,1,,winter.peak,-0.0
-2030,1,,winter.evening,-0.0
-2030,1,,peak.night,-0.0
-2030,1,,peak.day,-0.0
-2030,1,,peak.peak,-0.0
-2030,1,,peak.evening,-0.0
-2030,1,,summer.night,-0.0
-2030,1,,summer.day,-0.0
-2030,1,,summer.peak,-0.0
-2030,1,,summer.evening,-0.0
-2030,1,,autumn.night,-0.0
-2030,1,,autumn.day,-0.0
-2030,1,,autumn.peak,-0.0
-2030,1,,autumn.evening,-0.0
-2030,1,,winter.night,-4.1996140833333335
-2030,1,,winter.day,-4.1996140833333335
-2030,1,,winter.peak,-4.1996140833333335
-2030,1,,winter.evening,-4.1996140833333335
-2030,1,,peak.night,-1.650659975
-2030,1,,peak.day,-1.650659975
-2030,1,,peak.peak,-1.650659975
-2030,1,,peak.evening,-1.650659975
-2030,1,,summer.night,-0.0
-2030,1,,summer.day,-0.0
-2030,1,,summer.peak,-0.0
-2030,1,,summer.evening,-0.0
-2030,1,,autumn.night,-1.650659975
-2030,1,,autumn.day,-1.650659975
-2030,1,,autumn.peak,-1.650659975
-2030,1,,autumn.evening,-1.650659975
-2030,1,,winter.night,-7.593308999999999
-2030,1,,winter.day,-7.593308999999999
-2030,1,,winter.peak,-7.593308999999999
-2030,1,,winter.evening,-7.593308999999999
-2030,1,,peak.night,-7.593308999999999
-2030,1,,peak.day,-7.593308999999999
-2030,1,,peak.peak,-7.593308999999999
-2030,1,,peak.evening,-7.593308999999999
-2030,1,,summer.night,-1.5909090909090908
-2030,1,,summer.day,-0.0
-2030,1,,summer.peak,-0.0
-2030,1,,summer.evening,-0.0
-2030,1,,autumn.night,-7.593308999999999
-2030,1,,autumn.day,-7.593308999999999
-2030,1,,autumn.peak,-7.593308999999999
-2030,1,,autumn.evening,-7.593308999999999
-2030,1,,winter.night,-0.0
-2030,1,,winter.day,-0.0
-2030,1,,winter.peak,-0.0
-2030,1,,winter.evening,-0.0
-2030,1,,peak.night,-0.0
-2030,1,,peak.day,-0.0
-2030,1,,peak.peak,-0.0
-2030,1,,peak.evening,-0.0
-2030,1,,summer.night,-0.0
-2030,1,,summer.day,-0.0
-2030,1,,summer.peak,-0.0
-2030,1,,summer.evening,-0.0
-2030,1,,autumn.night,-0.0
-2030,1,,autumn.day,-0.0
-2030,1,,autumn.peak,-0.0
-2030,1,,autumn.evening,-0.0
-2030,1,,winter.night,-0.0
-2030,1,,winter.day,-0.0
-2030,1,,winter.peak,-0.0
-2030,1,,winter.evening,-0.0
-2030,1,,peak.night,-0.0
-2030,1,,peak.day,-0.0
-2030,1,,peak.peak,-0.0
-2030,1,,peak.evening,-0.0
-2030,1,,summer.night,-0.0
-2030,1,,summer.day,-0.0
-2030,1,,summer.peak,-0.0
-2030,1,,summer.evening,-0.0
-2030,1,,autumn.night,-0.0
-2030,1,,autumn.day,-0.0
-2030,1,,autumn.peak,-0.0
-2030,1,,autumn.evening,-0.0
-2030,1,,winter.night,-3.05874493
-2030,1,,winter.day,-3.05874493
-2030,1,,winter.peak,-3.05874493
-2030,1,,winter.evening,-3.05874493
-2030,1,,peak.night,-0.0
-2030,1,,peak.day,-3.05874493
-2030,1,,peak.peak,-3.05874493
-2030,1,,peak.evening,-3.05874493
-2030,1,,summer.night,-0.0
-2030,1,,summer.day,-0.0
-2030,1,,summer.peak,-0.0
-2030,1,,summer.evening,-0.0
-2030,1,,autumn.night,-0.0
-2030,1,,autumn.day,-3.05874493
-2030,1,,autumn.peak,-3.05874493
-2030,1,,autumn.evening,-3.05874493
-2030,1,,winter.night,-0.0
-2030,1,,winter.day,-0.0
-2030,1,,winter.peak,-0.0
-2030,1,,winter.evening,-0.0
-2030,1,,peak.night,-0.0
-2030,1,,peak.day,-3.05874493
-2030,1,,peak.peak,-3.05874493
-2030,1,,peak.evening,-3.05874493
-2030,1,,summer.night,-0.0
-2030,1,,summer.day,-0.0
-2030,1,,summer.peak,-0.0
-2030,1,,summer.evening,-0.0
-2030,1,,autumn.night,-0.0
-2030,1,,autumn.day,-3.05874493
-2030,1,,autumn.peak,-3.05874493
-2030,1,,autumn.evening,-3.05874493
-2040,0,6,winter.night,-0.0
-2040,0,6,winter.day,-0.0
-2040,0,6,winter.peak,-0.0
-2040,0,6,winter.evening,-0.0
-2040,0,6,peak.night,-0.0
-2040,0,6,peak.day,-0.0
-2040,0,6,peak.peak,-0.0
-2040,0,6,peak.evening,-0.0
-2040,0,6,summer.night,-0.0
-2040,0,6,summer.day,-0.0
-2040,0,6,summer.peak,-0.0
-2040,0,6,summer.evening,-0.0
-2040,0,6,autumn.night,-0.0
-2040,0,6,autumn.day,-0.0
-2040,0,6,autumn.peak,-0.0
-2040,0,6,autumn.evening,-0.0
-2040,0,10,winter.night,-0.0
-2040,0,10,winter.day,-0.0
-2040,0,10,winter.peak,-0.0
-2040,0,10,winter.evening,-0.0
-2040,0,10,peak.night,-0.0
-2040,0,10,peak.day,-0.0
-2040,0,10,peak.peak,-0.0
-2040,0,10,peak.evening,-0.0
-2040,0,10,summer.night,-0.0
-2040,0,10,summer.day,-0.0
-2040,0,10,summer.peak,-0.0
-2040,0,10,summer.evening,-0.0
-2040,0,10,autumn.night,-0.0
-2040,0,10,autumn.day,-0.0
-2040,0,10,autumn.peak,-0.0
-2040,0,10,autumn.evening,-0.0
-2040,1,6,winter.night,-0.0
-2040,1,6,winter.day,-0.0
-2040,1,6,winter.peak,-0.0
-2040,1,6,winter.evening,-0.0
-2040,1,6,peak.night,-0.0
-2040,1,6,peak.day,-0.0
-2040,1,6,peak.peak,-0.0
-2040,1,6,peak.evening,-0.0
-2040,1,6,summer.night,-0.0
-2040,1,6,summer.day,-0.0
-2040,1,6,summer.peak,-0.0
-2040,1,6,summer.evening,-0.0
-2040,1,6,autumn.night,-0.0
-2040,1,6,autumn.day,-0.0
-2040,1,6,autumn.peak,-0.0
-2040,1,6,autumn.evening,-0.0
-2040,1,8,winter.night,-0.0
-2040,1,8,winter.day,-0.0
-2040,1,8,winter.peak,-0.0
-2040,1,8,winter.evening,-0.0
-2040,1,8,peak.night,-0.0
-2040,1,8,peak.day,-0.0
-2040,1,8,peak.peak,-0.0
-2040,1,8,peak.evening,-0.0
-2040,1,8,summer.night,-0.0
-2040,1,8,summer.day,-0.0
-2040,1,8,summer.peak,-0.0
-2040,1,8,summer.evening,-0.0
-2040,1,8,autumn.night,-0.0
-2040,1,8,autumn.day,-0.0
-2040,1,8,autumn.peak,-0.0
-2040,1,8,autumn.evening,-0.0
-2040,1,10,winter.night,-0.0
-2040,1,10,winter.day,-0.0
-2040,1,10,winter.peak,-0.0
-2040,1,10,winter.evening,-0.0
-2040,1,10,peak.night,-0.0
-2040,1,10,peak.day,-0.0
-2040,1,10,peak.peak,-0.0
-2040,1,10,peak.evening,-0.0
-2040,1,10,summer.night,-0.0
-2040,1,10,summer.day,-0.0
-2040,1,10,summer.peak,-0.0
-2040,1,10,summer.evening,-0.0
-2040,1,10,autumn.night,-0.0
-2040,1,10,autumn.day,-0.0
-2040,1,10,autumn.peak,-0.0
-2040,1,10,autumn.evening,-0.0
-2040,1,11,winter.night,-0.0
-2040,1,11,winter.day,-0.0
-2040,1,11,winter.peak,-0.0
-2040,1,11,winter.evening,-0.0
-2040,1,11,peak.night,-0.0
-2040,1,11,peak.day,-0.0
-2040,1,11,peak.peak,-0.0
-2040,1,11,peak.evening,-0.0
-2040,1,11,summer.night,-0.0
-2040,1,11,summer.day,-0.0
-2040,1,11,summer.peak,-0.0
-2040,1,11,summer.evening,-0.0
-2040,1,11,autumn.night,-0.0
-2040,1,11,autumn.day,-0.0
-2040,1,11,autumn.peak,-0.0
-2040,1,11,autumn.evening,-0.0
-2040,2,6,winter.night,-0.0
-2040,2,6,winter.day,-0.0
-2040,2,6,winter.peak,-0.0
-2040,2,6,winter.evening,-0.0
-2040,2,6,peak.night,-0.0
-2040,2,6,peak.day,-0.0
-2040,2,6,peak.peak,-0.0
-2040,2,6,peak.evening,-0.0
-2040,2,6,summer.night,-0.0
-2040,2,6,summer.day,-0.0
-2040,2,6,summer.peak,-0.0
-2040,2,6,summer.evening,-0.0
-2040,2,6,autumn.night,-0.0
-2040,2,6,autumn.day,-0.0
-2040,2,6,autumn.peak,-0.0
-2040,2,6,autumn.evening,-0.0
-2040,2,8,winter.night,-0.0
-2040,2,8,winter.day,-0.0
-2040,2,8,winter.peak,-0.0
-2040,2,8,winter.evening,-0.0
-2040,2,8,peak.night,-0.0
-2040,2,8,peak.day,-0.0
-2040,2,8,peak.peak,-0.0
-2040,2,8,peak.evening,-0.0
-2040,2,8,summer.night,-0.0
-2040,2,8,summer.day,-0.0
-2040,2,8,summer.peak,-0.0
-2040,2,8,summer.evening,-0.0
-2040,2,8,autumn.night,-0.0
-2040,2,8,autumn.day,-0.0
-2040,2,8,autumn.peak,-0.0
-2040,2,8,autumn.evening,-0.0
-2040,2,9,winter.night,-0.0
-2040,2,9,winter.day,-0.0
-2040,2,9,winter.peak,-0.0
-2040,2,9,winter.evening,-0.0
-2040,2,9,peak.night,-0.0
-2040,2,9,peak.day,-0.0
-2040,2,9,peak.peak,-0.0
-2040,2,9,peak.evening,-0.0
-2040,2,9,summer.night,-0.0
-2040,2,9,summer.day,-0.0
-2040,2,9,summer.peak,-0.0
-2040,2,9,summer.evening,-0.0
-2040,2,9,autumn.night,-0.0
-2040,2,9,autumn.day,-0.0
-2040,2,9,autumn.peak,-0.0
-2040,2,9,autumn.evening,-0.0
-2040,2,10,winter.night,-0.0
-2040,2,10,winter.day,-0.0
-2040,2,10,winter.peak,-0.0
-2040,2,10,winter.evening,-0.0
-2040,2,10,peak.night,-0.0
-2040,2,10,peak.day,-0.0
-2040,2,10,peak.peak,-0.0
-2040,2,10,peak.evening,-0.0
-2040,2,10,summer.night,-0.0
-2040,2,10,summer.day,-0.0
-2040,2,10,summer.peak,-0.0
-2040,2,10,summer.evening,-0.0
-2040,2,10,autumn.night,-0.0
-2040,2,10,autumn.day,-0.0
-2040,2,10,autumn.peak,-0.0
-2040,2,10,autumn.evening,-0.0
-2040,2,11,winter.night,-0.0
-2040,2,11,winter.day,-0.0
-2040,2,11,winter.peak,-0.0
-2040,2,11,winter.evening,-0.0
-2040,2,11,peak.night,-0.0
-2040,2,11,peak.day,-0.0
-2040,2,11,peak.peak,-0.0
-2040,2,11,peak.evening,-0.0
-2040,2,11,summer.night,-0.0
-2040,2,11,summer.day,-0.0
-2040,2,11,summer.peak,-0.0
-2040,2,11,summer.evening,-0.0
-2040,2,11,autumn.night,-0.0
-2040,2,11,autumn.day,-0.0
-2040,2,11,autumn.peak,-0.0
-2040,2,11,autumn.evening,-0.0
-2040,2,12,winter.night,-0.0
-2040,2,12,winter.day,-0.0
-2040,2,12,winter.peak,-0.0
-2040,2,12,winter.evening,-0.0
-2040,2,12,peak.night,-0.0
-2040,2,12,peak.day,-0.0
-2040,2,12,peak.peak,-0.0
-2040,2,12,peak.evening,-0.0
-2040,2,12,summer.night,-0.0
-2040,2,12,summer.day,-0.0
-2040,2,12,summer.peak,-0.0
-2040,2,12,summer.evening,-0.0
-2040,2,12,autumn.night,-0.0
-2040,2,12,autumn.day,-0.0
-2040,2,12,autumn.peak,-0.0
-2040,2,12,autumn.evening,-0.0
-2040,0,6,winter.night,-0.0
-2040,0,6,winter.day,-0.0
-2040,0,6,winter.peak,-0.0
-2040,0,6,winter.evening,-0.0
-2040,0,6,peak.night,-0.0
-2040,0,6,peak.day,-0.0
-2040,0,6,peak.peak,-0.0
-2040,0,6,peak.evening,-0.0
-2040,0,6,summer.night,-0.0
-2040,0,6,summer.day,-0.0
-2040,0,6,summer.peak,-0.0
-2040,0,6,summer.evening,-0.0
-2040,0,6,autumn.night,-0.0
-2040,0,6,autumn.day,-0.0
-2040,0,6,autumn.peak,-0.0
-2040,0,6,autumn.evening,-0.0
-2040,0,8,winter.night,-0.0
-2040,0,8,winter.day,-0.0
-2040,0,8,winter.peak,-0.0
-2040,0,8,winter.evening,-0.0
-2040,0,8,peak.night,-0.0
-2040,0,8,peak.day,-0.0
-2040,0,8,peak.peak,-0.0
-2040,0,8,peak.evening,-0.0
-2040,0,8,summer.night,-0.0
-2040,0,8,summer.day,-0.0
-2040,0,8,summer.peak,-0.0
-2040,0,8,summer.evening,-0.0
-2040,0,8,autumn.night,-0.0
-2040,0,8,autumn.day,-0.0
-2040,0,8,autumn.peak,-0.0
-2040,0,8,autumn.evening,-0.0
-2040,0,9,winter.night,-0.0
-2040,0,9,winter.day,-0.0
-2040,0,9,winter.peak,-0.0
-2040,0,9,winter.evening,-0.0
-2040,0,9,peak.night,-0.0
-2040,0,9,peak.day,-0.0
-2040,0,9,peak.peak,-0.0
-2040,0,9,peak.evening,-0.0
-2040,0,9,summer.night,-0.0
-2040,0,9,summer.day,-0.0
-2040,0,9,summer.peak,-0.0
-2040,0,9,summer.evening,-0.0
-2040,0,9,autumn.night,-0.0
-2040,0,9,autumn.day,-0.0
-2040,0,9,autumn.peak,-0.0
-2040,0,9,autumn.evening,-0.0
-2040,0,10,winter.night,-0.0
-2040,0,10,winter.day,-0.0
-2040,0,10,winter.peak,-0.0
-2040,0,10,winter.evening,-0.0
-2040,0,10,peak.night,-0.0
-2040,0,10,peak.day,-0.0
-2040,0,10,peak.peak,-0.0
-2040,0,10,peak.evening,-0.0
-2040,0,10,summer.night,-0.0
-2040,0,10,summer.day,-0.0
-2040,0,10,summer.peak,-0.0
-2040,0,10,summer.evening,-0.0
-2040,0,10,autumn.night,-0.0
-2040,0,10,autumn.day,-0.0
-2040,0,10,autumn.peak,-0.0
-2040,0,10,autumn.evening,-0.0
-2040,0,11,winter.night,-0.0
-2040,0,11,winter.day,-0.0
-2040,0,11,winter.peak,-0.0
-2040,0,11,winter.evening,-0.0
-2040,0,11,peak.night,-0.0
-2040,0,11,peak.day,-0.0
-2040,0,11,peak.peak,-0.0
-2040,0,11,peak.evening,-0.0
-2040,0,11,summer.night,-0.0
-2040,0,11,summer.day,-0.0
-2040,0,11,summer.peak,-0.0
-2040,0,11,summer.evening,-0.0
-2040,0,11,autumn.night,-0.0
-2040,0,11,autumn.day,-0.0
-2040,0,11,autumn.peak,-0.0
-2040,0,11,autumn.evening,-0.0
-2040,0,12,winter.night,-0.0
-2040,0,12,winter.day,-0.0
-2040,0,12,winter.peak,-0.0
-2040,0,12,winter.evening,-0.0
-2040,0,12,peak.night,-0.0
-2040,0,12,peak.day,-0.0
-2040,0,12,peak.peak,-0.0
-2040,0,12,peak.evening,-0.0
-2040,0,12,summer.night,-0.0
-2040,0,12,summer.day,-0.0
-2040,0,12,summer.peak,-0.0
-2040,0,12,summer.evening,-0.0
-2040,0,12,autumn.night,-0.0
-2040,0,12,autumn.day,-0.0
-2040,0,12,autumn.peak,-0.0
-2040,0,12,autumn.evening,-0.0
+milestone_year,run_description,asset_id,time_slice,value
+2020,final without candidates,0,winter.night,-0.0
+2020,final without candidates,0,winter.day,-0.0
+2020,final without candidates,0,winter.peak,-0.0
+2020,final without candidates,0,winter.evening,-0.0
+2020,final without candidates,0,peak.night,-0.0
+2020,final without candidates,0,peak.day,-0.0
+2020,final without candidates,0,peak.peak,-0.0
+2020,final without candidates,0,peak.evening,-0.0
+2020,final without candidates,0,summer.night,-0.0
+2020,final without candidates,0,summer.day,-0.0
+2020,final without candidates,0,summer.peak,-0.0
+2020,final without candidates,0,summer.evening,-0.0
+2020,final without candidates,0,autumn.night,-0.0
+2020,final without candidates,0,autumn.day,-0.0
+2020,final without candidates,0,autumn.peak,-0.0
+2020,final without candidates,0,autumn.evening,-0.0
+2020,final without candidates,1,winter.night,-0.0
+2020,final without candidates,1,winter.day,-0.0
+2020,final without candidates,1,winter.peak,-0.0
+2020,final without candidates,1,winter.evening,-0.0
+2020,final without candidates,1,peak.night,-0.0
+2020,final without candidates,1,peak.day,-0.0
+2020,final without candidates,1,peak.peak,-0.0
+2020,final without candidates,1,peak.evening,-0.0
+2020,final without candidates,1,summer.night,-0.0
+2020,final without candidates,1,summer.day,-0.0
+2020,final without candidates,1,summer.peak,-0.0
+2020,final without candidates,1,summer.evening,-0.0
+2020,final without candidates,1,autumn.night,-0.0
+2020,final without candidates,1,autumn.day,-0.0
+2020,final without candidates,1,autumn.peak,-0.0
+2020,final without candidates,1,autumn.evening,-0.0
+2020,final without candidates,2,winter.night,-16.86223303030303
+2020,final without candidates,2,winter.day,-7.593308999999999
+2020,final without candidates,2,winter.peak,-7.593308999999999
+2020,final without candidates,2,winter.evening,-16.86223303030303
+2020,final without candidates,2,peak.night,-16.86223303030303
+2020,final without candidates,2,peak.day,-16.86223303030303
+2020,final without candidates,2,peak.peak,-16.86223303030303
+2020,final without candidates,2,peak.evening,-16.86223303030303
+2020,final without candidates,2,summer.night,-7.593308999999999
+2020,final without candidates,2,summer.day,-0.0
+2020,final without candidates,2,summer.peak,-0.0
+2020,final without candidates,2,summer.evening,-0.0
+2020,final without candidates,2,autumn.night,-16.86223303030303
+2020,final without candidates,2,autumn.day,-16.86223303030303
+2020,final without candidates,2,autumn.peak,-16.86223303030303
+2020,final without candidates,2,autumn.evening,-16.86223303030303
+2020,final without candidates,3,winter.night,-9.26892403030303
+2020,final without candidates,3,winter.day,-0.0
+2020,final without candidates,3,winter.peak,-0.0
+2020,final without candidates,3,winter.evening,-9.26892403030303
+2020,final without candidates,3,peak.night,-9.26892403030303
+2020,final without candidates,3,peak.day,-9.26892403030303
+2020,final without candidates,3,peak.peak,-9.26892403030303
+2020,final without candidates,3,peak.evening,-9.26892403030303
+2020,final without candidates,3,summer.night,-0.0
+2020,final without candidates,3,summer.day,-0.0
+2020,final without candidates,3,summer.peak,-0.0
+2020,final without candidates,3,summer.evening,-0.0
+2020,final without candidates,3,autumn.night,-9.26892403030303
+2020,final without candidates,3,autumn.day,-9.26892403030303
+2020,final without candidates,3,autumn.peak,-9.26892403030303
+2020,final without candidates,3,autumn.evening,-9.26892403030303
+2020,final without candidates,4,winter.night,-0.0
+2020,final without candidates,4,winter.day,-0.0
+2020,final without candidates,4,winter.peak,-0.0
+2020,final without candidates,4,winter.evening,-0.0
+2020,final without candidates,4,peak.night,-0.0
+2020,final without candidates,4,peak.day,-0.0
+2020,final without candidates,4,peak.peak,-0.0
+2020,final without candidates,4,peak.evening,-0.0
+2020,final without candidates,4,summer.night,-0.0
+2020,final without candidates,4,summer.day,-0.0
+2020,final without candidates,4,summer.peak,-0.0
+2020,final without candidates,4,summer.evening,-0.0
+2020,final without candidates,4,autumn.night,-0.0
+2020,final without candidates,4,autumn.day,-0.0
+2020,final without candidates,4,autumn.peak,-0.0
+2020,final without candidates,4,autumn.evening,-0.0
+2020,final without candidates,5,winter.night,-0.0
+2020,final without candidates,5,winter.day,-3.05874493
+2020,final without candidates,5,winter.peak,-3.05874493
+2020,final without candidates,5,winter.evening,-0.0
+2020,final without candidates,5,peak.night,-0.0
+2020,final without candidates,5,peak.day,-0.0
+2020,final without candidates,5,peak.peak,-0.0
+2020,final without candidates,5,peak.evening,-0.0
+2020,final without candidates,5,summer.night,-0.0
+2020,final without candidates,5,summer.day,-0.0
+2020,final without candidates,5,summer.peak,-0.0
+2020,final without candidates,5,summer.evening,-0.0
+2020,final without candidates,5,autumn.night,-0.0
+2020,final without candidates,5,autumn.day,-0.0
+2020,final without candidates,5,autumn.peak,-0.0
+2020,final without candidates,5,autumn.evening,-0.0
+2020,final with candidates,0,winter.night,-0.0
+2020,final with candidates,0,winter.day,-0.0
+2020,final with candidates,0,winter.peak,-0.0
+2020,final with candidates,0,winter.evening,-0.0
+2020,final with candidates,0,peak.night,-0.0
+2020,final with candidates,0,peak.day,-0.0
+2020,final with candidates,0,peak.peak,-0.0
+2020,final with candidates,0,peak.evening,-0.0
+2020,final with candidates,0,summer.night,-0.0
+2020,final with candidates,0,summer.day,-0.0
+2020,final with candidates,0,summer.peak,-0.0
+2020,final with candidates,0,summer.evening,-0.0
+2020,final with candidates,0,autumn.night,-0.0
+2020,final with candidates,0,autumn.day,-0.0
+2020,final with candidates,0,autumn.peak,-0.0
+2020,final with candidates,0,autumn.evening,-0.0
+2020,final with candidates,1,winter.night,-0.0
+2020,final with candidates,1,winter.day,-0.0
+2020,final with candidates,1,winter.peak,-0.0
+2020,final with candidates,1,winter.evening,-0.0
+2020,final with candidates,1,peak.night,-0.0
+2020,final with candidates,1,peak.day,-0.0
+2020,final with candidates,1,peak.peak,-0.0
+2020,final with candidates,1,peak.evening,-0.0
+2020,final with candidates,1,summer.night,-0.0
+2020,final with candidates,1,summer.day,-0.0
+2020,final with candidates,1,summer.peak,-0.0
+2020,final with candidates,1,summer.evening,-0.0
+2020,final with candidates,1,autumn.night,-0.0
+2020,final with candidates,1,autumn.day,-0.0
+2020,final with candidates,1,autumn.peak,-0.0
+2020,final with candidates,1,autumn.evening,-0.0
+2020,final with candidates,2,winter.night,-16.86223303030303
+2020,final with candidates,2,winter.day,-7.593308999999999
+2020,final with candidates,2,winter.peak,-7.593308999999999
+2020,final with candidates,2,winter.evening,-16.86223303030303
+2020,final with candidates,2,peak.night,-16.86223303030303
+2020,final with candidates,2,peak.day,-16.86223303030303
+2020,final with candidates,2,peak.peak,-16.86223303030303
+2020,final with candidates,2,peak.evening,-16.86223303030303
+2020,final with candidates,2,summer.night,-7.593308999999999
+2020,final with candidates,2,summer.day,-0.0
+2020,final with candidates,2,summer.peak,-0.0
+2020,final with candidates,2,summer.evening,-0.0
+2020,final with candidates,2,autumn.night,-16.86223303030303
+2020,final with candidates,2,autumn.day,-16.86223303030303
+2020,final with candidates,2,autumn.peak,-16.86223303030303
+2020,final with candidates,2,autumn.evening,-16.86223303030303
+2020,final with candidates,3,winter.night,-9.26892403030303
+2020,final with candidates,3,winter.day,-0.0
+2020,final with candidates,3,winter.peak,-0.0
+2020,final with candidates,3,winter.evening,-9.26892403030303
+2020,final with candidates,3,peak.night,-9.26892403030303
+2020,final with candidates,3,peak.day,-9.26892403030303
+2020,final with candidates,3,peak.peak,-9.26892403030303
+2020,final with candidates,3,peak.evening,-9.26892403030303
+2020,final with candidates,3,summer.night,-0.0
+2020,final with candidates,3,summer.day,-0.0
+2020,final with candidates,3,summer.peak,-0.0
+2020,final with candidates,3,summer.evening,-0.0
+2020,final with candidates,3,autumn.night,-9.26892403030303
+2020,final with candidates,3,autumn.day,-9.26892403030303
+2020,final with candidates,3,autumn.peak,-9.26892403030303
+2020,final with candidates,3,autumn.evening,-9.26892403030303
+2020,final with candidates,4,winter.night,-0.0
+2020,final with candidates,4,winter.day,-0.0
+2020,final with candidates,4,winter.peak,-0.0
+2020,final with candidates,4,winter.evening,-0.0
+2020,final with candidates,4,peak.night,-0.0
+2020,final with candidates,4,peak.day,-0.0
+2020,final with candidates,4,peak.peak,-0.0
+2020,final with candidates,4,peak.evening,-0.0
+2020,final with candidates,4,summer.night,-0.0
+2020,final with candidates,4,summer.day,-0.0
+2020,final with candidates,4,summer.peak,-0.0
+2020,final with candidates,4,summer.evening,-0.0
+2020,final with candidates,4,autumn.night,-0.0
+2020,final with candidates,4,autumn.day,-0.0
+2020,final with candidates,4,autumn.peak,-0.0
+2020,final with candidates,4,autumn.evening,-0.0
+2020,final with candidates,5,winter.night,-0.0
+2020,final with candidates,5,winter.day,-3.05874493
+2020,final with candidates,5,winter.peak,-3.05874493
+2020,final with candidates,5,winter.evening,-0.0
+2020,final with candidates,5,peak.night,-0.0
+2020,final with candidates,5,peak.day,-0.0
+2020,final with candidates,5,peak.peak,-0.0
+2020,final with candidates,5,peak.evening,-0.0
+2020,final with candidates,5,summer.night,-0.0
+2020,final with candidates,5,summer.day,-0.0
+2020,final with candidates,5,summer.peak,-0.0
+2020,final with candidates,5,summer.evening,-0.0
+2020,final with candidates,5,autumn.night,-0.0
+2020,final with candidates,5,autumn.day,-0.0
+2020,final with candidates,5,autumn.peak,-0.0
+2020,final with candidates,5,autumn.evening,-0.0
+2020,final with candidates,,winter.night,-0.0
+2020,final with candidates,,winter.day,-0.0
+2020,final with candidates,,winter.peak,-0.0
+2020,final with candidates,,winter.evening,-0.0
+2020,final with candidates,,peak.night,-0.0
+2020,final with candidates,,peak.day,-0.0
+2020,final with candidates,,peak.peak,-0.0
+2020,final with candidates,,peak.evening,-0.0
+2020,final with candidates,,summer.night,-0.0
+2020,final with candidates,,summer.day,-0.0
+2020,final with candidates,,summer.peak,-0.0
+2020,final with candidates,,summer.evening,-0.0
+2020,final with candidates,,autumn.night,-0.0
+2020,final with candidates,,autumn.day,-0.0
+2020,final with candidates,,autumn.peak,-0.0
+2020,final with candidates,,autumn.evening,-0.0
+2020,final with candidates,,winter.night,-0.0
+2020,final with candidates,,winter.day,-0.0
+2020,final with candidates,,winter.peak,-0.0
+2020,final with candidates,,winter.evening,-0.0
+2020,final with candidates,,peak.night,-0.0
+2020,final with candidates,,peak.day,-0.0
+2020,final with candidates,,peak.peak,-0.0
+2020,final with candidates,,peak.evening,-0.0
+2020,final with candidates,,summer.night,-0.0
+2020,final with candidates,,summer.day,-0.0
+2020,final with candidates,,summer.peak,-0.0
+2020,final with candidates,,summer.evening,-0.0
+2020,final with candidates,,autumn.night,-0.0
+2020,final with candidates,,autumn.day,-0.0
+2020,final with candidates,,autumn.peak,-0.0
+2020,final with candidates,,autumn.evening,-0.0
+2020,final with candidates,,winter.night,-0.0
+2020,final with candidates,,winter.day,-0.0
+2020,final with candidates,,winter.peak,-0.0
+2020,final with candidates,,winter.evening,-0.0
+2020,final with candidates,,peak.night,-0.0
+2020,final with candidates,,peak.day,-0.0
+2020,final with candidates,,peak.peak,-0.0
+2020,final with candidates,,peak.evening,-0.0
+2020,final with candidates,,summer.night,-0.0
+2020,final with candidates,,summer.day,-0.0
+2020,final with candidates,,summer.peak,-0.0
+2020,final with candidates,,summer.evening,-0.0
+2020,final with candidates,,autumn.night,-0.0
+2020,final with candidates,,autumn.day,-0.0
+2020,final with candidates,,autumn.peak,-0.0
+2020,final with candidates,,autumn.evening,-0.0
+2020,final with candidates,,winter.night,-4.1996140833333335
+2020,final with candidates,,winter.day,-4.1996140833333335
+2020,final with candidates,,winter.peak,-4.1996140833333335
+2020,final with candidates,,winter.evening,-4.1996140833333335
+2020,final with candidates,,peak.night,-4.1996140833333335
+2020,final with candidates,,peak.day,-4.1996140833333335
+2020,final with candidates,,peak.peak,-4.1996140833333335
+2020,final with candidates,,peak.evening,-4.1996140833333335
+2020,final with candidates,,summer.night,-0.0
+2020,final with candidates,,summer.day,-0.0
+2020,final with candidates,,summer.peak,-0.0
+2020,final with candidates,,summer.evening,-0.0
+2020,final with candidates,,autumn.night,-4.1996140833333335
+2020,final with candidates,,autumn.day,-4.1996140833333335
+2020,final with candidates,,autumn.peak,-4.1996140833333335
+2020,final with candidates,,autumn.evening,-4.1996140833333335
+2020,final with candidates,,winter.night,-16.86223303030303
+2020,final with candidates,,winter.day,-7.593308999999999
+2020,final with candidates,,winter.peak,-7.593308999999999
+2020,final with candidates,,winter.evening,-16.86223303030303
+2020,final with candidates,,peak.night,-16.86223303030303
+2020,final with candidates,,peak.day,-16.86223303030303
+2020,final with candidates,,peak.peak,-16.86223303030303
+2020,final with candidates,,peak.evening,-16.86223303030303
+2020,final with candidates,,summer.night,-7.593308999999999
+2020,final with candidates,,summer.day,-0.0
+2020,final with candidates,,summer.peak,-0.0
+2020,final with candidates,,summer.evening,-0.0
+2020,final with candidates,,autumn.night,-16.86223303030303
+2020,final with candidates,,autumn.day,-16.86223303030303
+2020,final with candidates,,autumn.peak,-16.86223303030303
+2020,final with candidates,,autumn.evening,-16.86223303030303
+2020,final with candidates,,winter.night,-9.26892403030303
+2020,final with candidates,,winter.day,-0.0
+2020,final with candidates,,winter.peak,-0.0
+2020,final with candidates,,winter.evening,-9.26892403030303
+2020,final with candidates,,peak.night,-9.26892403030303
+2020,final with candidates,,peak.day,-9.26892403030303
+2020,final with candidates,,peak.peak,-9.26892403030303
+2020,final with candidates,,peak.evening,-9.26892403030303
+2020,final with candidates,,summer.night,-0.0
+2020,final with candidates,,summer.day,-0.0
+2020,final with candidates,,summer.peak,-0.0
+2020,final with candidates,,summer.evening,-0.0
+2020,final with candidates,,autumn.night,-9.26892403030303
+2020,final with candidates,,autumn.day,-9.26892403030303
+2020,final with candidates,,autumn.peak,-9.26892403030303
+2020,final with candidates,,autumn.evening,-9.26892403030303
+2020,final with candidates,,winter.night,-0.0
+2020,final with candidates,,winter.day,-0.0
+2020,final with candidates,,winter.peak,-0.0
+2020,final with candidates,,winter.evening,-0.0
+2020,final with candidates,,peak.night,-0.0
+2020,final with candidates,,peak.day,-0.0
+2020,final with candidates,,peak.peak,-0.0
+2020,final with candidates,,peak.evening,-0.0
+2020,final with candidates,,summer.night,-0.0
+2020,final with candidates,,summer.day,-0.0
+2020,final with candidates,,summer.peak,-0.0
+2020,final with candidates,,summer.evening,-0.0
+2020,final with candidates,,autumn.night,-0.0
+2020,final with candidates,,autumn.day,-0.0
+2020,final with candidates,,autumn.peak,-0.0
+2020,final with candidates,,autumn.evening,-0.0
+2020,final with candidates,,winter.night,-0.0
+2020,final with candidates,,winter.day,-3.05874493
+2020,final with candidates,,winter.peak,-3.05874493
+2020,final with candidates,,winter.evening,-0.0
+2020,final with candidates,,peak.night,-0.0
+2020,final with candidates,,peak.day,-0.0
+2020,final with candidates,,peak.peak,-0.0
+2020,final with candidates,,peak.evening,-0.0
+2020,final with candidates,,summer.night,-0.0
+2020,final with candidates,,summer.day,-0.0
+2020,final with candidates,,summer.peak,-0.0
+2020,final with candidates,,summer.evening,-0.0
+2020,final with candidates,,autumn.night,-0.0
+2020,final with candidates,,autumn.day,-0.0
+2020,final with candidates,,autumn.peak,-0.0
+2020,final with candidates,,autumn.evening,-0.0
+2020,final with candidates,,winter.night,-0.0
+2020,final with candidates,,winter.day,-0.0
+2020,final with candidates,,winter.peak,-0.0
+2020,final with candidates,,winter.evening,-0.0
+2020,final with candidates,,peak.night,-0.0
+2020,final with candidates,,peak.day,-0.0
+2020,final with candidates,,peak.peak,-0.0
+2020,final with candidates,,peak.evening,-0.0
+2020,final with candidates,,summer.night,-1.9807919699999998
+2020,final with candidates,,summer.day,-0.0
+2020,final with candidates,,summer.peak,-0.0
+2020,final with candidates,,summer.evening,-0.0
+2020,final with candidates,,autumn.night,-0.0
+2020,final with candidates,,autumn.day,-0.0
+2020,final with candidates,,autumn.peak,-0.0
+2020,final with candidates,,autumn.evening,-0.0
+2030,post RSHEAT/GBR investment,4,winter.night,-0.0
+2030,post RSHEAT/GBR investment,4,winter.day,-0.0
+2030,post RSHEAT/GBR investment,4,winter.peak,-0.0
+2030,post RSHEAT/GBR investment,4,winter.evening,-0.0
+2030,post RSHEAT/GBR investment,4,peak.night,-0.0
+2030,post RSHEAT/GBR investment,4,peak.day,-0.0
+2030,post RSHEAT/GBR investment,4,peak.peak,-0.0
+2030,post RSHEAT/GBR investment,4,peak.evening,-0.0
+2030,post RSHEAT/GBR investment,4,summer.night,-0.0
+2030,post RSHEAT/GBR investment,4,summer.day,-0.0
+2030,post RSHEAT/GBR investment,4,summer.peak,-0.0
+2030,post RSHEAT/GBR investment,4,summer.evening,-0.0
+2030,post RSHEAT/GBR investment,4,autumn.night,-0.0
+2030,post RSHEAT/GBR investment,4,autumn.day,-0.0
+2030,post RSHEAT/GBR investment,4,autumn.peak,-0.0
+2030,post RSHEAT/GBR investment,4,autumn.evening,-0.0
+2030,post RSHEAT/GBR investment,5,winter.night,-2.3419800000000004
+2030,post RSHEAT/GBR investment,5,winter.day,-2.3419800000000004
+2030,post RSHEAT/GBR investment,5,winter.peak,-2.3419800000000004
+2030,post RSHEAT/GBR investment,5,winter.evening,-2.3419800000000004
+2030,post RSHEAT/GBR investment,5,peak.night,-0.03
+2030,post RSHEAT/GBR investment,5,peak.day,-2.3419800000000004
+2030,post RSHEAT/GBR investment,5,peak.peak,-2.3419800000000004
+2030,post RSHEAT/GBR investment,5,peak.evening,-2.3419800000000004
+2030,post RSHEAT/GBR investment,5,summer.night,-0.0
+2030,post RSHEAT/GBR investment,5,summer.day,-0.0
+2030,post RSHEAT/GBR investment,5,summer.peak,-0.0
+2030,post RSHEAT/GBR investment,5,summer.evening,-0.0
+2030,post RSHEAT/GBR investment,5,autumn.night,-0.03
+2030,post RSHEAT/GBR investment,5,autumn.day,-2.3419800000000004
+2030,post RSHEAT/GBR investment,5,autumn.peak,-2.3419800000000004
+2030,post RSHEAT/GBR investment,5,autumn.evening,-2.3419800000000004
+2030,post RSHEAT/GBR investment,6,winter.night,-2.31198
+2030,post RSHEAT/GBR investment,6,winter.day,-2.31198
+2030,post RSHEAT/GBR investment,6,winter.peak,-2.31198
+2030,post RSHEAT/GBR investment,6,winter.evening,-2.31198
+2030,post RSHEAT/GBR investment,6,peak.night,-0.0
+2030,post RSHEAT/GBR investment,6,peak.day,-2.31198
+2030,post RSHEAT/GBR investment,6,peak.peak,-2.31198
+2030,post RSHEAT/GBR investment,6,peak.evening,-2.31198
+2030,post RSHEAT/GBR investment,6,summer.night,-0.0
+2030,post RSHEAT/GBR investment,6,summer.day,-0.0
+2030,post RSHEAT/GBR investment,6,summer.peak,-0.0
+2030,post RSHEAT/GBR investment,6,summer.evening,-0.0
+2030,post RSHEAT/GBR investment,6,autumn.night,-0.0
+2030,post RSHEAT/GBR investment,6,autumn.day,-2.31198
+2030,post RSHEAT/GBR investment,6,autumn.peak,-2.31198
+2030,post RSHEAT/GBR investment,6,autumn.evening,-2.31198
+2030,post ELCTRI/GBR investment,2,winter.night,-3.2178
+2030,post ELCTRI/GBR investment,2,winter.day,-3.2178
+2030,post ELCTRI/GBR investment,2,winter.peak,-3.2178
+2030,post ELCTRI/GBR investment,2,winter.evening,-3.2178
+2030,post ELCTRI/GBR investment,2,peak.night,-3.2178
+2030,post ELCTRI/GBR investment,2,peak.day,-3.2178
+2030,post ELCTRI/GBR investment,2,peak.peak,-3.2178
+2030,post ELCTRI/GBR investment,2,peak.evening,-3.2178
+2030,post ELCTRI/GBR investment,2,summer.night,-0.0
+2030,post ELCTRI/GBR investment,2,summer.day,-0.0
+2030,post ELCTRI/GBR investment,2,summer.peak,-0.0
+2030,post ELCTRI/GBR investment,2,summer.evening,-0.0
+2030,post ELCTRI/GBR investment,2,autumn.night,-3.2178
+2030,post ELCTRI/GBR investment,2,autumn.day,-3.2178
+2030,post ELCTRI/GBR investment,2,autumn.peak,-3.2178
+2030,post ELCTRI/GBR investment,2,autumn.evening,-3.2178
+2030,post ELCTRI/GBR investment,3,winter.night,-0.0
+2030,post ELCTRI/GBR investment,3,winter.day,-0.0
+2030,post ELCTRI/GBR investment,3,winter.peak,-0.0
+2030,post ELCTRI/GBR investment,3,winter.evening,-0.0
+2030,post ELCTRI/GBR investment,3,peak.night,-0.0
+2030,post ELCTRI/GBR investment,3,peak.day,-0.0
+2030,post ELCTRI/GBR investment,3,peak.peak,-0.0
+2030,post ELCTRI/GBR investment,3,peak.evening,-0.0
+2030,post ELCTRI/GBR investment,3,summer.night,-0.0
+2030,post ELCTRI/GBR investment,3,summer.day,-0.0
+2030,post ELCTRI/GBR investment,3,summer.peak,-0.0
+2030,post ELCTRI/GBR investment,3,summer.evening,-0.0
+2030,post ELCTRI/GBR investment,3,autumn.night,-0.0
+2030,post ELCTRI/GBR investment,3,autumn.day,-0.0
+2030,post ELCTRI/GBR investment,3,autumn.peak,-0.0
+2030,post ELCTRI/GBR investment,3,autumn.evening,-0.0
+2030,post ELCTRI/GBR investment,4,winter.night,-0.0
+2030,post ELCTRI/GBR investment,4,winter.day,-0.0
+2030,post ELCTRI/GBR investment,4,winter.peak,-0.0
+2030,post ELCTRI/GBR investment,4,winter.evening,-0.0
+2030,post ELCTRI/GBR investment,4,peak.night,-0.0
+2030,post ELCTRI/GBR investment,4,peak.day,-0.0
+2030,post ELCTRI/GBR investment,4,peak.peak,-0.0
+2030,post ELCTRI/GBR investment,4,peak.evening,-0.0
+2030,post ELCTRI/GBR investment,4,summer.night,-0.0
+2030,post ELCTRI/GBR investment,4,summer.day,-0.0
+2030,post ELCTRI/GBR investment,4,summer.peak,-0.0
+2030,post ELCTRI/GBR investment,4,summer.evening,-0.0
+2030,post ELCTRI/GBR investment,4,autumn.night,-0.0
+2030,post ELCTRI/GBR investment,4,autumn.day,-0.0
+2030,post ELCTRI/GBR investment,4,autumn.peak,-0.0
+2030,post ELCTRI/GBR investment,4,autumn.evening,-0.0
+2030,post ELCTRI/GBR investment,5,winter.night,-1.1481060000000003
+2030,post ELCTRI/GBR investment,5,winter.day,-1.1481060000000003
+2030,post ELCTRI/GBR investment,5,winter.peak,-1.1481060000000003
+2030,post ELCTRI/GBR investment,5,winter.evening,-1.1481060000000003
+2030,post ELCTRI/GBR investment,5,peak.night,-0.0
+2030,post ELCTRI/GBR investment,5,peak.day,-1.1481060000000003
+2030,post ELCTRI/GBR investment,5,peak.peak,-1.1481060000000003
+2030,post ELCTRI/GBR investment,5,peak.evening,-1.1481060000000003
+2030,post ELCTRI/GBR investment,5,summer.night,-0.0
+2030,post ELCTRI/GBR investment,5,summer.day,-0.0
+2030,post ELCTRI/GBR investment,5,summer.peak,-0.0
+2030,post ELCTRI/GBR investment,5,summer.evening,-0.0
+2030,post ELCTRI/GBR investment,5,autumn.night,-0.0
+2030,post ELCTRI/GBR investment,5,autumn.day,-1.1481060000000003
+2030,post ELCTRI/GBR investment,5,autumn.peak,-1.1481060000000003
+2030,post ELCTRI/GBR investment,5,autumn.evening,-1.1481060000000003
+2030,post ELCTRI/GBR investment,6,winter.night,-2.31198
+2030,post ELCTRI/GBR investment,6,winter.day,-2.31198
+2030,post ELCTRI/GBR investment,6,winter.peak,-2.31198
+2030,post ELCTRI/GBR investment,6,winter.evening,-2.31198
+2030,post ELCTRI/GBR investment,6,peak.night,-1.163874
+2030,post ELCTRI/GBR investment,6,peak.day,-2.31198
+2030,post ELCTRI/GBR investment,6,peak.peak,-2.31198
+2030,post ELCTRI/GBR investment,6,peak.evening,-2.31198
+2030,post ELCTRI/GBR investment,6,summer.night,-0.0
+2030,post ELCTRI/GBR investment,6,summer.day,-0.0
+2030,post ELCTRI/GBR investment,6,summer.peak,-0.0
+2030,post ELCTRI/GBR investment,6,summer.evening,-0.0
+2030,post ELCTRI/GBR investment,6,autumn.night,-1.163874
+2030,post ELCTRI/GBR investment,6,autumn.day,-2.31198
+2030,post ELCTRI/GBR investment,6,autumn.peak,-2.31198
+2030,post ELCTRI/GBR investment,6,autumn.evening,-2.31198
+2030,post ELCTRI/GBR investment,7,winter.night,-0.0
+2030,post ELCTRI/GBR investment,7,winter.day,-0.0
+2030,post ELCTRI/GBR investment,7,winter.peak,-0.0
+2030,post ELCTRI/GBR investment,7,winter.evening,-0.0
+2030,post ELCTRI/GBR investment,7,peak.night,-0.0
+2030,post ELCTRI/GBR investment,7,peak.day,-0.0
+2030,post ELCTRI/GBR investment,7,peak.peak,-0.0
+2030,post ELCTRI/GBR investment,7,peak.evening,-0.0
+2030,post ELCTRI/GBR investment,7,summer.night,-0.0
+2030,post ELCTRI/GBR investment,7,summer.day,-0.0
+2030,post ELCTRI/GBR investment,7,summer.peak,-0.0
+2030,post ELCTRI/GBR investment,7,summer.evening,-0.0
+2030,post ELCTRI/GBR investment,7,autumn.night,-0.0
+2030,post ELCTRI/GBR investment,7,autumn.day,-0.0
+2030,post ELCTRI/GBR investment,7,autumn.peak,-0.0
+2030,post ELCTRI/GBR investment,7,autumn.evening,-0.0
+2030,post GASNAT/GBR investment,1,winter.night,-0.0
+2030,post GASNAT/GBR investment,1,winter.day,-0.0
+2030,post GASNAT/GBR investment,1,winter.peak,-0.0
+2030,post GASNAT/GBR investment,1,winter.evening,-0.0
+2030,post GASNAT/GBR investment,1,peak.night,-0.0
+2030,post GASNAT/GBR investment,1,peak.day,-0.0
+2030,post GASNAT/GBR investment,1,peak.peak,-0.0
+2030,post GASNAT/GBR investment,1,peak.evening,-0.0
+2030,post GASNAT/GBR investment,1,summer.night,-0.0
+2030,post GASNAT/GBR investment,1,summer.day,-0.0
+2030,post GASNAT/GBR investment,1,summer.peak,-0.0
+2030,post GASNAT/GBR investment,1,summer.evening,-0.0
+2030,post GASNAT/GBR investment,1,autumn.night,-0.0
+2030,post GASNAT/GBR investment,1,autumn.day,-0.0
+2030,post GASNAT/GBR investment,1,autumn.peak,-0.0
+2030,post GASNAT/GBR investment,1,autumn.evening,-0.0
+2030,post GASNAT/GBR investment,2,winter.night,-4.1211899999999995
+2030,post GASNAT/GBR investment,2,winter.day,-4.1211899999999995
+2030,post GASNAT/GBR investment,2,winter.peak,-4.1211899999999995
+2030,post GASNAT/GBR investment,2,winter.evening,-4.1211899999999995
+2030,post GASNAT/GBR investment,2,peak.night,-4.1211899999999995
+2030,post GASNAT/GBR investment,2,peak.day,-4.1211899999999995
+2030,post GASNAT/GBR investment,2,peak.peak,-4.1211899999999995
+2030,post GASNAT/GBR investment,2,peak.evening,-4.1211899999999995
+2030,post GASNAT/GBR investment,2,summer.night,-0.0
+2030,post GASNAT/GBR investment,2,summer.day,-0.0
+2030,post GASNAT/GBR investment,2,summer.peak,-0.0
+2030,post GASNAT/GBR investment,2,summer.evening,-0.0
+2030,post GASNAT/GBR investment,2,autumn.night,-4.1211899999999995
+2030,post GASNAT/GBR investment,2,autumn.day,-4.1211899999999995
+2030,post GASNAT/GBR investment,2,autumn.peak,-4.1211899999999995
+2030,post GASNAT/GBR investment,2,autumn.evening,-4.1211899999999995
+2030,post GASNAT/GBR investment,3,winter.night,-0.0
+2030,post GASNAT/GBR investment,3,winter.day,-0.0
+2030,post GASNAT/GBR investment,3,winter.peak,-0.0
+2030,post GASNAT/GBR investment,3,winter.evening,-0.0
+2030,post GASNAT/GBR investment,3,peak.night,-0.0
+2030,post GASNAT/GBR investment,3,peak.day,-0.0
+2030,post GASNAT/GBR investment,3,peak.peak,-0.0
+2030,post GASNAT/GBR investment,3,peak.evening,-0.0
+2030,post GASNAT/GBR investment,3,summer.night,-0.0
+2030,post GASNAT/GBR investment,3,summer.day,-0.0
+2030,post GASNAT/GBR investment,3,summer.peak,-0.0
+2030,post GASNAT/GBR investment,3,summer.evening,-0.0
+2030,post GASNAT/GBR investment,3,autumn.night,-0.0
+2030,post GASNAT/GBR investment,3,autumn.day,-0.0
+2030,post GASNAT/GBR investment,3,autumn.peak,-0.0
+2030,post GASNAT/GBR investment,3,autumn.evening,-0.0
+2030,post GASNAT/GBR investment,4,winter.night,-0.0
+2030,post GASNAT/GBR investment,4,winter.day,-0.0
+2030,post GASNAT/GBR investment,4,winter.peak,-0.0
+2030,post GASNAT/GBR investment,4,winter.evening,-0.0
+2030,post GASNAT/GBR investment,4,peak.night,-0.0
+2030,post GASNAT/GBR investment,4,peak.day,-0.0
+2030,post GASNAT/GBR investment,4,peak.peak,-0.0
+2030,post GASNAT/GBR investment,4,peak.evening,-0.0
+2030,post GASNAT/GBR investment,4,summer.night,-0.0
+2030,post GASNAT/GBR investment,4,summer.day,-0.0
+2030,post GASNAT/GBR investment,4,summer.peak,-0.0
+2030,post GASNAT/GBR investment,4,summer.evening,-0.0
+2030,post GASNAT/GBR investment,4,autumn.night,-0.0
+2030,post GASNAT/GBR investment,4,autumn.day,-0.0
+2030,post GASNAT/GBR investment,4,autumn.peak,-0.0
+2030,post GASNAT/GBR investment,4,autumn.evening,-0.0
+2030,post GASNAT/GBR investment,5,winter.night,-1.5425863000000004
+2030,post GASNAT/GBR investment,5,winter.day,-1.5425863000000004
+2030,post GASNAT/GBR investment,5,winter.peak,-1.5425863000000004
+2030,post GASNAT/GBR investment,5,winter.evening,-1.5425863000000004
+2030,post GASNAT/GBR investment,5,peak.night,-0.0
+2030,post GASNAT/GBR investment,5,peak.day,-1.5425863000000004
+2030,post GASNAT/GBR investment,5,peak.peak,-1.5425863000000004
+2030,post GASNAT/GBR investment,5,peak.evening,-1.5425863000000004
+2030,post GASNAT/GBR investment,5,summer.night,-0.0
+2030,post GASNAT/GBR investment,5,summer.day,-0.0
+2030,post GASNAT/GBR investment,5,summer.peak,-0.0
+2030,post GASNAT/GBR investment,5,summer.evening,-0.0
+2030,post GASNAT/GBR investment,5,autumn.night,-0.0
+2030,post GASNAT/GBR investment,5,autumn.day,-1.5425863000000004
+2030,post GASNAT/GBR investment,5,autumn.peak,-1.5425863000000004
+2030,post GASNAT/GBR investment,5,autumn.evening,-1.5425863000000004
+2030,post GASNAT/GBR investment,6,winter.night,-3.004579
+2030,post GASNAT/GBR investment,6,winter.day,-3.004579
+2030,post GASNAT/GBR investment,6,winter.peak,-3.004579
+2030,post GASNAT/GBR investment,6,winter.evening,-3.004579
+2030,post GASNAT/GBR investment,6,peak.night,-1.4619927
+2030,post GASNAT/GBR investment,6,peak.day,-3.004579
+2030,post GASNAT/GBR investment,6,peak.peak,-3.004579
+2030,post GASNAT/GBR investment,6,peak.evening,-3.004579
+2030,post GASNAT/GBR investment,6,summer.night,-0.0
+2030,post GASNAT/GBR investment,6,summer.day,-0.0
+2030,post GASNAT/GBR investment,6,summer.peak,-0.0
+2030,post GASNAT/GBR investment,6,summer.evening,-0.0
+2030,post GASNAT/GBR investment,6,autumn.night,-1.4619927
+2030,post GASNAT/GBR investment,6,autumn.day,-3.004579
+2030,post GASNAT/GBR investment,6,autumn.peak,-3.004579
+2030,post GASNAT/GBR investment,6,autumn.evening,-3.004579
+2030,post GASNAT/GBR investment,7,winter.night,-0.0
+2030,post GASNAT/GBR investment,7,winter.day,-0.0
+2030,post GASNAT/GBR investment,7,winter.peak,-0.0
+2030,post GASNAT/GBR investment,7,winter.evening,-0.0
+2030,post GASNAT/GBR investment,7,peak.night,-0.0
+2030,post GASNAT/GBR investment,7,peak.day,-0.0
+2030,post GASNAT/GBR investment,7,peak.peak,-0.0
+2030,post GASNAT/GBR investment,7,peak.evening,-0.0
+2030,post GASNAT/GBR investment,7,summer.night,-0.0
+2030,post GASNAT/GBR investment,7,summer.day,-0.0
+2030,post GASNAT/GBR investment,7,summer.peak,-0.0
+2030,post GASNAT/GBR investment,7,summer.evening,-0.0
+2030,post GASNAT/GBR investment,7,autumn.night,-0.0
+2030,post GASNAT/GBR investment,7,autumn.day,-0.0
+2030,post GASNAT/GBR investment,7,autumn.peak,-0.0
+2030,post GASNAT/GBR investment,7,autumn.evening,-0.0
+2030,post GASPRD/GBR investment,0,winter.night,-0.0
+2030,post GASPRD/GBR investment,0,winter.day,-0.0
+2030,post GASPRD/GBR investment,0,winter.peak,-0.0
+2030,post GASPRD/GBR investment,0,winter.evening,-0.0
+2030,post GASPRD/GBR investment,0,peak.night,-0.0
+2030,post GASPRD/GBR investment,0,peak.day,-0.0
+2030,post GASPRD/GBR investment,0,peak.peak,-0.0
+2030,post GASPRD/GBR investment,0,peak.evening,-0.0
+2030,post GASPRD/GBR investment,0,summer.night,-0.0
+2030,post GASPRD/GBR investment,0,summer.day,-0.0
+2030,post GASPRD/GBR investment,0,summer.peak,-0.0
+2030,post GASPRD/GBR investment,0,summer.evening,-0.0
+2030,post GASPRD/GBR investment,0,autumn.night,-0.0
+2030,post GASPRD/GBR investment,0,autumn.day,-0.0
+2030,post GASPRD/GBR investment,0,autumn.peak,-0.0
+2030,post GASPRD/GBR investment,0,autumn.evening,-0.0
+2030,post GASPRD/GBR investment,1,winter.night,-0.0
+2030,post GASPRD/GBR investment,1,winter.day,-0.0
+2030,post GASPRD/GBR investment,1,winter.peak,-0.0
+2030,post GASPRD/GBR investment,1,winter.evening,-0.0
+2030,post GASPRD/GBR investment,1,peak.night,-0.0
+2030,post GASPRD/GBR investment,1,peak.day,-0.0
+2030,post GASPRD/GBR investment,1,peak.peak,-0.0
+2030,post GASPRD/GBR investment,1,peak.evening,-0.0
+2030,post GASPRD/GBR investment,1,summer.night,-0.0
+2030,post GASPRD/GBR investment,1,summer.day,-0.0
+2030,post GASPRD/GBR investment,1,summer.peak,-0.0
+2030,post GASPRD/GBR investment,1,summer.evening,-0.0
+2030,post GASPRD/GBR investment,1,autumn.night,-0.0
+2030,post GASPRD/GBR investment,1,autumn.day,-0.0
+2030,post GASPRD/GBR investment,1,autumn.peak,-0.0
+2030,post GASPRD/GBR investment,1,autumn.evening,-0.0
+2030,post GASPRD/GBR investment,2,winter.night,-7.593308999999999
+2030,post GASPRD/GBR investment,2,winter.day,-7.593308999999999
+2030,post GASPRD/GBR investment,2,winter.peak,-7.593308999999999
+2030,post GASPRD/GBR investment,2,winter.evening,-7.593308999999999
+2030,post GASPRD/GBR investment,2,peak.night,-7.593308999999999
+2030,post GASPRD/GBR investment,2,peak.day,-7.593308999999999
+2030,post GASPRD/GBR investment,2,peak.peak,-7.593308999999999
+2030,post GASPRD/GBR investment,2,peak.evening,-7.593308999999999
+2030,post GASPRD/GBR investment,2,summer.night,-0.0
+2030,post GASPRD/GBR investment,2,summer.day,-0.0
+2030,post GASPRD/GBR investment,2,summer.peak,-0.0
+2030,post GASPRD/GBR investment,2,summer.evening,-0.0
+2030,post GASPRD/GBR investment,2,autumn.night,-7.593308999999999
+2030,post GASPRD/GBR investment,2,autumn.day,-7.593308999999999
+2030,post GASPRD/GBR investment,2,autumn.peak,-7.593308999999999
+2030,post GASPRD/GBR investment,2,autumn.evening,-7.593308999999999
+2030,post GASPRD/GBR investment,3,winter.night,-0.0
+2030,post GASPRD/GBR investment,3,winter.day,-0.0
+2030,post GASPRD/GBR investment,3,winter.peak,-0.0
+2030,post GASPRD/GBR investment,3,winter.evening,-0.0
+2030,post GASPRD/GBR investment,3,peak.night,-0.0
+2030,post GASPRD/GBR investment,3,peak.day,-0.0
+2030,post GASPRD/GBR investment,3,peak.peak,-0.0
+2030,post GASPRD/GBR investment,3,peak.evening,-0.0
+2030,post GASPRD/GBR investment,3,summer.night,-0.0
+2030,post GASPRD/GBR investment,3,summer.day,-0.0
+2030,post GASPRD/GBR investment,3,summer.peak,-0.0
+2030,post GASPRD/GBR investment,3,summer.evening,-0.0
+2030,post GASPRD/GBR investment,3,autumn.night,-0.0
+2030,post GASPRD/GBR investment,3,autumn.day,-0.0
+2030,post GASPRD/GBR investment,3,autumn.peak,-0.0
+2030,post GASPRD/GBR investment,3,autumn.evening,-0.0
+2030,post GASPRD/GBR investment,4,winter.night,-0.0
+2030,post GASPRD/GBR investment,4,winter.day,-0.0
+2030,post GASPRD/GBR investment,4,winter.peak,-0.0
+2030,post GASPRD/GBR investment,4,winter.evening,-0.0
+2030,post GASPRD/GBR investment,4,peak.night,-0.0
+2030,post GASPRD/GBR investment,4,peak.day,-0.0
+2030,post GASPRD/GBR investment,4,peak.peak,-0.0
+2030,post GASPRD/GBR investment,4,peak.evening,-0.0
+2030,post GASPRD/GBR investment,4,summer.night,-0.0
+2030,post GASPRD/GBR investment,4,summer.day,-0.0
+2030,post GASPRD/GBR investment,4,summer.peak,-0.0
+2030,post GASPRD/GBR investment,4,summer.evening,-0.0
+2030,post GASPRD/GBR investment,4,autumn.night,-0.0
+2030,post GASPRD/GBR investment,4,autumn.day,-0.0
+2030,post GASPRD/GBR investment,4,autumn.peak,-0.0
+2030,post GASPRD/GBR investment,4,autumn.evening,-0.0
+2030,post GASPRD/GBR investment,5,winter.night,-3.05874493
+2030,post GASPRD/GBR investment,5,winter.day,-3.05874493
+2030,post GASPRD/GBR investment,5,winter.peak,-3.05874493
+2030,post GASPRD/GBR investment,5,winter.evening,-3.05874493
+2030,post GASPRD/GBR investment,5,peak.night,-0.0
+2030,post GASPRD/GBR investment,5,peak.day,-3.05874493
+2030,post GASPRD/GBR investment,5,peak.peak,-3.05874493
+2030,post GASPRD/GBR investment,5,peak.evening,-3.05874493
+2030,post GASPRD/GBR investment,5,summer.night,-0.0
+2030,post GASPRD/GBR investment,5,summer.day,-0.0
+2030,post GASPRD/GBR investment,5,summer.peak,-0.0
+2030,post GASPRD/GBR investment,5,summer.evening,-0.0
+2030,post GASPRD/GBR investment,5,autumn.night,-0.0
+2030,post GASPRD/GBR investment,5,autumn.day,-3.05874493
+2030,post GASPRD/GBR investment,5,autumn.peak,-3.05874493
+2030,post GASPRD/GBR investment,5,autumn.evening,-3.05874493
+2030,post GASPRD/GBR investment,6,winter.night,-5.6665369
+2030,post GASPRD/GBR investment,6,winter.day,-5.6665369
+2030,post GASPRD/GBR investment,6,winter.peak,-5.6665369
+2030,post GASPRD/GBR investment,6,winter.evening,-5.6665369
+2030,post GASPRD/GBR investment,6,peak.night,-2.6077919699999996
+2030,post GASPRD/GBR investment,6,peak.day,-5.6665369
+2030,post GASPRD/GBR investment,6,peak.peak,-5.6665369
+2030,post GASPRD/GBR investment,6,peak.evening,-5.6665369
+2030,post GASPRD/GBR investment,6,summer.night,-0.0
+2030,post GASPRD/GBR investment,6,summer.day,-0.0
+2030,post GASPRD/GBR investment,6,summer.peak,-0.0
+2030,post GASPRD/GBR investment,6,summer.evening,-0.0
+2030,post GASPRD/GBR investment,6,autumn.night,-2.6077919699999996
+2030,post GASPRD/GBR investment,6,autumn.day,-5.6665369
+2030,post GASPRD/GBR investment,6,autumn.peak,-5.6665369
+2030,post GASPRD/GBR investment,6,autumn.evening,-5.6665369
+2030,post GASPRD/GBR investment,7,winter.night,-0.0
+2030,post GASPRD/GBR investment,7,winter.day,-0.0
+2030,post GASPRD/GBR investment,7,winter.peak,-0.0
+2030,post GASPRD/GBR investment,7,winter.evening,-0.0
+2030,post GASPRD/GBR investment,7,peak.night,-0.0
+2030,post GASPRD/GBR investment,7,peak.day,-0.0
+2030,post GASPRD/GBR investment,7,peak.peak,-0.0
+2030,post GASPRD/GBR investment,7,peak.evening,-0.0
+2030,post GASPRD/GBR investment,7,summer.night,-0.0
+2030,post GASPRD/GBR investment,7,summer.day,-0.0
+2030,post GASPRD/GBR investment,7,summer.peak,-0.0
+2030,post GASPRD/GBR investment,7,summer.evening,-0.0
+2030,post GASPRD/GBR investment,7,autumn.night,-0.0
+2030,post GASPRD/GBR investment,7,autumn.day,-0.0
+2030,post GASPRD/GBR investment,7,autumn.peak,-0.0
+2030,post GASPRD/GBR investment,7,autumn.evening,-0.0
+2030,post BIOPEL/GBR investment,0,winter.night,-0.0
+2030,post BIOPEL/GBR investment,0,winter.day,-0.0
+2030,post BIOPEL/GBR investment,0,winter.peak,-0.0
+2030,post BIOPEL/GBR investment,0,winter.evening,-0.0
+2030,post BIOPEL/GBR investment,0,peak.night,-0.0
+2030,post BIOPEL/GBR investment,0,peak.day,-0.0
+2030,post BIOPEL/GBR investment,0,peak.peak,-0.0
+2030,post BIOPEL/GBR investment,0,peak.evening,-0.0
+2030,post BIOPEL/GBR investment,0,summer.night,-0.0
+2030,post BIOPEL/GBR investment,0,summer.day,-0.0
+2030,post BIOPEL/GBR investment,0,summer.peak,-0.0
+2030,post BIOPEL/GBR investment,0,summer.evening,-0.0
+2030,post BIOPEL/GBR investment,0,autumn.night,-0.0
+2030,post BIOPEL/GBR investment,0,autumn.day,-0.0
+2030,post BIOPEL/GBR investment,0,autumn.peak,-0.0
+2030,post BIOPEL/GBR investment,0,autumn.evening,-0.0
+2030,post BIOPEL/GBR investment,1,winter.night,-0.0
+2030,post BIOPEL/GBR investment,1,winter.day,-0.0
+2030,post BIOPEL/GBR investment,1,winter.peak,-0.0
+2030,post BIOPEL/GBR investment,1,winter.evening,-0.0
+2030,post BIOPEL/GBR investment,1,peak.night,-0.0
+2030,post BIOPEL/GBR investment,1,peak.day,-0.0
+2030,post BIOPEL/GBR investment,1,peak.peak,-0.0
+2030,post BIOPEL/GBR investment,1,peak.evening,-0.0
+2030,post BIOPEL/GBR investment,1,summer.night,-0.0
+2030,post BIOPEL/GBR investment,1,summer.day,-0.0
+2030,post BIOPEL/GBR investment,1,summer.peak,-0.0
+2030,post BIOPEL/GBR investment,1,summer.evening,-0.0
+2030,post BIOPEL/GBR investment,1,autumn.night,-0.0
+2030,post BIOPEL/GBR investment,1,autumn.day,-0.0
+2030,post BIOPEL/GBR investment,1,autumn.peak,-0.0
+2030,post BIOPEL/GBR investment,1,autumn.evening,-0.0
+2030,post BIOPEL/GBR investment,2,winter.night,-7.593308999999999
+2030,post BIOPEL/GBR investment,2,winter.day,-7.593308999999999
+2030,post BIOPEL/GBR investment,2,winter.peak,-7.593308999999999
+2030,post BIOPEL/GBR investment,2,winter.evening,-7.593308999999999
+2030,post BIOPEL/GBR investment,2,peak.night,-7.593308999999999
+2030,post BIOPEL/GBR investment,2,peak.day,-7.593308999999999
+2030,post BIOPEL/GBR investment,2,peak.peak,-7.593308999999999
+2030,post BIOPEL/GBR investment,2,peak.evening,-7.593308999999999
+2030,post BIOPEL/GBR investment,2,summer.night,-0.6363636363636364
+2030,post BIOPEL/GBR investment,2,summer.day,-0.0
+2030,post BIOPEL/GBR investment,2,summer.peak,-0.0
+2030,post BIOPEL/GBR investment,2,summer.evening,-0.0
+2030,post BIOPEL/GBR investment,2,autumn.night,-7.593308999999999
+2030,post BIOPEL/GBR investment,2,autumn.day,-7.593308999999999
+2030,post BIOPEL/GBR investment,2,autumn.peak,-7.593308999999999
+2030,post BIOPEL/GBR investment,2,autumn.evening,-7.593308999999999
+2030,post BIOPEL/GBR investment,3,winter.night,-0.0
+2030,post BIOPEL/GBR investment,3,winter.day,-0.0
+2030,post BIOPEL/GBR investment,3,winter.peak,-0.0
+2030,post BIOPEL/GBR investment,3,winter.evening,-0.0
+2030,post BIOPEL/GBR investment,3,peak.night,-0.0
+2030,post BIOPEL/GBR investment,3,peak.day,-0.0
+2030,post BIOPEL/GBR investment,3,peak.peak,-0.0
+2030,post BIOPEL/GBR investment,3,peak.evening,-0.0
+2030,post BIOPEL/GBR investment,3,summer.night,-0.0
+2030,post BIOPEL/GBR investment,3,summer.day,-0.0
+2030,post BIOPEL/GBR investment,3,summer.peak,-0.0
+2030,post BIOPEL/GBR investment,3,summer.evening,-0.0
+2030,post BIOPEL/GBR investment,3,autumn.night,-0.0
+2030,post BIOPEL/GBR investment,3,autumn.day,-0.0
+2030,post BIOPEL/GBR investment,3,autumn.peak,-0.0
+2030,post BIOPEL/GBR investment,3,autumn.evening,-0.0
+2030,post BIOPEL/GBR investment,4,winter.night,-0.0
+2030,post BIOPEL/GBR investment,4,winter.day,-0.0
+2030,post BIOPEL/GBR investment,4,winter.peak,-0.0
+2030,post BIOPEL/GBR investment,4,winter.evening,-0.0
+2030,post BIOPEL/GBR investment,4,peak.night,-0.0
+2030,post BIOPEL/GBR investment,4,peak.day,-0.0
+2030,post BIOPEL/GBR investment,4,peak.peak,-0.0
+2030,post BIOPEL/GBR investment,4,peak.evening,-0.0
+2030,post BIOPEL/GBR investment,4,summer.night,-0.0
+2030,post BIOPEL/GBR investment,4,summer.day,-0.0
+2030,post BIOPEL/GBR investment,4,summer.peak,-0.0
+2030,post BIOPEL/GBR investment,4,summer.evening,-0.0
+2030,post BIOPEL/GBR investment,4,autumn.night,-0.0
+2030,post BIOPEL/GBR investment,4,autumn.day,-0.0
+2030,post BIOPEL/GBR investment,4,autumn.peak,-0.0
+2030,post BIOPEL/GBR investment,4,autumn.evening,-0.0
+2030,post BIOPEL/GBR investment,5,winter.night,-3.05874493
+2030,post BIOPEL/GBR investment,5,winter.day,-3.05874493
+2030,post BIOPEL/GBR investment,5,winter.peak,-3.05874493
+2030,post BIOPEL/GBR investment,5,winter.evening,-3.05874493
+2030,post BIOPEL/GBR investment,5,peak.night,-0.0
+2030,post BIOPEL/GBR investment,5,peak.day,-3.05874493
+2030,post BIOPEL/GBR investment,5,peak.peak,-3.05874493
+2030,post BIOPEL/GBR investment,5,peak.evening,-3.05874493
+2030,post BIOPEL/GBR investment,5,summer.night,-0.0
+2030,post BIOPEL/GBR investment,5,summer.day,-0.0
+2030,post BIOPEL/GBR investment,5,summer.peak,-0.0
+2030,post BIOPEL/GBR investment,5,summer.evening,-0.0
+2030,post BIOPEL/GBR investment,5,autumn.night,-0.0
+2030,post BIOPEL/GBR investment,5,autumn.day,-3.05874493
+2030,post BIOPEL/GBR investment,5,autumn.peak,-3.05874493
+2030,post BIOPEL/GBR investment,5,autumn.evening,-3.05874493
+2030,post BIOPEL/GBR investment,6,winter.night,-5.354536899999999
+2030,post BIOPEL/GBR investment,6,winter.day,-5.354536899999999
+2030,post BIOPEL/GBR investment,6,winter.peak,-5.354536899999999
+2030,post BIOPEL/GBR investment,6,winter.evening,-5.354536899999999
+2030,post BIOPEL/GBR investment,6,peak.night,-2.29579197
+2030,post BIOPEL/GBR investment,6,peak.day,-5.354536899999999
+2030,post BIOPEL/GBR investment,6,peak.peak,-5.354536899999999
+2030,post BIOPEL/GBR investment,6,peak.evening,-5.354536899999999
+2030,post BIOPEL/GBR investment,6,summer.night,-0.0
+2030,post BIOPEL/GBR investment,6,summer.day,-0.0
+2030,post BIOPEL/GBR investment,6,summer.peak,-0.0
+2030,post BIOPEL/GBR investment,6,summer.evening,-0.0
+2030,post BIOPEL/GBR investment,6,autumn.night,-2.29579197
+2030,post BIOPEL/GBR investment,6,autumn.day,-5.354536899999999
+2030,post BIOPEL/GBR investment,6,autumn.peak,-5.354536899999999
+2030,post BIOPEL/GBR investment,6,autumn.evening,-5.354536899999999
+2030,post BIOPEL/GBR investment,7,winter.night,-0.0
+2030,post BIOPEL/GBR investment,7,winter.day,-0.0
+2030,post BIOPEL/GBR investment,7,winter.peak,-0.0
+2030,post BIOPEL/GBR investment,7,winter.evening,-0.0
+2030,post BIOPEL/GBR investment,7,peak.night,-0.0
+2030,post BIOPEL/GBR investment,7,peak.day,-0.0
+2030,post BIOPEL/GBR investment,7,peak.peak,-0.0
+2030,post BIOPEL/GBR investment,7,peak.evening,-0.0
+2030,post BIOPEL/GBR investment,7,summer.night,-0.0
+2030,post BIOPEL/GBR investment,7,summer.day,-0.0
+2030,post BIOPEL/GBR investment,7,summer.peak,-0.0
+2030,post BIOPEL/GBR investment,7,summer.evening,-0.0
+2030,post BIOPEL/GBR investment,7,autumn.night,-0.0
+2030,post BIOPEL/GBR investment,7,autumn.day,-0.0
+2030,post BIOPEL/GBR investment,7,autumn.peak,-0.0
+2030,post BIOPEL/GBR investment,7,autumn.evening,-0.0
+2030,post BIOPEL/GBR investment,8,winter.night,-0.0
+2030,post BIOPEL/GBR investment,8,winter.day,-0.0
+2030,post BIOPEL/GBR investment,8,winter.peak,-0.0
+2030,post BIOPEL/GBR investment,8,winter.evening,-0.0
+2030,post BIOPEL/GBR investment,8,peak.night,-0.0
+2030,post BIOPEL/GBR investment,8,peak.day,-0.0
+2030,post BIOPEL/GBR investment,8,peak.peak,-0.0
+2030,post BIOPEL/GBR investment,8,peak.evening,-0.0
+2030,post BIOPEL/GBR investment,8,summer.night,-0.0
+2030,post BIOPEL/GBR investment,8,summer.day,-0.0
+2030,post BIOPEL/GBR investment,8,summer.peak,-0.0
+2030,post BIOPEL/GBR investment,8,summer.evening,-0.0
+2030,post BIOPEL/GBR investment,8,autumn.night,-0.0
+2030,post BIOPEL/GBR investment,8,autumn.day,-0.0
+2030,post BIOPEL/GBR investment,8,autumn.peak,-0.0
+2030,post BIOPEL/GBR investment,8,autumn.evening,-0.0
+2030,post BIOPRD/GBR investment,0,winter.night,-0.0
+2030,post BIOPRD/GBR investment,0,winter.day,-0.0
+2030,post BIOPRD/GBR investment,0,winter.peak,-0.0
+2030,post BIOPRD/GBR investment,0,winter.evening,-0.0
+2030,post BIOPRD/GBR investment,0,peak.night,-0.0
+2030,post BIOPRD/GBR investment,0,peak.day,-0.0
+2030,post BIOPRD/GBR investment,0,peak.peak,-0.0
+2030,post BIOPRD/GBR investment,0,peak.evening,-0.0
+2030,post BIOPRD/GBR investment,0,summer.night,-0.0
+2030,post BIOPRD/GBR investment,0,summer.day,-0.0
+2030,post BIOPRD/GBR investment,0,summer.peak,-0.0
+2030,post BIOPRD/GBR investment,0,summer.evening,-0.0
+2030,post BIOPRD/GBR investment,0,autumn.night,-0.0
+2030,post BIOPRD/GBR investment,0,autumn.day,-0.0
+2030,post BIOPRD/GBR investment,0,autumn.peak,-0.0
+2030,post BIOPRD/GBR investment,0,autumn.evening,-0.0
+2030,post BIOPRD/GBR investment,1,winter.night,-0.0
+2030,post BIOPRD/GBR investment,1,winter.day,-0.0
+2030,post BIOPRD/GBR investment,1,winter.peak,-0.0
+2030,post BIOPRD/GBR investment,1,winter.evening,-0.0
+2030,post BIOPRD/GBR investment,1,peak.night,-0.0
+2030,post BIOPRD/GBR investment,1,peak.day,-0.0
+2030,post BIOPRD/GBR investment,1,peak.peak,-0.0
+2030,post BIOPRD/GBR investment,1,peak.evening,-0.0
+2030,post BIOPRD/GBR investment,1,summer.night,-0.0
+2030,post BIOPRD/GBR investment,1,summer.day,-0.0
+2030,post BIOPRD/GBR investment,1,summer.peak,-0.0
+2030,post BIOPRD/GBR investment,1,summer.evening,-0.0
+2030,post BIOPRD/GBR investment,1,autumn.night,-0.0
+2030,post BIOPRD/GBR investment,1,autumn.day,-0.0
+2030,post BIOPRD/GBR investment,1,autumn.peak,-0.0
+2030,post BIOPRD/GBR investment,1,autumn.evening,-0.0
+2030,post BIOPRD/GBR investment,2,winter.night,-7.593308999999999
+2030,post BIOPRD/GBR investment,2,winter.day,-7.593308999999999
+2030,post BIOPRD/GBR investment,2,winter.peak,-7.593308999999999
+2030,post BIOPRD/GBR investment,2,winter.evening,-7.593308999999999
+2030,post BIOPRD/GBR investment,2,peak.night,-7.593308999999999
+2030,post BIOPRD/GBR investment,2,peak.day,-7.593308999999999
+2030,post BIOPRD/GBR investment,2,peak.peak,-7.593308999999999
+2030,post BIOPRD/GBR investment,2,peak.evening,-7.593308999999999
+2030,post BIOPRD/GBR investment,2,summer.night,-1.5909090909090908
+2030,post BIOPRD/GBR investment,2,summer.day,-0.0
+2030,post BIOPRD/GBR investment,2,summer.peak,-0.0
+2030,post BIOPRD/GBR investment,2,summer.evening,-0.0
+2030,post BIOPRD/GBR investment,2,autumn.night,-7.593308999999999
+2030,post BIOPRD/GBR investment,2,autumn.day,-7.593308999999999
+2030,post BIOPRD/GBR investment,2,autumn.peak,-7.593308999999999
+2030,post BIOPRD/GBR investment,2,autumn.evening,-7.593308999999999
+2030,post BIOPRD/GBR investment,3,winter.night,-0.0
+2030,post BIOPRD/GBR investment,3,winter.day,-0.0
+2030,post BIOPRD/GBR investment,3,winter.peak,-0.0
+2030,post BIOPRD/GBR investment,3,winter.evening,-0.0
+2030,post BIOPRD/GBR investment,3,peak.night,-0.0
+2030,post BIOPRD/GBR investment,3,peak.day,-0.0
+2030,post BIOPRD/GBR investment,3,peak.peak,-0.0
+2030,post BIOPRD/GBR investment,3,peak.evening,-0.0
+2030,post BIOPRD/GBR investment,3,summer.night,-0.0
+2030,post BIOPRD/GBR investment,3,summer.day,-0.0
+2030,post BIOPRD/GBR investment,3,summer.peak,-0.0
+2030,post BIOPRD/GBR investment,3,summer.evening,-0.0
+2030,post BIOPRD/GBR investment,3,autumn.night,-0.0
+2030,post BIOPRD/GBR investment,3,autumn.day,-0.0
+2030,post BIOPRD/GBR investment,3,autumn.peak,-0.0
+2030,post BIOPRD/GBR investment,3,autumn.evening,-0.0
+2030,post BIOPRD/GBR investment,4,winter.night,-0.0
+2030,post BIOPRD/GBR investment,4,winter.day,-0.0
+2030,post BIOPRD/GBR investment,4,winter.peak,-0.0
+2030,post BIOPRD/GBR investment,4,winter.evening,-0.0
+2030,post BIOPRD/GBR investment,4,peak.night,-0.0
+2030,post BIOPRD/GBR investment,4,peak.day,-0.0
+2030,post BIOPRD/GBR investment,4,peak.peak,-0.0
+2030,post BIOPRD/GBR investment,4,peak.evening,-0.0
+2030,post BIOPRD/GBR investment,4,summer.night,-0.0
+2030,post BIOPRD/GBR investment,4,summer.day,-0.0
+2030,post BIOPRD/GBR investment,4,summer.peak,-0.0
+2030,post BIOPRD/GBR investment,4,summer.evening,-0.0
+2030,post BIOPRD/GBR investment,4,autumn.night,-0.0
+2030,post BIOPRD/GBR investment,4,autumn.day,-0.0
+2030,post BIOPRD/GBR investment,4,autumn.peak,-0.0
+2030,post BIOPRD/GBR investment,4,autumn.evening,-0.0
+2030,post BIOPRD/GBR investment,5,winter.night,-3.05874493
+2030,post BIOPRD/GBR investment,5,winter.day,-3.05874493
+2030,post BIOPRD/GBR investment,5,winter.peak,-3.05874493
+2030,post BIOPRD/GBR investment,5,winter.evening,-3.05874493
+2030,post BIOPRD/GBR investment,5,peak.night,-0.0
+2030,post BIOPRD/GBR investment,5,peak.day,-3.05874493
+2030,post BIOPRD/GBR investment,5,peak.peak,-3.05874493
+2030,post BIOPRD/GBR investment,5,peak.evening,-3.05874493
+2030,post BIOPRD/GBR investment,5,summer.night,-0.0
+2030,post BIOPRD/GBR investment,5,summer.day,-0.0
+2030,post BIOPRD/GBR investment,5,summer.peak,-0.0
+2030,post BIOPRD/GBR investment,5,summer.evening,-0.0
+2030,post BIOPRD/GBR investment,5,autumn.night,-0.0
+2030,post BIOPRD/GBR investment,5,autumn.day,-3.05874493
+2030,post BIOPRD/GBR investment,5,autumn.peak,-3.05874493
+2030,post BIOPRD/GBR investment,5,autumn.evening,-3.05874493
+2030,post BIOPRD/GBR investment,6,winter.night,-0.0
+2030,post BIOPRD/GBR investment,6,winter.day,-0.0
+2030,post BIOPRD/GBR investment,6,winter.peak,-0.0
+2030,post BIOPRD/GBR investment,6,winter.evening,-0.0
+2030,post BIOPRD/GBR investment,6,peak.night,-1.9807919699999998
+2030,post BIOPRD/GBR investment,6,peak.day,-5.0395369
+2030,post BIOPRD/GBR investment,6,peak.peak,-5.0395369
+2030,post BIOPRD/GBR investment,6,peak.evening,-5.0395369
+2030,post BIOPRD/GBR investment,6,summer.night,-0.0
+2030,post BIOPRD/GBR investment,6,summer.day,-0.0
+2030,post BIOPRD/GBR investment,6,summer.peak,-0.0
+2030,post BIOPRD/GBR investment,6,summer.evening,-0.0
+2030,post BIOPRD/GBR investment,6,autumn.night,-1.9807919699999998
+2030,post BIOPRD/GBR investment,6,autumn.day,-5.0395369
+2030,post BIOPRD/GBR investment,6,autumn.peak,-5.0395369
+2030,post BIOPRD/GBR investment,6,autumn.evening,-5.0395369
+2030,post BIOPRD/GBR investment,7,winter.night,-0.0
+2030,post BIOPRD/GBR investment,7,winter.day,-0.0
+2030,post BIOPRD/GBR investment,7,winter.peak,-0.0
+2030,post BIOPRD/GBR investment,7,winter.evening,-0.0
+2030,post BIOPRD/GBR investment,7,peak.night,-0.0
+2030,post BIOPRD/GBR investment,7,peak.day,-0.0
+2030,post BIOPRD/GBR investment,7,peak.peak,-0.0
+2030,post BIOPRD/GBR investment,7,peak.evening,-0.0
+2030,post BIOPRD/GBR investment,7,summer.night,-0.0
+2030,post BIOPRD/GBR investment,7,summer.day,-0.0
+2030,post BIOPRD/GBR investment,7,summer.peak,-0.0
+2030,post BIOPRD/GBR investment,7,summer.evening,-0.0
+2030,post BIOPRD/GBR investment,7,autumn.night,-0.0
+2030,post BIOPRD/GBR investment,7,autumn.day,-0.0
+2030,post BIOPRD/GBR investment,7,autumn.peak,-0.0
+2030,post BIOPRD/GBR investment,7,autumn.evening,-0.0
+2030,post BIOPRD/GBR investment,8,winter.night,-4.1996140833333335
+2030,post BIOPRD/GBR investment,8,winter.day,-4.1996140833333335
+2030,post BIOPRD/GBR investment,8,winter.peak,-4.1996140833333335
+2030,post BIOPRD/GBR investment,8,winter.evening,-4.1996140833333335
+2030,post BIOPRD/GBR investment,8,peak.night,-0.0
+2030,post BIOPRD/GBR investment,8,peak.day,-0.0
+2030,post BIOPRD/GBR investment,8,peak.peak,-0.0
+2030,post BIOPRD/GBR investment,8,peak.evening,-0.0
+2030,post BIOPRD/GBR investment,8,summer.night,-0.0
+2030,post BIOPRD/GBR investment,8,summer.day,-0.0
+2030,post BIOPRD/GBR investment,8,summer.peak,-0.0
+2030,post BIOPRD/GBR investment,8,summer.evening,-0.0
+2030,post BIOPRD/GBR investment,8,autumn.night,-0.0
+2030,post BIOPRD/GBR investment,8,autumn.day,-0.0
+2030,post BIOPRD/GBR investment,8,autumn.peak,-0.0
+2030,post BIOPRD/GBR investment,8,autumn.evening,-0.0
+2030,post BIOPRD/GBR investment,9,winter.night,-0.0
+2030,post BIOPRD/GBR investment,9,winter.day,-0.0
+2030,post BIOPRD/GBR investment,9,winter.peak,-0.0
+2030,post BIOPRD/GBR investment,9,winter.evening,-0.0
+2030,post BIOPRD/GBR investment,9,peak.night,-0.0
+2030,post BIOPRD/GBR investment,9,peak.day,-0.0
+2030,post BIOPRD/GBR investment,9,peak.peak,-0.0
+2030,post BIOPRD/GBR investment,9,peak.evening,-0.0
+2030,post BIOPRD/GBR investment,9,summer.night,-0.0
+2030,post BIOPRD/GBR investment,9,summer.day,-0.0
+2030,post BIOPRD/GBR investment,9,summer.peak,-0.0
+2030,post BIOPRD/GBR investment,9,summer.evening,-0.0
+2030,post BIOPRD/GBR investment,9,autumn.night,-0.0
+2030,post BIOPRD/GBR investment,9,autumn.day,-0.0
+2030,post BIOPRD/GBR investment,9,autumn.peak,-0.0
+2030,post BIOPRD/GBR investment,9,autumn.evening,-0.0
+2030,final without candidates,0,winter.night,-0.0
+2030,final without candidates,0,winter.day,-0.0
+2030,final without candidates,0,winter.peak,-0.0
+2030,final without candidates,0,winter.evening,-0.0
+2030,final without candidates,0,peak.night,-0.0
+2030,final without candidates,0,peak.day,-0.0
+2030,final without candidates,0,peak.peak,-0.0
+2030,final without candidates,0,peak.evening,-0.0
+2030,final without candidates,0,summer.night,-0.0
+2030,final without candidates,0,summer.day,-0.0
+2030,final without candidates,0,summer.peak,-0.0
+2030,final without candidates,0,summer.evening,-0.0
+2030,final without candidates,0,autumn.night,-0.0
+2030,final without candidates,0,autumn.day,-0.0
+2030,final without candidates,0,autumn.peak,-0.0
+2030,final without candidates,0,autumn.evening,-0.0
+2030,final without candidates,1,winter.night,-0.0
+2030,final without candidates,1,winter.day,-0.0
+2030,final without candidates,1,winter.peak,-0.0
+2030,final without candidates,1,winter.evening,-0.0
+2030,final without candidates,1,peak.night,-0.0
+2030,final without candidates,1,peak.day,-0.0
+2030,final without candidates,1,peak.peak,-0.0
+2030,final without candidates,1,peak.evening,-0.0
+2030,final without candidates,1,summer.night,-0.0
+2030,final without candidates,1,summer.day,-0.0
+2030,final without candidates,1,summer.peak,-0.0
+2030,final without candidates,1,summer.evening,-0.0
+2030,final without candidates,1,autumn.night,-0.0
+2030,final without candidates,1,autumn.day,-0.0
+2030,final without candidates,1,autumn.peak,-0.0
+2030,final without candidates,1,autumn.evening,-0.0
+2030,final without candidates,2,winter.night,-7.593308999999999
+2030,final without candidates,2,winter.day,-7.593308999999999
+2030,final without candidates,2,winter.peak,-7.593308999999999
+2030,final without candidates,2,winter.evening,-7.593308999999999
+2030,final without candidates,2,peak.night,-7.593308999999999
+2030,final without candidates,2,peak.day,-7.593308999999999
+2030,final without candidates,2,peak.peak,-7.593308999999999
+2030,final without candidates,2,peak.evening,-7.593308999999999
+2030,final without candidates,2,summer.night,-1.5909090909090908
+2030,final without candidates,2,summer.day,-0.0
+2030,final without candidates,2,summer.peak,-0.0
+2030,final without candidates,2,summer.evening,-0.0
+2030,final without candidates,2,autumn.night,-7.593308999999999
+2030,final without candidates,2,autumn.day,-7.593308999999999
+2030,final without candidates,2,autumn.peak,-7.593308999999999
+2030,final without candidates,2,autumn.evening,-7.593308999999999
+2030,final without candidates,3,winter.night,-0.0
+2030,final without candidates,3,winter.day,-0.0
+2030,final without candidates,3,winter.peak,-0.0
+2030,final without candidates,3,winter.evening,-0.0
+2030,final without candidates,3,peak.night,-0.0
+2030,final without candidates,3,peak.day,-0.0
+2030,final without candidates,3,peak.peak,-0.0
+2030,final without candidates,3,peak.evening,-0.0
+2030,final without candidates,3,summer.night,-0.0
+2030,final without candidates,3,summer.day,-0.0
+2030,final without candidates,3,summer.peak,-0.0
+2030,final without candidates,3,summer.evening,-0.0
+2030,final without candidates,3,autumn.night,-0.0
+2030,final without candidates,3,autumn.day,-0.0
+2030,final without candidates,3,autumn.peak,-0.0
+2030,final without candidates,3,autumn.evening,-0.0
+2030,final without candidates,4,winter.night,-0.0
+2030,final without candidates,4,winter.day,-0.0
+2030,final without candidates,4,winter.peak,-0.0
+2030,final without candidates,4,winter.evening,-0.0
+2030,final without candidates,4,peak.night,-0.0
+2030,final without candidates,4,peak.day,-0.0
+2030,final without candidates,4,peak.peak,-0.0
+2030,final without candidates,4,peak.evening,-0.0
+2030,final without candidates,4,summer.night,-0.0
+2030,final without candidates,4,summer.day,-0.0
+2030,final without candidates,4,summer.peak,-0.0
+2030,final without candidates,4,summer.evening,-0.0
+2030,final without candidates,4,autumn.night,-0.0
+2030,final without candidates,4,autumn.day,-0.0
+2030,final without candidates,4,autumn.peak,-0.0
+2030,final without candidates,4,autumn.evening,-0.0
+2030,final without candidates,5,winter.night,-3.05874493
+2030,final without candidates,5,winter.day,-3.05874493
+2030,final without candidates,5,winter.peak,-3.05874493
+2030,final without candidates,5,winter.evening,-3.05874493
+2030,final without candidates,5,peak.night,-0.0
+2030,final without candidates,5,peak.day,-3.05874493
+2030,final without candidates,5,peak.peak,-3.05874493
+2030,final without candidates,5,peak.evening,-3.05874493
+2030,final without candidates,5,summer.night,-0.0
+2030,final without candidates,5,summer.day,-0.0
+2030,final without candidates,5,summer.peak,-0.0
+2030,final without candidates,5,summer.evening,-0.0
+2030,final without candidates,5,autumn.night,-0.0
+2030,final without candidates,5,autumn.day,-3.05874493
+2030,final without candidates,5,autumn.peak,-3.05874493
+2030,final without candidates,5,autumn.evening,-3.05874493
+2030,final without candidates,6,winter.night,-5.0395369
+2030,final without candidates,6,winter.day,-5.0395369
+2030,final without candidates,6,winter.peak,-5.0395369
+2030,final without candidates,6,winter.evening,-5.0395369
+2030,final without candidates,6,peak.night,-1.9807919699999998
+2030,final without candidates,6,peak.day,-5.0395369
+2030,final without candidates,6,peak.peak,-5.0395369
+2030,final without candidates,6,peak.evening,-5.0395369
+2030,final without candidates,6,summer.night,-0.0
+2030,final without candidates,6,summer.day,-0.0
+2030,final without candidates,6,summer.peak,-0.0
+2030,final without candidates,6,summer.evening,-0.0
+2030,final without candidates,6,autumn.night,-1.9807919699999998
+2030,final without candidates,6,autumn.day,-5.0395369
+2030,final without candidates,6,autumn.peak,-5.0395369
+2030,final without candidates,6,autumn.evening,-5.0395369
+2030,final without candidates,7,winter.night,-0.0
+2030,final without candidates,7,winter.day,-0.0
+2030,final without candidates,7,winter.peak,-0.0
+2030,final without candidates,7,winter.evening,-0.0
+2030,final without candidates,7,peak.night,-0.0
+2030,final without candidates,7,peak.day,-0.0
+2030,final without candidates,7,peak.peak,-0.0
+2030,final without candidates,7,peak.evening,-0.0
+2030,final without candidates,7,summer.night,-0.0
+2030,final without candidates,7,summer.day,-0.0
+2030,final without candidates,7,summer.peak,-0.0
+2030,final without candidates,7,summer.evening,-0.0
+2030,final without candidates,7,autumn.night,-0.0
+2030,final without candidates,7,autumn.day,-0.0
+2030,final without candidates,7,autumn.peak,-0.0
+2030,final without candidates,7,autumn.evening,-0.0
+2030,final without candidates,8,winter.night,-0.0
+2030,final without candidates,8,winter.day,-0.0
+2030,final without candidates,8,winter.peak,-0.0
+2030,final without candidates,8,winter.evening,-0.0
+2030,final without candidates,8,peak.night,-0.0
+2030,final without candidates,8,peak.day,-0.0
+2030,final without candidates,8,peak.peak,-0.0
+2030,final without candidates,8,peak.evening,-0.0
+2030,final without candidates,8,summer.night,-0.0
+2030,final without candidates,8,summer.day,-0.0
+2030,final without candidates,8,summer.peak,-0.0
+2030,final without candidates,8,summer.evening,-0.0
+2030,final without candidates,8,autumn.night,-0.0
+2030,final without candidates,8,autumn.day,-0.0
+2030,final without candidates,8,autumn.peak,-0.0
+2030,final without candidates,8,autumn.evening,-0.0
+2030,final without candidates,9,winter.night,-0.0
+2030,final without candidates,9,winter.day,-0.0
+2030,final without candidates,9,winter.peak,-0.0
+2030,final without candidates,9,winter.evening,-0.0
+2030,final without candidates,9,peak.night,-0.0
+2030,final without candidates,9,peak.day,-0.0
+2030,final without candidates,9,peak.peak,-0.0
+2030,final without candidates,9,peak.evening,-0.0
+2030,final without candidates,9,summer.night,-0.0
+2030,final without candidates,9,summer.day,-0.0
+2030,final without candidates,9,summer.peak,-0.0
+2030,final without candidates,9,summer.evening,-0.0
+2030,final without candidates,9,autumn.night,-0.0
+2030,final without candidates,9,autumn.day,-0.0
+2030,final without candidates,9,autumn.peak,-0.0
+2030,final without candidates,9,autumn.evening,-0.0
+2030,final with candidates,0,winter.night,-0.0
+2030,final with candidates,0,winter.day,-0.0
+2030,final with candidates,0,winter.peak,-0.0
+2030,final with candidates,0,winter.evening,-0.0
+2030,final with candidates,0,peak.night,-0.0
+2030,final with candidates,0,peak.day,-0.0
+2030,final with candidates,0,peak.peak,-0.0
+2030,final with candidates,0,peak.evening,-0.0
+2030,final with candidates,0,summer.night,-0.0
+2030,final with candidates,0,summer.day,-0.0
+2030,final with candidates,0,summer.peak,-0.0
+2030,final with candidates,0,summer.evening,-0.0
+2030,final with candidates,0,autumn.night,-0.0
+2030,final with candidates,0,autumn.day,-0.0
+2030,final with candidates,0,autumn.peak,-0.0
+2030,final with candidates,0,autumn.evening,-0.0
+2030,final with candidates,1,winter.night,-0.0
+2030,final with candidates,1,winter.day,-0.0
+2030,final with candidates,1,winter.peak,-0.0
+2030,final with candidates,1,winter.evening,-0.0
+2030,final with candidates,1,peak.night,-0.0
+2030,final with candidates,1,peak.day,-0.0
+2030,final with candidates,1,peak.peak,-0.0
+2030,final with candidates,1,peak.evening,-0.0
+2030,final with candidates,1,summer.night,-0.0
+2030,final with candidates,1,summer.day,-0.0
+2030,final with candidates,1,summer.peak,-0.0
+2030,final with candidates,1,summer.evening,-0.0
+2030,final with candidates,1,autumn.night,-0.0
+2030,final with candidates,1,autumn.day,-0.0
+2030,final with candidates,1,autumn.peak,-0.0
+2030,final with candidates,1,autumn.evening,-0.0
+2030,final with candidates,2,winter.night,-7.593308999999999
+2030,final with candidates,2,winter.day,-7.593308999999999
+2030,final with candidates,2,winter.peak,-7.593308999999999
+2030,final with candidates,2,winter.evening,-7.593308999999999
+2030,final with candidates,2,peak.night,-7.593308999999999
+2030,final with candidates,2,peak.day,-7.593308999999999
+2030,final with candidates,2,peak.peak,-7.593308999999999
+2030,final with candidates,2,peak.evening,-7.593308999999999
+2030,final with candidates,2,summer.night,-1.5909090909090908
+2030,final with candidates,2,summer.day,-0.0
+2030,final with candidates,2,summer.peak,-0.0
+2030,final with candidates,2,summer.evening,-0.0
+2030,final with candidates,2,autumn.night,-7.593308999999999
+2030,final with candidates,2,autumn.day,-7.593308999999999
+2030,final with candidates,2,autumn.peak,-7.593308999999999
+2030,final with candidates,2,autumn.evening,-7.593308999999999
+2030,final with candidates,3,winter.night,-0.0
+2030,final with candidates,3,winter.day,-0.0
+2030,final with candidates,3,winter.peak,-0.0
+2030,final with candidates,3,winter.evening,-0.0
+2030,final with candidates,3,peak.night,-0.0
+2030,final with candidates,3,peak.day,-0.0
+2030,final with candidates,3,peak.peak,-0.0
+2030,final with candidates,3,peak.evening,-0.0
+2030,final with candidates,3,summer.night,-0.0
+2030,final with candidates,3,summer.day,-0.0
+2030,final with candidates,3,summer.peak,-0.0
+2030,final with candidates,3,summer.evening,-0.0
+2030,final with candidates,3,autumn.night,-0.0
+2030,final with candidates,3,autumn.day,-0.0
+2030,final with candidates,3,autumn.peak,-0.0
+2030,final with candidates,3,autumn.evening,-0.0
+2030,final with candidates,4,winter.night,-0.0
+2030,final with candidates,4,winter.day,-0.0
+2030,final with candidates,4,winter.peak,-0.0
+2030,final with candidates,4,winter.evening,-0.0
+2030,final with candidates,4,peak.night,-0.0
+2030,final with candidates,4,peak.day,-0.0
+2030,final with candidates,4,peak.peak,-0.0
+2030,final with candidates,4,peak.evening,-0.0
+2030,final with candidates,4,summer.night,-0.0
+2030,final with candidates,4,summer.day,-0.0
+2030,final with candidates,4,summer.peak,-0.0
+2030,final with candidates,4,summer.evening,-0.0
+2030,final with candidates,4,autumn.night,-0.0
+2030,final with candidates,4,autumn.day,-0.0
+2030,final with candidates,4,autumn.peak,-0.0
+2030,final with candidates,4,autumn.evening,-0.0
+2030,final with candidates,5,winter.night,-3.05874493
+2030,final with candidates,5,winter.day,-3.05874493
+2030,final with candidates,5,winter.peak,-3.05874493
+2030,final with candidates,5,winter.evening,-3.05874493
+2030,final with candidates,5,peak.night,-0.0
+2030,final with candidates,5,peak.day,-3.05874493
+2030,final with candidates,5,peak.peak,-3.05874493
+2030,final with candidates,5,peak.evening,-3.05874493
+2030,final with candidates,5,summer.night,-0.0
+2030,final with candidates,5,summer.day,-0.0
+2030,final with candidates,5,summer.peak,-0.0
+2030,final with candidates,5,summer.evening,-0.0
+2030,final with candidates,5,autumn.night,-0.0
+2030,final with candidates,5,autumn.day,-3.05874493
+2030,final with candidates,5,autumn.peak,-3.05874493
+2030,final with candidates,5,autumn.evening,-3.05874493
+2030,final with candidates,6,winter.night,-0.0
+2030,final with candidates,6,winter.day,-0.0
+2030,final with candidates,6,winter.peak,-0.0
+2030,final with candidates,6,winter.evening,-0.0
+2030,final with candidates,6,peak.night,-0.0
+2030,final with candidates,6,peak.day,-3.05874493
+2030,final with candidates,6,peak.peak,-3.05874493
+2030,final with candidates,6,peak.evening,-3.05874493
+2030,final with candidates,6,summer.night,-0.0
+2030,final with candidates,6,summer.day,-0.0
+2030,final with candidates,6,summer.peak,-0.0
+2030,final with candidates,6,summer.evening,-0.0
+2030,final with candidates,6,autumn.night,-0.0
+2030,final with candidates,6,autumn.day,-3.05874493
+2030,final with candidates,6,autumn.peak,-3.05874493
+2030,final with candidates,6,autumn.evening,-3.05874493
+2030,final with candidates,7,winter.night,-0.0
+2030,final with candidates,7,winter.day,-0.0
+2030,final with candidates,7,winter.peak,-0.0
+2030,final with candidates,7,winter.evening,-0.0
+2030,final with candidates,7,peak.night,-0.0
+2030,final with candidates,7,peak.day,-0.0
+2030,final with candidates,7,peak.peak,-0.0
+2030,final with candidates,7,peak.evening,-0.0
+2030,final with candidates,7,summer.night,-0.0
+2030,final with candidates,7,summer.day,-0.0
+2030,final with candidates,7,summer.peak,-0.0
+2030,final with candidates,7,summer.evening,-0.0
+2030,final with candidates,7,autumn.night,-0.0
+2030,final with candidates,7,autumn.day,-0.0
+2030,final with candidates,7,autumn.peak,-0.0
+2030,final with candidates,7,autumn.evening,-0.0
+2030,final with candidates,8,winter.night,-4.1996140833333335
+2030,final with candidates,8,winter.day,-4.1996140833333335
+2030,final with candidates,8,winter.peak,-4.1996140833333335
+2030,final with candidates,8,winter.evening,-4.1996140833333335
+2030,final with candidates,8,peak.night,-1.650659975
+2030,final with candidates,8,peak.day,-1.650659975
+2030,final with candidates,8,peak.peak,-1.650659975
+2030,final with candidates,8,peak.evening,-1.650659975
+2030,final with candidates,8,summer.night,-0.0
+2030,final with candidates,8,summer.day,-0.0
+2030,final with candidates,8,summer.peak,-0.0
+2030,final with candidates,8,summer.evening,-0.0
+2030,final with candidates,8,autumn.night,-1.650659975
+2030,final with candidates,8,autumn.day,-1.650659975
+2030,final with candidates,8,autumn.peak,-1.650659975
+2030,final with candidates,8,autumn.evening,-1.650659975
+2030,final with candidates,9,winter.night,-0.0
+2030,final with candidates,9,winter.day,-0.0
+2030,final with candidates,9,winter.peak,-0.0
+2030,final with candidates,9,winter.evening,-0.0
+2030,final with candidates,9,peak.night,-0.0
+2030,final with candidates,9,peak.day,-0.0
+2030,final with candidates,9,peak.peak,-0.0
+2030,final with candidates,9,peak.evening,-0.0
+2030,final with candidates,9,summer.night,-0.0
+2030,final with candidates,9,summer.day,-0.0
+2030,final with candidates,9,summer.peak,-0.0
+2030,final with candidates,9,summer.evening,-0.0
+2030,final with candidates,9,autumn.night,-0.0
+2030,final with candidates,9,autumn.day,-0.0
+2030,final with candidates,9,autumn.peak,-0.0
+2030,final with candidates,9,autumn.evening,-0.0
+2030,final with candidates,,winter.night,-0.0
+2030,final with candidates,,winter.day,-0.0
+2030,final with candidates,,winter.peak,-0.0
+2030,final with candidates,,winter.evening,-0.0
+2030,final with candidates,,peak.night,-0.0
+2030,final with candidates,,peak.day,-0.0
+2030,final with candidates,,peak.peak,-0.0
+2030,final with candidates,,peak.evening,-0.0
+2030,final with candidates,,summer.night,-0.0
+2030,final with candidates,,summer.day,-0.0
+2030,final with candidates,,summer.peak,-0.0
+2030,final with candidates,,summer.evening,-0.0
+2030,final with candidates,,autumn.night,-0.0
+2030,final with candidates,,autumn.day,-0.0
+2030,final with candidates,,autumn.peak,-0.0
+2030,final with candidates,,autumn.evening,-0.0
+2030,final with candidates,,winter.night,-0.0
+2030,final with candidates,,winter.day,-0.0
+2030,final with candidates,,winter.peak,-0.0
+2030,final with candidates,,winter.evening,-0.0
+2030,final with candidates,,peak.night,-0.0
+2030,final with candidates,,peak.day,-0.0
+2030,final with candidates,,peak.peak,-0.0
+2030,final with candidates,,peak.evening,-0.0
+2030,final with candidates,,summer.night,-0.0
+2030,final with candidates,,summer.day,-0.0
+2030,final with candidates,,summer.peak,-0.0
+2030,final with candidates,,summer.evening,-0.0
+2030,final with candidates,,autumn.night,-0.0
+2030,final with candidates,,autumn.day,-0.0
+2030,final with candidates,,autumn.peak,-0.0
+2030,final with candidates,,autumn.evening,-0.0
+2030,final with candidates,,winter.night,-0.0
+2030,final with candidates,,winter.day,-0.0
+2030,final with candidates,,winter.peak,-0.0
+2030,final with candidates,,winter.evening,-0.0
+2030,final with candidates,,peak.night,-0.0
+2030,final with candidates,,peak.day,-0.0
+2030,final with candidates,,peak.peak,-0.0
+2030,final with candidates,,peak.evening,-0.0
+2030,final with candidates,,summer.night,-0.0
+2030,final with candidates,,summer.day,-0.0
+2030,final with candidates,,summer.peak,-0.0
+2030,final with candidates,,summer.evening,-0.0
+2030,final with candidates,,autumn.night,-0.0
+2030,final with candidates,,autumn.day,-0.0
+2030,final with candidates,,autumn.peak,-0.0
+2030,final with candidates,,autumn.evening,-0.0
+2030,final with candidates,,winter.night,-4.1996140833333335
+2030,final with candidates,,winter.day,-4.1996140833333335
+2030,final with candidates,,winter.peak,-4.1996140833333335
+2030,final with candidates,,winter.evening,-4.1996140833333335
+2030,final with candidates,,peak.night,-1.650659975
+2030,final with candidates,,peak.day,-1.650659975
+2030,final with candidates,,peak.peak,-1.650659975
+2030,final with candidates,,peak.evening,-1.650659975
+2030,final with candidates,,summer.night,-0.0
+2030,final with candidates,,summer.day,-0.0
+2030,final with candidates,,summer.peak,-0.0
+2030,final with candidates,,summer.evening,-0.0
+2030,final with candidates,,autumn.night,-1.650659975
+2030,final with candidates,,autumn.day,-1.650659975
+2030,final with candidates,,autumn.peak,-1.650659975
+2030,final with candidates,,autumn.evening,-1.650659975
+2030,final with candidates,,winter.night,-7.593308999999999
+2030,final with candidates,,winter.day,-7.593308999999999
+2030,final with candidates,,winter.peak,-7.593308999999999
+2030,final with candidates,,winter.evening,-7.593308999999999
+2030,final with candidates,,peak.night,-7.593308999999999
+2030,final with candidates,,peak.day,-7.593308999999999
+2030,final with candidates,,peak.peak,-7.593308999999999
+2030,final with candidates,,peak.evening,-7.593308999999999
+2030,final with candidates,,summer.night,-1.5909090909090908
+2030,final with candidates,,summer.day,-0.0
+2030,final with candidates,,summer.peak,-0.0
+2030,final with candidates,,summer.evening,-0.0
+2030,final with candidates,,autumn.night,-7.593308999999999
+2030,final with candidates,,autumn.day,-7.593308999999999
+2030,final with candidates,,autumn.peak,-7.593308999999999
+2030,final with candidates,,autumn.evening,-7.593308999999999
+2030,final with candidates,,winter.night,-0.0
+2030,final with candidates,,winter.day,-0.0
+2030,final with candidates,,winter.peak,-0.0
+2030,final with candidates,,winter.evening,-0.0
+2030,final with candidates,,peak.night,-0.0
+2030,final with candidates,,peak.day,-0.0
+2030,final with candidates,,peak.peak,-0.0
+2030,final with candidates,,peak.evening,-0.0
+2030,final with candidates,,summer.night,-0.0
+2030,final with candidates,,summer.day,-0.0
+2030,final with candidates,,summer.peak,-0.0
+2030,final with candidates,,summer.evening,-0.0
+2030,final with candidates,,autumn.night,-0.0
+2030,final with candidates,,autumn.day,-0.0
+2030,final with candidates,,autumn.peak,-0.0
+2030,final with candidates,,autumn.evening,-0.0
+2030,final with candidates,,winter.night,-0.0
+2030,final with candidates,,winter.day,-0.0
+2030,final with candidates,,winter.peak,-0.0
+2030,final with candidates,,winter.evening,-0.0
+2030,final with candidates,,peak.night,-0.0
+2030,final with candidates,,peak.day,-0.0
+2030,final with candidates,,peak.peak,-0.0
+2030,final with candidates,,peak.evening,-0.0
+2030,final with candidates,,summer.night,-0.0
+2030,final with candidates,,summer.day,-0.0
+2030,final with candidates,,summer.peak,-0.0
+2030,final with candidates,,summer.evening,-0.0
+2030,final with candidates,,autumn.night,-0.0
+2030,final with candidates,,autumn.day,-0.0
+2030,final with candidates,,autumn.peak,-0.0
+2030,final with candidates,,autumn.evening,-0.0
+2030,final with candidates,,winter.night,-3.05874493
+2030,final with candidates,,winter.day,-3.05874493
+2030,final with candidates,,winter.peak,-3.05874493
+2030,final with candidates,,winter.evening,-3.05874493
+2030,final with candidates,,peak.night,-0.0
+2030,final with candidates,,peak.day,-3.05874493
+2030,final with candidates,,peak.peak,-3.05874493
+2030,final with candidates,,peak.evening,-3.05874493
+2030,final with candidates,,summer.night,-0.0
+2030,final with candidates,,summer.day,-0.0
+2030,final with candidates,,summer.peak,-0.0
+2030,final with candidates,,summer.evening,-0.0
+2030,final with candidates,,autumn.night,-0.0
+2030,final with candidates,,autumn.day,-3.05874493
+2030,final with candidates,,autumn.peak,-3.05874493
+2030,final with candidates,,autumn.evening,-3.05874493
+2030,final with candidates,,winter.night,-0.0
+2030,final with candidates,,winter.day,-0.0
+2030,final with candidates,,winter.peak,-0.0
+2030,final with candidates,,winter.evening,-0.0
+2030,final with candidates,,peak.night,-0.0
+2030,final with candidates,,peak.day,-3.05874493
+2030,final with candidates,,peak.peak,-3.05874493
+2030,final with candidates,,peak.evening,-3.05874493
+2030,final with candidates,,summer.night,-0.0
+2030,final with candidates,,summer.day,-0.0
+2030,final with candidates,,summer.peak,-0.0
+2030,final with candidates,,summer.evening,-0.0
+2030,final with candidates,,autumn.night,-0.0
+2030,final with candidates,,autumn.day,-3.05874493
+2030,final with candidates,,autumn.peak,-3.05874493
+2030,final with candidates,,autumn.evening,-3.05874493
+2040,post RSHEAT/GBR investment,6,winter.night,-0.0
+2040,post RSHEAT/GBR investment,6,winter.day,-0.0
+2040,post RSHEAT/GBR investment,6,winter.peak,-0.0
+2040,post RSHEAT/GBR investment,6,winter.evening,-0.0
+2040,post RSHEAT/GBR investment,6,peak.night,-0.0
+2040,post RSHEAT/GBR investment,6,peak.day,-0.0
+2040,post RSHEAT/GBR investment,6,peak.peak,-0.0
+2040,post RSHEAT/GBR investment,6,peak.evening,-0.0
+2040,post RSHEAT/GBR investment,6,summer.night,-0.0
+2040,post RSHEAT/GBR investment,6,summer.day,-0.0
+2040,post RSHEAT/GBR investment,6,summer.peak,-0.0
+2040,post RSHEAT/GBR investment,6,summer.evening,-0.0
+2040,post RSHEAT/GBR investment,6,autumn.night,-0.0
+2040,post RSHEAT/GBR investment,6,autumn.day,-0.0
+2040,post RSHEAT/GBR investment,6,autumn.peak,-0.0
+2040,post RSHEAT/GBR investment,6,autumn.evening,-0.0
+2040,post RSHEAT/GBR investment,10,winter.night,-0.0
+2040,post RSHEAT/GBR investment,10,winter.day,-0.0
+2040,post RSHEAT/GBR investment,10,winter.peak,-0.0
+2040,post RSHEAT/GBR investment,10,winter.evening,-0.0
+2040,post RSHEAT/GBR investment,10,peak.night,-0.0
+2040,post RSHEAT/GBR investment,10,peak.day,-0.0
+2040,post RSHEAT/GBR investment,10,peak.peak,-0.0
+2040,post RSHEAT/GBR investment,10,peak.evening,-0.0
+2040,post RSHEAT/GBR investment,10,summer.night,-0.0
+2040,post RSHEAT/GBR investment,10,summer.day,-0.0
+2040,post RSHEAT/GBR investment,10,summer.peak,-0.0
+2040,post RSHEAT/GBR investment,10,summer.evening,-0.0
+2040,post RSHEAT/GBR investment,10,autumn.night,-0.0
+2040,post RSHEAT/GBR investment,10,autumn.day,-0.0
+2040,post RSHEAT/GBR investment,10,autumn.peak,-0.0
+2040,post RSHEAT/GBR investment,10,autumn.evening,-0.0
+2040,post BIOPEL/GBR investment,6,winter.night,-0.0
+2040,post BIOPEL/GBR investment,6,winter.day,-0.0
+2040,post BIOPEL/GBR investment,6,winter.peak,-0.0
+2040,post BIOPEL/GBR investment,6,winter.evening,-0.0
+2040,post BIOPEL/GBR investment,6,peak.night,-0.0
+2040,post BIOPEL/GBR investment,6,peak.day,-0.0
+2040,post BIOPEL/GBR investment,6,peak.peak,-0.0
+2040,post BIOPEL/GBR investment,6,peak.evening,-0.0
+2040,post BIOPEL/GBR investment,6,summer.night,-0.0
+2040,post BIOPEL/GBR investment,6,summer.day,-0.0
+2040,post BIOPEL/GBR investment,6,summer.peak,-0.0
+2040,post BIOPEL/GBR investment,6,summer.evening,-0.0
+2040,post BIOPEL/GBR investment,6,autumn.night,-0.0
+2040,post BIOPEL/GBR investment,6,autumn.day,-0.0
+2040,post BIOPEL/GBR investment,6,autumn.peak,-0.0
+2040,post BIOPEL/GBR investment,6,autumn.evening,-0.0
+2040,post BIOPEL/GBR investment,8,winter.night,-0.0
+2040,post BIOPEL/GBR investment,8,winter.day,-0.0
+2040,post BIOPEL/GBR investment,8,winter.peak,-0.0
+2040,post BIOPEL/GBR investment,8,winter.evening,-0.0
+2040,post BIOPEL/GBR investment,8,peak.night,-0.0
+2040,post BIOPEL/GBR investment,8,peak.day,-0.0
+2040,post BIOPEL/GBR investment,8,peak.peak,-0.0
+2040,post BIOPEL/GBR investment,8,peak.evening,-0.0
+2040,post BIOPEL/GBR investment,8,summer.night,-0.0
+2040,post BIOPEL/GBR investment,8,summer.day,-0.0
+2040,post BIOPEL/GBR investment,8,summer.peak,-0.0
+2040,post BIOPEL/GBR investment,8,summer.evening,-0.0
+2040,post BIOPEL/GBR investment,8,autumn.night,-0.0
+2040,post BIOPEL/GBR investment,8,autumn.day,-0.0
+2040,post BIOPEL/GBR investment,8,autumn.peak,-0.0
+2040,post BIOPEL/GBR investment,8,autumn.evening,-0.0
+2040,post BIOPEL/GBR investment,10,winter.night,-0.0
+2040,post BIOPEL/GBR investment,10,winter.day,-0.0
+2040,post BIOPEL/GBR investment,10,winter.peak,-0.0
+2040,post BIOPEL/GBR investment,10,winter.evening,-0.0
+2040,post BIOPEL/GBR investment,10,peak.night,-0.0
+2040,post BIOPEL/GBR investment,10,peak.day,-0.0
+2040,post BIOPEL/GBR investment,10,peak.peak,-0.0
+2040,post BIOPEL/GBR investment,10,peak.evening,-0.0
+2040,post BIOPEL/GBR investment,10,summer.night,-0.0
+2040,post BIOPEL/GBR investment,10,summer.day,-0.0
+2040,post BIOPEL/GBR investment,10,summer.peak,-0.0
+2040,post BIOPEL/GBR investment,10,summer.evening,-0.0
+2040,post BIOPEL/GBR investment,10,autumn.night,-0.0
+2040,post BIOPEL/GBR investment,10,autumn.day,-0.0
+2040,post BIOPEL/GBR investment,10,autumn.peak,-0.0
+2040,post BIOPEL/GBR investment,10,autumn.evening,-0.0
+2040,post BIOPEL/GBR investment,11,winter.night,-0.0
+2040,post BIOPEL/GBR investment,11,winter.day,-0.0
+2040,post BIOPEL/GBR investment,11,winter.peak,-0.0
+2040,post BIOPEL/GBR investment,11,winter.evening,-0.0
+2040,post BIOPEL/GBR investment,11,peak.night,-0.0
+2040,post BIOPEL/GBR investment,11,peak.day,-0.0
+2040,post BIOPEL/GBR investment,11,peak.peak,-0.0
+2040,post BIOPEL/GBR investment,11,peak.evening,-0.0
+2040,post BIOPEL/GBR investment,11,summer.night,-0.0
+2040,post BIOPEL/GBR investment,11,summer.day,-0.0
+2040,post BIOPEL/GBR investment,11,summer.peak,-0.0
+2040,post BIOPEL/GBR investment,11,summer.evening,-0.0
+2040,post BIOPEL/GBR investment,11,autumn.night,-0.0
+2040,post BIOPEL/GBR investment,11,autumn.day,-0.0
+2040,post BIOPEL/GBR investment,11,autumn.peak,-0.0
+2040,post BIOPEL/GBR investment,11,autumn.evening,-0.0
+2040,post BIOPRD/GBR investment,6,winter.night,-0.0
+2040,post BIOPRD/GBR investment,6,winter.day,-0.0
+2040,post BIOPRD/GBR investment,6,winter.peak,-0.0
+2040,post BIOPRD/GBR investment,6,winter.evening,-0.0
+2040,post BIOPRD/GBR investment,6,peak.night,-0.0
+2040,post BIOPRD/GBR investment,6,peak.day,-0.0
+2040,post BIOPRD/GBR investment,6,peak.peak,-0.0
+2040,post BIOPRD/GBR investment,6,peak.evening,-0.0
+2040,post BIOPRD/GBR investment,6,summer.night,-0.0
+2040,post BIOPRD/GBR investment,6,summer.day,-0.0
+2040,post BIOPRD/GBR investment,6,summer.peak,-0.0
+2040,post BIOPRD/GBR investment,6,summer.evening,-0.0
+2040,post BIOPRD/GBR investment,6,autumn.night,-0.0
+2040,post BIOPRD/GBR investment,6,autumn.day,-0.0
+2040,post BIOPRD/GBR investment,6,autumn.peak,-0.0
+2040,post BIOPRD/GBR investment,6,autumn.evening,-0.0
+2040,post BIOPRD/GBR investment,8,winter.night,-0.0
+2040,post BIOPRD/GBR investment,8,winter.day,-0.0
+2040,post BIOPRD/GBR investment,8,winter.peak,-0.0
+2040,post BIOPRD/GBR investment,8,winter.evening,-0.0
+2040,post BIOPRD/GBR investment,8,peak.night,-0.0
+2040,post BIOPRD/GBR investment,8,peak.day,-0.0
+2040,post BIOPRD/GBR investment,8,peak.peak,-0.0
+2040,post BIOPRD/GBR investment,8,peak.evening,-0.0
+2040,post BIOPRD/GBR investment,8,summer.night,-0.0
+2040,post BIOPRD/GBR investment,8,summer.day,-0.0
+2040,post BIOPRD/GBR investment,8,summer.peak,-0.0
+2040,post BIOPRD/GBR investment,8,summer.evening,-0.0
+2040,post BIOPRD/GBR investment,8,autumn.night,-0.0
+2040,post BIOPRD/GBR investment,8,autumn.day,-0.0
+2040,post BIOPRD/GBR investment,8,autumn.peak,-0.0
+2040,post BIOPRD/GBR investment,8,autumn.evening,-0.0
+2040,post BIOPRD/GBR investment,9,winter.night,-0.0
+2040,post BIOPRD/GBR investment,9,winter.day,-0.0
+2040,post BIOPRD/GBR investment,9,winter.peak,-0.0
+2040,post BIOPRD/GBR investment,9,winter.evening,-0.0
+2040,post BIOPRD/GBR investment,9,peak.night,-0.0
+2040,post BIOPRD/GBR investment,9,peak.day,-0.0
+2040,post BIOPRD/GBR investment,9,peak.peak,-0.0
+2040,post BIOPRD/GBR investment,9,peak.evening,-0.0
+2040,post BIOPRD/GBR investment,9,summer.night,-0.0
+2040,post BIOPRD/GBR investment,9,summer.day,-0.0
+2040,post BIOPRD/GBR investment,9,summer.peak,-0.0
+2040,post BIOPRD/GBR investment,9,summer.evening,-0.0
+2040,post BIOPRD/GBR investment,9,autumn.night,-0.0
+2040,post BIOPRD/GBR investment,9,autumn.day,-0.0
+2040,post BIOPRD/GBR investment,9,autumn.peak,-0.0
+2040,post BIOPRD/GBR investment,9,autumn.evening,-0.0
+2040,post BIOPRD/GBR investment,10,winter.night,-0.0
+2040,post BIOPRD/GBR investment,10,winter.day,-0.0
+2040,post BIOPRD/GBR investment,10,winter.peak,-0.0
+2040,post BIOPRD/GBR investment,10,winter.evening,-0.0
+2040,post BIOPRD/GBR investment,10,peak.night,-0.0
+2040,post BIOPRD/GBR investment,10,peak.day,-0.0
+2040,post BIOPRD/GBR investment,10,peak.peak,-0.0
+2040,post BIOPRD/GBR investment,10,peak.evening,-0.0
+2040,post BIOPRD/GBR investment,10,summer.night,-0.0
+2040,post BIOPRD/GBR investment,10,summer.day,-0.0
+2040,post BIOPRD/GBR investment,10,summer.peak,-0.0
+2040,post BIOPRD/GBR investment,10,summer.evening,-0.0
+2040,post BIOPRD/GBR investment,10,autumn.night,-0.0
+2040,post BIOPRD/GBR investment,10,autumn.day,-0.0
+2040,post BIOPRD/GBR investment,10,autumn.peak,-0.0
+2040,post BIOPRD/GBR investment,10,autumn.evening,-0.0
+2040,post BIOPRD/GBR investment,11,winter.night,-0.0
+2040,post BIOPRD/GBR investment,11,winter.day,-0.0
+2040,post BIOPRD/GBR investment,11,winter.peak,-0.0
+2040,post BIOPRD/GBR investment,11,winter.evening,-0.0
+2040,post BIOPRD/GBR investment,11,peak.night,-0.0
+2040,post BIOPRD/GBR investment,11,peak.day,-0.0
+2040,post BIOPRD/GBR investment,11,peak.peak,-0.0
+2040,post BIOPRD/GBR investment,11,peak.evening,-0.0
+2040,post BIOPRD/GBR investment,11,summer.night,-0.0
+2040,post BIOPRD/GBR investment,11,summer.day,-0.0
+2040,post BIOPRD/GBR investment,11,summer.peak,-0.0
+2040,post BIOPRD/GBR investment,11,summer.evening,-0.0
+2040,post BIOPRD/GBR investment,11,autumn.night,-0.0
+2040,post BIOPRD/GBR investment,11,autumn.day,-0.0
+2040,post BIOPRD/GBR investment,11,autumn.peak,-0.0
+2040,post BIOPRD/GBR investment,11,autumn.evening,-0.0
+2040,post BIOPRD/GBR investment,12,winter.night,-0.0
+2040,post BIOPRD/GBR investment,12,winter.day,-0.0
+2040,post BIOPRD/GBR investment,12,winter.peak,-0.0
+2040,post BIOPRD/GBR investment,12,winter.evening,-0.0
+2040,post BIOPRD/GBR investment,12,peak.night,-0.0
+2040,post BIOPRD/GBR investment,12,peak.day,-0.0
+2040,post BIOPRD/GBR investment,12,peak.peak,-0.0
+2040,post BIOPRD/GBR investment,12,peak.evening,-0.0
+2040,post BIOPRD/GBR investment,12,summer.night,-0.0
+2040,post BIOPRD/GBR investment,12,summer.day,-0.0
+2040,post BIOPRD/GBR investment,12,summer.peak,-0.0
+2040,post BIOPRD/GBR investment,12,summer.evening,-0.0
+2040,post BIOPRD/GBR investment,12,autumn.night,-0.0
+2040,post BIOPRD/GBR investment,12,autumn.day,-0.0
+2040,post BIOPRD/GBR investment,12,autumn.peak,-0.0
+2040,post BIOPRD/GBR investment,12,autumn.evening,-0.0
+2040,final without candidates,6,winter.night,-0.0
+2040,final without candidates,6,winter.day,-0.0
+2040,final without candidates,6,winter.peak,-0.0
+2040,final without candidates,6,winter.evening,-0.0
+2040,final without candidates,6,peak.night,-0.0
+2040,final without candidates,6,peak.day,-0.0
+2040,final without candidates,6,peak.peak,-0.0
+2040,final without candidates,6,peak.evening,-0.0
+2040,final without candidates,6,summer.night,-0.0
+2040,final without candidates,6,summer.day,-0.0
+2040,final without candidates,6,summer.peak,-0.0
+2040,final without candidates,6,summer.evening,-0.0
+2040,final without candidates,6,autumn.night,-0.0
+2040,final without candidates,6,autumn.day,-0.0
+2040,final without candidates,6,autumn.peak,-0.0
+2040,final without candidates,6,autumn.evening,-0.0
+2040,final without candidates,8,winter.night,-0.0
+2040,final without candidates,8,winter.day,-0.0
+2040,final without candidates,8,winter.peak,-0.0
+2040,final without candidates,8,winter.evening,-0.0
+2040,final without candidates,8,peak.night,-0.0
+2040,final without candidates,8,peak.day,-0.0
+2040,final without candidates,8,peak.peak,-0.0
+2040,final without candidates,8,peak.evening,-0.0
+2040,final without candidates,8,summer.night,-0.0
+2040,final without candidates,8,summer.day,-0.0
+2040,final without candidates,8,summer.peak,-0.0
+2040,final without candidates,8,summer.evening,-0.0
+2040,final without candidates,8,autumn.night,-0.0
+2040,final without candidates,8,autumn.day,-0.0
+2040,final without candidates,8,autumn.peak,-0.0
+2040,final without candidates,8,autumn.evening,-0.0
+2040,final without candidates,9,winter.night,-0.0
+2040,final without candidates,9,winter.day,-0.0
+2040,final without candidates,9,winter.peak,-0.0
+2040,final without candidates,9,winter.evening,-0.0
+2040,final without candidates,9,peak.night,-0.0
+2040,final without candidates,9,peak.day,-0.0
+2040,final without candidates,9,peak.peak,-0.0
+2040,final without candidates,9,peak.evening,-0.0
+2040,final without candidates,9,summer.night,-0.0
+2040,final without candidates,9,summer.day,-0.0
+2040,final without candidates,9,summer.peak,-0.0
+2040,final without candidates,9,summer.evening,-0.0
+2040,final without candidates,9,autumn.night,-0.0
+2040,final without candidates,9,autumn.day,-0.0
+2040,final without candidates,9,autumn.peak,-0.0
+2040,final without candidates,9,autumn.evening,-0.0
+2040,final without candidates,10,winter.night,-0.0
+2040,final without candidates,10,winter.day,-0.0
+2040,final without candidates,10,winter.peak,-0.0
+2040,final without candidates,10,winter.evening,-0.0
+2040,final without candidates,10,peak.night,-0.0
+2040,final without candidates,10,peak.day,-0.0
+2040,final without candidates,10,peak.peak,-0.0
+2040,final without candidates,10,peak.evening,-0.0
+2040,final without candidates,10,summer.night,-0.0
+2040,final without candidates,10,summer.day,-0.0
+2040,final without candidates,10,summer.peak,-0.0
+2040,final without candidates,10,summer.evening,-0.0
+2040,final without candidates,10,autumn.night,-0.0
+2040,final without candidates,10,autumn.day,-0.0
+2040,final without candidates,10,autumn.peak,-0.0
+2040,final without candidates,10,autumn.evening,-0.0
+2040,final without candidates,11,winter.night,-0.0
+2040,final without candidates,11,winter.day,-0.0
+2040,final without candidates,11,winter.peak,-0.0
+2040,final without candidates,11,winter.evening,-0.0
+2040,final without candidates,11,peak.night,-0.0
+2040,final without candidates,11,peak.day,-0.0
+2040,final without candidates,11,peak.peak,-0.0
+2040,final without candidates,11,peak.evening,-0.0
+2040,final without candidates,11,summer.night,-0.0
+2040,final without candidates,11,summer.day,-0.0
+2040,final without candidates,11,summer.peak,-0.0
+2040,final without candidates,11,summer.evening,-0.0
+2040,final without candidates,11,autumn.night,-0.0
+2040,final without candidates,11,autumn.day,-0.0
+2040,final without candidates,11,autumn.peak,-0.0
+2040,final without candidates,11,autumn.evening,-0.0
+2040,final without candidates,12,winter.night,-0.0
+2040,final without candidates,12,winter.day,-0.0
+2040,final without candidates,12,winter.peak,-0.0
+2040,final without candidates,12,winter.evening,-0.0
+2040,final without candidates,12,peak.night,-0.0
+2040,final without candidates,12,peak.day,-0.0
+2040,final without candidates,12,peak.peak,-0.0
+2040,final without candidates,12,peak.evening,-0.0
+2040,final without candidates,12,summer.night,-0.0
+2040,final without candidates,12,summer.day,-0.0
+2040,final without candidates,12,summer.peak,-0.0
+2040,final without candidates,12,summer.evening,-0.0
+2040,final without candidates,12,autumn.night,-0.0
+2040,final without candidates,12,autumn.day,-0.0
+2040,final without candidates,12,autumn.peak,-0.0
+2040,final without candidates,12,autumn.evening,-0.0
