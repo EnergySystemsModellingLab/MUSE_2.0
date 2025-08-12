@@ -801,7 +801,7 @@ mod tests {
                 metric: 3.14,
             };
             writer
-                .write_appraisal_results(milestone_year, run_description.clone(), &[appraisal])
+                .write_appraisal_results(milestone_year, &run_description, &[appraisal])
                 .unwrap();
             writer.flush().unwrap();
         }
