@@ -884,7 +884,7 @@ mod tests {
 
         // The extend method expects unique assets - adding duplicates would violate
         // the debug assertion, so this test verifies the normal case
-        asset_pool.extend(Vec::<AssetRef>::new());
+        asset_pool.extend(Vec::new());
 
         assert_eq!(asset_pool.active.len(), original_count);
         // Verify all assets are still unique (this is what the debug_assert checks)
