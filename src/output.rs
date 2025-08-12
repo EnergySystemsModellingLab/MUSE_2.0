@@ -1,6 +1,6 @@
 //! The module responsible for writing output data to disk.
 use crate::agent::AgentID;
-use crate::asset::{Asset, AssetID, AssetPool, AssetRef};
+use crate::asset::{Asset, AssetID, AssetRef};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
 use crate::region::RegionID;
@@ -340,21 +340,6 @@ impl DataWriter {
         })
     }
 
-    /// Write information to various output CSV files
-    pub fn write(
-        &mut self,
-        milestone_year: u32,
-        assets: &AssetPool,
-        flow_map: &FlowMap,
-        prices: &CommodityPrices,
-    ) -> Result<()> {
-        self.write_assets(assets.iter_all())?;
-        self.write_flows(milestone_year, flow_map)?;
-        self.write_prices(milestone_year, prices)?;
-
-        Ok(())
-    }
-
     /// Write debug info about the dispatch optimisation
     pub fn write_debug_info(
         &mut self,
@@ -380,7 +365,7 @@ impl DataWriter {
     /// # Panics
     ///
     /// Panics if any of the assets has not yet been commissioned (decommissioned assets are fine).
-    fn write_assets<'a, I>(&mut self, assets: I) -> Result<()>
+    pub fn write_assets<'a, I>(&mut self, assets: I) -> Result<()>
     where
         I: Iterator<Item = &'a AssetRef>,
     {
@@ -395,7 +380,7 @@ impl DataWriter {
     }
 
     /// Write commodity flows to a CSV file
-    fn write_flows(&mut self, milestone_year: u32, flow_map: &FlowMap) -> Result<()> {
+    pub fn write_flows(&mut self, milestone_year: u32, flow_map: &FlowMap) -> Result<()> {
         for ((asset, commodity_id, time_slice), flow) in flow_map {
             let row = CommodityFlowRow {
                 milestone_year,
@@ -411,7 +396,7 @@ impl DataWriter {
     }
 
     /// Write commodity prices to a CSV file
-    fn write_prices(&mut self, milestone_year: u32, prices: &CommodityPrices) -> Result<()> {
+    pub fn write_prices(&mut self, milestone_year: u32, prices: &CommodityPrices) -> Result<()> {
         for (commodity_id, region_id, time_slice, price) in prices.iter() {
             let row = CommodityPriceRow {
                 milestone_year,
@@ -457,12 +442,12 @@ mod tests {
         // Write an asset
         {
             let mut writer = DataWriter::create(dir.path(), dir.path(), false).unwrap();
-            writer.write_assets(assets.iter()).unwrap();
+            writer.write_assets(assets.iter_active()).unwrap();
             writer.flush().unwrap();
         }
 
         // Read back and compare
-        let asset = assets.iter().next().unwrap();
+        let asset = assets.iter_active().next().unwrap();
         let expected = AssetRow::new(asset);
         let records: Vec<AssetRow> = csv::Reader::from_path(dir.path().join(ASSETS_FILE_NAME))
             .unwrap()
@@ -475,7 +460,7 @@ mod tests {
     #[rstest]
     fn test_write_flows(assets: AssetPool, commodity_id: CommodityID, time_slice: TimeSliceID) {
         let milestone_year = 2020;
-        let asset = assets.iter().next().unwrap();
+        let asset = assets.iter_active().next().unwrap();
         let flow_map = indexmap! {
             (asset.clone(), commodity_id.clone(), time_slice.clone()) => Flow(42.0)
         };
@@ -586,7 +571,7 @@ mod tests {
         let run_number = 42;
         let value = MoneyPerActivity(0.5);
         let dir = tempdir().unwrap();
-        let asset = assets.iter().next().unwrap();
+        let asset = assets.iter_active().next().unwrap();
 
         // Write activity dual
         {
@@ -624,7 +609,7 @@ mod tests {
         let run_number = 42;
         let activity = Activity(100.5);
         let dir = tempdir().unwrap();
-        let asset = assets.iter().next().unwrap();
+        let asset = assets.iter_active().next().unwrap();
 
         // Write activity
         {
