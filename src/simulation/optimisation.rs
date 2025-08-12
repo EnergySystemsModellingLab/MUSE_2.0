@@ -1,7 +1,7 @@
 //! Code for performing dispatch optimisation.
 //!
 //! This is used to calculate commodity flows and prices.
-use crate::asset::{Asset, AssetPool, AssetRef};
+use crate::asset::{Asset, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::Model;
 use crate::output::DataWriter;
@@ -198,22 +198,22 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
 /// A solution containing new commodity flows for assets and prices for (some) commodities.
 pub fn perform_dispatch_optimisation<'a>(
     model: &'a Model,
-    asset_pool: &AssetPool,
+    existing_assets: &[AssetRef],
     candidate_assets: &[AssetRef],
     commodities: Option<&[CommodityID]>,
     year: u32,
-    run_number: u32,
+    run_description: &str,
     writer: &mut DataWriter,
 ) -> Result<Solution<'a>> {
     let solution = perform_dispatch_optimisation_no_save(
         model,
-        asset_pool,
+        existing_assets,
         candidate_assets,
         commodities,
         year,
     )?;
 
-    writer.write_debug_info(year, run_number, &solution)?;
+    writer.write_dispatch_debug_info(year, run_description, &solution)?;
 
     Ok(solution)
 }
@@ -221,7 +221,7 @@ pub fn perform_dispatch_optimisation<'a>(
 /// Perform the dispatch optimisation without saving output data
 fn perform_dispatch_optimisation_no_save<'a>(
     model: &'a Model,
-    asset_pool: &AssetPool,
+    existing_assets: &[AssetRef],
     candidate_assets: &[AssetRef],
     commodities: Option<&[CommodityID]>,
     year: u32,
@@ -233,7 +233,7 @@ fn perform_dispatch_optimisation_no_save<'a>(
         &mut problem,
         &mut variables,
         &model.time_slice_info,
-        asset_pool.as_slice(),
+        existing_assets,
         year,
     );
     let candidate_asset_var_idx = add_variables(
@@ -245,7 +245,7 @@ fn perform_dispatch_optimisation_no_save<'a>(
     );
 
     // Add constraints
-    let all_assets = chain(asset_pool.iter(), candidate_assets.iter());
+    let all_assets = chain(existing_assets.iter(), candidate_assets.iter());
     let mut all_commodities = Vec::new();
     let commodities = commodities.unwrap_or_else(|| {
         all_commodities = model.commodities.keys().cloned().collect();

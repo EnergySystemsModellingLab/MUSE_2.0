@@ -1,5 +1,5 @@
 //! Code for updating the simulation state.
-use crate::asset::{AssetPool, AssetRef};
+use crate::asset::AssetRef;
 use crate::commodity::CommodityID;
 use crate::model::{Model, PricingStrategy};
 use crate::process::ProcessFlow;
@@ -7,11 +7,12 @@ use crate::region::RegionID;
 use crate::simulation::optimisation::Solution;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{MoneyPerActivity, MoneyPerFlow};
+use indexmap::IndexMap;
 use itertools::iproduct;
 use std::collections::{BTreeMap, HashMap};
 
 /// A map of reduced costs for different assets in different time slices
-pub type ReducedCosts = HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
+pub type ReducedCosts = IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
 
 /// Update commodity prices and reduced costs for assets.
 ///
@@ -29,13 +30,13 @@ pub type ReducedCosts = HashMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
 pub fn update_prices_and_reduced_costs(
     model: &Model,
     solution: &Solution,
-    assets: &AssetPool,
+    existing_assets: &[AssetRef],
     year: u32,
     prices: &mut CommodityPrices,
     reduced_costs: &mut ReducedCosts,
 ) {
     let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
-    let reduced_costs_for_candidates: HashMap<_, _> = solution
+    let reduced_costs_for_candidates: ReducedCosts = solution
         .iter_reduced_costs_for_candidates()
         .map(|(asset, time_slice, cost)| ((asset.clone(), time_slice.clone()), cost))
         .collect();
@@ -73,7 +74,7 @@ pub fn update_prices_and_reduced_costs(
     reduced_costs.extend(reduced_costs_for_candidates);
     reduced_costs.extend(reduced_costs_for_existing(
         &model.time_slice_info,
-        assets,
+        existing_assets,
         prices,
         year,
     ));
@@ -285,11 +286,11 @@ fn get_scarcity_adjustment(
 /// Calculate reduced costs for existing assets
 fn reduced_costs_for_existing<'a>(
     time_slice_info: &'a TimeSliceInfo,
-    assets: &'a AssetPool,
+    assets: &'a [AssetRef],
     prices: &'a CommodityPrices,
     year: u32,
 ) -> impl Iterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)> + 'a {
-    iproduct!(assets.iter(), time_slice_info.iter_ids()).map(move |(asset, time_slice)| {
+    iproduct!(assets, time_slice_info.iter_ids()).map(move |(asset, time_slice)| {
         let operating_cost = asset.get_operating_cost(year, time_slice);
         let revenue_from_flows = asset
             .iter_flows()

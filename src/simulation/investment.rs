@@ -1,22 +1,21 @@
 //! Code for performing agent investment.
 use super::optimisation::{perform_dispatch_optimisation, FlowMap};
-use super::prices::{update_prices_and_reduced_costs, ReducedCosts};
-use crate::agent::{Agent, ObjectiveType};
+use super::prices::ReducedCosts;
+use crate::agent::Agent;
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
-use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
+use crate::commodity::{Commodity, CommodityID, CommodityMap};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
-use crate::simulation::CommodityPrices;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
 use itertools::chain;
-use log::{debug, info};
+use log::debug;
 use std::collections::HashMap;
 
 pub mod appraisal;
-use appraisal::{appraise_investment, AppraisalOutput};
+use appraisal::appraise_investment;
 
 /// A map of demand across time slices for a specific commodity and region
 type DemandMap = HashMap<TimeSliceID, Flow>;
@@ -39,26 +38,22 @@ pub fn perform_agent_investment(
     model: &Model,
     year: u32,
     assets: &mut AssetPool,
-    flow_map: &mut FlowMap,
-    prices: &mut CommodityPrices,
-    reduced_costs: &mut ReducedCosts,
+    reduced_costs: &ReducedCosts,
     writer: &mut DataWriter,
 ) -> Result<()> {
-    info!("Performing agent investment...");
-
     // Get all existing assets and clear pool
     let existing_assets = assets.take();
 
-    // Demand profile for commodities
-    let mut demand = get_demand_profile(flow_map, &model.commodities);
-
-    // Which dispatch run for current year
-    let mut run_number = 0;
+    // Initialise demand map
+    let mut demand =
+        flatten_preset_demands_for_year(&model.commodities, &model.time_slice_info, year);
 
     for region_id in model.iter_regions() {
         let mut seen_commodities = Vec::new();
         for commodity_id in model.commodity_order[&(region_id.clone(), year)].iter() {
+            seen_commodities.push(commodity_id.clone());
             let commodity = &model.commodities[commodity_id];
+            let mut new_assets = Vec::new();
             for (agent, commodity_portion) in
                 get_responsible_agents(model.agents.values(), commodity_id, region_id, year)
             {
@@ -67,7 +62,8 @@ pub fn perform_agent_investment(
                     &agent.id, commodity_id, region_id
                 );
 
-                let demand_for_commodity = get_demand_portion_for_commodity(
+                // Get demand portion for this commodity for this agent in this region/year
+                let demand_portion_for_commodity = get_demand_portion_for_commodity(
                     &model.time_slice_info,
                     &demand,
                     commodity_id,
@@ -79,9 +75,9 @@ pub fn perform_agent_investment(
                 let opt_assets = get_asset_options(
                     &model.time_slice_info,
                     &existing_assets,
-                    &demand_for_commodity,
+                    &demand_portion_for_commodity,
                     agent,
-                    commodity_id,
+                    commodity,
                     region_id,
                     year,
                 )
@@ -92,32 +88,41 @@ pub fn perform_agent_investment(
                     model,
                     opt_assets,
                     commodity,
-                    &agent.objectives[&year],
+                    agent,
                     reduced_costs,
-                    demand_for_commodity,
+                    demand_portion_for_commodity,
+                    year,
+                    writer,
                 )?;
-
-                // Add assets to pool
-                assets.extend(best_assets);
+                new_assets.extend(best_assets);
             }
 
+            // If no assets have been selected, skip dispatch optimisation
+            // **TODO**: this probably means there's no demand for the commodity, which we could
+            // presumably preempt
+            if new_assets.is_empty() {
+                continue;
+            }
+
+            // Add assets to pool
+            new_assets = assets.extend(new_assets);
+
             // Perform dispatch optimisation with assets that have been selected so far
-            seen_commodities.push(commodity_id.clone());
+            // **TODO**: presumably we only need to do this for new_assets, as assets added in
+            // previous iterations should not change
+            debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
             let solution = perform_dispatch_optimisation(
                 model,
-                assets,
+                assets.as_slice(),
                 &[],
                 Some(&seen_commodities),
                 year,
-                run_number,
+                &format!("post {commodity_id}/{region_id} investment"),
                 writer,
             )?;
-            run_number += 1;
-            *flow_map = solution.create_flow_map();
-            update_prices_and_reduced_costs(model, &solution, assets, year, prices, reduced_costs);
 
-            // Update demand profile
-            demand = get_demand_profile(flow_map, &model.commodities);
+            // Update demand map with flows from newly added assets
+            update_demand_map(&mut demand, &solution.create_flow_map(), &new_assets);
         }
     }
 
@@ -127,26 +132,60 @@ pub fn perform_agent_investment(
     Ok(())
 }
 
-/// Get demand per time slice for every commodity
-fn get_demand_profile(flow_map: &FlowMap, commodities: &CommodityMap) -> AllDemandMap {
-    let mut map = HashMap::new();
-    for ((asset, commodity_id, time_slice), &flow) in flow_map.iter() {
-        let demand = match commodities[commodity_id].kind {
-            CommodityType::ServiceDemand if flow > Flow(0.0) => flow,
-            CommodityType::SupplyEqualsDemand if flow < Flow(0.0) => -flow,
-            _ => continue,
-        };
+/// Flatten the preset commodity demands for a given year into a map of commodity, region and
+/// time slice to demand.
+///
+/// Since demands for some commodities may be specified at a coarser timeslice level, we need to
+/// distribute these demands over all timeslices. Note: the way that we do this distribution is
+/// irrelevant, as demands will only be balanced to the appropriate level, but we still need to do
+/// this for the solver to work.
+///
+/// **TODO**: these assumptions may need to be revisited, e.g. when we come to storage technologies
+fn flatten_preset_demands_for_year(
+    commodities: &CommodityMap,
+    time_slice_info: &TimeSliceInfo,
+    year: u32,
+) -> AllDemandMap {
+    let mut demand_map = AllDemandMap::new();
+    for (commodity_id, commodity) in commodities.iter() {
+        for ((region_id, data_year, time_slice_selection), demand) in commodity.demand.iter() {
+            if *data_year != year {
+                continue;
+            }
 
-        map.entry((
-            commodity_id.clone(),
-            asset.region_id.clone(),
-            time_slice.clone(),
-        ))
-        .and_modify(|value| *value += demand)
-        .or_insert(demand);
+            // We split the demand equally over all timeslices in the selection
+            // NOTE: since demands will only be balanced to the timeslice level of the commodity
+            // it doesn't matter how we do this distribution, only the total matters.
+            let n_timeslices = time_slice_selection.iter(time_slice_info).count() as f64;
+            let demand_per_slice = *demand / Dimensionless(n_timeslices);
+            for (time_slice, _) in time_slice_selection.iter(time_slice_info) {
+                demand_map.insert(
+                    (commodity_id.clone(), region_id.clone(), time_slice.clone()),
+                    demand_per_slice,
+                );
+            }
+        }
     }
+    demand_map
+}
 
-    map
+/// Update demand map with flows from a set of assets
+fn update_demand_map(demand: &mut AllDemandMap, flows: &FlowMap, assets: &[AssetRef]) {
+    for ((asset, commodity_id, time_slice), flow) in flows.iter() {
+        if assets.contains(asset) {
+            let key = (
+                commodity_id.clone(),
+                asset.region_id.clone(),
+                time_slice.clone(),
+            );
+
+            // Note: we use the negative of the flow as input flows are negative in the flow map.
+            demand
+                .entry(key)
+                .and_modify(|value| *value -= *flow)
+                .or_insert(-*flow);
+        }
+    }
 }
 
 /// Get a portion of the demand profile for this commodity and region
@@ -198,18 +237,31 @@ where
 fn get_demand_limiting_capacity(
     time_slice_info: &TimeSliceInfo,
     asset: &Asset,
-    commodity_id: &CommodityID,
+    commodity: &Commodity,
     demand: &DemandMap,
 ) -> Capacity {
-    let coeff = asset.get_flow(commodity_id).unwrap().coeff;
+    let coeff = asset.get_flow(&commodity.id).unwrap().coeff;
     let mut capacity = Capacity(0.0);
-    for time_slice in time_slice_info.iter_ids() {
-        let max_flow_per_cap = *asset.get_activity_per_capacity_limits(time_slice).end() * coeff;
-        if max_flow_per_cap == FlowPerCapacity(0.0) {
-            continue;
+
+    for time_slice_selection in time_slice_info.iter_selections_at_level(commodity.time_slice_level)
+    {
+        let demand_for_selection: Flow = time_slice_selection
+            .iter(time_slice_info)
+            .map(|(time_slice, _)| demand[time_slice])
+            .sum();
+
+        // Calculate max capacity required for this time slice selection
+        // For commodities with a coarse timeslice level, we have to allow the possibility that all
+        // of the demand gets served by production in a single timeslice
+        for (time_slice, _) in time_slice_selection.iter(time_slice_info) {
+            let max_flow_per_cap =
+                *asset.get_activity_per_capacity_limits(time_slice).end() * coeff;
+            if max_flow_per_cap != FlowPerCapacity(0.0) {
+                capacity = capacity.max(demand_for_selection / max_flow_per_cap);
+            }
         }
-        capacity = capacity.max(demand[time_slice] / max_flow_per_cap);
     }
+
     capacity
 }
 
@@ -219,7 +271,7 @@ fn get_asset_options<'a>(
     all_existing_assets: &'a [AssetRef],
     demand: &'a DemandMap,
     agent: &'a Agent,
-    commodity_id: &'a CommodityID,
+    commodity: &'a Commodity,
     region_id: &'a RegionID,
     year: u32,
 ) -> impl Iterator<Item = AssetRef> + 'a {
@@ -228,18 +280,12 @@ fn get_asset_options<'a>(
         .iter()
         .filter_agent(&agent.id)
         .filter_region(region_id)
-        .filter_primary_producers_of(commodity_id)
+        .filter_primary_producers_of(&commodity.id)
         .cloned();
 
     // Get candidates assets which produce the commodity of interest
-    let candidate_assets = get_candidate_assets(
-        time_slice_info,
-        demand,
-        agent,
-        region_id,
-        commodity_id,
-        year,
-    );
+    let candidate_assets =
+        get_candidate_assets(time_slice_info, demand, agent, region_id, commodity, year);
 
     chain(existing_assets, candidate_assets)
 }
@@ -250,11 +296,11 @@ fn get_candidate_assets<'a>(
     demand: &'a DemandMap,
     agent: &'a Agent,
     region_id: &'a RegionID,
-    commodity_id: &'a CommodityID,
+    commodity: &'a Commodity,
     year: u32,
 ) -> impl Iterator<Item = AssetRef> + 'a {
     agent
-        .iter_possible_producers_of(region_id, commodity_id, year)
+        .iter_possible_producers_of(region_id, &commodity.id, year)
         .map(move |process| {
             let mut asset = Asset::new_without_capacity(
                 Some(agent.id.clone()),
@@ -264,20 +310,23 @@ fn get_candidate_assets<'a>(
             )
             .unwrap();
             asset.capacity =
-                get_demand_limiting_capacity(time_slice_info, &asset, commodity_id, demand);
+                get_demand_limiting_capacity(time_slice_info, &asset, commodity, demand);
 
             asset.into()
         })
 }
 
 /// Get the best assets for meeting demand for the given commodity
+#[allow(clippy::too_many_arguments)]
 fn select_best_assets(
     model: &Model,
     mut opt_assets: Vec<AssetRef>,
     commodity: &Commodity,
-    objective_type: &ObjectiveType,
+    agent: &Agent,
     reduced_costs: &ReducedCosts,
     mut demand: DemandMap,
+    year: u32,
+    writer: &mut DataWriter,
 ) -> Result<Vec<AssetRef>> {
     let mut best_assets: Vec<AssetRef> = Vec::new();
 
@@ -287,6 +336,8 @@ fn select_best_assets(
             .filter(|asset| !asset.is_commissioned())
             .map(|asset| (asset.clone(), asset.capacity)),
     );
+
+    let mut round = 0;
     while is_any_remaining_demand(&demand) {
         ensure!(
             !opt_assets.is_empty(),
@@ -294,7 +345,8 @@ fn select_best_assets(
             &commodity.id
         );
 
-        let mut current_best: Option<AppraisalOutput> = None;
+        // Appraise all options
+        let mut outputs_for_opts = Vec::new();
         for asset in opt_assets.iter() {
             let max_capacity = (!asset.is_commissioned()).then(|| {
                 let max_capacity = model.parameters.capacity_limit_factor * asset.capacity;
@@ -307,50 +359,58 @@ fn select_best_assets(
                 asset,
                 max_capacity,
                 commodity,
-                objective_type,
+                &agent.objectives[&year],
                 reduced_costs,
                 &demand,
             )?;
 
-            if current_best
-                .as_ref()
-                .is_none_or(|best_output| output.metric < best_output.metric)
-            {
-                // Sanity check. We currently have no good way to handle this scenario and it can
-                // cause an infinite loop.
-                assert!(
-                    output.capacity > Capacity(0.0),
-                    "Attempted to select asset '{}' with zero capacity.\nSee: \
-                    https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/716",
-                    &output.asset.process.id
-                );
-
-                current_best = Some(output);
-            }
+            outputs_for_opts.push(output);
         }
 
-        let best_output = current_best.expect("No assets given");
-        let asset = best_output.asset;
-        let capacity = best_output.capacity;
-        demand = best_output.unmet_demand;
+        // Save appraisal results
+        writer.write_appraisal_debug_info(
+            year,
+            &format!("{} {} round {}", &commodity.id, &agent.id, round),
+            &outputs_for_opts,
+        )?;
 
-        let commissioned_txt = if asset.is_commissioned() {
+        // Select the best investment option
+        let best_output = outputs_for_opts
+            .into_iter()
+            .min_by(|a, b| a.metric.partial_cmp(&b.metric).unwrap())
+            .expect("No outputs given");
+
+        // Sanity check. We currently have no good way to handle this scenario and it can
+        // cause an infinite loop.
+        assert!(
+            best_output.capacity > Capacity(0.0),
+            "Attempted to select asset '{}' with zero capacity.\nSee: \
+            https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/716",
+            &best_output.asset.process.id
+        );
+
+        // Log the selected asset
+        let commissioned_txt = if best_output.asset.is_commissioned() {
             "existing"
         } else {
             "candidate"
         };
         debug!(
             "Selected {} asset '{}' (capacity: {})",
-            commissioned_txt, &asset.process.id, capacity
+            commissioned_txt, &best_output.asset.process.id, best_output.capacity
         );
 
+        // Update the assets
         update_assets(
-            asset,
-            capacity,
+            best_output.asset,
+            best_output.capacity,
             &mut opt_assets,
             &mut remaining_candidate_capacity,
             &mut best_assets,
         );
+
+        demand = best_output.unmet_demand;
+        round += 1;
     }
 
     Ok(best_assets)
@@ -405,11 +465,10 @@ fn update_assets(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::asset::{Asset, AssetRef};
-    use crate::commodity::{Commodity, CommodityID};
+    use crate::commodity::Commodity;
     use crate::fixture::{
-        asset, commodity_id, other_commodity, process, process_parameter_map, region_id,
-        sed_commodity, svd_commodity, time_slice, time_slice_info, time_slice_info2,
+        asset, process, process_parameter_map, region_id, svd_commodity, time_slice,
+        time_slice_info, time_slice_info2,
     };
     use crate::process::{FlowType, ProcessFlow, ProcessParameter};
     use crate::region::RegionID;
@@ -418,7 +477,6 @@ mod tests {
         ActivityPerCapacity, Dimensionless, Flow, FlowPerActivity, MoneyPerActivity,
         MoneyPerCapacity, MoneyPerCapacityPerYear, MoneyPerFlow,
     };
-    use indexmap::IndexMap;
     use itertools::Itertools;
     use rstest::rstest;
     use std::collections::HashMap;
@@ -437,163 +495,16 @@ mod tests {
     }
 
     #[rstest]
-    fn test_get_demand_profile(
-        region_id: RegionID,
-        time_slice: TimeSliceID,
-        asset: Asset,
-        svd_commodity: Commodity,
-        sed_commodity: Commodity,
-        other_commodity: Commodity,
-    ) {
-        // Setup test asset and AssetRef
-        let asset_ref1 = AssetRef::from(asset.clone());
-        // Create a second asset with the same region, commodity, and time_slice
-        let mut asset2 = asset.clone();
-        asset2.id = None; // Ensure it's treated as a different asset
-        asset2.commission_year += 1; // Make it unique
-        let asset_ref2 = AssetRef::from(asset2);
-
-        let svd_commodity_id = svd_commodity.id.clone();
-        let sed_commodity_id = sed_commodity.id.clone();
-        let other_commodity_id = other_commodity.id.clone();
-
-        let mut flow_map = FlowMap::new();
-
-        // ServiceDemand commodity flows (positive flows should be included)
-        flow_map.insert(
-            (
-                asset_ref1.clone(),
-                svd_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(10.0),
-        );
-        flow_map.insert(
-            (
-                asset_ref2.clone(),
-                svd_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(7.0),
-        );
-        // Zero flow should be ignored
-        flow_map.insert(
-            (
-                asset_ref1.clone(),
-                svd_commodity_id.clone(),
-                TimeSliceID {
-                    season: "summer".into(),
-                    time_of_day: "night".into(),
-                },
-            ),
-            Flow(0.0),
-        );
-        // Negative flow should be ignored for ServiceDemand
-        flow_map.insert(
-            (
-                asset_ref2.clone(),
-                svd_commodity_id.clone(),
-                TimeSliceID {
-                    season: "summer".into(),
-                    time_of_day: "night".into(),
-                },
-            ),
-            Flow(-5.0),
-        );
-
-        // SupplyEqualsDemand commodity flows (negative flows should be included as positive)
-        flow_map.insert(
-            (
-                asset_ref1.clone(),
-                sed_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(-15.0), // Should become 15.0 in demand
-        );
-        flow_map.insert(
-            (
-                asset_ref2.clone(),
-                sed_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(-8.0), // Should become 8.0 in demand
-        );
-        // Positive flow should be ignored for SupplyEqualsDemand
-        flow_map.insert(
-            (
-                asset_ref1.clone(),
-                sed_commodity_id.clone(),
-                TimeSliceID {
-                    season: "summer".into(),
-                    time_of_day: "night".into(),
-                },
-            ),
-            Flow(12.0),
-        );
-
-        // Other commodity type flows (should all be ignored)
-        flow_map.insert(
-            (
-                asset_ref1.clone(),
-                other_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(20.0),
-        );
-        flow_map.insert(
-            (
-                asset_ref2.clone(),
-                other_commodity_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(-25.0),
-        );
-
-        // Create commodities map for the test
-        let mut commodities = IndexMap::new();
-        commodities.insert(svd_commodity_id.clone(), Rc::new(svd_commodity));
-        commodities.insert(sed_commodity_id.clone(), Rc::new(sed_commodity));
-        commodities.insert(other_commodity_id.clone(), Rc::new(other_commodity));
-
-        // Call get_demand_profile
-        let result = get_demand_profile(&flow_map, &commodities);
-
-        // Check result
-        let mut expected = HashMap::new();
-        // ServiceDemand: 10.0 + 7.0 = 17.0 (only positive flows)
-        expected.insert(
-            (
-                svd_commodity_id.clone(),
-                region_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(17.0),
-        );
-        // SupplyEqualsDemand: |-15.0| + |-8.0| = 15.0 + 8.0 = 23.0 (only negative flows, converted to positive)
-        expected.insert(
-            (
-                sed_commodity_id.clone(),
-                region_id.clone(),
-                time_slice.clone(),
-            ),
-            Flow(23.0),
-        );
-        // Other commodity type should not appear in results (all flows ignored)
-
-        assert_eq!(result, expected);
-    }
-
-    #[rstest]
     fn test_get_demand_limiting_capacity(
-        commodity_id: CommodityID,
         time_slice: TimeSliceID,
         region_id: RegionID,
         time_slice_info: TimeSliceInfo,
         svd_commodity: Commodity,
     ) {
         // Create a process flow using the existing commodity fixture
+        let commodity_rc = Rc::new(svd_commodity);
         let process_flow = ProcessFlow {
-            commodity: Rc::new(svd_commodity),
+            commodity: Rc::clone(&commodity_rc),
             coeff: FlowPerActivity(2.0), // 2 units of flow per unit of activity
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
@@ -609,7 +520,9 @@ mod tests {
         // Add the flow to the process
         process.flows.insert(
             (region_id.clone(), 2015), // Using default commission year from fixture
-            [(commodity_id.clone(), process_flow)].into_iter().collect(),
+            [(commodity_rc.id.clone(), process_flow)]
+                .into_iter()
+                .collect(),
         );
 
         // Add activity limits
@@ -632,7 +545,7 @@ mod tests {
         demand.insert(time_slice.clone(), Flow(10.0));
 
         // Call the function
-        let result = get_demand_limiting_capacity(&time_slice_info, &asset, &commodity_id, &demand);
+        let result = get_demand_limiting_capacity(&time_slice_info, &asset, &commodity_rc, &demand);
 
         // Expected calculation:
         // max_flow_per_cap = activity_per_capacity_limit (1.0) * coeff (2.0) = 2.0
@@ -644,7 +557,6 @@ mod tests {
     fn test_get_demand_limiting_capacity_multiple_time_slices(
         time_slice_info2: TimeSliceInfo,
         svd_commodity: Commodity,
-        commodity_id: CommodityID,
         region_id: RegionID,
     ) {
         // Create time slices from the fixture (day and night)
@@ -652,8 +564,9 @@ mod tests {
             time_slice_info2.time_slices.keys().collect_tuple().unwrap();
 
         // Create a process flow using the existing commodity fixture
+        let commodity_rc = Rc::new(svd_commodity);
         let process_flow = ProcessFlow {
-            commodity: Rc::new(svd_commodity),
+            commodity: Rc::clone(&commodity_rc),
             coeff: FlowPerActivity(1.0), // 1 unit of flow per unit of activity
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
@@ -669,7 +582,9 @@ mod tests {
         // Add the flow to the process
         process.flows.insert(
             (region_id.clone(), 2015), // Using default commission year from fixture
-            [(commodity_id.clone(), process_flow)].into_iter().collect(),
+            [(commodity_rc.id.clone(), process_flow)]
+                .into_iter()
+                .collect(),
         );
 
         // Add activity limits for both time slices with different limits
@@ -698,7 +613,7 @@ mod tests {
 
         // Call the function
         let result =
-            get_demand_limiting_capacity(&time_slice_info2, &asset, &commodity_id, &demand);
+            get_demand_limiting_capacity(&time_slice_info2, &asset, &commodity_rc, &demand);
 
         // Expected: maximum of the capacity requirements across time slices (excluding zero limit)
         // Time slice 1: demand (4.0) / (activity_limit (2.0) * coeff (1.0)) = 2.0
