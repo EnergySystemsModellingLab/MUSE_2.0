@@ -53,7 +53,7 @@ pub fn run(
     info!("Running dispatch optimisation...");
     let next_year = year_iter.peek().copied();
     let (flow_map, prices, mut reduced_costs) =
-        run_dispatch_for_year(&model, &assets.active, year, next_year, &mut writer)?;
+        run_dispatch_for_year(&model, assets.as_slice(), year, next_year, &mut writer)?;
 
     // Write results of dispatch optimisation to file
     writer.write_flows(year, &flow_map)?;
@@ -84,7 +84,7 @@ pub fn run(
         info!("Running dispatch optimisation...");
         let next_year = year_iter.peek().copied();
         let (flow_map, prices, new_reduced_costs) =
-            run_dispatch_for_year(&model, &assets.active, year, next_year, &mut writer)?;
+            run_dispatch_for_year(&model, assets.as_slice(), year, next_year, &mut writer)?;
 
         // Write results of dispatch optimisation to file
         writer.write_flows(year, &flow_map)?;
@@ -115,7 +115,7 @@ fn run_dispatch_for_year(
         &[],
         None,
         year,
-        "final without candidates".to_string(),
+        "final without candidates",
         writer,
     )?;
     let flow_map = solution_existing.create_flow_map();
@@ -141,7 +141,7 @@ fn run_dispatch_for_year(
             &candidates,
             None,
             year,
-            "final with candidates".to_string(),
+            "final with candidates",
             writer,
         )?
     };
