@@ -313,7 +313,7 @@ where
 /// A pool of [`Asset`]s
 pub struct AssetPool {
     /// The pool of active assets, sorted by ID
-    pub active: Vec<AssetRef>,
+    active: Vec<AssetRef>,
     /// Assets that have not yet been commissioned, sorted by commission year
     future: Vec<Asset>,
     /// Assets that have been decommissioned
@@ -334,6 +334,11 @@ impl AssetPool {
             decommissioned: Vec::new(),
             next_id: 0,
         }
+    }
+
+    /// Get the active pool as a slice of [`AssetRef`]s
+    pub fn as_slice(&self) -> &[AssetRef] {
+        &self.active
     }
 
     /// Commission new assets for the specified milestone year from the input data

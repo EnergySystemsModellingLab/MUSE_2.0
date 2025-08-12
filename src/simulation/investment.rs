@@ -114,7 +114,7 @@ pub fn perform_agent_investment(
             debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
             let solution = perform_dispatch_optimisation(
                 model,
-                &assets.active,
+                assets.as_slice(),
                 &[],
                 Some(&seen_commodities),
                 year,
@@ -150,8 +150,8 @@ fn flatten_preset_demands_for_year(
 ) -> AllDemandMap {
     let mut demand_map = AllDemandMap::new();
     for (commodity_id, commodity) in commodities.iter() {
-        for ((region_id, _year, time_slice_selection), demand) in commodity.demand.iter() {
-            if *_year != year {
+        for ((region_id, data_year, time_slice_selection), demand) in commodity.demand.iter() {
+            if *data_year != year {
                 continue;
             }
 
@@ -173,10 +173,8 @@ fn flatten_preset_demands_for_year(
 
 /// Update demand map with flows from a set of assets
 fn update_demand_map(demand: &mut AllDemandMap, flows: &FlowMap, assets: &[AssetRef]) {
-    flows
-        .iter()
-        .filter(|((asset, _, _), _)| assets.contains(asset))
-        .for_each(|((asset, commodity_id, time_slice), flow)| {
+    for ((asset, commodity_id, time_slice), flow) in flows.iter() {
+        if assets.contains(asset) {
             let key = (
                 commodity_id.clone(),
                 asset.region_id.clone(),
@@ -188,7 +186,8 @@ fn update_demand_map(demand: &mut AllDemandMap, flows: &FlowMap, assets: &[Asset
                 .entry(key)
                 .and_modify(|value| *value -= *flow)
                 .or_insert(-*flow);
-        });
+        }
+    }
 }
 
 /// Get a portion of the demand profile for this commodity and region
