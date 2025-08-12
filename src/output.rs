@@ -4,6 +4,7 @@ use crate::asset::{Asset, AssetID, AssetRef};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
 use crate::region::RegionID;
+use crate::simulation::investment::appraisal::AppraisalOutput;
 use crate::simulation::optimisation::{FlowMap, Solution};
 use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
@@ -42,6 +43,9 @@ const ACTIVITY_DUALS_FILE_NAME: &str = "debug_activity_duals.csv";
 
 /// The output file name for extra solver output values
 const SOLVER_VALUES_FILE_NAME: &str = "debug_solver.csv";
+
+/// The output file name for appraisal results
+const APPRAISAL_RESULTS_FILE_NAME: &str = "debug_appraisal_results.csv";
 
 /// Get the model name from the specified directory path
 pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
@@ -160,12 +164,25 @@ struct SolverValuesRow {
     objective_value: Money,
 }
 
+/// Represents the appraisal results in a row of the appraisal results CSV file
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct AppraisalResultsRow {
+    milestone_year: u32,
+    run_description: String,
+    asset_id: Option<AssetID>,
+    process_id: ProcessID,
+    capacity: Capacity,
+    unmet_demand: Flow,
+    metric: f64,
+}
+
 /// For writing extra debug information about the model
 struct DebugDataWriter {
     activity_writer: csv::Writer<File>,
     commodity_balance_duals_writer: csv::Writer<File>,
     activity_duals_writer: csv::Writer<File>,
     solver_values_writer: csv::Writer<File>,
+    appraisal_results_writer: csv::Writer<File>,
 }
 
 impl DebugDataWriter {
@@ -185,11 +202,12 @@ impl DebugDataWriter {
             commodity_balance_duals_writer: new_writer(COMMODITY_BALANCE_DUALS_FILE_NAME)?,
             activity_duals_writer: new_writer(ACTIVITY_DUALS_FILE_NAME)?,
             solver_values_writer: new_writer(SOLVER_VALUES_FILE_NAME)?,
+            appraisal_results_writer: new_writer(APPRAISAL_RESULTS_FILE_NAME)?,
         })
     }
 
     /// Write debug info about the dispatch optimisation
-    fn write_debug_info(
+    fn write_dispatch_debug_info(
         &mut self,
         milestone_year: u32,
         run_description: &str,
@@ -301,6 +319,29 @@ impl DebugDataWriter {
         Ok(())
     }
 
+    /// Write appraisal results to file
+    fn write_appraisal_results(
+        &mut self,
+        milestone_year: u32,
+        run_description: &str,
+        appraisal_results: &[AppraisalOutput],
+    ) -> Result<()> {
+        for result in appraisal_results {
+            let row = AppraisalResultsRow {
+                milestone_year,
+                run_description: run_description.to_string(),
+                asset_id: result.asset.id,
+                process_id: result.asset.process.id.clone(),
+                capacity: result.capacity,
+                unmet_demand: result.unmet_demand.values().copied().sum(),
+                metric: result.metric,
+            };
+            self.appraisal_results_writer.serialize(row)?;
+        }
+
+        Ok(())
+    }
+
     /// Flush the underlying streams
     fn flush(&mut self) -> Result<()> {
         self.activity_writer.flush()?;
@@ -350,14 +391,28 @@ impl DataWriter {
     }
 
     /// Write debug info about the dispatch optimisation
-    pub fn write_debug_info(
+    pub fn write_dispatch_debug_info(
         &mut self,
         milestone_year: u32,
         run_description: &str,
         solution: &Solution,
     ) -> Result<()> {
         if let Some(ref mut wtr) = &mut self.debug_writer {
-            wtr.write_debug_info(milestone_year, run_description, solution)?;
+            wtr.write_dispatch_debug_info(milestone_year, run_description, solution)?;
+        }
+
+        Ok(())
+    }
+
+    /// Write debug info about the investment appraisal
+    pub fn write_appraisal_debug_info(
+        &mut self,
+        milestone_year: u32,
+        run_description: &str,
+        appraisal_results: &[AppraisalOutput],
+    ) -> Result<()> {
+        if let Some(ref mut wtr) = &mut self.debug_writer {
+            wtr.write_appraisal_results(milestone_year, run_description, appraisal_results)?;
         }
 
         Ok(())
