@@ -202,7 +202,7 @@ pub fn perform_dispatch_optimisation<'a>(
     candidate_assets: &[AssetRef],
     commodities: Option<&[CommodityID]>,
     year: u32,
-    run_description: String,
+    run_description: &str,
     writer: &mut DataWriter,
 ) -> Result<Solution<'a>> {
     let solution = perform_dispatch_optimisation_no_save(

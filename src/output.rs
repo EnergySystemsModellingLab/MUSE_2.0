@@ -226,22 +226,18 @@ impl DebugDataWriter {
     fn write_dispatch_debug_info(
         &mut self,
         milestone_year: u32,
-        run_description: String,
+        run_description: &str,
         solution: &Solution,
     ) -> Result<()> {
-        self.write_activity(
-            milestone_year,
-            run_description.clone(),
-            solution.iter_activity(),
-        )?;
+        self.write_activity(milestone_year, run_description, solution.iter_activity())?;
         self.write_activity_duals(
             milestone_year,
-            run_description.clone(),
+            run_description,
             solution.iter_activity_duals(),
         )?;
         self.write_commodity_balance_duals(
             milestone_year,
-            run_description.clone(),
+            run_description,
             solution.iter_commodity_balance_duals(),
         )?;
         self.write_solver_values(milestone_year, run_description, solution.objective_value)?;
@@ -252,7 +248,7 @@ impl DebugDataWriter {
     fn write_activity<'a, I>(
         &mut self,
         milestone_year: u32,
-        run_description: String,
+        run_description: &str,
         iter: I,
     ) -> Result<()>
     where
@@ -261,7 +257,7 @@ impl DebugDataWriter {
         for (asset, time_slice, activity) in iter {
             let row = ActivityRow {
                 milestone_year,
-                run_description: run_description.clone(),
+                run_description: run_description.to_string(),
                 asset_id: asset.id,
                 time_slice: time_slice.clone(),
                 activity,
@@ -276,7 +272,7 @@ impl DebugDataWriter {
     fn write_activity_duals<'a, I>(
         &mut self,
         milestone_year: u32,
-        run_description: String,
+        run_description: &str,
         iter: I,
     ) -> Result<()>
     where
@@ -285,7 +281,7 @@ impl DebugDataWriter {
         for (asset, time_slice, value) in iter {
             let row = ActivityDualsRow {
                 milestone_year,
-                run_description: run_description.clone(),
+                run_description: run_description.to_string(),
                 asset_id: asset.id,
                 time_slice: time_slice.clone(),
                 value,
@@ -300,7 +296,7 @@ impl DebugDataWriter {
     fn write_commodity_balance_duals<'a, I>(
         &mut self,
         milestone_year: u32,
-        run_description: String,
+        run_description: &str,
         iter: I,
     ) -> Result<()>
     where
@@ -309,7 +305,7 @@ impl DebugDataWriter {
         for (commodity_id, region_id, time_slice, value) in iter {
             let row = CommodityBalanceDualsRow {
                 milestone_year,
-                run_description: run_description.clone(),
+                run_description: run_description.to_string(),
                 commodity_id: commodity_id.clone(),
                 region_id: region_id.clone(),
                 time_slice: time_slice.clone(),
@@ -325,12 +321,12 @@ impl DebugDataWriter {
     fn write_solver_values(
         &mut self,
         milestone_year: u32,
-        run_description: String,
+        run_description: &str,
         objective_value: Money,
     ) -> Result<()> {
         let row = SolverValuesRow {
             milestone_year,
-            run_description,
+            run_description: run_description.to_string(),
             objective_value,
         };
         self.solver_values_writer.serialize(row)?;
@@ -343,13 +339,13 @@ impl DebugDataWriter {
     fn write_appraisal_results(
         &mut self,
         milestone_year: u32,
-        run_description: String,
+        run_description: &str,
         appraisal_results: &[AppraisalOutput],
     ) -> Result<()> {
         for result in appraisal_results {
             let row = AppraisalResultsRow {
                 milestone_year,
-                run_description: run_description.clone(),
+                run_description: run_description.to_string(),
                 asset_id: result.asset.id,
                 process_id: result.asset.process.id.clone(),
                 capacity: result.capacity,
@@ -434,7 +430,7 @@ impl DataWriter {
     pub fn write_dispatch_debug_info(
         &mut self,
         milestone_year: u32,
-        run_description: String,
+        run_description: &str,
         solution: &Solution,
     ) -> Result<()> {
         if let Some(ref mut wtr) = &mut self.debug_writer {
@@ -448,7 +444,7 @@ impl DataWriter {
     pub fn write_appraisal_debug_info(
         &mut self,
         milestone_year: u32,
-        run_description: String,
+        run_description: &str,
         appraisal_results: &[AppraisalOutput],
     ) -> Result<()> {
         if let Some(ref mut wtr) = &mut self.debug_writer {
@@ -657,7 +653,7 @@ mod tests {
             writer
                 .write_commodity_balance_duals(
                     milestone_year,
-                    run_description.clone(),
+                    &run_description,
                     iter::once((&commodity_id, &region_id, &time_slice, value)),
                 )
                 .unwrap();
@@ -696,7 +692,7 @@ mod tests {
             writer
                 .write_activity_duals(
                     milestone_year,
-                    run_description.clone(),
+                    &run_description,
                     iter::once((asset, &time_slice, value)),
                 )
                 .unwrap();
@@ -734,7 +730,7 @@ mod tests {
             writer
                 .write_activity(
                     milestone_year,
-                    run_description.clone(),
+                    &run_description,
                     iter::once((asset, &time_slice, activity)),
                 )
                 .unwrap();
@@ -768,7 +764,7 @@ mod tests {
         {
             let mut writer = DebugDataWriter::create(dir.path()).unwrap();
             writer
-                .write_solver_values(milestone_year, run_description.clone(), objective_value)
+                .write_solver_values(milestone_year, &run_description, objective_value)
                 .unwrap();
             writer.flush().unwrap();
         }
