@@ -443,28 +443,23 @@ impl AssetPool {
     /// Extend the active pool with existing or candidate assets
     ///
     /// Returns the same assets after ID assignment.
-    pub fn extend<I>(&mut self, assets: I) -> Vec<AssetRef>
-    where
-        I: IntoIterator<Item = AssetRef>,
-    {
-        let mut collected_assets = Vec::new();
-        for mut asset in assets {
+    pub fn extend(&mut self, mut assets: Vec<AssetRef>) -> Vec<AssetRef> {
+        for asset in assets.iter_mut() {
             if !asset.is_commissioned() {
                 // Asset is newly created from process so we need to assign an ID
                 let asset_mut = asset.make_mut();
                 asset_mut.id = Some(AssetID(self.next_id));
                 self.next_id += 1;
             }
-            collected_assets.push(asset.clone());
-            self.active.push(asset);
         }
 
         // New assets may not have been sorted, but active needs to be sorted by ID
+        self.active.extend(assets.iter().cloned());
         self.active.sort();
 
         // Sanity check: all assets should be unique
         debug_assert_eq!(self.active.iter().unique().count(), self.active.len());
-        collected_assets
+        assets
     }
 }
 
@@ -750,7 +745,7 @@ mod tests {
         let original_count = asset_pool.active.len();
 
         // Extend with empty iterator
-        asset_pool.extend(std::iter::empty());
+        asset_pool.extend(Vec::<AssetRef>::new());
 
         assert_eq!(asset_pool.active.len(), original_count);
     }
@@ -778,7 +773,7 @@ mod tests {
 
         // Create new non-commissioned assets
         let process_rc = Rc::new(process);
-        let new_assets = [
+        let new_assets = vec![
             Asset::new(
                 Some("agent2".into()),
                 Rc::clone(&process_rc),
@@ -832,7 +827,7 @@ mod tests {
         .into();
 
         // Extend with just the new asset (not mixing with existing to avoid duplicates)
-        asset_pool.extend([new_asset]);
+        asset_pool.extend(vec![new_asset]);
 
         assert_eq!(asset_pool.active.len(), 3);
         // Check that we have the original assets plus the new one
@@ -853,7 +848,7 @@ mod tests {
 
         // Create new assets that would be out of order if added at the end
         let process_rc = Rc::new(process);
-        let new_assets = [
+        let new_assets = vec![
             Asset::new(
                 Some("agent_high_id".into()),
                 Rc::clone(&process_rc),
@@ -889,7 +884,7 @@ mod tests {
 
         // The extend method expects unique assets - adding duplicates would violate
         // the debug assertion, so this test verifies the normal case
-        asset_pool.extend(std::iter::empty::<AssetRef>());
+        asset_pool.extend(Vec::<AssetRef>::new());
 
         assert_eq!(asset_pool.active.len(), original_count);
         // Verify all assets are still unique (this is what the debug_assert checks)
@@ -907,7 +902,7 @@ mod tests {
 
         // Create new non-commissioned assets
         let process_rc = Rc::new(process);
-        let new_assets = [
+        let new_assets = vec![
             Asset::new(
                 Some("agent1".into()),
                 Rc::clone(&process_rc),
