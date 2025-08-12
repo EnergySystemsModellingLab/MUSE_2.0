@@ -370,7 +370,7 @@ fn select_best_assets(
         // Save appraisal results
         writer.write_appraisal_debug_info(
             year,
-            format!("{} {} round {}", &commodity.id, &agent.id, round),
+            &format!("{} {} round {}", &commodity.id, &agent.id, round),
             &outputs_for_opts,
         )?;
 

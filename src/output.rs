@@ -323,13 +323,13 @@ impl DebugDataWriter {
     fn write_appraisal_results(
         &mut self,
         milestone_year: u32,
-        run_description: String,
+        run_description: &str,
         appraisal_results: &[AppraisalOutput],
     ) -> Result<()> {
         for result in appraisal_results {
             let row = AppraisalResultsRow {
                 milestone_year,
-                run_description: run_description.clone(),
+                run_description: run_description.to_string(),
                 asset_id: result.asset.id,
                 process_id: result.asset.process.id.clone(),
                 capacity: result.capacity,
@@ -408,7 +408,7 @@ impl DataWriter {
     pub fn write_appraisal_debug_info(
         &mut self,
         milestone_year: u32,
-        run_description: String,
+        run_description: &str,
         appraisal_results: &[AppraisalOutput],
     ) -> Result<()> {
         if let Some(ref mut wtr) = &mut self.debug_writer {
