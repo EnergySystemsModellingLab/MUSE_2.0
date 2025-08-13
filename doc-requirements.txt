@@ -1,3 +1,4 @@
+jinja2
+notebook
 pyyaml
 table2md
-jinja2
