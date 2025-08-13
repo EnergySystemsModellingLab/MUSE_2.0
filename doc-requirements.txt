@@ -1,4 +1,5 @@
 jinja2
 notebook
+pandas
 pyyaml
 table2md
