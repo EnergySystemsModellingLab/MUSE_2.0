@@ -501,6 +501,31 @@ where
 
 impl<'a, I> AssetIterator<'a> for I where I: Iterator<Item = &'a AssetRef> + Sized + 'a {}
 
+impl Clone for AssetPool {
+    fn clone(&self) -> Self {
+        let active = self
+            .active
+            .iter()
+            .map(|asset_ref| AssetRef::from((**asset_ref).clone()))
+            .collect();
+
+        let future = self.future.to_vec();
+
+        let decommissioned = self
+            .decommissioned
+            .iter()
+            .map(|asset_ref| AssetRef::from((**asset_ref).clone()))
+            .collect();
+
+        Self {
+            active,
+            future,
+            decommissioned,
+            next_id: self.next_id,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
