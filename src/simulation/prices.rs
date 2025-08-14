@@ -9,7 +9,7 @@ use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{MoneyPerActivity, MoneyPerFlow};
 use indexmap::IndexMap;
 use itertools::iproduct;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 /// A map of reduced costs for different assets in different time slices
 pub type ReducedCosts = IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
@@ -82,7 +82,7 @@ pub fn update_prices_and_reduced_costs(
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
 #[derive(Default, Clone)]
-pub struct CommodityPrices(BTreeMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>);
+pub struct CommodityPrices(IndexMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>);
 
 impl CommodityPrices {
     /// Add prices based on levies/incentives.
@@ -204,8 +204,7 @@ impl<'a> FromIterator<(&'a CommodityID, &'a RegionID, &'a TimeSliceID, MoneyPerF
 
 impl IntoIterator for CommodityPrices {
     type Item = ((CommodityID, RegionID, TimeSliceID), MoneyPerFlow);
-    type IntoIter =
-        std::collections::btree_map::IntoIter<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>;
+    type IntoIter = indexmap::map::IntoIter<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
