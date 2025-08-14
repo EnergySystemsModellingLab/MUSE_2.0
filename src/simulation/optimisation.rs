@@ -30,6 +30,9 @@ type Variable = highs::Col;
 /// The map of variables related to assets
 type AssetVariableMap = IndexMap<(AssetRef, TimeSliceID), Variable>;
 
+/// Variables representing unmet demand for a given commodity
+type UnmetDemandMap = IndexMap<(CommodityID, RegionID, TimeSliceID), Variable>;
+
 /// A map for easy lookup of variables in the problem.
 ///
 /// The entries are ordered (see [`IndexMap`]).
@@ -43,6 +46,8 @@ pub struct VariableMap {
     asset_vars: AssetVariableMap,
     existing_asset_var_idx: Range<usize>,
     candidate_asset_var_idx: Range<usize>,
+    unmet_demand_vars: UnmetDemandMap,
+    _unmet_demand_var_idx: Range<usize>,
 }
 
 /// Add variables to the optimisation problem.
@@ -75,54 +80,102 @@ fn add_asset_variables(
     start..problem.num_cols()
 }
 
+fn new_unmet_demand_variables_map(
+    problem: &mut Problem,
+    model: &Model,
+    commodities: &[CommodityID],
+) -> (UnmetDemandMap, Range<usize>) {
+    // This line **must** come before we add more variables
+    let start = problem.num_cols();
+
+    // Add variables
+    let voll = model.parameters.value_of_lost_load;
+    let map = iproduct!(
+        commodities.iter(),
+        model.iter_regions(),
+        model.time_slice_info.iter_ids()
+    )
+    .map(|(commodity_id, region_id, time_slice)| {
+        let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
+        let var = problem.add_column(voll.value(), 0.0..);
+
+        (key, var)
+    })
+    .collect();
+
+    (map, start..problem.num_cols())
+}
+
 impl VariableMap {
     /// Create a new [`VariableMap`] and add variables to the problem
     ///
     /// # Arguments
     ///
     /// * `problem` - The optimisation problem
-    /// * `time_slice_info` - Information about time slices
+    /// * `model` - The model
     /// * `existing_assets` - The asset pool
     /// * `candidate_assets` - Candidate assets for inclusion in active pool
+    /// * `commodities` - The subset of commodities we are considering
     /// * `year` - Current milestone year
     fn new(
         problem: &mut Problem,
-        time_slice_info: &TimeSliceInfo,
+        model: &Model,
         existing_assets: &[AssetRef],
         candidate_assets: &[AssetRef],
+        commodities: &[CommodityID],
         year: u32,
     ) -> Self {
         let mut asset_vars = AssetVariableMap::new();
         let existing_asset_var_idx = add_asset_variables(
             problem,
             &mut asset_vars,
-            time_slice_info,
+            &model.time_slice_info,
             existing_assets,
             year,
         );
         let candidate_asset_var_idx = add_asset_variables(
             problem,
             &mut asset_vars,
-            time_slice_info,
+            &model.time_slice_info,
             candidate_assets,
             year,
         );
+        let (unmet_demand_vars, unmet_demand_var_idx) =
+            new_unmet_demand_variables_map(problem, model, commodities);
 
         Self {
             asset_vars,
             existing_asset_var_idx,
             candidate_asset_var_idx,
+            unmet_demand_vars,
+            _unmet_demand_var_idx: unmet_demand_var_idx,
         }
     }
 
-    /// Get the [`Variable`] corresponding to the given parameters.
+    /// Get the asset [`Variable`] corresponding to the given parameters.
     fn get_asset_var(&self, asset: &AssetRef, time_slice: &TimeSliceID) -> Variable {
         let key = (asset.clone(), time_slice.clone());
 
         *self
             .asset_vars
             .get(&key)
-            .expect("No variable found for given params")
+            .expect("No asset variable found for given params")
+    }
+
+    /// Get the unmet demand [`Variable`] corresponding to the given parameters.
+    #[allow(dead_code)]
+    fn get_unmet_demand_var(
+        &self,
+        commodity_id: &CommodityID,
+        region_id: &RegionID,
+        time_slice: &TimeSliceID,
+    ) -> Variable {
+        let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
+
+        *self
+            .unmet_demand_vars
+            .get(&key)
+            .expect("No unmet demand variable for given params")
     }
 
     /// Iterate over the variable map
@@ -325,9 +378,10 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
         let mut problem = Problem::default();
         let variables = VariableMap::new(
             &mut problem,
-            &self.model.time_slice_info,
+            self.model,
             self.existing_assets,
             self.candidate_assets,
+            self.commodities,
             self.year,
         );
 
