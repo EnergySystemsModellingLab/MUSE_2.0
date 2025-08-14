@@ -2,7 +2,7 @@
 use super::optimisation::{DispatchRun, FlowMap};
 use super::prices::ReducedCosts;
 use crate::agent::Agent;
-use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
+use crate::asset::{Asset, AssetIterator, AssetRef};
 use crate::commodity::{Commodity, CommodityID, CommodityMap};
 use crate::model::Model;
 use crate::output::DataWriter;
@@ -37,23 +37,28 @@ type AllDemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 pub fn perform_agent_investment(
     model: &Model,
     year: u32,
-    assets: &mut AssetPool,
+    existing_assets: &[AssetRef],
     reduced_costs: &ReducedCosts,
     writer: &mut DataWriter,
-) -> Result<()> {
-    // Get all existing assets and clear pool
-    let existing_assets = assets.take();
-
+) -> Result<Vec<AssetRef>> {
     // Initialise demand map
     let mut demand =
         flatten_preset_demands_for_year(&model.commodities, &model.time_slice_info, year);
+
+    // Keep a list of all the assets added
+    // This includes any existing_assets that are selected for retention
+    let mut all_selected_assets = Vec::new();
 
     for region_id in model.iter_regions() {
         let mut seen_commodities = Vec::new();
         for commodity_id in model.commodity_order[&(region_id.clone(), year)].iter() {
             seen_commodities.push(commodity_id.clone());
             let commodity = &model.commodities[commodity_id];
-            let mut new_assets = Vec::new();
+
+            // List of assets selected for this region/commodity
+            // This includes any existing_assets that are selected for retention
+            let mut selected_assets = Vec::new();
+
             for (agent, commodity_portion) in
                 get_responsible_agents(model.agents.values(), commodity_id, region_id, year)
             {
@@ -74,7 +79,7 @@ pub fn perform_agent_investment(
                 // Existing and candidate assets from which to choose
                 let opt_assets = get_asset_options(
                     &model.time_slice_info,
-                    &existing_assets,
+                    existing_assets,
                     &demand_portion_for_commodity,
                     agent,
                     commodity,
@@ -94,25 +99,25 @@ pub fn perform_agent_investment(
                     year,
                     writer,
                 )?;
-                new_assets.extend(best_assets);
+                selected_assets.extend(best_assets);
             }
 
-            // If no assets have been selected, skip dispatch optimisation
+            // If no assets have been selected for this region/commodity, skip dispatch optimisation
             // **TODO**: this probably means there's no demand for the commodity, which we could
             // presumably preempt
-            if new_assets.is_empty() {
+            if selected_assets.is_empty() {
                 continue;
             }
 
-            // Add assets to pool
-            new_assets = assets.extend(new_assets);
+            // Add the selected assets to the list of all selected assets
+            all_selected_assets.extend(selected_assets.clone());
 
             // Perform dispatch optimisation with assets that have been selected so far
-            // **TODO**: presumably we only need to do this for new_assets, as assets added in
+            // **TODO**: presumably we only need to do this for selected_assets, as assets added in
             // previous iterations should not change
             debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
 
-            let solution = DispatchRun::new(model, assets.as_slice(), year)
+            let solution = DispatchRun::new(model, &all_selected_assets, year)
                 .with_commodity_subset(&seen_commodities)
                 .run(
                     &format!("post {commodity_id}/{region_id} investment"),
@@ -120,14 +125,11 @@ pub fn perform_agent_investment(
                 )?;
 
             // Update demand map with flows from newly added assets
-            update_demand_map(&mut demand, &solution.create_flow_map(), &new_assets);
+            update_demand_map(&mut demand, &solution.create_flow_map(), &selected_assets);
         }
     }
 
-    // Decommission non-selected assets
-    assets.decommission_if_not_active(existing_assets, year);
-
-    Ok(())
+    Ok(all_selected_assets)
 }
 
 /// Flatten the preset commodity demands for a given year into a map of commodity, region and

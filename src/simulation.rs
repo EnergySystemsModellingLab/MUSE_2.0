@@ -71,10 +71,41 @@ pub fn run(
         // year before agents have the option of decommissioning them
         assets.commission_new(year);
 
-        // Perform agent investment
-        info!("Running agent investment...");
-        perform_agent_investment(&model, year, &mut assets, &reduced_costs, &mut writer)
+        // Take all the active assets as a list of existing assets
+        let existing_assets = assets.take();
+
+        // Ironing out loop
+        let mut ironing_out_iter = 0;
+        let selected_assets: Vec<AssetRef> = loop {
+            // Perform agent investment
+            info!("Running agent investment...");
+            let selected_assets = perform_agent_investment(
+                &model,
+                year,
+                &existing_assets,
+                &reduced_costs,
+                &mut writer,
+            )
             .context("Agent investment failed")?;
+
+            // Run dispatch optimisation to get updated reduced costs for the next iteration
+            info!("Running dispatch optimisation...");
+            let (_flow_map, _prices, new_reduced_costs) =
+                run_dispatch_for_year(&model, &selected_assets, year, Some(year), &mut writer)?;
+            reduced_costs = new_reduced_costs;
+
+            // Break
+            ironing_out_iter += 1;
+            if ironing_out_iter >= 10 {
+                break selected_assets;
+            }
+        };
+
+        // Add selected_assets to the active pool
+        assets.extend(selected_assets);
+
+        // Decommission unused assets
+        assets.decommission_if_not_active(existing_assets, year);
 
         // Write assets
         writer.write_assets(assets.iter_all())?;
