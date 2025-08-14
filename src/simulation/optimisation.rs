@@ -27,6 +27,9 @@ pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), Flow>;
 /// particular column of the problem.
 type Variable = highs::Col;
 
+/// The map of variables related to assets
+type AssetVariableMap = IndexMap<(AssetRef, TimeSliceID), Variable>;
+
 /// A map for easy lookup of variables in the problem.
 ///
 /// The entries are ordered (see [`IndexMap`]).
@@ -36,30 +39,102 @@ type Variable = highs::Col;
 /// 1. In order define constraints for the optimisation
 /// 2. To keep track of the combination of parameters that each variable corresponds to, for when we
 ///    are reading the results of the optimisation.
-#[derive(Default)]
-pub struct VariableMap(IndexMap<(AssetRef, TimeSliceID), Variable>);
+pub struct VariableMap {
+    asset_vars: AssetVariableMap,
+    existing_asset_var_idx: Range<usize>,
+    candidate_asset_var_idx: Range<usize>,
+}
+
+/// Add variables to the optimisation problem.
+///
+/// # Arguments
+///
+/// * `problem` - The optimisation problem
+/// * `variables` - The variable map
+/// * `time_slice_info` - Information about time slices
+/// * `assets` - Assets to include
+/// * `year` - Current milestone year
+fn add_variables(
+    problem: &mut Problem,
+    variables: &mut AssetVariableMap,
+    time_slice_info: &TimeSliceInfo,
+    assets: &[AssetRef],
+    year: u32,
+) -> Range<usize> {
+    // This line **must** come before we add more variables
+    let start = problem.num_cols();
+
+    for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
+        let coeff = calculate_cost_coefficient(asset, year, time_slice);
+        let var = problem.add_column(coeff.value(), 0.0..);
+        let key = (asset.clone(), time_slice.clone());
+        let existing = variables.insert(key, var).is_some();
+        assert!(!existing, "Duplicate entry for var");
+    }
+
+    start..problem.num_cols()
+}
 
 impl VariableMap {
+    /// Create a new [`VariableMap`] and add variables to the problem
+    ///
+    /// # Arguments
+    ///
+    /// * `problem` - The optimisation problem
+    /// * `time_slice_info` - Information about time slices
+    /// * `existing_assets` - The asset pool
+    /// * `candidate_assets` - Candidate assets for inclusion in active pool
+    /// * `year` - Current milestone year
+    fn new(
+        problem: &mut Problem,
+        time_slice_info: &TimeSliceInfo,
+        existing_assets: &[AssetRef],
+        candidate_assets: &[AssetRef],
+        year: u32,
+    ) -> Self {
+        let mut asset_vars = AssetVariableMap::new();
+        let existing_asset_var_idx = add_variables(
+            problem,
+            &mut asset_vars,
+            time_slice_info,
+            existing_assets,
+            year,
+        );
+        let candidate_asset_var_idx = add_variables(
+            problem,
+            &mut asset_vars,
+            time_slice_info,
+            candidate_assets,
+            year,
+        );
+
+        Self {
+            asset_vars,
+            existing_asset_var_idx,
+            candidate_asset_var_idx,
+        }
+    }
+
     /// Get the [`Variable`] corresponding to the given parameters.
     fn get(&self, asset: &AssetRef, time_slice: &TimeSliceID) -> Variable {
         let key = (asset.clone(), time_slice.clone());
 
         *self
-            .0
+            .asset_vars
             .get(&key)
             .expect("No variable found for given params")
     }
 
     /// Iterate over the variable map
     fn iter(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Variable)> {
-        self.0
+        self.asset_vars
             .iter()
             .map(|((asset, time_slice), var)| (asset, time_slice, *var))
     }
 
     /// Iterate over the map's keys
     fn keys(&self) -> indexmap::map::Keys<'_, (AssetRef, TimeSliceID), Variable> {
-        self.0.keys()
+        self.asset_vars.keys()
     }
 }
 
@@ -67,8 +142,6 @@ impl VariableMap {
 pub struct Solution<'a> {
     solution: highs::Solution,
     variables: VariableMap,
-    active_asset_var_idx: Range<usize>,
-    candidate_asset_var_idx: Range<usize>,
     time_slice_info: &'a TimeSliceInfo,
     constraint_keys: ConstraintKeys,
     /// The objective value for the solution
@@ -107,14 +180,20 @@ impl Solution<'_> {
     fn iter_activity_for_active(
         &self,
     ) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Activity)> {
-        self.zip_var_keys_with_output(&self.active_asset_var_idx, self.solution.columns())
+        self.zip_var_keys_with_output(
+            &self.variables.existing_asset_var_idx,
+            self.solution.columns(),
+        )
     }
 
     /// Reduced costs for candidate assets
     pub fn iter_reduced_costs_for_candidates(
         &self,
     ) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, MoneyPerActivity)> {
-        self.zip_var_keys_with_output(&self.candidate_asset_var_idx, self.solution.dual_columns())
+        self.zip_var_keys_with_output(
+            &self.variables.candidate_asset_var_idx,
+            self.solution.dual_columns(),
+        )
     }
 
     /// Keys and dual values for commodity balance constraints.
@@ -244,18 +323,10 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
     fn run_no_save(&self) -> Result<Solution<'model>> {
         // Set up problem
         let mut problem = Problem::default();
-        let mut variables = VariableMap::default();
-        let active_asset_var_idx = add_variables(
+        let variables = VariableMap::new(
             &mut problem,
-            &mut variables,
             &self.model.time_slice_info,
             self.existing_assets,
-            self.year,
-        );
-        let candidate_asset_var_idx = add_variables(
-            &mut problem,
-            &mut variables,
-            &self.model.time_slice_info,
             self.candidate_assets,
             self.year,
         );
@@ -289,43 +360,11 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
         Ok(Solution {
             solution: solution.get_solution(),
             variables,
-            active_asset_var_idx,
-            candidate_asset_var_idx,
             time_slice_info: &self.model.time_slice_info,
             constraint_keys,
             objective_value,
         })
     }
-}
-
-/// Add variables to the optimisation problem.
-///
-/// # Arguments
-///
-/// * `problem` - The optimisation problem
-/// * `variables` - The variable map
-/// * `time_slice_info` - Information about assets
-/// * `assets` - Assets to include
-/// * `year` - Current milestone year
-fn add_variables(
-    problem: &mut Problem,
-    variables: &mut VariableMap,
-    time_slice_info: &TimeSliceInfo,
-    assets: &[AssetRef],
-    year: u32,
-) -> Range<usize> {
-    // This line **must** come before we add more variables
-    let start = problem.num_cols();
-
-    for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
-        let coeff = calculate_cost_coefficient(asset, year, time_slice);
-        let var = problem.add_column(coeff.value(), 0.0..);
-        let key = (asset.clone(), time_slice.clone());
-        let existing = variables.0.insert(key, var).is_some();
-        assert!(!existing, "Duplicate entry for var");
-    }
-
-    start..problem.num_cols()
 }
 
 /// Calculate the cost coefficient for a decision variable
