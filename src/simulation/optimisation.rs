@@ -54,7 +54,7 @@ pub struct VariableMap {
 /// * `time_slice_info` - Information about time slices
 /// * `assets` - Assets to include
 /// * `year` - Current milestone year
-fn add_variables(
+fn add_asset_variables(
     problem: &mut Problem,
     variables: &mut AssetVariableMap,
     time_slice_info: &TimeSliceInfo,
@@ -93,14 +93,14 @@ impl VariableMap {
         year: u32,
     ) -> Self {
         let mut asset_vars = AssetVariableMap::new();
-        let existing_asset_var_idx = add_variables(
+        let existing_asset_var_idx = add_asset_variables(
             problem,
             &mut asset_vars,
             time_slice_info,
             existing_assets,
             year,
         );
-        let candidate_asset_var_idx = add_variables(
+        let candidate_asset_var_idx = add_asset_variables(
             problem,
             &mut asset_vars,
             time_slice_info,
@@ -116,7 +116,7 @@ impl VariableMap {
     }
 
     /// Get the [`Variable`] corresponding to the given parameters.
-    fn get(&self, asset: &AssetRef, time_slice: &TimeSliceID) -> Variable {
+    fn get_asset_var(&self, asset: &AssetRef, time_slice: &TimeSliceID) -> Variable {
         let key = (asset.clone(), time_slice.clone());
 
         *self
@@ -126,14 +126,14 @@ impl VariableMap {
     }
 
     /// Iterate over the variable map
-    fn iter(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Variable)> {
+    fn iter_asset_vars(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Variable)> {
         self.asset_vars
             .iter()
             .map(|((asset, time_slice), var)| (asset, time_slice, *var))
     }
 
     /// Iterate over the map's keys
-    fn keys(&self) -> indexmap::map::Keys<'_, (AssetRef, TimeSliceID), Variable> {
+    fn asset_var_keys(&self) -> indexmap::map::Keys<'_, (AssetRef, TimeSliceID), Variable> {
         self.asset_vars.keys()
     }
 }
@@ -171,7 +171,7 @@ impl Solution<'_> {
     /// Activity for each active asset
     pub fn iter_activity(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Activity)> {
         self.variables
-            .keys()
+            .asset_var_keys()
             .zip(self.solution.columns())
             .map(|((asset, time_slice), activity)| (asset, time_slice, Activity(*activity)))
     }
@@ -234,7 +234,7 @@ impl Solution<'_> {
         variable_idx: &Range<usize>,
         output: &'a [f64],
     ) -> impl Iterator<Item = (&'a AssetRef, &'a TimeSliceID, T)> {
-        let keys = self.variables.keys().skip(variable_idx.start);
+        let keys = self.variables.asset_var_keys().skip(variable_idx.start);
         assert!(keys.len() >= variable_idx.len());
 
         keys.zip(output[variable_idx.clone()].iter())
