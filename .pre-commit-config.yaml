@@ -63,7 +63,6 @@ repos:
     rev: 0.8.1
     hooks:
       - id: nbstripout
-        args: [--keep-output]
   - repo: https://github.com/codespell-project/codespell
     rev: v2.2.6
     hooks:
