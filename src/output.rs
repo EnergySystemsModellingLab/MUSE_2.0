@@ -382,6 +382,10 @@ impl DebugDataWriter {
     fn flush(&mut self) -> Result<()> {
         self.activity_writer.flush()?;
         self.commodity_balance_duals_writer.flush()?;
+        self.activity_duals_writer.flush()?;
+        self.solver_values_writer.flush()?;
+        self.appraisal_results_writer.flush()?;
+        self.reduced_costs_writer.flush()?;
 
         Ok(())
     }
