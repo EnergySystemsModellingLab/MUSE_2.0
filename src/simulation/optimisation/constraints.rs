@@ -7,6 +7,7 @@ use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceSelection};
 use crate::units::UnitType;
 use highs::RowProblem as Problem;
+use log::debug;
 
 /// Corresponding variables for a constraint along with the row offset in the solution
 pub struct KeysWithOffset<T> {
@@ -139,6 +140,17 @@ where
                         let var = variables.get_asset_var(asset, time_slice);
                         terms.push((var, flow.coeff.value()));
                     }
+                }
+
+                // It is possible that a commodity may not be produced or consumed by anything in a
+                // given milestone year, in which case it doesn't make sense to add a commodity
+                // balance constraint
+                if terms.is_empty() {
+                    debug!(
+                        "Skipping commodity balance constraint for commodity {commodity_id:?}, \
+                        region {region_id:?}, year {year:?} due to empty terms."
+                    );
+                    continue;
                 }
 
                 // Also include unmet demand variables
