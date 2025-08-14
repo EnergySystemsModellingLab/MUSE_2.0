@@ -51,6 +51,9 @@ const APPRAISAL_RESULTS_FILE_NAME: &str = "debug_appraisal_results.csv";
 /// The output file name for reduced costs
 const REDUCED_COSTS_FILE_NAME: &str = "debug_reduced_costs.csv";
 
+/// The output file name for unmet demand
+const UNMET_DEMAND_FILE_NAME: &str = "debug_unmet_demand.csv";
+
 /// Get the model name from the specified directory path
 pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
     // Get the model name from the dir path. This ends up being convoluted because we need to check
@@ -190,6 +193,16 @@ struct ReducedCostsRow {
     reduced_cost: MoneyPerActivity,
 }
 
+/// Represents a row in the unmet demand debug CSV file
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct UnmetDemandRow {
+    milestone_year: u32,
+    commodity_id: CommodityID,
+    region_id: RegionID,
+    time_slice: TimeSliceID,
+    unmet_demand: Flow,
+}
+
 /// For writing extra debug information about the model
 struct DebugDataWriter {
     activity_writer: csv::Writer<File>,
@@ -198,6 +211,7 @@ struct DebugDataWriter {
     solver_values_writer: csv::Writer<File>,
     appraisal_results_writer: csv::Writer<File>,
     reduced_costs_writer: csv::Writer<File>,
+    unmet_demand_writer: csv::Writer<File>,
 }
 
 impl DebugDataWriter {
@@ -219,6 +233,7 @@ impl DebugDataWriter {
             solver_values_writer: new_writer(SOLVER_VALUES_FILE_NAME)?,
             appraisal_results_writer: new_writer(APPRAISAL_RESULTS_FILE_NAME)?,
             reduced_costs_writer: new_writer(REDUCED_COSTS_FILE_NAME)?,
+            unmet_demand_writer: new_writer(UNMET_DEMAND_FILE_NAME)?,
         })
     }
 
@@ -241,6 +256,7 @@ impl DebugDataWriter {
             solution.iter_commodity_balance_duals(),
         )?;
         self.write_solver_values(milestone_year, run_description, solution.objective_value)?;
+        self.write_unmet_demand(milestone_year, solution.iter_unmet_demand())?;
         Ok(())
     }
 
@@ -378,6 +394,24 @@ impl DebugDataWriter {
         Ok(())
     }
 
+    /// Write unmet demand to file
+    pub fn write_unmet_demand<'a, I>(&mut self, milestone_year: u32, iter: I) -> Result<()>
+    where
+        I: Iterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, Flow)>,
+    {
+        for (commodity_id, region_id, time_slice, flow) in iter {
+            let row = UnmetDemandRow {
+                milestone_year,
+                commodity_id: commodity_id.clone(),
+                region_id: region_id.clone(),
+                time_slice: time_slice.clone(),
+                unmet_demand: flow,
+            };
+            self.unmet_demand_writer.serialize(row)?;
+        }
+        Ok(())
+    }
+
     /// Flush the underlying streams
     fn flush(&mut self) -> Result<()> {
         self.activity_writer.flush()?;
@@ -386,6 +420,7 @@ impl DebugDataWriter {
         self.solver_values_writer.flush()?;
         self.appraisal_results_writer.flush()?;
         self.reduced_costs_writer.flush()?;
+        self.unmet_demand_writer.flush()?;
 
         Ok(())
     }
