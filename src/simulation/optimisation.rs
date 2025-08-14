@@ -189,6 +189,16 @@ impl VariableMap {
     fn asset_var_keys(&self) -> indexmap::map::Keys<'_, (AssetRef, TimeSliceID), Variable> {
         self.asset_vars.keys()
     }
+
+    /// Get the index range for all asset variables
+    fn asset_var_range(&self) -> Range<usize> {
+        assert_eq!(
+            self.existing_asset_var_idx.end,
+            self.candidate_asset_var_idx.start
+        );
+
+        self.existing_asset_var_idx.start..self.candidate_asset_var_idx.end
+    }
 }
 
 /// The solution to the dispatch optimisation problem
@@ -225,7 +235,7 @@ impl Solution<'_> {
     pub fn iter_activity(&self) -> impl Iterator<Item = (&AssetRef, &TimeSliceID, Activity)> {
         self.variables
             .asset_var_keys()
-            .zip(self.solution.columns())
+            .zip(self.solution.columns()[self.variables.asset_var_range()].iter())
             .map(|((asset, time_slice), activity)| (asset, time_slice, Activity(*activity)))
     }
 
