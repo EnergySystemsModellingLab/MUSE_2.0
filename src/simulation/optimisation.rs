@@ -47,7 +47,7 @@ pub struct VariableMap {
     existing_asset_var_idx: Range<usize>,
     candidate_asset_var_idx: Range<usize>,
     unmet_demand_vars: UnmetDemandMap,
-    _unmet_demand_var_idx: Range<usize>,
+    unmet_demand_var_idx: Range<usize>,
 }
 
 /// Add variables to the optimisation problem.
@@ -148,7 +148,7 @@ impl VariableMap {
             existing_asset_var_idx,
             candidate_asset_var_idx,
             unmet_demand_vars,
-            _unmet_demand_var_idx: unmet_demand_var_idx,
+            unmet_demand_var_idx,
         }
     }
 
@@ -247,6 +247,19 @@ impl Solution<'_> {
             &self.variables.existing_asset_var_idx,
             self.solution.columns(),
         )
+    }
+
+    /// Iterate over unmet demand
+    pub fn iter_unmet_demand(
+        &self,
+    ) -> impl Iterator<Item = (&CommodityID, &RegionID, &TimeSliceID, Flow)> {
+        self.variables
+            .unmet_demand_vars
+            .keys()
+            .zip(self.solution.columns()[self.variables.unmet_demand_var_idx.clone()].iter())
+            .map(|((commodity_id, region_id, time_slice), flow)| {
+                (commodity_id, region_id, time_slice, Flow(*flow))
+            })
     }
 
     /// Reduced costs for candidate assets
