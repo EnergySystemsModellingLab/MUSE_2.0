@@ -72,10 +72,41 @@ pub fn run(
         // year before agents have the option of decommissioning them
         assets.commission_new(year);
 
-        // Perform agent investment
-        info!("Running agent investment...");
-        perform_agent_investment(&model, year, &mut assets, &reduced_costs, &mut writer)
+        // Ironing out loop
+        let mut ironing_out_iter = 0;
+        assets = loop {
+            // Clone the assets pool so we can modify it without affecting the original
+            let mut asset_pool_for_iter = assets.clone();
+
+            // Perform agent investment
+            info!("Running agent investment...");
+            perform_agent_investment(
+                &model,
+                year,
+                &mut asset_pool_for_iter,
+                &reduced_costs,
+                &mut writer,
+            )
             .context("Agent investment failed")?;
+
+            // Run dispatch optimisation to get updated reduced costs for the next iteration
+            info!("Running dispatch optimisation...");
+            let (_flow_map, _prices, new_reduced_costs) = run_dispatch_for_year(
+                &model,
+                asset_pool_for_iter.as_slice(),
+                year,
+                Some(year),
+                &mut writer,
+            )?;
+            reduced_costs = new_reduced_costs;
+
+            // Break
+            ironing_out_iter += 1;
+            if ironing_out_iter >= 100 {
+                // Return the pool at the end of the loop, which will update the original pool
+                break asset_pool_for_iter;
+            }
+        };
 
         // Write assets
         writer.write_assets(assets.iter_all())?;
