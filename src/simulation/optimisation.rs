@@ -194,8 +194,8 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
 /// * `candidate_assets` - Candidate assets for inclusion in active pool
 /// * `commodities` - The subset of commodities to apply constraints to
 /// * `year` - Current milestone year
-/// * `run_number` - Which dispatch run for the current year this is
-/// * `data_writer` - For saving output data
+/// * `run_description` - Which dispatch run for the current year this is
+/// * `writer` - For saving output data
 ///
 /// # Returns
 ///
