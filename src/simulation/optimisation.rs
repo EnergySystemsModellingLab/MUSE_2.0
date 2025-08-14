@@ -13,6 +13,7 @@ use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
 use log::debug;
+use std::fmt::Write;
 use std::ops::Range;
 
 mod constraints;
@@ -163,7 +164,6 @@ impl VariableMap {
     }
 
     /// Get the unmet demand [`Variable`] corresponding to the given parameters.
-    #[allow(dead_code)]
     fn get_unmet_demand_var(
         &self,
         commodity_id: &CommodityID,
@@ -212,6 +212,30 @@ pub struct Solution<'a> {
 }
 
 impl Solution<'_> {
+    /// Check whether there is any demand that was not satisfied during the dispatch run
+    fn check_for_unmet_demand(&self) -> Result<()> {
+        let mut unmet_error_str = String::new();
+
+        for (commodity_id, region_id, time_slice, flow) in self.iter_unmet_demand() {
+            if flow > Flow(0.0) {
+                write!(
+                    &mut unmet_error_str,
+                    "\n- commodity '{commodity_id}', region '{region_id}', \
+                    time slice '{time_slice}', unmet demand: {flow}"
+                )
+                .unwrap();
+            }
+        }
+
+        ensure!(
+            unmet_error_str.is_empty(),
+            "Demand could not be met:{}",
+            unmet_error_str
+        );
+
+        Ok(())
+    }
+
     /// Create a map of commodity flows for each asset's coeffs at every time slice.
     ///
     /// Note that this only includes commodity flows which relate to assets, so not every commodity
@@ -373,6 +397,8 @@ pub fn perform_dispatch_optimisation<'a>(
     )?;
 
     writer.write_dispatch_debug_info(year, run_description, &solution)?;
+
+    solution.check_for_unmet_demand()?;
 
     Ok(solution)
 }
