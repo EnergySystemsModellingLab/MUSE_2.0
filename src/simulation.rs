@@ -102,7 +102,7 @@ pub fn run(
 
             // Break
             ironing_out_iter += 1;
-            if ironing_out_iter >= 100 {
+            if ironing_out_iter >= 10 {
                 // Return the pool at the end of the loop, which will update the original pool
                 break asset_pool_for_iter;
             }
