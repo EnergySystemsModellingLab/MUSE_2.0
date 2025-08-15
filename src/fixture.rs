@@ -154,6 +154,7 @@ pub fn process(
         flows: ProcessFlowsMap::new(),
         parameters: process_parameter_map,
         regions: region_ids,
+        primary_output: None,
     }
 }
 

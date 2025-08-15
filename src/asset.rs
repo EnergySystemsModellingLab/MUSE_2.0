@@ -589,6 +589,7 @@ mod tests {
             flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: IndexSet::from(["GBR".into()]),
+            primary_output: None,
         });
         let future = [2020, 2010]
             .map(|year| {
@@ -642,6 +643,7 @@ mod tests {
             flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: IndexSet::from(["GBR".into()]),
+            primary_output: None,
         }
     }
 
