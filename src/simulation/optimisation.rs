@@ -174,107 +174,124 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
     Ok(solved)
 }
 
-/// Perform the dispatch optimisation.
+/// Provides the interface for running the dispatch optimisation.
 ///
-/// If `commodities` is provided, the commodity balance constraints will only be added for these
-/// commodities, else they will be added for all commodities.
 ///
 /// For a detailed description, please see the [dispatch optimisation formulation][1].
 ///
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/model/dispatch_optimisation.html
-///
-/// # Arguments
-///
-/// * `model` - The model
-/// * `asset_pool` - The asset pool
-/// * `candidate_assets` - Candidate assets for inclusion in active pool
-/// * `commodities` - The subset of commodities to apply constraints to
-/// * `year` - Current milestone year
-/// * `run_number` - Which dispatch run for the current year this is
-/// * `data_writer` - For saving output data
-///
-/// # Returns
-///
-/// A solution containing new commodity flows for assets and prices for (some) commodities.
-pub fn perform_dispatch_optimisation<'a>(
-    model: &'a Model,
-    existing_assets: &[AssetRef],
-    candidate_assets: &[AssetRef],
-    commodities: Option<&[CommodityID]>,
+pub struct DispatchRun<'model, 'run> {
+    model: &'model Model,
+    existing_assets: &'run [AssetRef],
+    candidate_assets: &'run [AssetRef],
+    commodities: &'run [CommodityID],
     year: u32,
-    run_description: &str,
-    writer: &mut DataWriter,
-) -> Result<Solution<'a>> {
-    let solution = perform_dispatch_optimisation_no_save(
-        model,
-        existing_assets,
-        candidate_assets,
-        commodities,
-        year,
-    )?;
-
-    writer.write_dispatch_debug_info(year, run_description, &solution)?;
-
-    Ok(solution)
 }
 
-/// Perform the dispatch optimisation without saving output data
-fn perform_dispatch_optimisation_no_save<'a>(
-    model: &'a Model,
-    existing_assets: &[AssetRef],
-    candidate_assets: &[AssetRef],
-    commodities: Option<&[CommodityID]>,
-    year: u32,
-) -> Result<Solution<'a>> {
-    // Set up problem
-    let mut problem = Problem::default();
-    let mut variables = VariableMap::default();
-    let active_asset_var_idx = add_variables(
-        &mut problem,
-        &mut variables,
-        &model.time_slice_info,
-        existing_assets,
-        year,
-    );
-    let candidate_asset_var_idx = add_variables(
-        &mut problem,
-        &mut variables,
-        &model.time_slice_info,
-        candidate_assets,
-        year,
-    );
+impl<'model, 'run> DispatchRun<'model, 'run> {
+    /// Create a new [`DispatchRun`] for the specified model and assets for a given year
+    pub fn new(model: &'model Model, assets: &'run [AssetRef], year: u32) -> Self {
+        Self {
+            model,
+            existing_assets: assets,
+            candidate_assets: &[],
+            commodities: &[],
+            year,
+        }
+    }
 
-    // Add constraints
-    let all_assets = chain(existing_assets.iter(), candidate_assets.iter());
-    let mut all_commodities = Vec::new();
-    let commodities = commodities.unwrap_or_else(|| {
-        all_commodities = model.commodities.keys().cloned().collect();
-        &all_commodities
-    });
-    let constraint_keys = add_asset_constraints(
-        &mut problem,
-        &variables,
-        model,
-        all_assets,
-        commodities,
-        year,
-    );
+    /// Include the specified candidate assets in the dispatch run
+    pub fn with_candidates(self, candidate_assets: &'run [AssetRef]) -> Self {
+        Self {
+            candidate_assets,
+            ..self
+        }
+    }
 
-    // Solve model
-    let solution = solve_optimal(problem.optimise(Sense::Minimise))?;
+    /// Only apply commodity balance constraints to the specified subset of commodities
+    pub fn with_commodity_subset(self, commodities: &'run [CommodityID]) -> Self {
+        assert!(!commodities.is_empty());
 
-    let objective_value = Money(solution.objective_value());
-    debug!("Objective value: {objective_value}");
+        Self {
+            commodities,
+            ..self
+        }
+    }
 
-    Ok(Solution {
-        solution: solution.get_solution(),
-        variables,
-        active_asset_var_idx,
-        candidate_asset_var_idx,
-        time_slice_info: &model.time_slice_info,
-        constraint_keys,
-        objective_value,
-    })
+    /// Perform the dispatch optimisation.
+    ///
+    /// # Arguments
+    ///
+    /// * `run_description` - Which dispatch run for the current year this is
+    /// * `writer` - For saving output data
+    ///
+    /// # Returns
+    ///
+    /// A solution containing new commodity flows for assets and prices for (some) commodities.
+    pub fn run(self, run_description: &str, writer: &mut DataWriter) -> Result<Solution<'model>> {
+        let solution = self.run_no_save()?;
+        writer.write_dispatch_debug_info(self.year, run_description, &solution)?;
+        Ok(solution)
+    }
+
+    /// Run dispatch without saving the results.
+    ///
+    /// This is an internal function as callers always want to save results.
+    fn run_no_save(&self) -> Result<Solution<'model>> {
+        // Set up problem
+        let mut problem = Problem::default();
+        let mut variables = VariableMap::default();
+        let active_asset_var_idx = add_variables(
+            &mut problem,
+            &mut variables,
+            &self.model.time_slice_info,
+            self.existing_assets,
+            self.year,
+        );
+        let candidate_asset_var_idx = add_variables(
+            &mut problem,
+            &mut variables,
+            &self.model.time_slice_info,
+            self.candidate_assets,
+            self.year,
+        );
+
+        // If the user provided no commodities, we all use of them
+        let all_commodities: Vec<_>;
+        let commodities = if !self.commodities.is_empty() {
+            self.commodities
+        } else {
+            all_commodities = self.model.commodities.keys().cloned().collect();
+            &all_commodities
+        };
+
+        // Add constraints
+        let all_assets = chain(self.existing_assets.iter(), self.candidate_assets.iter());
+        let constraint_keys = add_asset_constraints(
+            &mut problem,
+            &variables,
+            self.model,
+            all_assets,
+            commodities,
+            self.year,
+        );
+
+        // Solve model
+        let solution = solve_optimal(problem.optimise(Sense::Minimise))?;
+
+        let objective_value = Money(solution.objective_value());
+        debug!("Objective value: {objective_value}");
+
+        Ok(Solution {
+            solution: solution.get_solution(),
+            variables,
+            active_asset_var_idx,
+            candidate_asset_var_idx,
+            time_slice_info: &self.model.time_slice_info,
+            constraint_keys,
+            objective_value,
+        })
+    }
 }
 
 /// Add variables to the optimisation problem.
