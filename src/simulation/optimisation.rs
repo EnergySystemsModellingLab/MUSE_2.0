@@ -188,15 +188,9 @@ pub struct DispatchRun<'model, 'run> {
     year: u32,
 }
 
-impl<'a, 'model> DispatchRun<'a, 'model>
-where
-    'a: 'model,
-{
+impl<'model, 'run> DispatchRun<'model, 'run> {
     /// Create a new [`DispatchRun`] for the specified model and assets for a given year
-    pub fn new(model: &'model Model, assets: &'a [AssetRef], year: u32) -> Self
-    where
-        'model: 'a,
-    {
+    pub fn new(model: &'model Model, assets: &'run [AssetRef], year: u32) -> Self {
         Self {
             model,
             existing_assets: assets,
@@ -207,7 +201,7 @@ where
     }
 
     /// Include the specified candidate assets in the dispatch run
-    pub fn with_candidates(self, candidate_assets: &'a [AssetRef]) -> Self {
+    pub fn with_candidates(self, candidate_assets: &'run [AssetRef]) -> Self {
         Self {
             candidate_assets,
             ..self
@@ -215,7 +209,7 @@ where
     }
 
     /// Only apply commodity balance constraints to the specified subset of commodities
-    pub fn with_commodity_subset(self, commodities: &'a [CommodityID]) -> Self {
+    pub fn with_commodity_subset(self, commodities: &'run [CommodityID]) -> Self {
         assert!(!commodities.is_empty());
 
         Self {
