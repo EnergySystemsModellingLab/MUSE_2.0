@@ -39,4 +39,8 @@ properties:
     default: 1e9
     notes: |
       Currently this only applies to the LCOX appraisal.
+  max_ironing_out_iterations:
+    type: number
+    description: The maximum number of times the ironing loop for agent investment will run
+    default: 100
 required: [milestone_years]
