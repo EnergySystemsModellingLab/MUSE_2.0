@@ -86,6 +86,9 @@ pub struct ModelFile {
     /// The maximum number of iterations to run the "ironing out" step of agent investment for
     #[serde(default = "default_max_ironing_out_iterations")]
     pub max_ironing_out_iterations: u32,
+    /// Whether to allow the simulation to continue to run, even if there is unmet demand
+    #[serde(default)]
+    pub allow_unmet_demand: bool,
 }
 
 /// The strategy used for calculating commodity prices

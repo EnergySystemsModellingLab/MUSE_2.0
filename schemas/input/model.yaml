@@ -43,4 +43,10 @@ properties:
     type: number
     description: The maximum number of times the ironing loop for agent investment will run
     default: 100
+  allow_unmet_demand:
+    type: boolean
+    description: Whether to continue the simulation even if there is unmet demand
+    default: false
+    notes: |
+      The simulation will be penalised with the value of lost load for every unit of unmet demand
 required: [milestone_years]
