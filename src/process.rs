@@ -53,6 +53,8 @@ pub struct Process {
     pub parameters: ProcessParameterMap,
     /// The regions in which this process can operate
     pub regions: IndexSet<RegionID>,
+    /// The primary output for this process, if any
+    pub primary_output: Option<CommodityID>,
 }
 
 impl Process {

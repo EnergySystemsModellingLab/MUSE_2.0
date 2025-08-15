@@ -246,6 +246,7 @@ mod tests {
                     flows: ProcessFlowsMap::new(),
                     parameters: ProcessParameterMap::new(),
                     regions: region_ids.clone(),
+                    primary_output: None,
                 };
                 (id, process.into())
             })
