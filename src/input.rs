@@ -4,10 +4,10 @@ use crate::graph::{create_commodities_graph_for_region_year, topo_sort_commoditi
 use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
 use crate::units::{Dimensionless, UnitType};
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
-use itertools::{iproduct, Itertools};
+use itertools::{Itertools, iproduct};
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -232,9 +232,9 @@ mod tests {
     use super::*;
     use crate::id::GenericID;
     use rstest::rstest;
-    use serde::de::value::{Error as ValueError, F64Deserializer};
-    use serde::de::IntoDeserializer;
     use serde::Deserialize;
+    use serde::de::IntoDeserializer;
+    use serde::de::value::{Error as ValueError, F64Deserializer};
     use std::fs::File;
     use std::io::Write;
     use std::path::PathBuf;
@@ -283,10 +283,12 @@ mod tests {
         // File with no data (only column headers)
         let file_path = create_csv_file(dir.path(), "id,value\n");
         assert!(read_csv::<Record>(&file_path).is_err());
-        assert!(read_csv_optional::<Record>(&file_path)
-            .unwrap()
-            .next()
-            .is_none());
+        assert!(
+            read_csv_optional::<Record>(&file_path)
+                .unwrap()
+                .next()
+                .is_none()
+        );
     }
 
     #[test]
@@ -341,19 +343,19 @@ mod tests {
         assert!(check_values_sum_to_one_approx([Dimensionless(1.0)].into_iter()).is_ok());
 
         // Multiple inputs, valid
-        assert!(check_values_sum_to_one_approx(
-            [Dimensionless(0.4), Dimensionless(0.6)].into_iter()
-        )
-        .is_ok());
+        assert!(
+            check_values_sum_to_one_approx([Dimensionless(0.4), Dimensionless(0.6)].into_iter())
+                .is_ok()
+        );
 
         // Single input, invalid
         assert!(check_values_sum_to_one_approx([Dimensionless(0.5)].into_iter()).is_err());
 
         // Multiple inputs, invalid
-        assert!(check_values_sum_to_one_approx(
-            [Dimensionless(0.4), Dimensionless(0.3)].into_iter()
-        )
-        .is_err());
+        assert!(
+            check_values_sum_to_one_approx([Dimensionless(0.4), Dimensionless(0.3)].into_iter())
+                .is_err()
+        );
 
         // Edge cases
         assert!(

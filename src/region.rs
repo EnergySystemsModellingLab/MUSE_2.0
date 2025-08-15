@@ -1,6 +1,6 @@
 //! Regions represent different geographical areas in which agents, processes, etc. are active.
-use crate::id::{define_id_getter, define_id_type, IDCollection};
-use anyhow::{ensure, Result};
+use crate::id::{IDCollection, define_id_getter, define_id_type};
+use anyhow::{Result, ensure};
 use indexmap::{IndexMap, IndexSet};
 use serde::Deserialize;
 

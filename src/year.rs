@@ -1,6 +1,6 @@
 //! Code for working with years.
 use crate::input::is_sorted_and_unique;
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use itertools::Itertools;
 
 /// Parse a single year from a string and check it is in `valid_years`

@@ -2,10 +2,10 @@
 use crate::commodity::CommodityID;
 use crate::process::{ProcessID, ProcessMap};
 use crate::region::RegionID;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
+use petgraph::Directed;
 use petgraph::algo::toposort;
 use petgraph::graph::Graph;
-use petgraph::Directed;
 use std::collections::HashMap;
 
 /// A graph of commodity flows for a given region and year

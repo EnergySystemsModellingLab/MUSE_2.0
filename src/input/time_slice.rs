@@ -3,7 +3,7 @@ use super::*;
 use crate::id::IDCollection;
 use crate::time_slice::{Season, TimeOfDay, TimeSliceID, TimeSliceInfo};
 use crate::units::Year;
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use indexmap::{IndexMap, IndexSet};
 use serde::Deserialize;
 use std::path::Path;

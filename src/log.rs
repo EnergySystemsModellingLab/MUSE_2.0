@@ -3,10 +3,10 @@
 //! This module sets up logging with various levels (error, warn, info, debug, trace) and optional
 //! colourisation based on terminal support. It also allows configuration of the log level through
 //! environment variables.
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use chrono::Local;
 use fern::colors::{Color, ColoredLevelConfig};
-use fern::{log_file, Dispatch, FormatCallback};
+use fern::{Dispatch, FormatCallback, log_file};
 use log::{LevelFilter, Record};
 use std::env;
 use std::fmt::{Arguments, Display};

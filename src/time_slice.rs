@@ -2,7 +2,7 @@
 //!
 //! Time slices provide a mechanism for users to indicate production etc. varies with the time of
 //! day and time of year.
-use crate::id::{define_id_type, IDCollection};
+use crate::id::{IDCollection, define_id_type};
 use crate::units::{Dimensionless, Year};
 use anyhow::{Context, Result};
 use indexmap::{IndexMap, IndexSet};

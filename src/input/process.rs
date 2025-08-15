@@ -4,10 +4,10 @@ use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
 use crate::process::{
     Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessID, ProcessMap, ProcessParameterMap,
 };
-use crate::region::{parse_region_str, RegionID};
+use crate::region::{RegionID, parse_region_str};
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use crate::units::Flow;
-use anyhow::{ensure, Context, Ok, Result};
+use anyhow::{Context, Ok, Result, ensure};
 use indexmap::IndexSet;
 use itertools::iproduct;
 use serde::Deserialize;
@@ -242,7 +242,8 @@ fn validate_sed_commodity(
         }
     }
 
-    ensure!(has_consumer && has_producer,
+    ensure!(
+        has_consumer && has_producer,
         "Commodity {} of 'SED' type must have both producer and consumer processes for region {} in year {}",
         commodity_id,
         region_id,
@@ -445,16 +446,18 @@ mod tests {
         )]);
 
         // Valid scenario
-        assert!(validate_svd_commodity(
-            &time_slice_info,
-            &commodity_svd,
-            &flows_svd,
-            &availabilities,
-            &"GBR".into(),
-            2010,
-            &time_slice.into()
-        )
-        .is_ok());
+        assert!(
+            validate_svd_commodity(
+                &time_slice_info,
+                &commodity_svd,
+                &flows_svd,
+                &availabilities,
+                &"GBR".into(),
+                2010,
+                &time_slice.into()
+            )
+            .is_ok()
+        );
     }
 
     #[rstest]

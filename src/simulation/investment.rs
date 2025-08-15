@@ -1,5 +1,5 @@
 //! Code for performing agent investment.
-use super::optimisation::{perform_dispatch_optimisation, FlowMap};
+use super::optimisation::{FlowMap, perform_dispatch_optimisation};
 use super::prices::ReducedCosts;
 use crate::agent::Agent;
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
@@ -9,7 +9,7 @@ use crate::output::DataWriter;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use itertools::chain;
 use log::debug;
 use std::collections::HashMap;
@@ -110,7 +110,9 @@ pub fn perform_agent_investment(
             // Perform dispatch optimisation with assets that have been selected so far
             // **TODO**: presumably we only need to do this for new_assets, as assets added in
             // previous iterations should not change
-            debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
+            debug!(
+                "Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'"
+            );
             let solution = perform_dispatch_optimisation(
                 model,
                 assets.as_slice(),

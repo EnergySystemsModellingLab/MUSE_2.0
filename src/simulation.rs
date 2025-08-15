@@ -4,7 +4,7 @@ use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
 use crate::simulation::optimisation::FlowMap;
-use crate::simulation::prices::{update_prices_and_reduced_costs, ReducedCosts};
+use crate::simulation::prices::{ReducedCosts, update_prices_and_reduced_costs};
 use crate::units::Capacity;
 use anyhow::{Context, Result};
 use log::info;

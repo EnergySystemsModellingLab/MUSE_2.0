@@ -6,7 +6,7 @@ use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::units::Dimensionless;
 use crate::year::parse_year_str;
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -233,27 +233,31 @@ mod tests {
         let mut map = AgentCommodityPortionsMap::new();
         map.insert(("commodity1".into(), 2020), Dimensionless(1.0));
         let agent_commodity_portions = HashMap::from([("agent1".into(), map)]);
-        assert!(validate_agent_commodity_portions(
-            &agent_commodity_portions,
-            &agents,
-            &commodities,
-            &region_ids,
-            &milestone_years
-        )
-        .is_ok());
+        assert!(
+            validate_agent_commodity_portions(
+                &agent_commodity_portions,
+                &agents,
+                &commodities,
+                &region_ids,
+                &milestone_years
+            )
+            .is_ok()
+        );
 
         // Invalid case: portions do not sum to 1
         let mut map_v2 = AgentCommodityPortionsMap::new();
         map_v2.insert(("commodity1".into(), 2020), Dimensionless(0.5));
         let agent_commodities_v2 = HashMap::from([("agent1".into(), map_v2)]);
-        assert!(validate_agent_commodity_portions(
-            &agent_commodities_v2,
-            &agents,
-            &commodities,
-            &region_ids,
-            &milestone_years
-        )
-        .is_err());
+        assert!(
+            validate_agent_commodity_portions(
+                &agent_commodities_v2,
+                &agents,
+                &commodities,
+                &region_ids,
+                &milestone_years
+            )
+            .is_err()
+        );
 
         // Invalid case: SED commodity without associated commodity portions
         commodities.insert(
@@ -267,13 +271,15 @@ mod tests {
                 demand: DemandMap::new(),
             }),
         );
-        assert!(validate_agent_commodity_portions(
-            &agent_commodity_portions,
-            &agents,
-            &commodities,
-            &region_ids,
-            &milestone_years
-        )
-        .is_err());
+        assert!(
+            validate_agent_commodity_portions(
+                &agent_commodity_portions,
+                &agents,
+                &commodities,
+                &region_ids,
+                &milestone_years
+            )
+            .is_err()
+        );
     }
 }

@@ -6,8 +6,8 @@ use crate::agent::{
 };
 use crate::commodity::CommodityMap;
 use crate::process::ProcessMap;
-use crate::region::{parse_region_str, RegionID};
-use anyhow::{bail, ensure, Context, Result};
+use crate::region::{RegionID, parse_region_str};
+use anyhow::{Context, Result, bail, ensure};
 use indexmap::IndexSet;
 use serde::Deserialize;
 use std::path::Path;

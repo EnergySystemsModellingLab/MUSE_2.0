@@ -1,9 +1,9 @@
 //! Optimisation problem for investment tools.
+use super::DemandMap;
 use super::coefficients::CoefficientsMap;
 use super::constraints::{
     add_activity_constraints, add_capacity_constraint, add_demand_constraints,
 };
-use super::DemandMap;
 use crate::asset::AssetRef;
 use crate::commodity::Commodity;
 use crate::simulation::optimisation::solve_optimal;

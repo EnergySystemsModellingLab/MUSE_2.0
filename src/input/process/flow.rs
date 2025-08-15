@@ -2,10 +2,10 @@
 use super::super::*;
 use crate::commodity::{CommodityID, CommodityMap};
 use crate::process::{FlowType, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap};
-use crate::region::{parse_region_str, RegionID};
+use crate::region::{RegionID, parse_region_str};
 use crate::units::{FlowPerActivity, MoneyPerFlow};
 use crate::year::parse_year_str;
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -219,11 +219,13 @@ fn try_get_primary_output(
 
     ensure!(
         output_flow.is_some(),
-        "There are one or more output flows, but is_primary_output is explicitly set to false for these");
+        "There are one or more output flows, but is_primary_output is explicitly set to false for these"
+    );
 
     ensure!(
         outputs_count == 1,
-        "There is more than one output flow, so one must be explicitly designated as the primary output");
+        "There is more than one output flow, so one must be explicitly designated as the primary output"
+    );
 
     // We can infer that the one output flow is the primary output
     Ok(output_flow)
