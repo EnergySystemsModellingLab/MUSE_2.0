@@ -1,5 +1,5 @@
 //! Code for performing agent investment.
-use super::optimisation::{perform_dispatch_optimisation, FlowMap};
+use super::optimisation::{DispatchRun, FlowMap};
 use super::prices::ReducedCosts;
 use crate::agent::Agent;
 use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
@@ -111,15 +111,13 @@ pub fn perform_agent_investment(
             // **TODO**: presumably we only need to do this for new_assets, as assets added in
             // previous iterations should not change
             debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
-            let solution = perform_dispatch_optimisation(
-                model,
-                assets.as_slice(),
-                &[],
-                Some(&seen_commodities),
-                year,
-                &format!("post {commodity_id}/{region_id} investment"),
-                writer,
-            )?;
+
+            let solution = DispatchRun::new(model, assets.as_slice(), year)
+                .with_commodity_subset(&seen_commodities)
+                .run(
+                    &format!("post {commodity_id}/{region_id} investment"),
+                    writer,
+                )?;
 
             // Update demand map with flows from newly added assets
             update_demand_map(&mut demand, &solution.create_flow_map(), &new_assets);
