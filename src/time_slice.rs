@@ -322,7 +322,7 @@ impl TimeSliceInfo {
         &'a self,
         selection: &'a TimeSliceSelection,
         level: TimeSliceLevel,
-    ) -> Option<impl Iterator<Item = (TimeSliceSelection, Dimensionless)>> {
+    ) -> Option<impl Iterator<Item = (TimeSliceSelection, Dimensionless)> + use<>> {
         // Store selections as we have to iterate twice
         let selections = selection.iter_at_level(self, level)?.collect_vec();
 
@@ -354,7 +354,7 @@ impl TimeSliceInfo {
         selection: &'a TimeSliceSelection,
         level: TimeSliceLevel,
         value: Dimensionless,
-    ) -> Option<impl Iterator<Item = (TimeSliceSelection, Dimensionless)>> {
+    ) -> Option<impl Iterator<Item = (TimeSliceSelection, Dimensionless)> + use<>> {
         let iter = self
             .iter_selection_share(selection, level)?
             .map(move |(selection, share)| (selection, value * share));

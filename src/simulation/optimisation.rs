@@ -150,7 +150,7 @@ impl Solution<'_> {
         &'a self,
         variable_idx: &Range<usize>,
         output: &'a [f64],
-    ) -> impl Iterator<Item = (&'a AssetRef, &'a TimeSliceID, T)> {
+    ) -> impl Iterator<Item = (&'a AssetRef, &'a TimeSliceID, T)> + use<'a, T> {
         let keys = self.variables.0.keys().skip(variable_idx.start);
         assert!(keys.len() >= variable_idx.len());
 

@@ -59,7 +59,7 @@ impl Agent {
         region_id: &RegionID,
         commodity_id: &'a CommodityID,
         year: u32,
-    ) -> impl Iterator<Item = &'a Rc<Process>> {
+    ) -> impl Iterator<Item = &'a Rc<Process>> + use<'a> {
         let flows_key = (region_id.clone(), year);
         self.search_space[&(commodity_id.clone(), year)]
             .iter()

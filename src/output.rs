@@ -433,7 +433,7 @@ impl DataWriter {
         run_description: &str,
         solution: &Solution,
     ) -> Result<()> {
-        if let Some(ref mut wtr) = &mut self.debug_writer {
+        if let Some(wtr) = &mut self.debug_writer {
             wtr.write_dispatch_debug_info(milestone_year, run_description, solution)?;
         }
 
@@ -447,7 +447,7 @@ impl DataWriter {
         run_description: &str,
         appraisal_results: &[AppraisalOutput],
     ) -> Result<()> {
-        if let Some(ref mut wtr) = &mut self.debug_writer {
+        if let Some(wtr) = &mut self.debug_writer {
             wtr.write_appraisal_results(milestone_year, run_description, appraisal_results)?;
         }
 
@@ -517,7 +517,7 @@ impl DataWriter {
         milestone_year: u32,
         reduced_costs: &ReducedCosts,
     ) -> Result<()> {
-        if let Some(ref mut wtr) = &mut self.debug_writer {
+        if let Some(wtr) = &mut self.debug_writer {
             wtr.write_reduced_costs(milestone_year, reduced_costs)?;
         }
         Ok(())
@@ -527,7 +527,7 @@ impl DataWriter {
     pub fn flush(&mut self) -> Result<()> {
         self.flows_writer.flush()?;
         self.prices_writer.flush()?;
-        if let Some(ref mut wtr) = &mut self.debug_writer {
+        if let Some(wtr) = &mut self.debug_writer {
             wtr.flush()?;
         }
 
