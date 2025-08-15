@@ -177,11 +177,12 @@ impl Asset {
         self.get_flows_map().values()
     }
 
-    /// Get the primary output (if any) for this asset
+    /// Get the primary output flow (if any) for this asset
     pub fn primary_output(&self) -> Option<&ProcessFlow> {
-        self.get_flows_map()
-            .values()
-            .find(|flow| flow.is_primary_output)
+        self.process
+            .primary_output
+            .as_ref()
+            .map(|commodity_id| &self.get_flows_map()[commodity_id])
     }
 }
 
