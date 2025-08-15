@@ -47,7 +47,14 @@ pub struct VariableMap {
     existing_asset_var_idx: Range<usize>,
     candidate_asset_var_idx: Range<usize>,
     unmet_demand_vars: UnmetDemandMap,
-    _unmet_demand_var_idx: Range<usize>,
+    unmet_demand_var_idx: Range<usize>,
+}
+
+/// Additional options for the dispatch optimisation
+#[derive(Copy, Clone, PartialEq)]
+pub enum DispatchOptions {
+    AllowUnmetDemand,
+    DisallowUnmetDemand,
 }
 
 /// Add variables to the optimisation problem.
@@ -80,76 +87,81 @@ fn add_asset_variables(
     start..problem.num_cols()
 }
 
-fn new_unmet_demand_variables_map(
-    problem: &mut Problem,
-    model: &Model,
-    commodities: &[CommodityID],
-) -> (UnmetDemandMap, Range<usize>) {
-    // This line **must** come before we add more variables
-    let start = problem.num_cols();
-
-    // Add variables
-    let voll = model.parameters.value_of_lost_load;
-    let map = iproduct!(
-        commodities.iter(),
-        model.iter_regions(),
-        model.time_slice_info.iter_ids()
-    )
-    .map(|(commodity_id, region_id, time_slice)| {
-        let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
-        let var = problem.add_column(voll.value(), 0.0..);
-
-        (key, var)
-    })
-    .collect();
-
-    (map, start..problem.num_cols())
-}
-
 impl VariableMap {
     /// Create a new [`VariableMap`] and add variables to the problem
     ///
     /// # Arguments
     ///
     /// * `problem` - The optimisation problem
-    /// * `model` - The model
+    /// * `time_slice_info` - Information about time slices
     /// * `existing_assets` - The asset pool
     /// * `candidate_assets` - Candidate assets for inclusion in active pool
-    /// * `commodities` - The subset of commodities we are considering
     /// * `year` - Current milestone year
-    fn new(
+    fn new_with_asset_vars(
         problem: &mut Problem,
-        model: &Model,
+        time_slice_info: &TimeSliceInfo,
         existing_assets: &[AssetRef],
         candidate_assets: &[AssetRef],
-        commodities: &[CommodityID],
         year: u32,
     ) -> Self {
         let mut asset_vars = AssetVariableMap::new();
         let existing_asset_var_idx = add_asset_variables(
             problem,
             &mut asset_vars,
-            &model.time_slice_info,
+            time_slice_info,
             existing_assets,
             year,
         );
         let candidate_asset_var_idx = add_asset_variables(
             problem,
             &mut asset_vars,
-            &model.time_slice_info,
+            time_slice_info,
             candidate_assets,
             year,
         );
-        let (unmet_demand_vars, unmet_demand_var_idx) =
-            new_unmet_demand_variables_map(problem, model, commodities);
 
         Self {
             asset_vars,
             existing_asset_var_idx,
             candidate_asset_var_idx,
-            unmet_demand_vars,
-            _unmet_demand_var_idx: unmet_demand_var_idx,
+            unmet_demand_vars: UnmetDemandMap::new(),
+            unmet_demand_var_idx: Range::default(),
         }
+    }
+
+    /// Add unmet demand variables to the map and the problem
+    ///
+    /// # Arguments
+    ///
+    /// * `problem` - The optimisation problem
+    /// * `model` - The model
+    /// * `commodities` - The subset of commodities the problem is being run for
+    fn add_unmet_demand_variables(
+        &mut self,
+        problem: &mut Problem,
+        model: &Model,
+        commodities: &[CommodityID],
+    ) {
+        // This line **must** come before we add more variables
+        let start = problem.num_cols();
+
+        // Add variables
+        let voll = model.parameters.value_of_lost_load;
+        self.unmet_demand_vars.extend(
+            iproduct!(
+                commodities.iter(),
+                model.iter_regions(),
+                model.time_slice_info.iter_ids()
+            )
+            .map(|(commodity_id, region_id, time_slice)| {
+                let key = (commodity_id.clone(), region_id.clone(), time_slice.clone());
+                let var = problem.add_column(voll.value(), 0.0..);
+
+                (key, var)
+            }),
+        );
+
+        self.unmet_demand_var_idx = start..problem.num_cols();
     }
 
     /// Get the asset [`Variable`] corresponding to the given parameters.
@@ -315,6 +327,10 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
 /// If `commodities` is provided, the commodity balance constraints will only be added for these
 /// commodities, else they will be added for all commodities.
 ///
+/// The caller can determine whether or not unmet demand will be allowed with the `options` flag.
+/// Note that if the `allow_unmet_demand` model parameter is set to `false`, then unmet demand is
+/// disallowed unconditionally.
+///
 /// For a detailed description, please see the [dispatch optimisation formulation][1].
 ///
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/model/dispatch_optimisation.html
@@ -328,6 +344,7 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
 /// * `year` - Current milestone year
 /// * `run_description` - Which dispatch run for the current year this is
 /// * `writer` - For saving output data
+/// * `options` - Options for dispatch run
 ///
 /// # Returns
 ///
@@ -340,6 +357,7 @@ pub fn perform_dispatch_optimisation<'a>(
     year: u32,
     run_description: &str,
     writer: &mut DataWriter,
+    options: DispatchOptions,
 ) -> Result<Solution<'a>> {
     let solution = perform_dispatch_optimisation_no_save(
         model,
@@ -347,6 +365,7 @@ pub fn perform_dispatch_optimisation<'a>(
         candidate_assets,
         commodities,
         year,
+        options,
     )?;
 
     writer.write_dispatch_debug_info(year, run_description, &solution)?;
@@ -361,6 +380,7 @@ fn perform_dispatch_optimisation_no_save<'a>(
     candidate_assets: &[AssetRef],
     commodities: Option<&[CommodityID]>,
     year: u32,
+    options: DispatchOptions,
 ) -> Result<Solution<'a>> {
     // If `commodities` is None, set it to all commodities
     let mut all_commodities = Vec::new();
@@ -371,14 +391,16 @@ fn perform_dispatch_optimisation_no_save<'a>(
 
     // Set up problem
     let mut problem = Problem::default();
-    let variables = VariableMap::new(
+    let mut variables = VariableMap::new_with_asset_vars(
         &mut problem,
-        model,
+        &model.time_slice_info,
         existing_assets,
         candidate_assets,
-        commodities,
         year,
     );
+    if options == DispatchOptions::AllowUnmetDemand && model.parameters.allow_unmet_demand {
+        variables.add_unmet_demand_variables(&mut problem, model, commodities);
+    }
 
     // Add constraints
     let all_assets = chain(existing_assets.iter(), candidate_assets.iter());

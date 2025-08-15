@@ -3,7 +3,7 @@ use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
-use crate::simulation::optimisation::FlowMap;
+use crate::simulation::optimisation::{DispatchOptions, FlowMap};
 use crate::simulation::prices::{update_prices_and_reduced_costs, ReducedCosts};
 use crate::units::Capacity;
 use anyhow::{Context, Result};
@@ -117,6 +117,7 @@ fn run_dispatch_for_year(
         year,
         "final without candidates",
         writer,
+        DispatchOptions::AllowUnmetDemand,
     )?;
     let flow_map = solution_existing.create_flow_map();
 
@@ -143,6 +144,7 @@ fn run_dispatch_for_year(
             year,
             "final with candidates",
             writer,
+            DispatchOptions::DisallowUnmetDemand,
         )?
     };
 

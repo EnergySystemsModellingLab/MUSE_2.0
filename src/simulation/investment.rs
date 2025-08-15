@@ -7,6 +7,7 @@ use crate::commodity::{Commodity, CommodityID, CommodityMap};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
+use crate::simulation::optimisation::DispatchOptions;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
@@ -119,6 +120,7 @@ pub fn perform_agent_investment(
                 year,
                 &format!("post {commodity_id}/{region_id} investment"),
                 writer,
+                DispatchOptions::AllowUnmetDemand,
             )?;
 
             // Update demand map with flows from newly added assets
