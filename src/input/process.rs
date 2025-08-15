@@ -43,7 +43,7 @@ define_id_getter! {ProcessRaw, ProcessID}
 /// * `commodities` - Commodities for the model
 /// * `region_ids` - All possible region IDs
 /// * `time_slice_info` - Information about seasons and times of day
-/// * `year_range` - The possible range of milestone years
+/// * `milestone_years` - All milestone years
 ///
 /// # Returns
 ///
