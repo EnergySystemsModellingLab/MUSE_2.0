@@ -151,8 +151,11 @@ fn validate_flows_and_update_primary_output(
     flows_map: &mut HashMap<ProcessID, ProcessFlowsMap>,
     primary_outputs: &PrimaryOutputsMap,
 ) -> Result<()> {
-    for (process_id, map) in flows_map.iter_mut() {
-        let process = processes.get(process_id).unwrap();
+    for (process_id, process) in processes.iter() {
+        let Some(map) = flows_map.get_mut(process_id) else {
+            bail!("Missing flows for process {process_id}");
+        };
+
         for (&year, region_id) in iproduct!(process.years.iter(), process.regions.iter()) {
             // Check that the process has flows for this region/year
             let Some(flows) = map.get_mut(&(region_id.clone(), year)) else {

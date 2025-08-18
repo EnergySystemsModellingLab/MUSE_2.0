@@ -77,9 +77,7 @@ pub fn read_processes(
         process.activity_limits = activity_limits
             .remove(id)
             .with_context(|| format!("Missing availabilities for process {id}"))?;
-        process.flows = flows
-            .remove(id)
-            .with_context(|| format!("Missing flows for process {id}"))?;
+        process.flows = flows.remove(id).unwrap(); // already checked in flow.rs
         process.parameters = parameters
             .remove(id)
             .with_context(|| format!("Missing parameters for process {id}"))?;
