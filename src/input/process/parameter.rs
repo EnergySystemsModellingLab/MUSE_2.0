@@ -145,9 +145,21 @@ where
         }
     }
 
-    // Check parameters cover all years and regions of the process
-    for (id, parameters) in map.iter() {
-        let process = processes.get(id).unwrap();
+    check_process_parameters(processes, &map)?;
+
+    Ok(map)
+}
+
+/// Check parameters cover all years and regions of the process
+fn check_process_parameters(
+    processes: &ProcessMap,
+    map: &HashMap<ProcessID, ProcessParameterMap>,
+) -> Result<()> {
+    for (process_id, process) in processes.iter() {
+        let parameters = map
+            .get(process_id)
+            .with_context(|| format!("Missing parameters for process {process_id}"))?;
+
         let reference_years = &process.years;
         let reference_regions = &process.regions;
 
@@ -163,11 +175,12 @@ where
         ensure!(
             missing_keys.is_empty(),
             "Process {} is missing parameters for the following regions and years: {:?}",
-            id,
+            process_id,
             missing_keys
         );
     }
-    Ok(map)
+
+    Ok(())
 }
 
 #[cfg(test)]
