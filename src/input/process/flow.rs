@@ -227,3 +227,125 @@ fn check_flows_primary_output(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commodity::Commodity;
+    use crate::fixture::{assert_error, process, sed_commodity, svd_commodity};
+    use crate::process::{FlowType, Process, ProcessFlow, ProcessMap};
+    use crate::units::{FlowPerActivity, MoneyPerFlow};
+    use indexmap::IndexMap;
+    use map_macro::hash_map;
+    use rstest::rstest;
+    use std::iter;
+    use std::rc::Rc;
+
+    fn flow(commodity: Rc<Commodity>, coeff: f64) -> ProcessFlow {
+        ProcessFlow {
+            commodity,
+            coeff: FlowPerActivity(coeff),
+            kind: FlowType::Fixed,
+            cost: MoneyPerFlow(0.0),
+        }
+    }
+
+    fn build_maps<I>(
+        process: Process,
+        flows: I,
+    ) -> (ProcessMap, HashMap<ProcessID, ProcessFlowsMap>)
+    where
+        I: Clone + Iterator<Item = (CommodityID, ProcessFlow)>,
+    {
+        let map: IndexMap<CommodityID, ProcessFlow> = flows.clone().collect();
+        let flows_inner = iproduct!(&process.regions, &process.years)
+            .map(|(region_id, year)| ((region_id.clone(), *year), map.clone()))
+            .collect();
+        let flows = hash_map! {process.id.clone() => flows_inner};
+        let processes = iter::once((process.id.clone(), process.into())).collect();
+
+        (processes, flows)
+    }
+
+    #[rstest]
+    fn single_output_infer_primary(#[from(svd_commodity)] commodity: Commodity, process: Process) {
+        let commodity = Rc::new(commodity);
+        let (mut processes, flows_map) = build_maps(
+            process,
+            std::iter::once((commodity.id.clone(), flow(commodity.clone(), 1.0))),
+        );
+        assert!(validate_flows_and_update_primary_output(&mut processes, &flows_map).is_ok());
+        assert_eq!(
+            processes.values().exactly_one().unwrap().primary_output,
+            Some(commodity.id.clone())
+        );
+    }
+
+    #[rstest]
+    fn multiple_outputs_error(
+        #[from(svd_commodity)] commodity1: Commodity,
+        #[from(sed_commodity)] commodity2: Commodity,
+        process: Process,
+    ) {
+        let commodity1 = Rc::new(commodity1);
+        let commodity2 = Rc::new(commodity2);
+        let (mut processes, flows_map) = build_maps(
+            process,
+            [
+                (commodity1.id.clone(), flow(commodity1.clone(), 1.0)),
+                (commodity2.id.clone(), flow(commodity2.clone(), 2.0)),
+            ]
+            .into_iter(),
+        );
+        let res = validate_flows_and_update_primary_output(&mut processes, &flows_map);
+        assert_error!(res, "Could not infer primary_output for process process1");
+    }
+
+    #[rstest]
+    fn explicit_primary_output(
+        #[from(svd_commodity)] commodity1: Commodity,
+        #[from(sed_commodity)] commodity2: Commodity,
+        process: Process,
+    ) {
+        let commodity1 = Rc::new(commodity1);
+        let commodity2 = Rc::new(commodity2);
+        let mut process = process;
+        process.primary_output = Some(commodity2.id.clone());
+        let (mut processes, flows_map) = build_maps(
+            process,
+            [
+                (commodity1.id.clone(), flow(commodity1.clone(), 1.0)),
+                (commodity2.id.clone(), flow(commodity2.clone(), 2.0)),
+            ]
+            .into_iter(),
+        );
+        assert!(validate_flows_and_update_primary_output(&mut processes, &flows_map).is_ok());
+        assert_eq!(
+            processes.values().exactly_one().unwrap().primary_output,
+            Some(commodity2.id.clone())
+        );
+    }
+
+    #[rstest]
+    fn all_inputs_no_primary(
+        #[from(svd_commodity)] commodity1: Commodity,
+        #[from(sed_commodity)] commodity2: Commodity,
+        process: Process,
+    ) {
+        let commodity1 = Rc::new(commodity1);
+        let commodity2 = Rc::new(commodity2);
+        let (mut processes, flows_map) = build_maps(
+            process,
+            [
+                (commodity1.id.clone(), flow(commodity1.clone(), -1.0)),
+                (commodity2.id.clone(), flow(commodity2.clone(), -2.0)),
+            ]
+            .into_iter(),
+        );
+        assert!(validate_flows_and_update_primary_output(&mut processes, &flows_map).is_ok());
+        assert_eq!(
+            processes.values().exactly_one().unwrap().primary_output,
+            None
+        );
+    }
+}
