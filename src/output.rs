@@ -187,6 +187,7 @@ struct ReducedCostsRow {
     milestone_year: u32,
     asset_id: Option<AssetID>,
     process_id: ProcessID,
+    region_id: RegionID,
     time_slice: TimeSliceID,
     reduced_cost: MoneyPerActivity,
 }
@@ -371,6 +372,7 @@ impl DebugDataWriter {
                 milestone_year,
                 asset_id: asset.id(),
                 process_id: asset.process_id().clone(),
+                region_id: asset.region_id().clone(),
                 time_slice: time_slice.clone(),
                 reduced_cost: *reduced_cost,
             };
@@ -855,6 +857,7 @@ mod tests {
             milestone_year,
             asset_id: asset.id(),
             process_id: asset.process_id().clone(),
+            region_id: asset.region_id().clone(),
             time_slice,
             reduced_cost: MoneyPerActivity(0.5),
         };
