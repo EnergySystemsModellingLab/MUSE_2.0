@@ -113,6 +113,7 @@ pub fn perform_agent_investment(
             debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
 
             let solution = DispatchRun::new(model, assets.as_slice(), year)
+                .with_unmet_demand_allowed()
                 .with_commodity_subset(&seen_commodities)
                 .run(
                     &format!("post {commodity_id}/{region_id} investment"),

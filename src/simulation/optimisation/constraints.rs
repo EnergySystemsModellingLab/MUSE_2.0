@@ -153,6 +153,15 @@ where
                     continue;
                 }
 
+                // Also include unmet demand variables if required
+                if !variables.unmet_demand_var_idx.is_empty() {
+                    for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
+                        let var =
+                            variables.get_unmet_demand_var(commodity_id, region_id, time_slice);
+                        terms.push((var, 1.0));
+                    }
+                }
+
                 // Add constraint. For SED commodities, the RHS is zero and for SVD commodities it
                 // is the exogenous demand supplied by the user.
                 let rhs = if commodity.kind == CommodityType::ServiceDemand {
