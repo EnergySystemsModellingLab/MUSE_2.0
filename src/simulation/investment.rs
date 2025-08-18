@@ -306,8 +306,8 @@ fn get_candidate_assets<'a>(
                 agent.id.clone(),
                 process.clone(),
                 region_id.clone(),
-                year,
                 Capacity(0.0),
+                year,
             );
             asset.set_capacity(get_demand_limiting_capacity(
                 time_slice_info,

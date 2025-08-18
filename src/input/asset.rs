@@ -80,8 +80,8 @@ where
             agent_id.clone(),
             Rc::clone(process),
             region_id.clone(),
-            asset.commission_year,
             asset.capacity,
+            asset.commission_year,
         )
     })
     .try_collect()
@@ -114,8 +114,8 @@ mod tests {
             capacity: Capacity(1.0),
             commission_year: 2010,
         };
-        let asset_out = Asset::new(
-            Some("agent1".into()),
+        let asset_out = Asset::new_future(
+            "agent1".into(),
             Rc::clone(processes.values().next().unwrap()),
             "GBR".into(),
             Capacity(1.0),

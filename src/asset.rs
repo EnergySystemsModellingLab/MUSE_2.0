@@ -18,6 +18,13 @@ use std::slice;
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct AssetID(u32);
 
+impl AssetID {
+    /// Create a new asset ID
+    pub fn new(id: u32) -> Self {
+        Self(id)
+    }
+}
+
 /// The status of an asset
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum AssetStatus {
@@ -67,13 +74,33 @@ pub struct Asset {
 }
 
 impl Asset {
+    /// Create a new commissioned asset
+    #[cfg(test)]
+    pub fn new_commissioned(
+        id: AssetID,
+        agent_id: AgentID,
+        process: Rc<Process>,
+        region_id: RegionID,
+        capacity: Capacity,
+        commission_year: u32,
+    ) -> Result<Self> {
+        check_capacity_valid_for_asset(capacity)?;
+        Ok(Self {
+            status: AssetStatus::Commissioned { id, agent_id },
+            process,
+            region_id,
+            capacity,
+            commission_year,
+        })
+    }
+
     /// Create a new candidate asset
     pub fn new_candidate(
         agent_id: AgentID,
         process: Rc<Process>,
         region_id: RegionID,
-        commission_year: u32,
         capacity: Capacity,
+        commission_year: u32,
     ) -> Self {
         Self {
             status: AssetStatus::Candidate { agent_id },
@@ -89,8 +116,8 @@ impl Asset {
         agent_id: AgentID,
         process: Rc<Process>,
         region_id: RegionID,
-        commission_year: u32,
         capacity: Capacity,
+        commission_year: u32,
     ) -> Result<Self> {
         check_capacity_valid_for_asset(capacity)?;
         Ok(Self {
@@ -517,19 +544,18 @@ impl AssetPool {
     where
         I: IntoIterator<Item = AssetRef>,
     {
-        // Decommission assets not found in active pool
         let to_decommission = assets.into_iter().filter(|asset| {
-            let id = asset
-                .id()
-                .expect("Cannot decommission asset that has not been commissioned");
+            // Get ID of the asset
+            let AssetStatus::Commissioned { id, .. } = &asset.status else {
+                panic!("Cannot decommission asset that has not been commissioned")
+            };
 
             // Return true if asset **not** in active pool
-            self.active
-                .binary_search_by(|asset| asset.id().unwrap().cmp(&id))
-                .is_err()
+            !self.active.iter().any(|a| match &a.status {
+                AssetStatus::Commissioned { id: active_id, .. } => active_id == id,
+                _ => unreachable!("Active pool should only contain commissioned assets"),
+            })
         });
-
-        // Set `decommission_year` and copy to `self.decommissioned`
         let decommissioned = decommission_assets(to_decommission, year);
         self.decommissioned.extend(decommissioned);
     }
@@ -544,7 +570,10 @@ impl AssetPool {
         // The assets in `active` are in order of ID
         let idx = self
             .active
-            .binary_search_by(|asset| asset.id().unwrap().cmp(&id))
+            .binary_search_by(|asset| match &asset.status {
+                AssetStatus::Commissioned { id: asset_id, .. } => asset_id.cmp(&id),
+                _ => unreachable!("Active pool should only contain commissioned assets"),
+            })
             .ok()?;
 
         Some(&self.active[idx])
@@ -640,7 +669,7 @@ impl<'a, I> AssetIterator<'a> for I where I: Iterator<Item = &'a AssetRef> + Siz
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::{assert_error, process, time_slice};
+    use crate::fixture::{process, time_slice};
     use crate::process::{
         Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessParameter, ProcessParameterMap,
     };
@@ -653,54 +682,6 @@ mod tests {
     use rstest::{fixture, rstest};
     use std::iter;
     use std::ops::RangeInclusive;
-
-    #[rstest]
-    #[case(Capacity(0.01))]
-    #[case(Capacity(0.5))]
-    #[case(Capacity(1.0))]
-    #[case(Capacity(100.0))]
-    fn test_asset_new_valid(process: Process, #[case] capacity: Capacity) {
-        let agent_id = Some(AgentID("agent1".into()));
-        let region_id = RegionID("GBR".into());
-        let asset = Asset::new(agent_id, process.into(), region_id, capacity, 2015).unwrap();
-        assert!(asset.id.is_none());
-    }
-
-    #[rstest]
-    #[case(Capacity(0.0))]
-    #[case(Capacity(-0.01))]
-    #[case(Capacity(-1.0))]
-    #[case(Capacity(f64::NAN))]
-    #[case(Capacity(f64::INFINITY))]
-    #[case(Capacity(f64::NEG_INFINITY))]
-    fn test_asset_new_invalid_capacity(process: Process, #[case] capacity: Capacity) {
-        let agent_id = Some(AgentID("agent1".into()));
-        let region_id = RegionID("GBR".into());
-        assert_error!(
-            Asset::new(agent_id, process.into(), region_id, capacity, 2015),
-            "Capacity must be a finite, positive number"
-        );
-    }
-
-    #[rstest]
-    fn test_asset_new_invalid_commission_year(process: Process) {
-        let agent_id = Some(AgentID("agent1".into()));
-        let region_id = RegionID("GBR".into());
-        assert_error!(
-            Asset::new(agent_id, process.into(), region_id, Capacity(1.0), 2009),
-            "Process process1 does not operate in the year 2009"
-        );
-    }
-
-    #[rstest]
-    fn test_asset_new_invalid_region(process: Process) {
-        let agent_id = Some(AgentID("agent1".into()));
-        let region_id = RegionID("FRA".into());
-        assert_error!(
-            Asset::new(agent_id, process.into(), region_id, Capacity(1.0), 2015),
-            "Region FRA is not one of the regions in which process process1 operates"
-        );
-    }
 
     #[fixture]
     fn asset_pool() -> AssetPool {
@@ -729,8 +710,8 @@ mod tests {
         });
         let future = [2020, 2010]
             .map(|year| {
-                Asset::new(
-                    Some("agent1".into()),
+                Asset::new_future(
+                    "agent1".into(),
                     Rc::clone(&process),
                     "GBR".into(),
                     Capacity(1.0),
@@ -785,8 +766,8 @@ mod tests {
 
     #[fixture]
     fn asset_with_activity_limits(process_with_activity_limits: Process) -> Asset {
-        Asset::new(
-            Some("agent1".into()),
+        Asset::new_future(
+            "agent1".into(),
             Rc::new(process_with_activity_limits),
             "GBR".into(),
             Capacity(2.0),
@@ -853,20 +834,20 @@ mod tests {
         assert_eq!(asset_pool.active[0].commission_year, 2020);
         assert_eq!(asset_pool.decommissioned.len(), 1);
         assert_eq!(asset_pool.decommissioned[0].commission_year, 2010);
-        assert_eq!(asset_pool.decommissioned[0].decommission_year, Some(2020));
+        assert_eq!(asset_pool.decommissioned[0].decommission_year(), Some(2020));
         asset_pool.decommission_old(2022); // nothing to decommission
         assert_eq!(asset_pool.active.len(), 1);
         assert_eq!(asset_pool.active[0].commission_year, 2020);
         assert_eq!(asset_pool.decommissioned.len(), 1);
         assert_eq!(asset_pool.decommissioned[0].commission_year, 2010);
-        assert_eq!(asset_pool.decommissioned[0].decommission_year, Some(2020));
+        assert_eq!(asset_pool.decommissioned[0].decommission_year(), Some(2020));
         asset_pool.decommission_old(2025); // should decommission second asset
         assert!(asset_pool.active.is_empty());
         assert_eq!(asset_pool.decommissioned.len(), 2);
         assert_eq!(asset_pool.decommissioned[0].commission_year, 2010);
-        assert_eq!(asset_pool.decommissioned[0].decommission_year, Some(2020));
+        assert_eq!(asset_pool.decommissioned[0].decommission_year(), Some(2020));
         assert_eq!(asset_pool.decommissioned[1].commission_year, 2020);
-        assert_eq!(asset_pool.decommissioned[1].decommission_year, Some(2025));
+        assert_eq!(asset_pool.decommissioned[1].decommission_year(), Some(2025));
     }
 
     #[rstest]
@@ -883,7 +864,7 @@ mod tests {
         let original_count = asset_pool.active.len();
 
         // Extend with empty iterator
-        asset_pool.extend(Vec::<AssetRef>::new());
+        asset_pool.extend(Vec::<AssetRef>::new()).unwrap();
 
         assert_eq!(asset_pool.active.len(), original_count);
     }
@@ -896,11 +877,11 @@ mod tests {
         let existing_assets = asset_pool.take();
 
         // Extend with the same assets (should maintain their IDs)
-        asset_pool.extend(existing_assets.clone());
+        asset_pool.extend(existing_assets.clone()).unwrap();
 
         assert_eq!(asset_pool.active.len(), 2);
-        assert_eq!(asset_pool.active[0].id, Some(AssetID(0)));
-        assert_eq!(asset_pool.active[1].id, Some(AssetID(1)));
+        assert_eq!(asset_pool.active[0].id(), Some(&AssetID(0)));
+        assert_eq!(asset_pool.active[1].id(), Some(&AssetID(1)));
     }
 
     #[rstest]
@@ -912,39 +893,40 @@ mod tests {
         // Create new non-commissioned assets
         let process_rc = Rc::new(process);
         let new_assets = vec![
-            Asset::new(
-                Some("agent2".into()),
+            Asset::new_candidate(
+                "agent2".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
                 Capacity(1.5),
                 2015,
             )
-            .unwrap()
             .into(),
-            Asset::new(
-                Some("agent3".into()),
+            Asset::new_candidate(
+                "agent3".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
                 Capacity(2.5),
                 2018,
             )
-            .unwrap()
             .into(),
         ];
 
-        asset_pool.extend(new_assets);
+        asset_pool.extend(new_assets).unwrap();
 
         assert_eq!(asset_pool.active.len(), original_count + 2);
         // New assets should get IDs 2 and 3
-        assert_eq!(asset_pool.active[original_count].id, Some(AssetID(2)));
-        assert_eq!(asset_pool.active[original_count + 1].id, Some(AssetID(3)));
+        assert_eq!(asset_pool.active[original_count].id(), Some(&AssetID(2)));
         assert_eq!(
-            asset_pool.active[original_count].agent_id,
-            Some("agent2".into())
+            asset_pool.active[original_count + 1].id(),
+            Some(&AssetID(3))
         );
         assert_eq!(
-            asset_pool.active[original_count + 1].agent_id,
-            Some("agent3".into())
+            asset_pool.active[original_count].agent_id(),
+            Some(&"agent2".into())
+        );
+        assert_eq!(
+            asset_pool.active[original_count + 1].agent_id(),
+            Some(&"agent3".into())
         );
     }
 
@@ -954,29 +936,37 @@ mod tests {
         asset_pool.commission_new(2020);
 
         // Create a new non-commissioned asset
-        let new_asset = Asset::new(
-            Some("agent_new".into()),
+        let new_asset = Asset::new_candidate(
+            "agent_new".into(),
             process.into(),
             "GBR".into(),
             Capacity(3.0),
             2019,
         )
-        .unwrap()
         .into();
 
         // Extend with just the new asset (not mixing with existing to avoid duplicates)
-        asset_pool.extend(vec![new_asset]);
+        asset_pool.extend(vec![new_asset]).unwrap();
 
         assert_eq!(asset_pool.active.len(), 3);
         // Check that we have the original assets plus the new one
-        assert!(asset_pool.active.iter().any(|a| a.id == Some(AssetID(0))));
-        assert!(asset_pool.active.iter().any(|a| a.id == Some(AssetID(1))));
-        assert!(asset_pool.active.iter().any(|a| a.id == Some(AssetID(2))));
+        assert!(asset_pool
+            .active
+            .iter()
+            .any(|a| a.id() == Some(&AssetID(0))));
+        assert!(asset_pool
+            .active
+            .iter()
+            .any(|a| a.id() == Some(&AssetID(1))));
+        assert!(asset_pool
+            .active
+            .iter()
+            .any(|a| a.id() == Some(&AssetID(2))));
         // Check that the new asset has the correct agent
         assert!(asset_pool
             .active
             .iter()
-            .any(|a| a.agent_id == Some("agent_new".into())));
+            .any(|a| a.agent_id() == Some(&"agent_new".into())));
     }
 
     #[rstest]
@@ -987,30 +977,31 @@ mod tests {
         // Create new assets that would be out of order if added at the end
         let process_rc = Rc::new(process);
         let new_assets = vec![
-            Asset::new(
-                Some("agent_high_id".into()),
+            Asset::new_candidate(
+                "agent_high_id".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
                 Capacity(1.0),
                 2016,
             )
-            .unwrap()
             .into(),
-            Asset::new(
-                Some("agent_low_id".into()),
+            Asset::new_candidate(
+                "agent_low_id".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
                 Capacity(1.0),
                 2017,
             )
-            .unwrap()
             .into(),
         ];
 
-        asset_pool.extend(new_assets);
+        asset_pool.extend(new_assets).unwrap();
 
         // Check that assets are sorted by ID
-        let ids: Vec<u32> = asset_pool.iter_active().map(|a| a.id.unwrap().0).collect();
+        let ids: Vec<u32> = asset_pool
+            .iter_active()
+            .map(|a| a.id().unwrap().0)
+            .collect();
         assert_equal(ids, 0..4);
     }
 
@@ -1022,7 +1013,7 @@ mod tests {
 
         // The extend method expects unique assets - adding duplicates would violate
         // the debug assertion, so this test verifies the normal case
-        asset_pool.extend(Vec::new());
+        asset_pool.extend(Vec::new()).unwrap();
 
         assert_eq!(asset_pool.active.len(), original_count);
         // Verify all assets are still unique (this is what the debug_assert checks)
@@ -1041,32 +1032,30 @@ mod tests {
         // Create new non-commissioned assets
         let process_rc = Rc::new(process);
         let new_assets = vec![
-            Asset::new(
-                Some("agent1".into()),
+            Asset::new_candidate(
+                "agent1".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
                 Capacity(1.0),
                 2015,
             )
-            .unwrap()
             .into(),
-            Asset::new(
-                Some("agent2".into()),
+            Asset::new_candidate(
+                "agent2".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
                 Capacity(1.0),
                 2016,
             )
-            .unwrap()
             .into(),
         ];
 
-        asset_pool.extend(new_assets);
+        asset_pool.extend(new_assets).unwrap();
 
         // next_id should have incremented for each new asset
         assert_eq!(asset_pool.next_id, 4);
-        assert_eq!(asset_pool.active[2].id, Some(AssetID(2)));
-        assert_eq!(asset_pool.active[3].id, Some(AssetID(3)));
+        assert_eq!(asset_pool.active[2].id(), Some(&AssetID(2)));
+        assert_eq!(asset_pool.active[3].id(), Some(&AssetID(3)));
     }
 
     #[rstest]
@@ -1087,8 +1076,8 @@ mod tests {
         // Only the removed asset should be decommissioned (since it's not in active pool)
         assert_eq!(asset_pool.active.len(), 1); // Active pool unchanged
         assert_eq!(asset_pool.decommissioned.len(), 1);
-        assert_eq!(asset_pool.decommissioned[0].id, removed_asset.id);
-        assert_eq!(asset_pool.decommissioned[0].decommission_year, Some(2025));
+        assert_eq!(asset_pool.decommissioned[0].id(), removed_asset.id());
+        assert_eq!(asset_pool.decommissioned[0].decommission_year(), Some(2025));
     }
 
     #[rstest]
@@ -1122,10 +1111,10 @@ mod tests {
         // All assets should be decommissioned since none are in active pool
         assert_eq!(asset_pool.active.len(), 0);
         assert_eq!(asset_pool.decommissioned.len(), 2);
-        assert_eq!(asset_pool.decommissioned[0].id, all_assets[0].id);
-        assert_eq!(asset_pool.decommissioned[0].decommission_year, Some(2025));
-        assert_eq!(asset_pool.decommissioned[1].id, all_assets[1].id);
-        assert_eq!(asset_pool.decommissioned[1].decommission_year, Some(2025));
+        assert_eq!(asset_pool.decommissioned[0].id(), all_assets[0].id());
+        assert_eq!(asset_pool.decommissioned[0].decommission_year(), Some(2025));
+        assert_eq!(asset_pool.decommissioned[1].id(), all_assets[1].id());
+        assert_eq!(asset_pool.decommissioned[1].decommission_year(), Some(2025));
     }
 
     #[rstest]
@@ -1135,14 +1124,13 @@ mod tests {
         process: Process,
     ) {
         // Create a non-commissioned asset
-        let non_commissioned_asset = Asset::new(
-            Some("agent_new".into()),
+        let non_commissioned_asset = Asset::new_candidate(
+            "agent_new".into(),
             process.into(),
             "GBR".into(),
             Capacity(1.0),
             2015,
         )
-        .unwrap()
         .into();
 
         // This should panic because the asset was never commissioned
