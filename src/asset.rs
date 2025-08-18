@@ -5,7 +5,7 @@ use crate::process::{Process, ProcessFlow, ProcessID, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity};
-use anyhow::{ensure, Context, Result};
+use anyhow::{ensure, Result};
 use indexmap::IndexMap;
 use itertools::{chain, Itertools};
 use serde::{Deserialize, Serialize};
@@ -18,89 +18,172 @@ use std::slice;
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct AssetID(u32);
 
+/// The status of an asset
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+pub enum AssetStatus {
+    /// The asset is active and producing
+    Commissioned {
+        /// The ID of the asset
+        id: AssetID,
+        /// The ID of the agent that owns the asset
+        agent_id: AgentID,
+    },
+    /// The asset is decommissioned and no longer producing
+    Decommissioned {
+        /// The ID of the asset
+        id: AssetID,
+        /// The ID of the agent that owned the asset
+        agent_id: AgentID,
+        /// The year the asset was decommissioned
+        decommission_year: u32,
+    },
+    /// The asset is planned for commissioning in the future
+    Future {
+        /// The ID of the agent that will own the asset
+        agent_id: AgentID,
+    },
+    /// The asset is a candidate for investment but has not been selected
+    Candidate {
+        /// The ID of the agent that will own the asset
+        agent_id: AgentID,
+    },
+    /// A mock asset for dispatch optimisation
+    Mock,
+}
+
 /// An asset controlled by an agent.
 #[derive(Clone, PartialEq)]
 pub struct Asset {
-    /// A unique identifier for the asset
-    id: Option<AssetID>,
-    /// A unique identifier for the agent.
-    ///
-    /// Candidate assets may not have an agent ID.
-    agent_id: Option<AgentID>,
+    /// The status of the asset
+    status: AssetStatus,
     /// The [`Process`] that this asset corresponds to
     process: Rc<Process>,
-    /// The [`ProcessParameter`] corresponding to the asset's region and commission year
-    process_parameter: Rc<ProcessParameter>,
     /// The region in which the asset is located
     region_id: RegionID,
     /// Capacity of asset
     capacity: Capacity,
-    /// The year the asset was commissioned
+    /// The year the asset was/will be commissioned
     commission_year: u32,
-    /// The year the asset was decommissioned (if relevant)
-    decommission_year: Option<u32>,
 }
 
 impl Asset {
-    /// Create a new [`Asset`].
-    ///
-    /// The `id` field is initially set to `None`, but is changed to a unique value when the asset
-    /// is stored in an [`AssetPool`].
-    pub fn new(
-        agent_id: Option<AgentID>,
+    // /// Create a new [`Asset`].
+    // ///
+    // /// The `id` field is initially set to `None`, but is changed to a unique value when the asset
+    // /// is stored in an [`AssetPool`].
+    // pub fn new(
+    //     agent_id: Option<AgentID>,
+    //     process: Rc<Process>,
+    //     region_id: RegionID,
+    //     capacity: Capacity,
+    //     commission_year: u32,
+    // ) -> Result<Self> {
+    //     let asset = Self::new_without_capacity(agent_id, process, region_id, commission_year)?;
+
+    //     check_capacity_valid_for_asset(capacity)?;
+    //     Ok(Self { capacity, ..asset })
+    // }
+
+    // /// Create a new [`Asset`] without any capacity.
+    // ///
+    // /// Only candidate assets should have no capacity.
+    // pub fn new_without_capacity(
+    //     agent_id: Option<AgentID>,
+    //     process: Rc<Process>,
+    //     region_id: RegionID,
+    //     commission_year: u32,
+    // ) -> Result<Self> {
+    //     ensure!(
+    //         process.regions.contains(&region_id),
+    //         "Region {} is not one of the regions in which process {} operates",
+    //         region_id,
+    //         process.id
+    //     );
+
+    //     let process_parameter = process
+    //         .parameters
+    //         .get(&(region_id.clone(), commission_year))
+    //         .with_context(|| {
+    //             format!(
+    //                 "Process {} does not operate in the year {}",
+    //                 process.id, commission_year
+    //             )
+    //         })?
+    //         .clone();
+
+    //     Ok(Self {
+    //         id: None,
+    //         agent_id,
+    //         process,
+    //         process_parameter,
+    //         region_id,
+    //         capacity: Capacity(0.0),
+    //         commission_year,
+    //         decommission_year: None,
+    //     })
+    // }
+
+    /// Create a new candidate asset
+    pub fn new_candidate(
+        agent_id: AgentID,
         process: Rc<Process>,
         region_id: RegionID,
-        capacity: Capacity,
         commission_year: u32,
-    ) -> Result<Self> {
-        let asset = Self::new_without_capacity(agent_id, process, region_id, commission_year)?;
-
-        check_capacity_valid_for_asset(capacity)?;
-        Ok(Self { capacity, ..asset })
+        capacity: Capacity,
+    ) -> Self {
+        Self {
+            status: AssetStatus::Candidate { agent_id },
+            process,
+            region_id,
+            capacity,
+            commission_year,
+        }
     }
 
-    /// Create a new [`Asset`] without any capacity.
-    ///
-    /// Only candidate assets should have no capacity.
-    pub fn new_without_capacity(
-        agent_id: Option<AgentID>,
+    /// Create a new future asset
+    pub fn new_future(
+        agent_id: AgentID,
         process: Rc<Process>,
         region_id: RegionID,
         commission_year: u32,
+        capacity: Capacity,
     ) -> Result<Self> {
-        ensure!(
-            process.regions.contains(&region_id),
-            "Region {} is not one of the regions in which process {} operates",
-            region_id,
-            process.id
-        );
-
-        let process_parameter = process
-            .parameters
-            .get(&(region_id.clone(), commission_year))
-            .with_context(|| {
-                format!(
-                    "Process {} does not operate in the year {}",
-                    process.id, commission_year
-                )
-            })?
-            .clone();
-
         Ok(Self {
-            id: None,
-            agent_id,
+            status: AssetStatus::Future { agent_id },
             process,
-            process_parameter,
             region_id,
-            capacity: Capacity(0.0),
+            capacity,
             commission_year,
-            decommission_year: None,
         })
+    }
+
+    /// Create a new mock asset
+    pub fn new_mock(
+        process: Rc<Process>,
+        region_id: RegionID,
+        commission_year: u32,
+        capacity: Capacity,
+    ) -> Self {
+        Self {
+            status: AssetStatus::Mock,
+            process,
+            region_id,
+            capacity,
+            commission_year,
+        }
+    }
+
+    /// The process parameter for this asset
+    pub fn process_parameter(&self) -> &ProcessParameter {
+        self.process
+            .parameters
+            .get(&(self.region_id.clone(), self.commission_year))
+            .unwrap()
     }
 
     /// The last year in which this asset should be decommissioned
     pub fn max_decommission_year(&self) -> u32 {
-        self.commission_year + self.process_parameter.lifetime
+        self.commission_year + self.process_parameter().lifetime
     }
 
     /// Get the activity limits for this asset in a particular time slice
@@ -134,7 +217,7 @@ impl Asset {
                 time_slice.clone(),
             ))
             .unwrap();
-        let cap2act = self.process_parameter.capacity_to_activity;
+        let cap2act = self.process_parameter().capacity_to_activity;
         (cap2act * *limits.start())..=(cap2act * *limits.end())
     }
 
@@ -146,12 +229,12 @@ impl Asset {
             .map(|flow| flow.get_total_cost(&self.region_id, year, time_slice))
             .sum();
 
-        self.process_parameter.variable_operating_cost + flows_cost
+        self.process_parameter().variable_operating_cost + flows_cost
     }
 
     /// Maximum activity for this asset
     pub fn max_activity(&self) -> Activity {
-        self.capacity * self.process_parameter.capacity_to_activity
+        self.capacity * self.process_parameter().capacity_to_activity
     }
 
     /// Get a specific process flow
@@ -169,7 +252,7 @@ impl Asset {
 
     /// Whether this asset has been commissioned
     pub fn is_commissioned(&self) -> bool {
-        self.id.is_some()
+        matches!(&self.status, AssetStatus::Commissioned { .. })
     }
 
     /// Iterate over the asset's flows
@@ -187,7 +270,12 @@ impl Asset {
 
     /// Get the decommission year for this asset
     pub fn decommission_year(&self) -> Option<u32> {
-        self.decommission_year
+        match &self.status {
+            AssetStatus::Decommissioned {
+                decommission_year, ..
+            } => Some(*decommission_year),
+            _ => None,
+        }
     }
 
     /// Get the commission year for this asset
@@ -205,11 +293,6 @@ impl Asset {
         &self.process
     }
 
-    /// Get the process parameter for this asset
-    pub fn process_parameter(&self) -> &ProcessParameter {
-        &self.process_parameter
-    }
-
     /// Get the process ID for this asset
     pub fn process_id(&self) -> &ProcessID {
         &self.process.id
@@ -217,12 +300,24 @@ impl Asset {
 
     /// Get the agent ID for this asset
     pub fn agent_id(&self) -> Option<&AgentID> {
-        self.agent_id.as_ref()
+        match &self.status {
+            AssetStatus::Commissioned { agent_id, .. } => Some(agent_id),
+            AssetStatus::Decommissioned { agent_id, .. } => Some(agent_id),
+            AssetStatus::Future { agent_id } => Some(agent_id),
+            AssetStatus::Candidate { agent_id } => Some(agent_id),
+            AssetStatus::Mock => None,
+        }
     }
 
     /// Get the ID for this asset
     pub fn id(&self) -> Option<AssetID> {
-        self.id
+        match &self.status {
+            AssetStatus::Commissioned { id, .. } => Some(*id),
+            AssetStatus::Decommissioned { id, .. } => Some(*id),
+            AssetStatus::Future { .. } => None,
+            AssetStatus::Candidate { .. } => None,
+            AssetStatus::Mock => None,
+        }
     }
 
     /// Get the capacity for this asset
@@ -241,13 +336,44 @@ impl Asset {
         assert!(capacity >= Capacity(0.0), "Added capacity must be >= 0");
         self.capacity += capacity;
     }
+
+    /// Decommission this asset
+    pub fn decommission(&mut self, decommission_year: u32) {
+        let (id, agent_id) = match &self.status {
+            AssetStatus::Commissioned { id, agent_id } => (*id, agent_id.clone()),
+            _ => panic!("Cannot decommission an asset that hasn't been commissioned"),
+        };
+        self.status = AssetStatus::Decommissioned {
+            id,
+            agent_id,
+            decommission_year,
+        };
+    }
+
+    /// Commission a planned future asset
+    pub fn commission_future(&mut self, id: AssetID) {
+        let agent_id = match &self.status {
+            AssetStatus::Future { agent_id } => agent_id.clone(),
+            _ => panic!("commission_future can only be called on Future assets"),
+        };
+        self.status = AssetStatus::Commissioned { id, agent_id };
+    }
+
+    /// Commission a candidate asset
+    pub fn commission_candidate(&mut self, id: AssetID) {
+        let agent_id = match &self.status {
+            AssetStatus::Candidate { agent_id } => agent_id.clone(),
+            _ => panic!("commission_candidate can only be called on Candidate assets"),
+        };
+        self.status = AssetStatus::Commissioned { id, agent_id };
+    }
 }
 
 impl std::fmt::Debug for Asset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Asset")
-            .field("id", &self.id)
-            .field("agent_id", &self.agent_id)
+            .field("id", &self.id())
+            .field("agent_id", &self.agent_id())
             .field("process_id", &self.process_id())
             .field("region_id", &self.region_id)
             .field("capacity", &self.capacity)
@@ -310,10 +436,10 @@ impl Deref for AssetRef {
 
 impl PartialEq for AssetRef {
     fn eq(&self, other: &Self) -> bool {
-        if self.0.id.is_some() {
-            self.0.id == other.0.id
+        if self.0.id().is_some() {
+            self.0.id() == other.0.id()
         } else {
-            other.0.id.is_none()
+            other.0.id().is_none()
                 && Rc::ptr_eq(&self.0.process, &other.0.process)
                 && self.0.region_id == other.0.region_id
                 && self.0.commission_year == other.0.commission_year
@@ -326,7 +452,7 @@ impl Eq for AssetRef {}
 impl Hash for AssetRef {
     /// Hash asset based purely on its ID
     fn hash<H: Hasher>(&self, state: &mut H) {
-        if let Some(id) = self.0.id {
+        if let Some(id) = self.0.id() {
             id.hash(state);
         } else {
             self.0.process.id.hash(state);
@@ -344,7 +470,7 @@ impl PartialOrd for AssetRef {
 
 impl Ord for AssetRef {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.id.unwrap().cmp(&other.id.unwrap())
+        self.id().unwrap().cmp(&other.id().unwrap())
     }
 }
 
@@ -354,16 +480,7 @@ where
     I: IntoIterator<Item = AssetRef> + 'a,
 {
     assets.into_iter().map(move |mut asset| {
-        assert!(
-            asset.is_commissioned(),
-            "Cannot decommission an asset that hasn't been commissioned"
-        );
-        assert!(
-            asset.decommission_year.is_none(),
-            "Asset decommissioned twice"
-        );
-        asset.make_mut().decommission_year = Some(year);
-
+        asset.make_mut().decommission(year);
         asset
     })
 }
@@ -410,7 +527,7 @@ impl AssetPool {
 
         // Move assets from future to active
         for mut asset in self.future.drain(0..count) {
-            asset.id = Some(AssetID(self.next_id));
+            asset.commission_future(AssetID(self.next_id));
             self.next_id += 1;
             self.active.push(asset.into());
         }
@@ -446,12 +563,12 @@ impl AssetPool {
         // Decommission assets not found in active pool
         let to_decommission = assets.into_iter().filter(|asset| {
             let id = asset
-                .id
+                .id()
                 .expect("Cannot decommission asset that has not been commissioned");
 
             // Return true if asset **not** in active pool
             self.active
-                .binary_search_by(|asset| asset.id.unwrap().cmp(&id))
+                .binary_search_by(|asset| asset.id().unwrap().cmp(&id))
                 .is_err()
         });
 
@@ -470,7 +587,7 @@ impl AssetPool {
         // The assets in `active` are in order of ID
         let idx = self
             .active
-            .binary_search_by(|asset| asset.id.unwrap().cmp(&id))
+            .binary_search_by(|asset| asset.id().unwrap().cmp(&id))
             .ok()?;
 
         Some(&self.active[idx])
@@ -503,11 +620,13 @@ impl AssetPool {
     /// Returns the same assets after ID assignment.
     pub fn extend(&mut self, mut assets: Vec<AssetRef>) -> Vec<AssetRef> {
         for asset in assets.iter_mut() {
-            if !asset.is_commissioned() {
-                // Asset is newly created from process so we need to assign an ID
-                let asset_mut = asset.make_mut();
-                asset_mut.id = Some(AssetID(self.next_id));
-                self.next_id += 1;
+            match &asset.status {
+                AssetStatus::Commissioned { .. } => {}
+                AssetStatus::Candidate { .. } => {
+                    asset.make_mut().commission_candidate(AssetID(self.next_id));
+                    self.next_id += 1;
+                }
+                _ => {}
             }
         }
 
@@ -528,7 +647,7 @@ where
 {
     /// Filter assets by the agent that owns them
     fn filter_agent(self, agent_id: &'a AgentID) -> impl Iterator<Item = &'a AssetRef> + 'a {
-        self.filter(move |asset| asset.agent_id.as_ref() == Some(agent_id))
+        self.filter(move |asset| asset.agent_id() == Some(agent_id))
     }
 
     /// Iterate over assets that have the given commodity as a primary output

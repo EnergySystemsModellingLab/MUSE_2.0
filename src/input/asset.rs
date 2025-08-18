@@ -76,12 +76,12 @@ where
             .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
         let region_id = region_ids.get_id(&asset.region_id)?;
 
-        Asset::new(
-            Some(agent_id.clone()),
+        Asset::new_future(
+            agent_id.clone(),
             Rc::clone(process),
             region_id.clone(),
-            asset.capacity,
             asset.commission_year,
+            asset.capacity,
         )
     })
     .try_collect()

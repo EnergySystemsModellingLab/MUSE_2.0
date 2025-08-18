@@ -302,13 +302,13 @@ fn get_candidate_assets<'a>(
     agent
         .iter_possible_producers_of(region_id, &commodity.id, year)
         .map(move |process| {
-            let mut asset = Asset::new_without_capacity(
-                Some(agent.id.clone()),
+            let mut asset = Asset::new_candidate(
+                agent.id.clone(),
                 process.clone(),
                 region_id.clone(),
                 year,
-            )
-            .unwrap();
+                Capacity(0.0),
+            );
             asset.set_capacity(get_demand_limiting_capacity(
                 time_slice_info,
                 &asset,
