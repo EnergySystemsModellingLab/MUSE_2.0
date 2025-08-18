@@ -147,6 +147,8 @@ struct ActivityDualsRow {
     milestone_year: u32,
     run_description: String,
     asset_id: Option<AssetID>,
+    process_id: ProcessID,
+    region_id: RegionID,
     time_slice: TimeSliceID,
     value: MoneyPerActivity,
 }
@@ -289,6 +291,8 @@ impl DebugDataWriter {
                 milestone_year,
                 run_description: run_description.to_string(),
                 asset_id: asset.id(),
+                process_id: asset.process_id().clone(),
+                region_id: asset.region_id().clone(),
                 time_slice: time_slice.clone(),
                 value,
             };
@@ -716,6 +720,8 @@ mod tests {
             milestone_year,
             run_description,
             asset_id: asset.id(),
+            process_id: asset.process_id().clone(),
+            region_id: asset.region_id().clone(),
             time_slice,
             value,
         };
