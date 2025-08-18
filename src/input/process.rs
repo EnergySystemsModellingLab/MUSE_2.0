@@ -74,10 +74,8 @@ pub fn read_processes(
     for (id, process) in processes.iter_mut() {
         // This will always succeed as we know there will only be one reference to the process here
         let process = Rc::get_mut(process).unwrap();
-        process.activity_limits = activity_limits
-            .remove(id)
-            .with_context(|| format!("Missing availabilities for process {id}"))?;
-        process.flows = flows.remove(id).unwrap(); // already checked in flow.rs
+        process.activity_limits = activity_limits.remove(id).unwrap(); // already checked
+        process.flows = flows.remove(id).unwrap(); // already checked
         process.parameters = parameters
             .remove(id)
             .with_context(|| format!("Missing parameters for process {id}"))?;
