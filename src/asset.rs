@@ -67,62 +67,6 @@ pub struct Asset {
 }
 
 impl Asset {
-    // /// Create a new [`Asset`].
-    // ///
-    // /// The `id` field is initially set to `None`, but is changed to a unique value when the asset
-    // /// is stored in an [`AssetPool`].
-    // pub fn new(
-    //     agent_id: Option<AgentID>,
-    //     process: Rc<Process>,
-    //     region_id: RegionID,
-    //     capacity: Capacity,
-    //     commission_year: u32,
-    // ) -> Result<Self> {
-    //     let asset = Self::new_without_capacity(agent_id, process, region_id, commission_year)?;
-
-    //     check_capacity_valid_for_asset(capacity)?;
-    //     Ok(Self { capacity, ..asset })
-    // }
-
-    // /// Create a new [`Asset`] without any capacity.
-    // ///
-    // /// Only candidate assets should have no capacity.
-    // pub fn new_without_capacity(
-    //     agent_id: Option<AgentID>,
-    //     process: Rc<Process>,
-    //     region_id: RegionID,
-    //     commission_year: u32,
-    // ) -> Result<Self> {
-    //     ensure!(
-    //         process.regions.contains(&region_id),
-    //         "Region {} is not one of the regions in which process {} operates",
-    //         region_id,
-    //         process.id
-    //     );
-
-    //     let process_parameter = process
-    //         .parameters
-    //         .get(&(region_id.clone(), commission_year))
-    //         .with_context(|| {
-    //             format!(
-    //                 "Process {} does not operate in the year {}",
-    //                 process.id, commission_year
-    //             )
-    //         })?
-    //         .clone();
-
-    //     Ok(Self {
-    //         id: None,
-    //         agent_id,
-    //         process,
-    //         process_parameter,
-    //         region_id,
-    //         capacity: Capacity(0.0),
-    //         commission_year,
-    //         decommission_year: None,
-    //     })
-    // }
-
     /// Create a new candidate asset
     pub fn new_candidate(
         agent_id: AgentID,
@@ -148,6 +92,7 @@ impl Asset {
         commission_year: u32,
         capacity: Capacity,
     ) -> Result<Self> {
+        check_capacity_valid_for_asset(capacity)?;
         Ok(Self {
             status: AssetStatus::Future { agent_id },
             process,
@@ -250,11 +195,6 @@ impl Asset {
             .unwrap()
     }
 
-    /// Whether this asset has been commissioned
-    pub fn is_commissioned(&self) -> bool {
-        matches!(&self.status, AssetStatus::Commissioned { .. })
-    }
-
     /// Iterate over the asset's flows
     pub fn iter_flows(&self) -> impl Iterator<Item = &ProcessFlow> {
         self.get_flows_map().values()
@@ -268,6 +208,16 @@ impl Asset {
             .map(|commodity_id| &self.get_flows_map()[commodity_id])
     }
 
+    /// Whether this asset has been commissioned
+    pub fn is_commissioned(&self) -> bool {
+        matches!(&self.status, AssetStatus::Commissioned { .. })
+    }
+
+    /// Get the commission year for this asset
+    pub fn commission_year(&self) -> u32 {
+        self.commission_year
+    }
+
     /// Get the decommission year for this asset
     pub fn decommission_year(&self) -> Option<u32> {
         match &self.status {
@@ -276,11 +226,6 @@ impl Asset {
             } => Some(*decommission_year),
             _ => None,
         }
-    }
-
-    /// Get the commission year for this asset
-    pub fn commission_year(&self) -> u32 {
-        self.commission_year
     }
 
     /// Get the region ID for this asset
@@ -298,17 +243,6 @@ impl Asset {
         &self.process.id
     }
 
-    /// Get the agent ID for this asset
-    pub fn agent_id(&self) -> Option<&AgentID> {
-        match &self.status {
-            AssetStatus::Commissioned { agent_id, .. } => Some(agent_id),
-            AssetStatus::Decommissioned { agent_id, .. } => Some(agent_id),
-            AssetStatus::Future { agent_id } => Some(agent_id),
-            AssetStatus::Candidate { agent_id } => Some(agent_id),
-            AssetStatus::Mock => None,
-        }
-    }
-
     /// Get the ID for this asset
     pub fn id(&self) -> Option<AssetID> {
         match &self.status {
@@ -320,19 +254,38 @@ impl Asset {
         }
     }
 
+    /// Get the agent ID for this asset
+    pub fn agent_id(&self) -> Option<&AgentID> {
+        match &self.status {
+            AssetStatus::Commissioned { agent_id, .. } => Some(agent_id),
+            AssetStatus::Decommissioned { agent_id, .. } => Some(agent_id),
+            AssetStatus::Future { agent_id } => Some(agent_id),
+            AssetStatus::Candidate { agent_id } => Some(agent_id),
+            AssetStatus::Mock => None,
+        }
+    }
+
     /// Get the capacity for this asset
     pub fn capacity(&self) -> Capacity {
         self.capacity
     }
 
-    /// Set the capacity for this asset
+    /// Set the capacity for this asset (only for Candidate assets)
     pub fn set_capacity(&mut self, capacity: Capacity) {
+        assert!(
+            matches!(self.status, AssetStatus::Candidate { .. }),
+            "set_capacity can only be called on Candidate assets"
+        );
         assert!(capacity >= Capacity(0.0), "Capacity must be >= 0");
         self.capacity = capacity;
     }
 
-    /// Increase the capacity for this asset by the specified amount
+    /// Increase the capacity for this asset (only for Candidate assets)
     pub fn increase_capacity(&mut self, capacity: Capacity) {
+        assert!(
+            matches!(self.status, AssetStatus::Candidate { .. }),
+            "increase_capacity can only be called on Candidate assets"
+        );
         assert!(capacity >= Capacity(0.0), "Added capacity must be >= 0");
         self.capacity += capacity;
     }
@@ -350,7 +303,7 @@ impl Asset {
         };
     }
 
-    /// Commission a planned future asset
+    /// Commission a future asset
     pub fn commission_future(&mut self, id: AssetID) {
         let agent_id = match &self.status {
             AssetStatus::Future { agent_id } => agent_id.clone(),
@@ -360,12 +313,16 @@ impl Asset {
     }
 
     /// Commission a candidate asset
-    pub fn commission_candidate(&mut self, id: AssetID) {
+    ///
+    /// At this point we also check that the capacity is valid.
+    pub fn commission_candidate(&mut self, id: AssetID) -> Result<()> {
+        check_capacity_valid_for_asset(self.capacity)?;
         let agent_id = match &self.status {
             AssetStatus::Candidate { agent_id } => agent_id.clone(),
             _ => panic!("commission_candidate can only be called on Candidate assets"),
         };
         self.status = AssetStatus::Commissioned { id, agent_id };
+        Ok(())
     }
 }
 
@@ -618,12 +575,14 @@ impl AssetPool {
     /// Extend the active pool with existing or candidate assets
     ///
     /// Returns the same assets after ID assignment.
-    pub fn extend(&mut self, mut assets: Vec<AssetRef>) -> Vec<AssetRef> {
+    pub fn extend(&mut self, mut assets: Vec<AssetRef>) -> Result<Vec<AssetRef>> {
         for asset in assets.iter_mut() {
             match &asset.status {
                 AssetStatus::Commissioned { .. } => {}
                 AssetStatus::Candidate { .. } => {
-                    asset.make_mut().commission_candidate(AssetID(self.next_id));
+                    asset
+                        .make_mut()
+                        .commission_candidate(AssetID(self.next_id))?;
                     self.next_id += 1;
                 }
                 _ => {}
@@ -636,7 +595,7 @@ impl AssetPool {
 
         // Sanity check: all assets should be unique
         debug_assert_eq!(self.active.iter().unique().count(), self.active.len());
-        assets
+        Ok(assets)
     }
 }
 

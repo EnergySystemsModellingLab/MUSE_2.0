@@ -105,7 +105,7 @@ pub fn perform_agent_investment(
             }
 
             // Add assets to pool
-            new_assets = assets.extend(new_assets);
+            new_assets = assets.extend(new_assets)?;
 
             // Perform dispatch optimisation with assets that have been selected so far
             // **TODO**: presumably we only need to do this for new_assets, as assets added in
