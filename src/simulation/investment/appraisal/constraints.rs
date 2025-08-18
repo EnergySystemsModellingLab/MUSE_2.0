@@ -19,7 +19,7 @@ pub fn add_capacity_constraint(
     max_capacity: Option<Capacity>,
     capacity_var: Variable,
 ) {
-    let capacity = max_capacity.unwrap_or(asset.capacity);
+    let capacity = max_capacity.unwrap_or(asset.capacity());
     let bounds = if asset.is_commissioned() {
         capacity.value()..=capacity.value()
     } else {
