@@ -22,32 +22,32 @@ pub fn create_commodities_graph_for_region_year(
 
     let key = (region_id.clone(), year);
     for process in processes.values() {
-        if let Some(flows) = process.flows.get(&key) {
-            // Collect primary outputs and inputs for the process
-            let primary_outputs: Vec<_> = flows
-                .values()
-                .filter(|flow| flow.is_primary_output)
-                .map(|flow| flow.commodity.id.clone())
-                .collect();
-            let inputs: Vec<_> = flows
-                .values()
-                .filter(|flow| flow.is_input())
-                .map(|flow| flow.commodity.id.clone())
-                .collect();
+        let Some(primary_output) = &process.primary_output else {
+            // Process only has input flows
+            continue;
+        };
 
-            // Create edges from inputs to primary outputs
-            // We also create nodes for commodities the first time they are encountered
-            for input in inputs {
-                let source_node = *commodity_to_node_index
-                    .entry(input.clone())
-                    .or_insert_with(|| graph.add_node(input.clone()));
-                for primary_output in &primary_outputs {
-                    let target_node = *commodity_to_node_index
-                        .entry(primary_output.clone())
-                        .or_insert_with(|| graph.add_node(primary_output.clone()));
-                    graph.add_edge(source_node, target_node, process.id.clone());
-                }
-            }
+        let Some(flows) = process.flows.get(&key) else {
+            // Process doesn't operate in this region/year
+            continue;
+        };
+
+        // Get input flows for the process
+        let inputs = flows
+            .values()
+            .filter(|flow| flow.is_input())
+            .map(|flow| &flow.commodity.id);
+
+        // Create edges from inputs to primary outputs
+        // We also create nodes for commodities the first time they are encountered
+        for input in inputs {
+            let source_node = *commodity_to_node_index
+                .entry(input.clone())
+                .or_insert_with(|| graph.add_node(input.clone()));
+            let target_node = *commodity_to_node_index
+                .entry(primary_output.clone())
+                .or_insert_with(|| graph.add_node(primary_output.clone()));
+            graph.add_edge(source_node, target_node, process.id.clone());
         }
     }
 

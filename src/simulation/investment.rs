@@ -508,7 +508,6 @@ mod tests {
             coeff: FlowPerActivity(2.0), // 2 units of flow per unit of activity
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: true,
         };
 
         // Create a process with the flows and activity limits
@@ -570,7 +569,6 @@ mod tests {
             coeff: FlowPerActivity(1.0), // 1 unit of flow per unit of activity
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: true,
         };
 
         // Create a process with the flows and activity limits
