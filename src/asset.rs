@@ -18,24 +18,30 @@ use std::slice;
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct AssetID(u32);
 
-impl AssetID {
-    /// Create a new asset ID
-    pub fn new(id: u32) -> Self {
-        Self(id)
-    }
-}
-
 /// The status of an asset
+///
+/// New assets are created as either `Future` or `Candidate` assets. `Future` assets (which are
+/// specified in the input data) have a fixed capacity and capital costs already accounted for,
+/// whereas `Candidate` assets capital costs are not yet accounted for, and their capacity is
+/// determined by the investment algorithm.
+///
+/// `Future` and `Candidate` assets can be converted to `Commissioned` assets by calling
+/// `commission_future` or `commission_candidate` respectively.
+///
+/// `Commissioned` assets can be decommissioned by calling `decommission`.
+///
+/// `Mock` assets are used for dispatch optimisation to determine reduced costs for potential
+/// candidates. They cannot be commissioned directly.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum AssetStatus {
-    /// The asset is active and producing
+    /// The asset has been commissioned
     Commissioned {
         /// The ID of the asset
         id: AssetID,
         /// The ID of the agent that owns the asset
         agent_id: AgentID,
     },
-    /// The asset is decommissioned and no longer producing
+    /// The asset has been decommissioned
     Decommissioned {
         /// The ID of the asset
         id: AssetID,
@@ -49,7 +55,7 @@ pub enum AssetStatus {
         /// The ID of the agent that will own the asset
         agent_id: AgentID,
     },
-    /// The asset is a candidate for investment but has not been selected
+    /// The asset is a candidate for investment but has not yet been selected
     Candidate {
         /// The ID of the agent that will own the asset
         agent_id: AgentID,
@@ -67,33 +73,13 @@ pub struct Asset {
     process: Rc<Process>,
     /// The region in which the asset is located
     region_id: RegionID,
-    /// Capacity of asset
+    /// Capacity of asset (for candidates this is a hypothetical capacity which may be altered)
     capacity: Capacity,
     /// The year the asset was/will be commissioned
     commission_year: u32,
 }
 
 impl Asset {
-    /// Create a new commissioned asset
-    #[cfg(test)]
-    pub fn new_commissioned(
-        id: AssetID,
-        agent_id: AgentID,
-        process: Rc<Process>,
-        region_id: RegionID,
-        capacity: Capacity,
-        commission_year: u32,
-    ) -> Result<Self> {
-        check_capacity_valid_for_asset(capacity)?;
-        Ok(Self {
-            status: AssetStatus::Commissioned { id, agent_id },
-            process,
-            region_id,
-            capacity,
-            commission_year,
-        })
-    }
-
     /// Create a new candidate asset
     pub fn new_candidate(
         agent_id: AgentID,
@@ -101,14 +87,15 @@ impl Asset {
         region_id: RegionID,
         capacity: Capacity,
         commission_year: u32,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        check_region_year_valid_for_process(&process, &region_id, commission_year)?;
+        Ok(Self {
             status: AssetStatus::Candidate { agent_id },
             process,
             region_id,
             capacity,
             commission_year,
-        }
+        })
     }
 
     /// Create a new future asset
@@ -119,6 +106,7 @@ impl Asset {
         capacity: Capacity,
         commission_year: u32,
     ) -> Result<Self> {
+        check_region_year_valid_for_process(&process, &region_id, commission_year)?;
         check_capacity_valid_for_asset(capacity)?;
         Ok(Self {
             status: AssetStatus::Future { agent_id },
@@ -135,14 +123,15 @@ impl Asset {
         region_id: RegionID,
         commission_year: u32,
         capacity: Capacity,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        check_region_year_valid_for_process(&process, &region_id, commission_year)?;
+        Ok(Self {
             status: AssetStatus::Mock,
             process,
             region_id,
             capacity,
             commission_year,
-        }
+        })
     }
 
     /// The process parameter for this asset
@@ -366,13 +355,33 @@ impl std::fmt::Debug for Asset {
     }
 }
 
+/// Whether the process operates in the specified region and year
+pub fn check_region_year_valid_for_process(
+    process: &Process,
+    region_id: &RegionID,
+    year: u32,
+) -> Result<()> {
+    ensure!(
+        process.regions.contains(region_id),
+        "Region {} is not one of the regions in which process {} operates",
+        region_id,
+        process.id
+    );
+    ensure!(
+        process.years.contains(&year),
+        "Process {} does not operate in the year {}",
+        process.id,
+        year
+    );
+    Ok(())
+}
+
 /// Whether the specified value is a valid capacity for an asset
 pub fn check_capacity_valid_for_asset(capacity: Capacity) -> Result<()> {
     ensure!(
         capacity.is_finite() && capacity > Capacity(0.0),
         "Capacity must be a finite, positive number"
     );
-
     Ok(())
 }
 
@@ -669,7 +678,7 @@ impl<'a, I> AssetIterator<'a> for I where I: Iterator<Item = &'a AssetRef> + Siz
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::{process, time_slice};
+    use crate::fixture::{assert_error, process, time_slice};
     use crate::process::{
         Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessParameter, ProcessParameterMap,
     };
@@ -682,6 +691,54 @@ mod tests {
     use rstest::{fixture, rstest};
     use std::iter;
     use std::ops::RangeInclusive;
+
+    #[rstest]
+    #[case(Capacity(0.01))]
+    #[case(Capacity(0.5))]
+    #[case(Capacity(1.0))]
+    #[case(Capacity(100.0))]
+    fn test_asset_new_valid(process: Process, #[case] capacity: Capacity) {
+        let agent_id = AgentID("agent1".into());
+        let region_id = RegionID("GBR".into());
+        let asset = Asset::new_future(agent_id, process.into(), region_id, capacity, 2015).unwrap();
+        assert!(asset.id().is_none());
+    }
+
+    #[rstest]
+    #[case(Capacity(0.0))]
+    #[case(Capacity(-0.01))]
+    #[case(Capacity(-1.0))]
+    #[case(Capacity(f64::NAN))]
+    #[case(Capacity(f64::INFINITY))]
+    #[case(Capacity(f64::NEG_INFINITY))]
+    fn test_asset_new_invalid_capacity(process: Process, #[case] capacity: Capacity) {
+        let agent_id = AgentID("agent1".into());
+        let region_id = RegionID("GBR".into());
+        assert_error!(
+            Asset::new_future(agent_id, process.into(), region_id, capacity, 2015),
+            "Capacity must be a finite, positive number"
+        );
+    }
+
+    #[rstest]
+    fn test_asset_new_invalid_commission_year(process: Process) {
+        let agent_id = AgentID("agent1".into());
+        let region_id = RegionID("GBR".into());
+        assert_error!(
+            Asset::new_future(agent_id, process.into(), region_id, Capacity(1.0), 2009),
+            "Process process1 does not operate in the year 2009"
+        );
+    }
+
+    #[rstest]
+    fn test_asset_new_invalid_region(process: Process) {
+        let agent_id = AgentID("agent1".into());
+        let region_id = RegionID("FRA".into());
+        assert_error!(
+            Asset::new_future(agent_id, process.into(), region_id, Capacity(1.0), 2015),
+            "Region FRA is not one of the regions in which process process1 operates"
+        );
+    }
 
     #[fixture]
     fn asset_pool() -> AssetPool {
@@ -900,6 +957,7 @@ mod tests {
                 Capacity(1.5),
                 2015,
             )
+            .unwrap()
             .into(),
             Asset::new_candidate(
                 "agent3".into(),
@@ -908,6 +966,7 @@ mod tests {
                 Capacity(2.5),
                 2018,
             )
+            .unwrap()
             .into(),
         ];
 
@@ -943,6 +1002,7 @@ mod tests {
             Capacity(3.0),
             2019,
         )
+        .unwrap()
         .into();
 
         // Extend with just the new asset (not mixing with existing to avoid duplicates)
@@ -984,6 +1044,7 @@ mod tests {
                 Capacity(1.0),
                 2016,
             )
+            .unwrap()
             .into(),
             Asset::new_candidate(
                 "agent_low_id".into(),
@@ -992,6 +1053,7 @@ mod tests {
                 Capacity(1.0),
                 2017,
             )
+            .unwrap()
             .into(),
         ];
 
@@ -1039,6 +1101,7 @@ mod tests {
                 Capacity(1.0),
                 2015,
             )
+            .unwrap()
             .into(),
             Asset::new_candidate(
                 "agent2".into(),
@@ -1047,6 +1110,7 @@ mod tests {
                 Capacity(1.0),
                 2016,
             )
+            .unwrap()
             .into(),
         ];
 
@@ -1131,6 +1195,7 @@ mod tests {
             Capacity(1.0),
             2015,
         )
+        .unwrap()
         .into();
 
         // This should panic because the asset was never commissioned

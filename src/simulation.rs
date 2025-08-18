@@ -123,7 +123,7 @@ fn run_dispatch_for_year(
     // Get candidate assets for next year, if any
     let candidates = next_year
         .map(|next_year| {
-            candidate_assets_for_year(
+            mock_candidate_assets_for_year(
                 &model.processes,
                 next_year,
                 model.parameters.candidate_asset_capacity,
@@ -161,8 +161,8 @@ fn run_dispatch_for_year(
     Ok((flow_map, prices, reduced_costs))
 }
 
-/// Get all candidate assets for a specified year
-fn candidate_assets_for_year(
+/// Create mock assets for all potential candidates in a specified year
+fn mock_candidate_assets_for_year(
     processes: &ProcessMap,
     year: u32,
     candidate_asset_capacity: Capacity,
@@ -180,6 +180,7 @@ fn candidate_assets_for_year(
                     year,
                     candidate_asset_capacity,
                 )
+                .unwrap()
                 .into(),
             );
         }
