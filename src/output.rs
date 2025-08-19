@@ -98,7 +98,7 @@ impl AssetRow {
     /// Create a new [`AssetRow`]
     fn new(asset: &Asset) -> Self {
         Self {
-            asset_id: asset.id().copied().unwrap(),
+            asset_id: asset.id().unwrap(),
             process_id: asset.process_id().clone(),
             region_id: asset.region_id().clone(),
             agent_id: asset.agent_id().unwrap().clone(),
@@ -258,7 +258,7 @@ impl DebugDataWriter {
             let row = ActivityRow {
                 milestone_year,
                 run_description: run_description.to_string(),
-                asset_id: asset.id().copied(),
+                asset_id: asset.id(),
                 time_slice: time_slice.clone(),
                 activity,
             };
@@ -282,7 +282,7 @@ impl DebugDataWriter {
             let row = ActivityDualsRow {
                 milestone_year,
                 run_description: run_description.to_string(),
-                asset_id: asset.id().copied(),
+                asset_id: asset.id(),
                 time_slice: time_slice.clone(),
                 value,
             };
@@ -346,7 +346,7 @@ impl DebugDataWriter {
             let row = AppraisalResultsRow {
                 milestone_year,
                 run_description: run_description.to_string(),
-                asset_id: result.asset.id().copied(),
+                asset_id: result.asset.id(),
                 process_id: result.asset.process_id().clone(),
                 capacity: result.capacity,
                 unmet_demand: result.unmet_demand.values().copied().sum(),
@@ -367,7 +367,7 @@ impl DebugDataWriter {
         for ((asset, time_slice), reduced_cost) in reduced_costs {
             let row = ReducedCostsRow {
                 milestone_year,
-                asset_id: asset.id().copied(),
+                asset_id: asset.id(),
                 process_id: asset.process_id().clone(),
                 time_slice: time_slice.clone(),
                 reduced_cost: *reduced_cost,
@@ -484,7 +484,7 @@ impl DataWriter {
         for ((asset, commodity_id, time_slice), flow) in flow_map {
             let row = CommodityFlowRow {
                 milestone_year,
-                asset_id: asset.id().copied().unwrap(),
+                asset_id: asset.id().unwrap(),
                 commodity_id: commodity_id.clone(),
                 time_slice: time_slice.clone(),
                 flow: *flow,
@@ -589,7 +589,7 @@ mod tests {
         // Read back and compare
         let expected = CommodityFlowRow {
             milestone_year,
-            asset_id: asset.id().copied().unwrap(),
+            asset_id: asset.id().unwrap(),
             commodity_id,
             time_slice,
             flow: Flow(42.0),
@@ -703,7 +703,7 @@ mod tests {
         let expected = ActivityDualsRow {
             milestone_year,
             run_description,
-            asset_id: asset.id().copied(),
+            asset_id: asset.id(),
             time_slice,
             value,
         };
@@ -741,7 +741,7 @@ mod tests {
         let expected = ActivityRow {
             milestone_year,
             run_description,
-            asset_id: asset.id().copied(),
+            asset_id: asset.id(),
             time_slice,
             activity,
         };
@@ -810,7 +810,7 @@ mod tests {
         let expected = AppraisalResultsRow {
             milestone_year,
             run_description,
-            asset_id: asset.id().copied(),
+            asset_id: asset.id(),
             process_id: asset.process_id().clone(),
             capacity: Capacity(42.0),
             unmet_demand: Flow(0.0),
@@ -846,7 +846,7 @@ mod tests {
         // Read back and compare
         let expected = ReducedCostsRow {
             milestone_year,
-            asset_id: asset.id().copied(),
+            asset_id: asset.id(),
             process_id: asset.process_id().clone(),
             time_slice,
             reduced_cost: MoneyPerActivity(0.5),

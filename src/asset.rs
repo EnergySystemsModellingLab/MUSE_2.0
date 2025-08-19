@@ -200,6 +200,11 @@ impl Asset {
         &self.region_id
     }
 
+    /// Get the process for this asset
+    pub fn process(&self) -> &Process {
+        &self.process
+    }
+
     /// Get the process parameter for this asset
     pub fn process_parameter(&self) -> &ProcessParameter {
         &self.process_parameter
@@ -216,8 +221,8 @@ impl Asset {
     }
 
     /// Get the ID for this asset
-    pub fn id(&self) -> Option<&AssetID> {
-        self.id.as_ref()
+    pub fn id(&self) -> Option<AssetID> {
+        self.id
     }
 
     /// Get the capacity for this asset
@@ -227,11 +232,13 @@ impl Asset {
 
     /// Set the capacity for this asset
     pub fn set_capacity(&mut self, capacity: Capacity) {
+        assert!(capacity >= Capacity(0.0), "Capacity must be >= 0");
         self.capacity = capacity;
     }
 
     /// Increase the capacity for this asset by the specified amount
     pub fn increase_capacity(&mut self, capacity: Capacity) {
+        assert!(capacity >= Capacity(0.0), "Added capacity must be >= 0");
         self.capacity += capacity;
     }
 }
