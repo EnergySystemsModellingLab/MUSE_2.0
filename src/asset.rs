@@ -205,7 +205,7 @@ impl Asset {
         &self.process_parameter
     }
 
-    /// Get the process for this asset
+    /// Get the process ID for this asset
     pub fn process_id(&self) -> &ProcessID {
         &self.process.id
     }
@@ -230,7 +230,7 @@ impl Asset {
         self.capacity = capacity;
     }
 
-    /// Increase the capacity for this asset
+    /// Increase the capacity for this asset by the specified amount
     pub fn increase_capacity(&mut self, capacity: Capacity) {
         self.capacity += capacity;
     }
