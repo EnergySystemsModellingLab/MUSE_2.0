@@ -127,8 +127,7 @@ python docs/file_formats/generate_docs.py input
 
 ### Recreate the `command_line_help.md` file
 
-This file is created automatically. In order to update it if needed, due to changes in
-the CLI, just run:
+This file is created automatically. In order to examine the output locally, run:
 
 ```sh
 cargo run -- --markdown_help > docs/command_line_help.md
