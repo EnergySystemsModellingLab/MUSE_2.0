@@ -5,6 +5,24 @@ the code.
 
 [The API documentation is available here.](./api/muse2)
 
+## Background: The Rust programming language
+
+MUSE 2.0 is written using [Rust], which is a high-performance, compiled language. If you have used
+other compiled languages, such as C++, many of the concepts will be familiar. One feature which
+distinguishes it from other languages like C and C++, however, is that [undefined behaviour], such
+as [memory safety] bugs, are not possible, provided you keep to the [safe subset] of the language.
+This means you can have the performance benefits of using a low-level language like C, with the
+safety guarantees and much of the convenience of a higher-level language like Python.
+
+There is much high quality documentation available for learning Rust, but it is probably best to
+start with [The Rust Programming Language book], which is freely available online.
+
+[Rust]: https://www.rust-lang.org/
+[undefined behaviour]: https://en.wikipedia.org/wiki/Undefined_behavior
+[memory safety]: https://www.memorysafety.org/docs/memory-safety/
+[safe subset]: https://doc.rust-lang.org/nomicon/meet-safe-and-unsafe.html
+[The Rust Programming Language book]: https://doc.rust-lang.org/book/
+
 ## Installing developer tools
 
 To develop MUSE 2.0 locally you will need the following components:
