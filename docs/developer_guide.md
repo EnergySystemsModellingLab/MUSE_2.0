@@ -5,7 +5,32 @@ the code.
 
 [The API documentation is available here.](./api/muse2)
 
-## Installing the Rust toolchain
+## Installing developer tools
+
+To develop MUSE 2.0 locally you will need the following components:
+
+- [Git]
+- Rust development tools
+- C++ development tools (needed for bindings to the [HiGHS] solver)
+
+You can either install the necessary developer tools locally on your machine manually (a bare metal
+installation) or use the provided [development container]. Bare metal installation should generally
+be preferred if you plan on doing substantial development, as you should get better performance
+locally (and therefore shorter compile times), as well as making it easier to interact with your
+local filesystem. Development containers provide a mechanism for installing all the tools you will
+need (into a [Docker] container) and are generally used either via [Visual Studio Code] running
+locally or [GitHub Codespaces], which run on GitHub-provided virtual machines running remotely.
+
+[Git]: https://git-scm.com/
+[HiGHS]: https://highs.dev/
+[development container]: https://devcontainers.github.io/
+[Docker]: https://www.docker.com/
+[Visual Studio Code]: https://code.visualstudio.com/
+[GitHub Codespaces]: https://github.com/features/codespaces
+
+### Option 1: Bare metal installation
+
+#### Installing the Rust toolchain
 
 We recommend that developers use `rustup` to install the Rust toolchain. Follow the instructions on
 [the `rustup` website](https://rustup.rs/).
@@ -23,7 +48,7 @@ of date. You can update to the latest version with:
 rustup update stable
 ```
 
-## Installing C++ tools for HiGHS
+#### Installing C++ tools for HiGHS
 
 The [`highs-sys`] crate requires a C++ compiler and CMake to be installed on your system.
 These may be installed already, but if you encounter errors during the build process for `highs-sys`
@@ -32,6 +57,20 @@ repository][highs-sys-repo].
 
 [`highs-sys`]: https://crates.io/crates/highs-sys
 [highs-sys-repo]: https://github.com/rust-or/highs-sys#building-highs
+
+### Option 2: Developing inside a container
+
+If you wish to use the development container locally with Visual Studio Code, you should first
+install the [Dev Containers extension]. Note you will also need Docker to be installed locally. For
+more information, see [the documentation].
+
+You can use GitHub Codespaces to develop directly from your web browser. For more information,
+please see [GitHub's guide]. When you first create your Codespace, you will be asked whether you
+wish to install the recommended extensions and you should choose "yes".
+
+[Dev Containers extension]: https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers
+[the documentation]: https://code.visualstudio.com/docs/devcontainers/containers
+[GitHub's guide]: https://docs.github.com/en/codespaces/developing-in-a-codespace/developing-in-a-codespace
 
 ## Working with the project
 
