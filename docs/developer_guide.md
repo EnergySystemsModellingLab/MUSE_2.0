@@ -72,6 +72,23 @@ wish to install the recommended extensions and you should choose "yes".
 [the documentation]: https://code.visualstudio.com/docs/devcontainers/containers
 [GitHub's guide]: https://docs.github.com/en/codespaces/developing-in-a-codespace/developing-in-a-codespace
 
+## Downloading the MUSE 2.0 source code
+
+Unless you are developing in a GitHub Codespace (see above), you will need to download the MUSE 2.0
+source code to your local machine before you can develop it. Like many projects, MUSE 2.0 is stored
+in a Git repository [hosted on GitHub]. Many IDEs, such as Visual Studio Code, provide an interface
+to clone Git repositories, but you can also use the Git command-line tool ([see installation
+instructions]), like so:
+
+```sh
+git clone https://github.com/EnergySystemsModellingLab/MUSE_2.0
+```
+
+The source code will now be available in a folder named `MUSE_2.0`.
+
+[hosted on GitHub]: https://github.com/EnergySystemsModellingLab/MUSE_2.0
+[see installation instructions]: https://git-scm.com/downloads
+
 ## Working with the project
 
 To build the project, run:
