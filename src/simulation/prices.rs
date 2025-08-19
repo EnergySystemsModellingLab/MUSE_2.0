@@ -227,7 +227,7 @@ where
             highest_duals
                 .entry((
                     flow.commodity.id.clone(),
-                    asset.region_id.clone(),
+                    asset.region_id().clone(),
                     time_slice.clone(),
                 ))
                 .and_modify(|current_dual| {
@@ -254,7 +254,7 @@ fn remove_scarcity_influence_from_candidate_reduced_costs(
             .map(|flow| {
                 get_scarcity_adjustment(
                     flow,
-                    &asset.region_id,
+                    asset.region_id(),
                     time_slice,
                     adjusted_prices,
                     unadjusted_prices,
@@ -297,7 +297,7 @@ fn reduced_costs_for_existing<'a>(
             .map(|flow| {
                 flow.coeff
                     * prices
-                        .get(&flow.commodity.id, &asset.region_id, time_slice)
+                        .get(&flow.commodity.id, asset.region_id(), time_slice)
                         .unwrap()
             })
             .sum();

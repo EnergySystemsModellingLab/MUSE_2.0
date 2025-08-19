@@ -175,7 +175,7 @@ fn update_demand_map(demand: &mut AllDemandMap, flows: &FlowMap, assets: &[Asset
         if assets.contains(asset) {
             let key = (
                 commodity_id.clone(),
-                asset.region_id.clone(),
+                asset.region_id().clone(),
                 time_slice.clone(),
             );
 
@@ -309,8 +309,12 @@ fn get_candidate_assets<'a>(
                 year,
             )
             .unwrap();
-            asset.capacity =
-                get_demand_limiting_capacity(time_slice_info, &asset, commodity, demand);
+            asset.set_capacity(get_demand_limiting_capacity(
+                time_slice_info,
+                &asset,
+                commodity,
+                demand,
+            ));
 
             asset.into()
         })
@@ -334,7 +338,7 @@ fn select_best_assets(
         opt_assets
             .iter()
             .filter(|asset| !asset.is_commissioned())
-            .map(|asset| (asset.clone(), asset.capacity)),
+            .map(|asset| (asset.clone(), asset.capacity())),
     );
 
     let mut round = 0;
@@ -349,7 +353,7 @@ fn select_best_assets(
         let mut outputs_for_opts = Vec::new();
         for asset in opt_assets.iter() {
             let max_capacity = (!asset.is_commissioned()).then(|| {
-                let max_capacity = model.parameters.capacity_limit_factor * asset.capacity;
+                let max_capacity = model.parameters.capacity_limit_factor * asset.capacity();
                 let remaining_capacity = remaining_candidate_capacity[asset];
                 max_capacity.min(remaining_capacity)
             });
@@ -386,7 +390,7 @@ fn select_best_assets(
             best_output.capacity > Capacity(0.0),
             "Attempted to select asset '{}' with zero capacity.\nSee: \
             https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/716",
-            &best_output.asset.process.id
+            &best_output.asset.process_id()
         );
 
         // Log the selected asset
@@ -397,7 +401,9 @@ fn select_best_assets(
         };
         debug!(
             "Selected {} asset '{}' (capacity: {})",
-            commissioned_txt, &best_output.asset.process.id, best_output.capacity
+            commissioned_txt,
+            &best_output.asset.process_id(),
+            best_output.capacity
         );
 
         // Update the assets
@@ -447,11 +453,10 @@ fn update_assets(
 
         if let Some(existing_asset) = best_assets.iter_mut().find(|asset| **asset == best_asset) {
             // Add the additional required capacity
-            existing_asset.make_mut().capacity += capacity;
+            existing_asset.make_mut().increase_capacity(capacity);
         } else {
             // Update the capacity of the chosen asset
-            best_asset.make_mut().capacity = capacity;
-
+            best_asset.make_mut().set_capacity(capacity);
             best_assets.push(best_asset);
         };
     } else {
