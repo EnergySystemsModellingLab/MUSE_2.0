@@ -345,8 +345,7 @@ impl Asset {
 impl std::fmt::Debug for Asset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Asset")
-            .field("id", &self.id())
-            .field("agent_id", &self.agent_id())
+            .field("state", &self.state)
             .field("process_id", &self.process_id())
             .field("region_id", &self.region_id)
             .field("capacity", &self.capacity)
@@ -1200,5 +1199,82 @@ mod tests {
 
         // This should panic because the asset was never commissioned
         asset_pool.decommission_if_not_active(vec![non_commissioned_asset], 2025);
+    }
+
+    #[rstest]
+    fn test_asset_state_transitions(process: Process) {
+        // Test successful commissioning of Future asset
+        let process_rc = Rc::new(process);
+        let mut asset1 = Asset::new_future(
+            "agent1".into(),
+            Rc::clone(&process_rc),
+            "GBR".into(),
+            Capacity(1.0),
+            2020,
+        )
+        .unwrap();
+        asset1.commission_future(AssetID(1));
+        assert!(asset1.is_commissioned());
+        assert_eq!(asset1.id(), Some(&AssetID(1)));
+
+        // Test successful commissioning of Candidate asset
+        let mut asset2 = Asset::new_candidate(
+            "agent1".into(),
+            Rc::clone(&process_rc),
+            "GBR".into(),
+            Capacity(1.0),
+            2020,
+        )
+        .unwrap();
+        asset2.commission_candidate(AssetID(2)).unwrap();
+        assert!(asset2.is_commissioned());
+        assert_eq!(asset2.id(), Some(&AssetID(2)));
+
+        // Test successful decommissioning
+        asset1.decommission(2025);
+        assert!(!asset1.is_commissioned());
+        assert_eq!(asset1.decommission_year(), Some(2025));
+    }
+
+    #[rstest]
+    #[should_panic(expected = "commission_future can only be called on Future assets")]
+    fn test_commission_future_wrong_states(process: Process) {
+        let mut asset = Asset::new_candidate(
+            "agent1".into(),
+            process.into(),
+            "GBR".into(),
+            Capacity(1.0),
+            2020,
+        )
+        .unwrap();
+        asset.commission_future(AssetID(1));
+    }
+
+    #[rstest]
+    #[should_panic(expected = "commission_candidate can only be called on Candidate assets")]
+    fn test_commission_candidate_wrong_state(process: Process) {
+        let mut asset = Asset::new_future(
+            "agent1".into(),
+            process.into(),
+            "GBR".into(),
+            Capacity(1.0),
+            2020,
+        )
+        .unwrap();
+        asset.commission_candidate(AssetID(1)).unwrap();
+    }
+
+    #[rstest]
+    #[should_panic(expected = "Cannot decommission an asset that hasn't been commissioned")]
+    fn test_decommission_wrong_state(process: Process) {
+        let mut asset = Asset::new_candidate(
+            "agent1".into(),
+            process.into(),
+            "GBR".into(),
+            Capacity(1.0),
+            2020,
+        )
+        .unwrap();
+        asset.decommission(2025);
     }
 }
