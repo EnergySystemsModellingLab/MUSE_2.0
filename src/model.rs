@@ -78,9 +78,10 @@ pub struct ModelFile {
     #[serde(default = "default_capacity_limit_factor")]
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     pub capacity_limit_factor: Dimensionless,
-    /// The cost applied to unmet demand.
+    /// The (heavy) financial cost applied to unmet demand.
     ///
-    /// Currently this only applies to the LCOX appraisal.
+    /// The VoLL parameter is used both for the appraisal step and, if `allow_unmet_demand` is set,
+    /// to the main dispatch optimisation.
     #[serde(default = "default_value_of_lost_load")]
     pub value_of_lost_load: MoneyPerFlow,
     /// The maximum number of iterations to run the "ironing out" step of agent investment for

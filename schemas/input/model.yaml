@@ -38,7 +38,8 @@ properties:
     description: The cost applied to unmet demand
     default: 1e9
     notes: |
-      Currently this only applies to the LCOX appraisal.
+      The VoLL parameter is used both for the appraisal step and, if `allow_unmet_demand` is set, to
+      the main dispatch optimisation.
   max_ironing_out_iterations:
     type: number
     description: The maximum number of times the ironing loop for agent investment will run
