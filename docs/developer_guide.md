@@ -25,10 +25,13 @@ rustup update stable
 
 ## Installing C++ tools for HiGHS
 
-The `highs-sys` crate requires a C++ compiler and cmake to be installed on your system.
+The [`highs-sys`] crate requires a C++ compiler and CMake to be installed on your system.
 These may be installed already, but if you encounter errors during the build process for `highs-sys`
-(e.g. "Unable to find libclang"), you should follow the instructions [here](https://github.com/rust-or/highs-sys)
-under "Building HiGHS".
+(e.g. "Unable to find libclang"), you should follow [the instructions in the `highs-sys`
+repository][highs-sys-repo].
+
+[`highs-sys`]: https://crates.io/crates/highs-sys
+[highs-sys-repo]: https://github.com/rust-or/highs-sys#building-highs
 
 ## Working with the project
 
