@@ -936,8 +936,8 @@ mod tests {
         asset_pool.extend(existing_assets.clone()).unwrap();
 
         assert_eq!(asset_pool.active.len(), 2);
-        assert_eq!(asset_pool.active[0].id(), Some(&AssetID(0)));
-        assert_eq!(asset_pool.active[1].id(), Some(&AssetID(1)));
+        assert_eq!(asset_pool.active[0].id(), Some(AssetID(0)));
+        assert_eq!(asset_pool.active[1].id(), Some(AssetID(1)));
     }
 
     #[rstest]
@@ -973,11 +973,8 @@ mod tests {
 
         assert_eq!(asset_pool.active.len(), original_count + 2);
         // New assets should get IDs 2 and 3
-        assert_eq!(asset_pool.active[original_count].id(), Some(&AssetID(2)));
-        assert_eq!(
-            asset_pool.active[original_count + 1].id(),
-            Some(&AssetID(3))
-        );
+        assert_eq!(asset_pool.active[original_count].id(), Some(AssetID(2)));
+        assert_eq!(asset_pool.active[original_count + 1].id(), Some(AssetID(3)));
         assert_eq!(
             asset_pool.active[original_count].agent_id(),
             Some(&"agent2".into())
@@ -1009,18 +1006,9 @@ mod tests {
 
         assert_eq!(asset_pool.active.len(), 3);
         // Check that we have the original assets plus the new one
-        assert!(asset_pool
-            .active
-            .iter()
-            .any(|a| a.id() == Some(&AssetID(0))));
-        assert!(asset_pool
-            .active
-            .iter()
-            .any(|a| a.id() == Some(&AssetID(1))));
-        assert!(asset_pool
-            .active
-            .iter()
-            .any(|a| a.id() == Some(&AssetID(2))));
+        assert!(asset_pool.active.iter().any(|a| a.id() == Some(AssetID(0))));
+        assert!(asset_pool.active.iter().any(|a| a.id() == Some(AssetID(1))));
+        assert!(asset_pool.active.iter().any(|a| a.id() == Some(AssetID(2))));
         // Check that the new asset has the correct agent
         assert!(asset_pool
             .active
@@ -1117,8 +1105,8 @@ mod tests {
 
         // next_id should have incremented for each new asset
         assert_eq!(asset_pool.next_id, 4);
-        assert_eq!(asset_pool.active[2].id(), Some(&AssetID(2)));
-        assert_eq!(asset_pool.active[3].id(), Some(&AssetID(3)));
+        assert_eq!(asset_pool.active[2].id(), Some(AssetID(2)));
+        assert_eq!(asset_pool.active[3].id(), Some(AssetID(3)));
     }
 
     #[rstest]
@@ -1215,7 +1203,7 @@ mod tests {
         .unwrap();
         asset1.commission_future(AssetID(1));
         assert!(asset1.is_commissioned());
-        assert_eq!(asset1.id(), Some(&AssetID(1)));
+        assert_eq!(asset1.id(), Some(AssetID(1)));
 
         // Test successful commissioning of Candidate asset
         let mut asset2 = Asset::new_candidate(
@@ -1228,7 +1216,7 @@ mod tests {
         .unwrap();
         asset2.commission_candidate(AssetID(2)).unwrap();
         assert!(asset2.is_commissioned());
-        assert_eq!(asset2.id(), Some(&AssetID(2)));
+        assert_eq!(asset2.id(), Some(AssetID(2)));
 
         // Test successful decommissioning
         asset1.decommission(2025);
