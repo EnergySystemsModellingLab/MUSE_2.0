@@ -90,19 +90,13 @@ impl Asset {
         capacity: Capacity,
         commission_year: u32,
     ) -> Result<Self> {
-        check_region_year_valid_for_process(&process, &region_id, commission_year)?;
-        Ok(Self {
-            state: AssetState::Candidate { agent_id },
-            process: process.clone(),
-            process_parameter: process
-                .parameters
-                .get(&(region_id.clone(), commission_year))
-                .unwrap()
-                .clone(),
+        Self::new_with_state(
+            AssetState::Candidate { agent_id },
+            process,
             region_id,
             capacity,
             commission_year,
-        })
+        )
     }
 
     /// Create a new future asset
@@ -113,20 +107,14 @@ impl Asset {
         capacity: Capacity,
         commission_year: u32,
     ) -> Result<Self> {
-        check_region_year_valid_for_process(&process, &region_id, commission_year)?;
         check_capacity_valid_for_asset(capacity)?;
-        Ok(Self {
-            state: AssetState::Future { agent_id },
-            process: process.clone(),
-            process_parameter: process
-                .parameters
-                .get(&(region_id.clone(), commission_year))
-                .unwrap()
-                .clone(),
+        Self::new_with_state(
+            AssetState::Future { agent_id },
+            process,
             region_id,
             capacity,
             commission_year,
-        })
+        )
     }
 
     /// Create a new mock asset
@@ -136,15 +124,30 @@ impl Asset {
         commission_year: u32,
         capacity: Capacity,
     ) -> Result<Self> {
+        Self::new_with_state(
+            AssetState::Mock,
+            process,
+            region_id,
+            capacity,
+            commission_year,
+        )
+    }
+
+    /// Private helper to create an asset with the given state
+    fn new_with_state(
+        state: AssetState,
+        process: Rc<Process>,
+        region_id: RegionID,
+        capacity: Capacity,
+        commission_year: u32,
+    ) -> Result<Self> {
         check_region_year_valid_for_process(&process, &region_id, commission_year)?;
+        ensure!(capacity >= Capacity(0.0), "Capacity must be non-negative");
+
         Ok(Self {
-            state: AssetState::Mock,
+            state,
             process: process.clone(),
-            process_parameter: process
-                .parameters
-                .get(&(region_id.clone(), commission_year))
-                .unwrap()
-                .clone(),
+            process_parameter: process.parameters[&(region_id.clone(), commission_year)].clone(),
             region_id,
             capacity,
             commission_year,
@@ -321,7 +324,7 @@ impl Asset {
     }
 
     /// Decommission this asset
-    pub fn decommission(&mut self, decommission_year: u32) {
+    fn decommission(&mut self, decommission_year: u32) {
         let (id, agent_id) = match &self.state {
             AssetState::Commissioned { id, agent_id } => (*id, agent_id.clone()),
             _ => panic!("Cannot decommission an asset that hasn't been commissioned"),
@@ -334,7 +337,7 @@ impl Asset {
     }
 
     /// Commission a future asset
-    pub fn commission_future(&mut self, id: AssetID) {
+    fn commission_future(&mut self, id: AssetID) {
         let agent_id = match &self.state {
             AssetState::Future { agent_id } => agent_id.clone(),
             _ => panic!("commission_future can only be called on Future assets"),
@@ -344,15 +347,14 @@ impl Asset {
 
     /// Commission a candidate asset
     ///
-    /// At this point we also check that the capacity is valid.
-    pub fn commission_candidate(&mut self, id: AssetID) -> Result<()> {
-        check_capacity_valid_for_asset(self.capacity)?;
+    /// At this point we also check that the capacity is valid (panics if not).
+    fn commission_candidate(&mut self, id: AssetID) {
+        check_capacity_valid_for_asset(self.capacity).unwrap();
         let agent_id = match &self.state {
             AssetState::Candidate { agent_id } => agent_id.clone(),
             _ => panic!("commission_candidate can only be called on Candidate assets"),
         };
         self.state = AssetState::Commissioned { id, agent_id };
-        Ok(())
     }
 }
 
@@ -639,13 +641,13 @@ impl AssetPool {
             match &asset.state {
                 AssetState::Commissioned { .. } => {}
                 AssetState::Candidate { .. } => {
-                    asset
-                        .make_mut()
-                        .commission_candidate(AssetID(self.next_id))
-                        .unwrap();
+                    asset.make_mut().commission_candidate(AssetID(self.next_id));
                     self.next_id += 1;
                 }
-                _ => {}
+                _ => panic!(
+                    "Cannot extend asset pool with asset in state {:?}",
+                    asset.state
+                ),
             }
         }
 
@@ -1237,7 +1239,7 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset2.commission_candidate(AssetID(2)).unwrap();
+        asset2.commission_candidate(AssetID(2));
         assert!(asset2.is_commissioned());
         assert_eq!(asset2.id(), Some(AssetID(2)));
 
@@ -1272,7 +1274,7 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset.commission_candidate(AssetID(1)).unwrap();
+        asset.commission_candidate(AssetID(1));
     }
 
     #[rstest]
