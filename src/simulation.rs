@@ -77,6 +77,9 @@ pub fn run(
         // Ironing out loop
         let mut ironing_out_iter = 0;
         let selected_assets: Vec<AssetRef> = loop {
+            // Add context to the writer
+            writer.set_debug_context(format!("ironing out iteration {ironing_out_iter}"));
+
             // Perform agent investment
             info!("Running agent investment...");
             let selected_assets = perform_agent_investment(
@@ -93,6 +96,9 @@ pub fn run(
             let (_flow_map, _prices, new_reduced_costs) =
                 run_dispatch_for_year(&model, &selected_assets, year, Some(year), &mut writer)?;
             reduced_costs = new_reduced_costs;
+
+            // Clear context
+            writer.clear_debug_context();
 
             // Break
             ironing_out_iter += 1;

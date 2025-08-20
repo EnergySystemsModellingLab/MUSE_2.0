@@ -133,6 +133,7 @@ struct CommodityPriceRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ActivityRow {
     milestone_year: u32,
+    run_context: Option<String>,
     run_description: String,
     asset_id: Option<AssetID>,
     time_slice: TimeSliceID,
@@ -143,6 +144,7 @@ struct ActivityRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ActivityDualsRow {
     milestone_year: u32,
+    run_context: Option<String>,
     run_description: String,
     asset_id: Option<AssetID>,
     time_slice: TimeSliceID,
@@ -153,6 +155,7 @@ struct ActivityDualsRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityBalanceDualsRow {
     milestone_year: u32,
+    run_context: Option<String>,
     run_description: String,
     commodity_id: CommodityID,
     region_id: RegionID,
@@ -164,6 +167,7 @@ struct CommodityBalanceDualsRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct SolverValuesRow {
     milestone_year: u32,
+    run_context: Option<String>,
     run_description: String,
     objective_value: Money,
 }
@@ -172,6 +176,7 @@ struct SolverValuesRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct AppraisalResultsRow {
     milestone_year: u32,
+    run_context: Option<String>,
     run_description: String,
     asset_id: Option<AssetID>,
     process_id: ProcessID,
@@ -192,6 +197,7 @@ struct ReducedCostsRow {
 
 /// For writing extra debug information about the model
 struct DebugDataWriter {
+    context: Option<String>,
     activity_writer: csv::Writer<File>,
     commodity_balance_duals_writer: csv::Writer<File>,
     activity_duals_writer: csv::Writer<File>,
@@ -213,6 +219,7 @@ impl DebugDataWriter {
         };
 
         Ok(Self {
+            context: None,
             activity_writer: new_writer(ACTIVITY_FILE_NAME)?,
             commodity_balance_duals_writer: new_writer(COMMODITY_BALANCE_DUALS_FILE_NAME)?,
             activity_duals_writer: new_writer(ACTIVITY_DUALS_FILE_NAME)?,
@@ -258,6 +265,7 @@ impl DebugDataWriter {
             let row = ActivityRow {
                 milestone_year,
                 run_description: run_description.to_string(),
+                run_context: self.context.clone(),
                 asset_id: asset.id(),
                 time_slice: time_slice.clone(),
                 activity,
@@ -282,6 +290,7 @@ impl DebugDataWriter {
             let row = ActivityDualsRow {
                 milestone_year,
                 run_description: run_description.to_string(),
+                run_context: self.context.clone(),
                 asset_id: asset.id(),
                 time_slice: time_slice.clone(),
                 value,
@@ -306,6 +315,7 @@ impl DebugDataWriter {
             let row = CommodityBalanceDualsRow {
                 milestone_year,
                 run_description: run_description.to_string(),
+                run_context: self.context.clone(),
                 commodity_id: commodity_id.clone(),
                 region_id: region_id.clone(),
                 time_slice: time_slice.clone(),
@@ -327,6 +337,7 @@ impl DebugDataWriter {
         let row = SolverValuesRow {
             milestone_year,
             run_description: run_description.to_string(),
+            run_context: self.context.clone(),
             objective_value,
         };
         self.solver_values_writer.serialize(row)?;
@@ -346,6 +357,7 @@ impl DebugDataWriter {
             let row = AppraisalResultsRow {
                 milestone_year,
                 run_description: run_description.to_string(),
+                run_context: self.context.clone(),
                 asset_id: result.asset.id(),
                 process_id: result.asset.process_id().clone(),
                 capacity: result.capacity,
@@ -533,6 +545,20 @@ impl DataWriter {
 
         Ok(())
     }
+
+    /// Add context to the debug writer
+    pub fn set_debug_context(&mut self, context: String) {
+        if let Some(ref mut wtr) = &mut self.debug_writer {
+            wtr.context = Some(context);
+        }
+    }
+
+    /// Clear context from the debug writer
+    pub fn clear_debug_context(&mut self) {
+        if let Some(ref mut wtr) = &mut self.debug_writer {
+            wtr.context = None;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -663,6 +689,7 @@ mod tests {
         // Read back and compare
         let expected = CommodityBalanceDualsRow {
             milestone_year,
+            run_context: None,
             run_description,
             commodity_id,
             region_id,
@@ -702,6 +729,7 @@ mod tests {
         // Read back and compare
         let expected = ActivityDualsRow {
             milestone_year,
+            run_context: None,
             run_description,
             asset_id: asset.id(),
             time_slice,
@@ -740,6 +768,7 @@ mod tests {
         // Read back and compare
         let expected = ActivityRow {
             milestone_year,
+            run_context: None,
             run_description,
             asset_id: asset.id(),
             time_slice,
@@ -772,6 +801,7 @@ mod tests {
         // Read back and compare
         let expected = SolverValuesRow {
             milestone_year,
+            run_context: None,
             run_description,
             objective_value,
         };
@@ -809,6 +839,7 @@ mod tests {
         // Read back and compare
         let expected = AppraisalResultsRow {
             milestone_year,
+            run_context: None,
             run_description,
             asset_id: asset.id(),
             process_id: asset.process_id().clone(),
