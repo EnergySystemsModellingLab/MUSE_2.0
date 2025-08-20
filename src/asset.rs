@@ -663,9 +663,7 @@ impl AssetPool {
             match &asset.state {
                 AssetState::Commissioned { .. } => {}
                 AssetState::Selected { .. } => {
-                    asset
-                        .make_mut()
-                        .commission_selected(AssetID(self.next_id));
+                    asset.make_mut().commission_selected(AssetID(self.next_id));
                     self.next_id += 1;
                 }
                 _ => panic!(
