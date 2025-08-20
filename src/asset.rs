@@ -626,14 +626,15 @@ impl AssetPool {
     /// Extend the active pool with existing or candidate assets
     ///
     /// Returns the same assets after ID assignment.
-    pub fn extend(&mut self, mut assets: Vec<AssetRef>) -> Result<Vec<AssetRef>> {
+    pub fn extend(&mut self, mut assets: Vec<AssetRef>) -> Vec<AssetRef> {
         for asset in assets.iter_mut() {
             match &asset.state {
                 AssetState::Commissioned { .. } => {}
                 AssetState::Candidate { .. } => {
                     asset
                         .make_mut()
-                        .commission_candidate(AssetID(self.next_id))?;
+                        .commission_candidate(AssetID(self.next_id))
+                        .unwrap();
                     self.next_id += 1;
                 }
                 _ => {}
@@ -646,7 +647,7 @@ impl AssetPool {
 
         // Sanity check: all assets should be unique
         debug_assert_eq!(self.active.iter().unique().count(), self.active.len());
-        Ok(assets)
+        assets
     }
 }
 
