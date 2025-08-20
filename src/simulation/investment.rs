@@ -2,7 +2,7 @@
 use super::optimisation::{DispatchRun, FlowMap};
 use super::prices::ReducedCosts;
 use crate::agent::Agent;
-use crate::asset::{Asset, AssetIterator, AssetRef};
+use crate::asset::{Asset, AssetIterator, AssetRef, AssetState};
 use crate::commodity::{Commodity, CommodityID, CommodityMap};
 use crate::model::Model;
 use crate::output::DataWriter;
@@ -100,6 +100,13 @@ pub fn perform_agent_investment(
                     writer,
                 )?;
                 selected_assets.extend(best_assets);
+
+                // Convert Candidate assets to Selected
+                for asset in selected_assets.iter_mut() {
+                    if let AssetState::Candidate { .. } = asset.state() {
+                        asset.make_mut().select_candidate_for_investment();
+                    }
+                }
             }
 
             // If no assets have been selected for this region/commodity, skip dispatch optimisation
@@ -395,10 +402,10 @@ fn select_best_assets(
         );
 
         // Log the selected asset
-        let commissioned_txt = if best_output.asset.is_commissioned() {
-            "existing"
-        } else {
-            "candidate"
+        let commissioned_txt = match best_output.asset.state() {
+            AssetState::Commissioned { .. } => "existing",
+            AssetState::Candidate { .. } => "candidate",
+            _ => unreachable!("Selected asset should be either Commissioned or Candidate"),
         };
         debug!(
             "Selected {} asset '{}' (capacity: {})",
@@ -436,35 +443,40 @@ fn update_assets(
     remaining_candidate_capacity: &mut HashMap<AssetRef, Capacity>,
     best_assets: &mut Vec<AssetRef>,
 ) {
-    // New capacity given for candidates only
-    if !best_asset.is_commissioned() {
-        // Remove this capacity from the available remaining capacity for this asset
-        let remaining_capacity = remaining_candidate_capacity.get_mut(&best_asset).unwrap();
-        *remaining_capacity -= capacity;
-
-        // If there's no capacity remaining, remove the asset from the options
-        if *remaining_capacity <= Capacity(0.0) {
-            let old_idx = opt_assets
-                .iter()
-                .position(|asset| *asset == best_asset)
-                .unwrap();
-            opt_assets.swap_remove(old_idx);
-            remaining_candidate_capacity.remove(&best_asset);
-        }
-
-        if let Some(existing_asset) = best_assets.iter_mut().find(|asset| **asset == best_asset) {
-            // Add the additional required capacity
-            existing_asset.make_mut().increase_capacity(capacity);
-        } else {
-            // Update the capacity of the chosen asset
-            best_asset.make_mut().set_capacity(capacity);
+    match best_asset.state() {
+        AssetState::Commissioned { .. } => {
+            // Remove this asset from the options
+            opt_assets.retain(|asset| *asset != best_asset);
             best_assets.push(best_asset);
-        };
-    } else {
-        // Remove this asset from the options
-        opt_assets.retain(|asset| *asset != best_asset);
+        }
+        AssetState::Candidate { .. } => {
+            // Remove this capacity from the available remaining capacity for this asset
+            let remaining_capacity = remaining_candidate_capacity.get_mut(&best_asset).unwrap();
+            *remaining_capacity -= capacity;
 
-        best_assets.push(best_asset);
+            // If there's no capacity remaining, remove the asset from the options
+            if *remaining_capacity <= Capacity(0.0) {
+                let old_idx = opt_assets
+                    .iter()
+                    .position(|asset| *asset == best_asset)
+                    .unwrap();
+                opt_assets.swap_remove(old_idx);
+                remaining_candidate_capacity.remove(&best_asset);
+            }
+
+            if let Some(existing_asset) = best_assets.iter_mut().find(|asset| **asset == best_asset)
+            {
+                // If the asset is already in the list of best assets, add the additional required capacity
+                existing_asset.make_mut().increase_capacity(capacity);
+            } else {
+                // Otherwise, update the capacity of the chosen asset and add it to the list of best assets
+                best_asset.make_mut().set_capacity(capacity);
+                best_assets.push(best_asset);
+            };
+        }
+        _ => unreachable!(
+            "update_assets should only be called with Commissioned or Candidate assets"
+        ),
     }
 }
 
