@@ -189,7 +189,7 @@ pub fn topo_sort_commodities(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::{sed_commodity, svd_commodity};
+    use crate::fixture::{assert_error, other_commodity, sed_commodity, svd_commodity};
     use petgraph::graph::Graph;
     use std::rc::Rc;
 
@@ -239,15 +239,104 @@ mod tests {
         commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
 
         // This should return an error due to the cycle
-        let result = topo_sort_commodities(&graph, &commodities);
-        assert!(result.is_err());
-
         // The error message should flag commodity B
         // Note: A is also involved in the cycle, but B is flagged as it is encountered first
-        let error_msg = result.unwrap_err().to_string();
-        assert_eq!(
-            error_msg,
-            "Cycle detected in commodity graph for commodity B"
+        let result = topo_sort_commodities(&graph, &commodities);
+        assert_error!(result, "Cycle detected in commodity graph for commodity B");
+    }
+
+    #[test]
+    fn test_validate_commodities_graph() {
+        let mut graph = Graph::new();
+        let mut commodities = CommodityMap::new();
+
+        // Add test commodities
+        commodities.insert(CommodityID::from("A"), Rc::new(other_commodity()));
+        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
+        commodities.insert(CommodityID::from("C"), Rc::new(svd_commodity()));
+
+        // Test valid graph: A(OTH) -> B(SED) -> C(SVD)
+        let node_a = graph.add_node(CommodityID::from("A"));
+        let node_b = graph.add_node(CommodityID::from("B"));
+        let node_c = graph.add_node(CommodityID::from("C"));
+        graph.add_edge(node_a, node_b, ProcessID::from("process1"));
+        graph.add_edge(node_b, node_c, ProcessID::from("process2"));
+
+        let result = validate_commodities_graph(&graph, &commodities);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_commodities_graph_invalid_svd_consumed() {
+        let mut graph = Graph::new();
+        let mut commodities = CommodityMap::new();
+
+        commodities.insert(CommodityID::from("A"), Rc::new(svd_commodity()));
+        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
+        commodities.insert(CommodityID::from("C"), Rc::new(other_commodity()));
+
+        // Test invalid graph: C(OTH) -> A(SVD) -> B(SED) - SVD cannot be consumed
+        let node_c = graph.add_node(CommodityID::from("C"));
+        let node_a = graph.add_node(CommodityID::from("A"));
+        let node_b = graph.add_node(CommodityID::from("B"));
+        graph.add_edge(node_c, node_a, ProcessID::from("process1"));
+        graph.add_edge(node_a, node_b, ProcessID::from("process2"));
+
+        let result = validate_commodities_graph(&graph, &commodities);
+        assert_error!(result, "SVD commodity A cannot be consumed");
+    }
+
+    #[test]
+    fn test_validate_commodities_graph_invalid_svd_not_produced() {
+        let mut graph = Graph::new();
+        let mut commodities = CommodityMap::new();
+
+        commodities.insert(CommodityID::from("A"), Rc::new(svd_commodity()));
+
+        // Test invalid graph: A(SVD) with no incoming edges - SVD must be produced
+        let _node_a = graph.add_node(CommodityID::from("A"));
+
+        let result = validate_commodities_graph(&graph, &commodities);
+        assert_error!(result, "SVD commodity A must have at least one producer");
+    }
+
+    #[test]
+    fn test_validate_commodities_graph_invalid_sed() {
+        let mut graph = Graph::new();
+        let mut commodities = CommodityMap::new();
+
+        commodities.insert(CommodityID::from("A"), Rc::new(sed_commodity()));
+        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
+
+        // Test invalid graph: B(SED) -> A(SED)
+        let node_a = graph.add_node(CommodityID::from("A"));
+        let node_b = graph.add_node(CommodityID::from("B"));
+        graph.add_edge(node_b, node_a, ProcessID::from("process1"));
+
+        let result = validate_commodities_graph(&graph, &commodities);
+        assert_error!(result, "SED commodity B is consumed but has no producers");
+    }
+
+    #[test]
+    fn test_validate_commodities_graph_invalid_oth() {
+        let mut graph = Graph::new();
+        let mut commodities = CommodityMap::new();
+
+        commodities.insert(CommodityID::from("A"), Rc::new(other_commodity()));
+        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
+        commodities.insert(CommodityID::from("C"), Rc::new(sed_commodity()));
+
+        // Test invalid graph: B(SED) -> A(OTH) -> C(SED)
+        let node_a = graph.add_node(CommodityID::from("A"));
+        let node_b = graph.add_node(CommodityID::from("B"));
+        let node_c = graph.add_node(CommodityID::from("C"));
+        graph.add_edge(node_b, node_a, ProcessID::from("process1"));
+        graph.add_edge(node_a, node_c, ProcessID::from("process2"));
+
+        let result = validate_commodities_graph(&graph, &commodities);
+        assert_error!(
+            result,
+            "OTH commodity A cannot have both producers and consumers"
         );
     }
 }
