@@ -456,14 +456,22 @@ impl PartialEq for AssetRef {
 impl Eq for AssetRef {}
 
 impl Hash for AssetRef {
-    /// Hash asset based purely on its ID
+    /// Hash asset based on its state:
+    /// - Commissioned/Decommissioned/Future assets: hash process_id;region_id;agent_id;commission_year
+    /// - Candidate/Mock assets: hash process_id;region_id;commission_year
     fn hash<H: Hasher>(&self, state: &mut H) {
-        if let Some(id) = self.0.id() {
-            id.hash(state);
-        } else {
-            self.0.process.id.hash(state);
-            self.0.region_id.hash(state);
-            self.0.commission_year.hash(state);
+        self.0.process.id.hash(state);
+        self.0.region_id.hash(state);
+        self.0.commission_year.hash(state);
+
+        // For Commissioned/Decommissioned/Future assets, also include agent_id
+        match &self.0.state {
+            AssetState::Commissioned { agent_id, .. }
+            | AssetState::Decommissioned { agent_id, .. }
+            | AssetState::Future { agent_id, .. } => {
+                agent_id.hash(state);
+            }
+            _ => {}
         }
     }
 }
