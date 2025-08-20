@@ -2,6 +2,8 @@
 use crate::commodity::{CommodityID, CommodityMap, CommodityType};
 use crate::process::{ProcessID, ProcessMap};
 use crate::region::RegionID;
+use crate::time_slice::TimeSliceID;
+use crate::units::Dimensionless;
 use anyhow::{anyhow, ensure, Result};
 use itertools::iproduct;
 use petgraph::algo::toposort;
@@ -10,7 +12,7 @@ use petgraph::Directed;
 use std::collections::HashMap;
 
 /// A graph of commodity flows for a given region and year
-type CommoditiesGraph = Graph<CommodityID, ProcessID, Directed>;
+pub type CommoditiesGraph = Graph<CommodityID, ProcessID, Directed>;
 
 /// Creates a graph of commodity flows for a given region and year
 pub fn create_commodities_graph_for_region_year(
@@ -73,6 +75,37 @@ pub fn create_commodities_graph_for_region_year(
     }
 
     graph
+}
+
+/// Creates a time-slice filtered version of an existing commodity graph
+pub fn create_commodities_graph_for_region_year_timeslice(
+    graph: &CommoditiesGraph,
+    processes: &ProcessMap,
+    region_id: &RegionID,
+    year: u32,
+    time_slice: &TimeSliceID,
+) -> CommoditiesGraph {
+    let mut filtered_graph = graph.clone();
+
+    // Remove edges for processes with zero availability in this time slice
+    let edges_to_remove: Vec<_> = filtered_graph
+        .edge_indices()
+        .filter(|&edge_idx| {
+            let process_id = filtered_graph.edge_weight(edge_idx).unwrap();
+            let process = processes.get(process_id).unwrap();
+            let process_avail = process
+                .activity_limits
+                .get(&(region_id.clone(), year, time_slice.clone()))
+                .unwrap();
+            *process_avail.end() <= Dimensionless(0.0)
+        })
+        .collect();
+
+    for edge_idx in edges_to_remove {
+        filtered_graph.remove_edge(edge_idx);
+    }
+
+    filtered_graph
 }
 
 /// Validates that the commodity graph follows the rules for different commodity types
