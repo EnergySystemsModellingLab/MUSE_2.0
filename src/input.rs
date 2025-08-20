@@ -209,7 +209,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
             validate_commodities_graph(&graph, &commodities).with_context(|| {
                 format!("Error validating commodity graph for {region_id} in {year}")
             })?;
-            let order = topo_sort_commodities(&graph)
+            let order = topo_sort_commodities(&graph, &commodities)
                 .with_context(|| format!("Error with commodity graph for {region_id} in {year}"))?;
             // TODO: filter order to only include SVD and SED commodities
             Ok(((region_id, *year), order))

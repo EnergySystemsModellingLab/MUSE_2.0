@@ -21,6 +21,11 @@ pub fn create_commodities_graph_for_region_year(
     let mut graph = Graph::new();
     let mut commodity_to_node_index = HashMap::new();
 
+    // Create _SOURCE and _SINK commodity IDs
+    // We use these as mock commodities for processes that have no inputs or outputs
+    let source_id = CommodityID::from("_SOURCE");
+    let sink_id = CommodityID::from("_SINK");
+
     let key = (region_id.clone(), year);
     for process in processes.values() {
         let Some(flows) = process.flows.get(&key) else {
@@ -42,14 +47,17 @@ pub fn create_commodities_graph_for_region_year(
             .map(|flow| &flow.commodity.id)
             .collect();
 
-        // Panic if a process has no inputs or outputs
-        assert!(
-            !inputs.is_empty() && !outputs.is_empty(),
-            "Process {} in region {} year {} must have both inputs and outputs",
-            process.id,
-            region_id,
-            year
-        );
+        // Use _SOURCE if no inputs, _SINK if no outputs
+        let inputs = if inputs.is_empty() {
+            vec![&source_id]
+        } else {
+            inputs
+        };
+        let outputs = if outputs.is_empty() {
+            vec![&sink_id]
+        } else {
+            outputs
+        };
 
         // Create edges from all inputs to all outputs
         // We also create nodes for commodities the first time they are encountered
@@ -89,7 +97,13 @@ pub fn validate_commodities_graph(
 ) -> Result<()> {
     for node_idx in graph.node_indices() {
         let commodity_id = graph.node_weight(node_idx).unwrap();
-        let commodity = commodities.get(commodity_id).unwrap();
+
+        // Skip _SOURCE and _SINK commodities
+        if commodity_id == &CommodityID::from("_SOURCE")
+            || commodity_id == &CommodityID::from("_SINK")
+        {
+            continue;
+        }
 
         let incoming = graph
             .edges_directed(node_idx, petgraph::Direction::Incoming)
@@ -98,6 +112,8 @@ pub fn validate_commodities_graph(
             .edges_directed(node_idx, petgraph::Direction::Outgoing)
             .count();
 
+        // Match validation rules to commodity type
+        let commodity = commodities.get(commodity_id).unwrap();
         match commodity.kind {
             CommodityType::ServiceDemand => {
                 // SVD: must be produced (incoming edges) but not consumed (no outgoing edges)
@@ -135,7 +151,10 @@ pub fn validate_commodities_graph(
 }
 
 /// Performs topological sort on the commodity graph
-pub fn topo_sort_commodities(graph: &CommoditiesGraph) -> Result<Vec<CommodityID>> {
+pub fn topo_sort_commodities(
+    graph: &CommoditiesGraph,
+    commodities: &CommodityMap,
+) -> Result<Vec<CommodityID>> {
     // Perform a topological sort on the graph
     let order = toposort(graph, None).map_err(|cycle| {
         let cycle_commodity = graph.node_weight(cycle.node_id()).unwrap().clone();
@@ -146,11 +165,24 @@ pub fn topo_sort_commodities(graph: &CommoditiesGraph) -> Result<Vec<CommodityID
     })?;
 
     // We return the order in reverse so that leaf-node commodities are solved first
+    // We also filter to only include SVD and SED commodities
     let order = order
         .iter()
         .rev()
-        .map(|node| graph.node_weight(*node).unwrap().clone())
+        .filter_map(|node_idx| {
+            let commodity_id = graph.node_weight(*node_idx)?;
+            let commodity = commodities.get(commodity_id)?;
+            if matches!(
+                commodity.kind,
+                CommodityType::ServiceDemand | CommodityType::SupplyEqualsDemand
+            ) {
+                Some(commodity_id.clone())
+            } else {
+                None
+            }
+        })
         .collect();
+
     Ok(order)
 }
 
