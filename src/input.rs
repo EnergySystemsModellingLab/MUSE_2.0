@@ -1,18 +1,13 @@
 //! Common routines for handling input data.
 use crate::asset::AssetPool;
-use crate::commodity::CommodityID;
-use crate::graph::{
-    create_commodities_graph_for_region_year, create_commodities_graph_for_region_year_timeslice,
-    topo_sort_commodities, validate_commodities_graph, CommoditiesGraph,
-};
+use crate::graph::build_and_validate_commodity_graphs_for_model;
 use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
-use crate::region::RegionID;
 use crate::units::UnitType;
 use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
-use itertools::{iproduct, Itertools};
+use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -205,40 +200,15 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let agent_ids = agents.keys().cloned().collect();
     let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
 
-    // Build commodity graphs for each region and year
-    let commodity_graphs: HashMap<(RegionID, u32), CommoditiesGraph> =
-        iproduct!(region_ids, years.iter())
-            .map(|(region_id, year)| {
-                let graph = create_commodities_graph_for_region_year(&processes, &region_id, *year);
-                ((region_id, *year), graph)
-            })
-            .collect();
-
-    // Validate graphs and determine commodity ordering for each region and year
-    let commodity_order: HashMap<(RegionID, u32), Vec<CommodityID>> = commodity_graphs
-        .iter()
-        .map(|((region_id, year), graph)| -> Result<_> {
-            validate_commodities_graph(graph, &commodities).with_context(|| {
-                format!("Error validating commodity graph for {region_id} in {year}")
-            })?;
-            let order = topo_sort_commodities(graph, &commodities)
-                .with_context(|| format!("Error with commodity graph for {region_id} in {year}"))?;
-            Ok(((region_id.clone(), *year), order))
-        })
-        .try_collect()?;
-
-    // Validate graphs in each time slice
-    for ((region_id, year), base_graph) in &commodity_graphs {
-        for time_slice in time_slice_info.iter_ids() {
-            let time_slice_graph = create_commodities_graph_for_region_year_timeslice(
-                base_graph, &processes, region_id, *year, time_slice,
-            );
-
-            validate_commodities_graph(&time_slice_graph, &commodities).with_context(|| {
-                format!("Error validating commodity graph for {region_id} in {year} at time slice {time_slice}")
-            })?;
-        }
-    }
+    // Build and validate commodity graphs for all regions and years
+    // This gives us the commodity order for each region/year which is passed to the model
+    let commodity_order = build_and_validate_commodity_graphs_for_model(
+        &processes,
+        &commodities,
+        &region_ids,
+        years,
+        &time_slice_info,
+    )?;
 
     let model_path = model_dir
         .as_ref()

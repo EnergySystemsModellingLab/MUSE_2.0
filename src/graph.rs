@@ -4,18 +4,19 @@ use crate::process::{ProcessID, ProcessMap};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use crate::units::Dimensionless;
-use anyhow::{anyhow, ensure, Result};
-use itertools::iproduct;
+use anyhow::{anyhow, ensure, Context, Result};
+use indexmap::IndexSet;
+use itertools::{iproduct, Itertools};
 use petgraph::algo::toposort;
 use petgraph::graph::Graph;
 use petgraph::Directed;
 use std::collections::HashMap;
 
 /// A graph of commodity flows for a given region and year
-pub type CommoditiesGraph = Graph<CommodityID, ProcessID, Directed>;
+type CommoditiesGraph = Graph<CommodityID, ProcessID, Directed>;
 
 /// Creates a graph of commodity flows for a given region and year
-pub fn create_commodities_graph_for_region_year(
+fn create_commodities_graph_for_region_year(
     processes: &ProcessMap,
     region_id: &RegionID,
     year: u32,
@@ -78,7 +79,7 @@ pub fn create_commodities_graph_for_region_year(
 }
 
 /// Creates a time-slice filtered version of an existing commodity graph
-pub fn create_commodities_graph_for_region_year_timeslice(
+fn create_commodities_graph_for_region_year_timeslice(
     graph: &CommoditiesGraph,
     processes: &ProcessMap,
     region_id: &RegionID,
@@ -124,10 +125,7 @@ pub fn create_commodities_graph_for_region_year_timeslice(
 /// - **SVD type commodities**: Must have at least one incoming edge (produced) and no outgoing edges (not consumed)
 /// - **SED type commodities**: If they have outgoing edges (consumed), they must also have incoming edges (produced)
 /// - **OTH type commodities**: Can have incoming or outgoing edges, or neither, but not both
-pub fn validate_commodities_graph(
-    graph: &CommoditiesGraph,
-    commodities: &CommodityMap,
-) -> Result<()> {
+fn validate_commodities_graph(graph: &CommoditiesGraph, commodities: &CommodityMap) -> Result<()> {
     for node_idx in graph.node_indices() {
         let commodity_id = graph.node_weight(node_idx).unwrap();
 
@@ -184,7 +182,7 @@ pub fn validate_commodities_graph(
 }
 
 /// Performs topological sort on the commodity graph
-pub fn topo_sort_commodities(
+fn topo_sort_commodities(
     graph: &CommoditiesGraph,
     commodities: &CommodityMap,
 ) -> Result<Vec<CommodityID>> {
@@ -217,6 +215,70 @@ pub fn topo_sort_commodities(
         .collect();
 
     Ok(order)
+}
+
+/// Builds and validates commodity graphs for all regions and years
+///
+/// This function creates commodity graphs for each region/year combination,
+/// validates them, determines commodity ordering via topological sort,
+/// and validates time-slice specific graphs.
+///
+/// # Arguments
+///
+/// * `processes` - Map of all processes
+/// * `commodities` - Map of all commodities
+/// * `region_ids` - Collection of region IDs
+/// * `years` - Collection of years
+/// * `time_slice_info` - Time slice information
+///
+/// # Returns
+///
+/// A tuple containing:
+/// * `HashMap<(RegionID, u32), CommoditiesGraph>` - Commodity graphs for each region/year
+/// * `HashMap<(RegionID, u32), Vec<CommodityID>>` - Commodity ordering for each region/year
+pub fn build_and_validate_commodity_graphs_for_model(
+    processes: &crate::process::ProcessMap,
+    commodities: &crate::commodity::CommodityMap,
+    region_ids: &IndexSet<RegionID>,
+    years: &[u32],
+    time_slice_info: &crate::time_slice::TimeSliceInfo,
+) -> Result<HashMap<(RegionID, u32), Vec<CommodityID>>> {
+    // Build commodity graphs for each region and year
+    let commodity_graphs: HashMap<(RegionID, u32), CommoditiesGraph> =
+        iproduct!(region_ids, years.iter())
+            .map(|(region_id, year)| {
+                let graph = create_commodities_graph_for_region_year(processes, region_id, *year);
+                ((region_id.clone(), *year), graph)
+            })
+            .collect();
+
+    // Validate graphs and determine commodity ordering for each region and year
+    let commodity_order: HashMap<(RegionID, u32), Vec<CommodityID>> = commodity_graphs
+        .iter()
+        .map(|((region_id, year), graph)| -> Result<_> {
+            validate_commodities_graph(graph, commodities).with_context(|| {
+                format!("Error validating commodity graph for {region_id} in {year}")
+            })?;
+            let order = topo_sort_commodities(graph, commodities)
+                .with_context(|| format!("Error with commodity graph for {region_id} in {year}"))?;
+            Ok(((region_id.clone(), *year), order))
+        })
+        .try_collect()?;
+
+    // Validate graphs in each time slice
+    for ((region_id, year), base_graph) in &commodity_graphs {
+        for time_slice in time_slice_info.iter_ids() {
+            let time_slice_graph = create_commodities_graph_for_region_year_timeslice(
+                base_graph, processes, region_id, *year, time_slice,
+            );
+
+            validate_commodities_graph(&time_slice_graph, commodities).with_context(|| {
+                format!("Error validating commodity graph for {region_id} in {year} at time slice {time_slice}")
+            })?;
+        }
+    }
+
+    Ok(commodity_order)
 }
 
 #[cfg(test)]
