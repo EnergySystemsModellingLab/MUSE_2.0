@@ -189,7 +189,9 @@ pub fn topo_sort_commodities(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fixture::{sed_commodity, svd_commodity};
     use petgraph::graph::Graph;
+    use std::rc::Rc;
 
     #[test]
     fn test_topo_sort_linear_graph() {
@@ -204,7 +206,13 @@ mod tests {
         graph.add_edge(node_a, node_b, ProcessID::from("process1"));
         graph.add_edge(node_b, node_c, ProcessID::from("process2"));
 
-        let result = topo_sort_commodities(&graph).unwrap();
+        // Create commodities map using fixtures
+        let mut commodities = CommodityMap::new();
+        commodities.insert(CommodityID::from("A"), Rc::new(sed_commodity()));
+        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
+        commodities.insert(CommodityID::from("C"), Rc::new(svd_commodity()));
+
+        let result = topo_sort_commodities(&graph, &commodities).unwrap();
 
         // Expected order: C, B, A (leaf nodes first)
         assert_eq!(result.len(), 3);
@@ -225,8 +233,13 @@ mod tests {
         graph.add_edge(node_a, node_b, ProcessID::from("process1"));
         graph.add_edge(node_b, node_a, ProcessID::from("process2"));
 
+        // Create commodities map using fixtures
+        let mut commodities = CommodityMap::new();
+        commodities.insert(CommodityID::from("A"), Rc::new(sed_commodity()));
+        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
+
         // This should return an error due to the cycle
-        let result = topo_sort_commodities(&graph);
+        let result = topo_sort_commodities(&graph, &commodities);
         assert!(result.is_err());
 
         // The error message should flag commodity B
