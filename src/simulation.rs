@@ -102,7 +102,7 @@ pub fn run(
         };
 
         // Add selected_assets to the active pool
-        assets.extend(selected_assets)?;
+        assets.extend(selected_assets);
 
         // Decommission unused assets
         assets.decommission_if_not_active(existing_assets, year);
