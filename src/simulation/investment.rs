@@ -45,8 +45,8 @@ pub fn perform_agent_investment(
     let mut demand =
         flatten_preset_demands_for_year(&model.commodities, &model.time_slice_info, year);
 
-    // Keep a list of all the assets added
-    // This includes any existing_assets that are selected for retention
+    // Keep a list of all the assets selected
+    // This includes Commissioned assets that are selected for retention, and new Selected assets
     let mut all_selected_assets = Vec::new();
 
     for region_id in model.iter_regions() {
@@ -56,7 +56,7 @@ pub fn perform_agent_investment(
             let commodity = &model.commodities[commodity_id];
 
             // List of assets selected for this region/commodity
-            // This includes any existing_assets that are selected for retention
+            // This includes Commissioned assets that are selected for retention, and new Selected assets
             let mut selected_assets = Vec::new();
 
             for (agent, commodity_portion) in
@@ -100,13 +100,6 @@ pub fn perform_agent_investment(
                     writer,
                 )?;
                 selected_assets.extend(best_assets);
-
-                // Convert Candidate assets to Selected
-                for asset in selected_assets.iter_mut() {
-                    if let AssetState::Candidate { .. } = asset.state() {
-                        asset.make_mut().select_candidate_for_investment();
-                    }
-                }
             }
 
             // If no assets have been selected for this region/commodity, skip dispatch optimisation
@@ -425,6 +418,13 @@ fn select_best_assets(
 
         demand = best_output.unmet_demand;
         round += 1;
+    }
+
+    // Convert Candidate assets to Selected
+    for asset in best_assets.iter_mut() {
+        if let AssetState::Candidate { .. } = asset.state() {
+            asset.make_mut().select_candidate_for_investment();
+        }
     }
 
     Ok(best_assets)

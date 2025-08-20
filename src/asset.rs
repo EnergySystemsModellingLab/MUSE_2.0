@@ -389,8 +389,8 @@ impl Asset {
 
     /// Commission a selected asset
     ///
-    /// At this point we also check that the capacity is valid.
-    pub fn commission_selected(&mut self, id: AssetID) {
+    /// At this point we also check that the capacity is valid (panics if not).
+    fn commission_selected(&mut self, id: AssetID) {
         check_capacity_valid_for_asset(self.capacity).unwrap();
         let agent_id = match &self.state {
             AssetState::Selected { agent_id } => agent_id.clone(),
