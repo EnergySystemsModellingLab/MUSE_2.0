@@ -135,6 +135,8 @@ impl VariableMap {
         model: &Model,
         commodities: &[CommodityID],
     ) {
+        assert!(!commodities.is_empty());
+
         // This line **must** come before we add more variables
         let start = problem.num_cols();
 
@@ -415,12 +417,6 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             self.year,
         );
 
-        // If unmet demand is enabled for this dispatch run (and is allowed by the model param) then
-        // we add variables representing unmet demand
-        if self.allow_unmet_demand {
-            variables.add_unmet_demand_variables(&mut problem, self.model, self.commodities);
-        }
-
         // If the user provided no commodities, we all use of them
         let all_commodities: Vec<_>;
         let commodities = if !self.commodities.is_empty() {
@@ -429,6 +425,12 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             all_commodities = self.model.commodities.keys().cloned().collect();
             &all_commodities
         };
+
+        // If unmet demand is enabled for this dispatch run (and is allowed by the model param) then
+        // we add variables representing unmet demand
+        if self.allow_unmet_demand {
+            variables.add_unmet_demand_variables(&mut problem, self.model, commodities);
+        }
 
         // Add constraints
         let all_assets = chain(self.existing_assets.iter(), self.candidate_assets.iter());
