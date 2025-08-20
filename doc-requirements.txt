@@ -1,3 +1,4 @@
+frictionless
 jinja2
 matplotlib
 notebook
