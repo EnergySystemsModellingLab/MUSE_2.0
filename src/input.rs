@@ -3,7 +3,7 @@ use crate::asset::AssetPool;
 use crate::graph::{create_commodities_graph_for_region_year, topo_sort_commodities};
 use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
-use crate::units::{Dimensionless, UnitType};
+use crate::units::UnitType;
 use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
@@ -231,6 +231,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
 mod tests {
     use super::*;
     use crate::id::GenericID;
+    use crate::units::Dimensionless;
     use rstest::rstest;
     use serde::de::value::{Error as ValueError, F64Deserializer};
     use serde::de::IntoDeserializer;
