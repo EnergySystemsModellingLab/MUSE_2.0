@@ -53,6 +53,8 @@ pub struct Process {
     pub parameters: ProcessParameterMap,
     /// The regions in which this process can operate
     pub regions: IndexSet<RegionID>,
+    /// The primary output for this process, if any
+    pub primary_output: Option<CommodityID>,
 }
 
 impl Process {
@@ -78,8 +80,6 @@ pub struct ProcessFlow {
     /// For example, cost per unit of natural gas produced. The user can apply it to any specified
     /// flow.
     pub cost: MoneyPerFlow,
-    /// Whether this flow is the primary output for the process
-    pub is_primary_output: bool,
 }
 
 impl ProcessFlow {
@@ -325,7 +325,6 @@ mod tests {
             coeff: FlowPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(5.0),
-            is_primary_output: false,
         }
     }
 
@@ -352,7 +351,6 @@ mod tests {
             coeff: FlowPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(5.0),
-            is_primary_output: false,
         }
     }
 
@@ -379,7 +377,6 @@ mod tests {
             coeff: FlowPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(5.0),
-            is_primary_output: false,
         }
     }
 
@@ -394,7 +391,6 @@ mod tests {
             coeff: FlowPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
 
         assert_eq!(
@@ -414,7 +410,6 @@ mod tests {
             coeff: FlowPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
 
         assert_eq!(
@@ -434,7 +429,6 @@ mod tests {
             coeff: FlowPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
 
         assert_eq!(
@@ -450,7 +444,6 @@ mod tests {
             coeff: FlowPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
 
         assert_eq!(
@@ -470,7 +463,6 @@ mod tests {
             coeff: FlowPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
 
         assert_eq!(
@@ -486,7 +478,6 @@ mod tests {
             coeff: FlowPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
 
         let different_time_slice = TimeSliceID {
@@ -511,7 +502,6 @@ mod tests {
             coeff: FlowPerActivity(1.0), // Positive coefficient means production
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
 
         assert_eq!(
@@ -531,7 +521,6 @@ mod tests {
             coeff: FlowPerActivity(-1.0), // Negative coefficient means consumption
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
 
         assert_eq!(
@@ -551,7 +540,6 @@ mod tests {
             coeff: FlowPerActivity(1.0), // Positive coefficient means production
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
 
         assert_eq!(
@@ -571,7 +559,6 @@ mod tests {
             coeff: FlowPerActivity(-1.0), // Negative coefficient means consumption
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
 
         assert_eq!(
@@ -658,21 +645,18 @@ mod tests {
             coeff: FlowPerActivity(-1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
         let flow_out = ProcessFlow {
             commodity: Rc::clone(&commodity),
             coeff: FlowPerActivity(1.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
         let flow_zero = ProcessFlow {
             commodity: Rc::clone(&commodity),
             coeff: FlowPerActivity(0.0),
             kind: FlowType::Fixed,
             cost: MoneyPerFlow(0.0),
-            is_primary_output: false,
         };
 
         assert!(flow_in.is_input());

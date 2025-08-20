@@ -1,7 +1,7 @@
 //! Assets are instances of a process which are owned and invested in by agents.
 use crate::agent::AgentID;
 use crate::commodity::CommodityID;
-use crate::process::{Process, ProcessFlow, ProcessParameter};
+use crate::process::{Process, ProcessFlow, ProcessID, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity};
@@ -22,23 +22,23 @@ pub struct AssetID(u32);
 #[derive(Clone, PartialEq)]
 pub struct Asset {
     /// A unique identifier for the asset
-    pub id: Option<AssetID>,
+    id: Option<AssetID>,
     /// A unique identifier for the agent.
     ///
     /// Candidate assets may not have an agent ID.
-    pub agent_id: Option<AgentID>,
+    agent_id: Option<AgentID>,
     /// The [`Process`] that this asset corresponds to
-    pub process: Rc<Process>,
+    process: Rc<Process>,
     /// The [`ProcessParameter`] corresponding to the asset's region and commission year
-    pub process_parameter: Rc<ProcessParameter>,
+    process_parameter: Rc<ProcessParameter>,
     /// The region in which the asset is located
-    pub region_id: RegionID,
+    region_id: RegionID,
     /// Capacity of asset
-    pub capacity: Capacity,
+    capacity: Capacity,
     /// The year the asset was commissioned
-    pub commission_year: u32,
+    commission_year: u32,
     /// The year the asset was decommissioned (if relevant)
-    pub decommission_year: Option<u32>,
+    decommission_year: Option<u32>,
 }
 
 impl Asset {
@@ -177,11 +177,69 @@ impl Asset {
         self.get_flows_map().values()
     }
 
-    /// Get the primary output (if any) for this asset
+    /// Get the primary output flow (if any) for this asset
     pub fn primary_output(&self) -> Option<&ProcessFlow> {
-        self.get_flows_map()
-            .values()
-            .find(|flow| flow.is_primary_output)
+        self.process
+            .primary_output
+            .as_ref()
+            .map(|commodity_id| &self.get_flows_map()[commodity_id])
+    }
+
+    /// Get the decommission year for this asset
+    pub fn decommission_year(&self) -> Option<u32> {
+        self.decommission_year
+    }
+
+    /// Get the commission year for this asset
+    pub fn commission_year(&self) -> u32 {
+        self.commission_year
+    }
+
+    /// Get the region ID for this asset
+    pub fn region_id(&self) -> &RegionID {
+        &self.region_id
+    }
+
+    /// Get the process for this asset
+    pub fn process(&self) -> &Process {
+        &self.process
+    }
+
+    /// Get the process parameter for this asset
+    pub fn process_parameter(&self) -> &ProcessParameter {
+        &self.process_parameter
+    }
+
+    /// Get the process ID for this asset
+    pub fn process_id(&self) -> &ProcessID {
+        &self.process.id
+    }
+
+    /// Get the agent ID for this asset
+    pub fn agent_id(&self) -> Option<&AgentID> {
+        self.agent_id.as_ref()
+    }
+
+    /// Get the ID for this asset
+    pub fn id(&self) -> Option<AssetID> {
+        self.id
+    }
+
+    /// Get the capacity for this asset
+    pub fn capacity(&self) -> Capacity {
+        self.capacity
+    }
+
+    /// Set the capacity for this asset
+    pub fn set_capacity(&mut self, capacity: Capacity) {
+        assert!(capacity >= Capacity(0.0), "Capacity must be >= 0");
+        self.capacity = capacity;
+    }
+
+    /// Increase the capacity for this asset by the specified amount
+    pub fn increase_capacity(&mut self, capacity: Capacity) {
+        assert!(capacity >= Capacity(0.0), "Added capacity must be >= 0");
+        self.capacity += capacity;
     }
 }
 
@@ -190,7 +248,7 @@ impl std::fmt::Debug for Asset {
         f.debug_struct("Asset")
             .field("id", &self.id)
             .field("agent_id", &self.agent_id)
-            .field("process", &self.process.id)
+            .field("process_id", &self.process_id())
             .field("region_id", &self.region_id)
             .field("capacity", &self.capacity)
             .field("commission_year", &self.commission_year)
@@ -589,6 +647,7 @@ mod tests {
             flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: IndexSet::from(["GBR".into()]),
+            primary_output: None,
         });
         let future = [2020, 2010]
             .map(|year| {
@@ -642,6 +701,7 @@ mod tests {
             flows: ProcessFlowsMap::new(),
             parameters: process_parameter_map,
             regions: IndexSet::from(["GBR".into()]),
+            primary_output: None,
         }
     }
 

@@ -37,19 +37,19 @@ pub fn annual_fixed_cost(asset: &AssetRef) -> MoneyPerCapacity {
 }
 
 fn annual_fixed_cost_for_existing(asset: &AssetRef) -> MoneyPerCapacity {
-    let fixed_operating_cost = asset.process_parameter.fixed_operating_cost;
+    let fixed_operating_cost = asset.process_parameter().fixed_operating_cost;
     fixed_operating_cost * Year(1.0)
 }
 
 fn annual_capital_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
-    let capital_cost = asset.process_parameter.capital_cost;
-    let lifetime = asset.process_parameter.lifetime;
-    let discount_rate = asset.process_parameter.discount_rate;
+    let capital_cost = asset.process_parameter().capital_cost;
+    let lifetime = asset.process_parameter().lifetime;
+    let discount_rate = asset.process_parameter().discount_rate;
     annual_capital_cost(capital_cost, lifetime, discount_rate)
 }
 
 fn annual_fixed_cost_for_candidate(asset: &AssetRef) -> MoneyPerCapacity {
-    let fixed_operating_cost = asset.process_parameter.fixed_operating_cost;
+    let fixed_operating_cost = asset.process_parameter().fixed_operating_cost;
     let annual_fixed_operating_cost = fixed_operating_cost * Year(1.0);
     let capital_costs = annual_capital_cost_for_candidate(asset);
     annual_fixed_operating_cost + capital_costs

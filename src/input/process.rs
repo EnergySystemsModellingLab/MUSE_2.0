@@ -1,6 +1,7 @@
 //! Code for reading process-related information from CSV files.
 use super::*;
 use crate::commodity::{Commodity, CommodityID, CommodityMap, CommodityType};
+use crate::id::IDCollection;
 use crate::process::{
     Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessID, ProcessMap, ProcessParameterMap,
 };
@@ -30,6 +31,7 @@ struct ProcessRaw {
     id: ProcessID,
     description: String,
     regions: String,
+    primary_output: Option<String>,
     start_year: Option<u32>,
     end_year: Option<u32>,
 }
@@ -43,7 +45,7 @@ define_id_getter! {ProcessRaw, ProcessID}
 /// * `commodities` - Commodities for the model
 /// * `region_ids` - All possible region IDs
 /// * `time_slice_info` - Information about seasons and times of day
-/// * `year_range` - The possible range of milestone years
+/// * `milestone_years` - All milestone years
 ///
 /// # Returns
 ///
@@ -55,9 +57,9 @@ pub fn read_processes(
     time_slice_info: &TimeSliceInfo,
     milestone_years: &[u32],
 ) -> Result<ProcessMap> {
-    let mut processes = read_processes_file(model_dir, milestone_years, region_ids)?;
+    let mut processes = read_processes_file(model_dir, milestone_years, region_ids, commodities)?;
     let mut activity_limits = read_process_availabilities(model_dir, &processes, time_slice_info)?;
-    let mut flows = read_process_flows(model_dir, &processes, commodities)?;
+    let mut flows = read_process_flows(model_dir, &mut processes, commodities)?;
     let mut parameters = read_process_parameters(model_dir, &processes)?;
 
     // Validate commodities after the flows have been read
@@ -74,15 +76,11 @@ pub fn read_processes(
     for (id, process) in processes.iter_mut() {
         // This will always succeed as we know there will only be one reference to the process here
         let process = Rc::get_mut(process).unwrap();
-        process.activity_limits = activity_limits
-            .remove(id)
-            .with_context(|| format!("Missing availabilities for process {id}"))?;
-        process.flows = flows
-            .remove(id)
-            .with_context(|| format!("Missing flows for process {id}"))?;
-        process.parameters = parameters
-            .remove(id)
-            .with_context(|| format!("Missing parameters for process {id}"))?;
+
+        // We have already checked that there are maps for every process so this will succeed
+        process.activity_limits = activity_limits.remove(id).unwrap();
+        process.flows = flows.remove(id).unwrap();
+        process.parameters = parameters.remove(id).unwrap();
     }
 
     Ok(processes)
@@ -92,10 +90,11 @@ fn read_processes_file(
     model_dir: &Path,
     milestone_years: &[u32],
     region_ids: &IndexSet<RegionID>,
+    commodities: &CommodityMap,
 ) -> Result<ProcessMap> {
     let file_path = model_dir.join(PROCESSES_FILE_NAME);
     let processes_csv = read_csv(&file_path)?;
-    read_processes_file_from_iter(processes_csv, milestone_years, region_ids)
+    read_processes_file_from_iter(processes_csv, milestone_years, region_ids, commodities)
         .with_context(|| input_err_msg(&file_path))
 }
 
@@ -103,6 +102,7 @@ fn read_processes_file_from_iter<I>(
     iter: I,
     milestone_years: &[u32],
     region_ids: &IndexSet<RegionID>,
+    commodities: &CommodityMap,
 ) -> Result<ProcessMap>
 where
     I: Iterator<Item = ProcessRaw>,
@@ -131,6 +131,15 @@ where
         // Parse region ID
         let regions = parse_region_str(&process_raw.regions, region_ids)?;
 
+        // Check whether primary output is valid
+        let primary_output = process_raw
+            .primary_output
+            .map(|id| {
+                let id = commodities.get_id(id.trim())?;
+                Ok(id.clone())
+            })
+            .transpose()?;
+
         let process = Process {
             id: process_raw.id.clone(),
             description: process_raw.description,
@@ -139,6 +148,7 @@ where
             flows: ProcessFlowsMap::new(),
             parameters: ProcessParameterMap::new(),
             regions,
+            primary_output,
         };
 
         ensure!(
@@ -242,7 +252,8 @@ fn validate_sed_commodity(
         }
     }
 
-    ensure!(has_consumer && has_producer,
+    ensure!(
+        has_consumer && has_producer,
         "Commodity {} of 'SED' type must have both producer and consumer processes for region {} in year {}",
         commodity_id,
         region_id,
@@ -342,7 +353,6 @@ mod tests {
                 coeff: FlowPerActivity(-10.0),
                 kind: FlowType::Fixed,
                 cost: MoneyPerFlow(1.0),
-                is_primary_output: false,
             }},
         )])
     }
@@ -356,7 +366,6 @@ mod tests {
                 coeff: FlowPerActivity(10.0),
                 kind: FlowType::Fixed,
                 cost: MoneyPerFlow(1.0),
-                is_primary_output: false,
             }},
         )])
     }
@@ -423,7 +432,6 @@ mod tests {
                     coeff: FlowPerActivity(10.0),
                     kind: FlowType::Fixed,
                     cost: MoneyPerFlow(1.0),
-                    is_primary_output: false,
                 }},
             )]),
         )])
@@ -508,7 +516,6 @@ mod tests {
                 coeff: FlowPerActivity(10.0),
                 kind: FlowType::Fixed,
                 cost: MoneyPerFlow(1.0),
-                is_primary_output: false,
             }},
         )])
     }
@@ -522,7 +529,6 @@ mod tests {
                 coeff: FlowPerActivity(-10.0),
                 kind: FlowType::Fixed,
                 cost: MoneyPerFlow(1.0),
-                is_primary_output: false,
             }},
         )])
     }
@@ -599,7 +605,6 @@ mod tests {
                     coeff: FlowPerActivity(-10.0),
                     kind: FlowType::Fixed,
                     cost: MoneyPerFlow(1.0),
-                    is_primary_output: false,
                 }},
             )]),
         )));

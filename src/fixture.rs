@@ -117,7 +117,7 @@ pub fn asset(process: Process) -> Asset {
 
 #[fixture]
 pub fn assets(asset: Asset) -> AssetPool {
-    let year = asset.commission_year;
+    let year = asset.commission_year();
     let mut assets = AssetPool::new(iter::once(asset).collect());
     assets.commission_new(year);
     assets
@@ -154,6 +154,7 @@ pub fn process(
         flows: ProcessFlowsMap::new(),
         parameters: process_parameter_map,
         regions: region_ids,
+        primary_output: None,
     }
 }
 

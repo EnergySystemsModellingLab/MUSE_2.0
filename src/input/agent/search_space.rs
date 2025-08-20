@@ -4,10 +4,8 @@ use crate::agent::{Agent, AgentID, AgentMap, AgentSearchSpaceMap};
 use crate::commodity::CommodityID;
 use crate::id::IDCollection;
 use crate::process::{Process, ProcessMap};
-use crate::region::RegionID;
 use crate::year::parse_year_str;
 use anyhow::{Context, Result};
-use indexmap::IndexSet;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -180,7 +178,7 @@ fn fill_missing_search_space_entries(
     for (commodity_id, year) in agent.commodity_portions.keys() {
         let key = (commodity_id.clone(), *year);
         search_space.entry(key).or_insert_with(|| {
-            Rc::new(get_all_producers(processes, &agent.regions, commodity_id, *year).collect())
+            Rc::new(get_all_producers(processes, commodity_id, *year).collect())
         });
     }
 }
@@ -188,37 +186,15 @@ fn fill_missing_search_space_entries(
 /// Get all processes active in the relevant year and regions which produce the given commodity
 fn get_all_producers<'a>(
     processes: &'a ProcessMap,
-    region_ids: &'a IndexSet<RegionID>,
     commodity_id: &'a CommodityID,
     year: u32,
 ) -> impl Iterator<Item = Rc<Process>> + 'a {
     processes
         .values()
         .filter(move |process| {
-            process.active_for_year(year)
-                && is_primary_producer(process, region_ids, commodity_id, year)
+            process.active_for_year(year) && process.primary_output.as_ref() == Some(commodity_id)
         })
         .cloned()
-}
-
-/// Whether the specified process produces the commodity as a primary output in the given year.
-///
-/// True if it is a primary output in at least one region.
-fn is_primary_producer(
-    process: &Process,
-    region_ids: &IndexSet<RegionID>,
-    commodity_id: &CommodityID,
-    year: u32,
-) -> bool {
-    let mut flows_for_all_regions = region_ids
-        .iter()
-        .filter_map(|region_id| process.flows.get(&(region_id.clone(), year)));
-
-    flows_for_all_regions.any(|flows| {
-        flows
-            .get(commodity_id)
-            .is_some_and(|flow| flow.is_primary_output)
-    })
 }
 
 #[cfg(test)]
@@ -246,6 +222,7 @@ mod tests {
                     flows: ProcessFlowsMap::new(),
                     parameters: ProcessParameterMap::new(),
                     regions: region_ids.clone(),
+                    primary_output: None,
                 };
                 (id, process.into())
             })

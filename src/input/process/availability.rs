@@ -152,8 +152,11 @@ fn validate_activity_limits_maps(
     processes: &ProcessMap,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
-    for (process_id, map) in map.iter() {
-        let process = processes.get(process_id).unwrap();
+    for (process_id, process) in processes.iter() {
+        let map = map
+            .get(process_id)
+            .with_context(|| format!("Missing availabilities for process {process_id}"))?;
+
         let reference_years = &process.years.clone();
         let reference_regions = &process.regions;
         let mut missing_keys = Vec::new();
