@@ -71,6 +71,8 @@ pub struct Asset {
     state: AssetState,
     /// The [`Process`] that this asset corresponds to
     process: Rc<Process>,
+    /// The [`ProcessParameter`] corresponding to the asset's region and commission year
+    process_parameter: Rc<ProcessParameter>,
     /// The region in which the asset is located
     region_id: RegionID,
     /// Capacity of asset (for candidates this is a hypothetical capacity which may be altered)
@@ -91,7 +93,12 @@ impl Asset {
         check_region_year_valid_for_process(&process, &region_id, commission_year)?;
         Ok(Self {
             state: AssetState::Candidate { agent_id },
-            process,
+            process: process.clone(),
+            process_parameter: process
+                .parameters
+                .get(&(region_id.clone(), commission_year))
+                .unwrap()
+                .clone(),
             region_id,
             capacity,
             commission_year,
@@ -110,7 +117,12 @@ impl Asset {
         check_capacity_valid_for_asset(capacity)?;
         Ok(Self {
             state: AssetState::Future { agent_id },
-            process,
+            process: process.clone(),
+            process_parameter: process
+                .parameters
+                .get(&(region_id.clone(), commission_year))
+                .unwrap()
+                .clone(),
             region_id,
             capacity,
             commission_year,
@@ -127,7 +139,12 @@ impl Asset {
         check_region_year_valid_for_process(&process, &region_id, commission_year)?;
         Ok(Self {
             state: AssetState::Mock,
-            process,
+            process: process.clone(),
+            process_parameter: process
+                .parameters
+                .get(&(region_id.clone(), commission_year))
+                .unwrap()
+                .clone(),
             region_id,
             capacity,
             commission_year,
@@ -136,15 +153,12 @@ impl Asset {
 
     /// The process parameter for this asset
     pub fn process_parameter(&self) -> &ProcessParameter {
-        self.process
-            .parameters
-            .get(&(self.region_id.clone(), self.commission_year))
-            .unwrap()
+        &self.process_parameter
     }
 
     /// The last year in which this asset should be decommissioned
     pub fn max_decommission_year(&self) -> u32 {
-        self.commission_year + self.process_parameter().lifetime
+        self.commission_year + self.process_parameter.lifetime
     }
 
     /// Get the activity limits for this asset in a particular time slice
@@ -178,7 +192,7 @@ impl Asset {
                 time_slice.clone(),
             ))
             .unwrap();
-        let cap2act = self.process_parameter().capacity_to_activity;
+        let cap2act = self.process_parameter.capacity_to_activity;
         (cap2act * *limits.start())..=(cap2act * *limits.end())
     }
 
@@ -190,12 +204,12 @@ impl Asset {
             .map(|flow| flow.get_total_cost(&self.region_id, year, time_slice))
             .sum();
 
-        self.process_parameter().variable_operating_cost + flows_cost
+        self.process_parameter.variable_operating_cost + flows_cost
     }
 
     /// Maximum activity for this asset
     pub fn max_activity(&self) -> Activity {
-        self.capacity * self.process_parameter().capacity_to_activity
+        self.capacity * self.process_parameter.capacity_to_activity
     }
 
     /// Get a specific process flow
