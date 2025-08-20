@@ -138,6 +138,27 @@ impl Asset {
         )
     }
 
+    /// Create a new selected asset
+    ///
+    /// This is only used for testing. In the real program, Selected assets can only be created from
+    /// Candidate assets by calling `select_candidate_for_investment`.
+    #[cfg(test)]
+    fn new_selected(
+        agent_id: AgentID,
+        process: Rc<Process>,
+        region_id: RegionID,
+        capacity: Capacity,
+        commission_year: u32,
+    ) -> Result<Self> {
+        Self::new_with_state(
+            AssetState::Selected { agent_id },
+            process,
+            region_id,
+            capacity,
+            commission_year,
+        )
+    }
+
     /// Private helper to create an asset with the given state
     fn new_with_state(
         state: AssetState,
@@ -996,7 +1017,7 @@ mod tests {
         // Create new non-commissioned assets
         let process_rc = Rc::new(process);
         let new_assets = vec![
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent2".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -1005,7 +1026,7 @@ mod tests {
             )
             .unwrap()
             .into(),
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent3".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -1038,7 +1059,7 @@ mod tests {
         asset_pool.commission_new(2020);
 
         // Create a new non-commissioned asset
-        let new_asset = Asset::new_candidate(
+        let new_asset = Asset::new_selected(
             "agent_new".into(),
             process.into(),
             "GBR".into(),
@@ -1071,7 +1092,7 @@ mod tests {
         // Create new assets that would be out of order if added at the end
         let process_rc = Rc::new(process);
         let new_assets = vec![
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent_high_id".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -1080,7 +1101,7 @@ mod tests {
             )
             .unwrap()
             .into(),
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent_low_id".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -1128,7 +1149,7 @@ mod tests {
         // Create new non-commissioned assets
         let process_rc = Rc::new(process);
         let new_assets = vec![
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent1".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -1137,7 +1158,7 @@ mod tests {
             )
             .unwrap()
             .into(),
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent2".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -1222,7 +1243,7 @@ mod tests {
         process: Process,
     ) {
         // Create a non-commissioned asset
-        let non_commissioned_asset = Asset::new_candidate(
+        let non_commissioned_asset = Asset::new_future(
             "agent_new".into(),
             process.into(),
             "GBR".into(),
@@ -1253,7 +1274,7 @@ mod tests {
         assert_eq!(asset1.id(), Some(AssetID(1)));
 
         // Test successful commissioning of Selected asset
-        let mut asset2 = Asset::new_candidate(
+        let mut asset2 = Asset::new_selected(
             "agent1".into(),
             Rc::clone(&process_rc),
             "GBR".into(),
@@ -1261,7 +1282,6 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset2.select_candidate_for_investment();
         asset2.commission_selected(AssetID(2));
         assert!(asset2.is_commissioned());
         assert_eq!(asset2.id(), Some(AssetID(2)));
