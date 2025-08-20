@@ -1,8 +1,9 @@
 //! Module for creating and analysing commodity graphs
-use crate::commodity::CommodityID;
+use crate::commodity::{CommodityID, CommodityMap, CommodityType};
 use crate::process::{ProcessID, ProcessMap};
 use crate::region::RegionID;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
+use itertools::iproduct;
 use petgraph::algo::toposort;
 use petgraph::graph::Graph;
 use petgraph::Directed;
@@ -22,36 +23,115 @@ pub fn create_commodities_graph_for_region_year(
 
     let key = (region_id.clone(), year);
     for process in processes.values() {
-        let Some(primary_output) = &process.primary_output else {
-            // Process only has input flows
-            continue;
-        };
-
         let Some(flows) = process.flows.get(&key) else {
             // Process doesn't operate in this region/year
             continue;
         };
 
+        // Get output flows for the process
+        let outputs: Vec<_> = flows
+            .values()
+            .filter(|flow| flow.is_output())
+            .map(|flow| &flow.commodity.id)
+            .collect();
+
         // Get input flows for the process
-        let inputs = flows
+        let inputs: Vec<_> = flows
             .values()
             .filter(|flow| flow.is_input())
-            .map(|flow| &flow.commodity.id);
+            .map(|flow| &flow.commodity.id)
+            .collect();
 
-        // Create edges from inputs to primary outputs
+        // Panic if a process has no inputs or outputs
+        assert!(
+            !inputs.is_empty() && !outputs.is_empty(),
+            "Process {} in region {} year {} must have both inputs and outputs",
+            process.id,
+            region_id,
+            year
+        );
+
+        // Create edges from all inputs to all outputs
         // We also create nodes for commodities the first time they are encountered
-        for input in inputs {
+        for (input, output) in iproduct!(inputs, outputs) {
             let source_node = *commodity_to_node_index
                 .entry(input.clone())
                 .or_insert_with(|| graph.add_node(input.clone()));
             let target_node = *commodity_to_node_index
-                .entry(primary_output.clone())
-                .or_insert_with(|| graph.add_node(primary_output.clone()));
+                .entry((*output).clone())
+                .or_insert_with(|| graph.add_node((*output).clone()));
             graph.add_edge(source_node, target_node, process.id.clone());
         }
     }
 
     graph
+}
+
+/// Validates that the commodity graph follows the rules for different commodity types
+///
+/// # Arguments
+///
+/// * `graph` - The commodity flow graph to validate
+/// * `commodities` - Map of commodities with their types
+///
+/// # Returns
+///
+/// `Ok(())` if validation passes, or an error describing the violation
+///
+/// # Rules
+///
+/// - **SVD type commodities**: Must have at least one incoming edge (produced) and no outgoing edges (not consumed)
+/// - **SED type commodities**: If they have outgoing edges (consumed), they must also have incoming edges (produced)
+/// - **OTH type commodities**: Can have incoming or outgoing edges, or neither, but not both
+pub fn validate_commodities_graph(
+    graph: &CommoditiesGraph,
+    commodities: &CommodityMap,
+) -> Result<()> {
+    for node_idx in graph.node_indices() {
+        let commodity_id = graph.node_weight(node_idx).unwrap();
+        let commodity = commodities.get(commodity_id).unwrap();
+
+        let incoming = graph
+            .edges_directed(node_idx, petgraph::Direction::Incoming)
+            .count();
+        let outgoing = graph
+            .edges_directed(node_idx, petgraph::Direction::Outgoing)
+            .count();
+
+        match commodity.kind {
+            CommodityType::ServiceDemand => {
+                // SVD: must be produced (incoming edges) but not consumed (no outgoing edges)
+                ensure!(
+                    incoming > 0,
+                    "SVD commodity {} must have at least one producer",
+                    commodity_id
+                );
+                ensure!(
+                    outgoing == 0,
+                    "SVD commodity {} cannot be consumed",
+                    commodity_id
+                );
+            }
+            CommodityType::SupplyEqualsDemand => {
+                // SED: if consumed (outgoing edges), must also be produced (incoming edges)
+                ensure!(
+                    !(outgoing > 0 && incoming == 0),
+                    "SED commodity {} is consumed but has no producers",
+                    commodity_id
+                );
+            }
+            CommodityType::Other => {
+                // OTH: cannot have both incoming and outgoing edges
+                ensure!(
+                    !(incoming > 0 && outgoing > 0),
+                    "OTH commodity {} cannot have both producers and consumers",
+                    commodity_id
+                );
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Performs topological sort on the commodity graph

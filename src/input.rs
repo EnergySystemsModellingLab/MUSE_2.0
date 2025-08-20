@@ -1,6 +1,8 @@
 //! Common routines for handling input data.
 use crate::asset::AssetPool;
-use crate::graph::{create_commodities_graph_for_region_year, topo_sort_commodities};
+use crate::graph::{
+    create_commodities_graph_for_region_year, topo_sort_commodities, validate_commodities_graph,
+};
 use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
 use crate::units::UnitType;
@@ -204,8 +206,12 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let commodity_order = iproduct!(region_ids, years.iter())
         .map(|(region_id, year)| -> Result<_> {
             let graph = create_commodities_graph_for_region_year(&processes, &region_id, *year);
+            validate_commodities_graph(&graph, &commodities).with_context(|| {
+                format!("Error validating commodity graph for {region_id} in {year}")
+            })?;
             let order = topo_sort_commodities(&graph)
                 .with_context(|| format!("Error with commodity graph for {region_id} in {year}"))?;
+            // TODO: filter order to only include SVD and SED commodities
             Ok(((region_id, *year), order))
         })
         .try_collect()?;
