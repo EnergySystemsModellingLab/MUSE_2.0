@@ -5,7 +5,50 @@ the code.
 
 [The API documentation is available here.](./api/muse2)
 
-## Installing the Rust toolchain
+## Background: The Rust programming language
+
+MUSE 2.0 is written using [Rust], which is a high-performance, compiled language. If you have used
+other compiled languages, such as C++, many of the concepts will be familiar. One feature which
+distinguishes it from other languages like C and C++, however, is that [undefined behaviour], such
+as [memory safety] bugs, are not possible, provided you keep to the [safe subset] of the language.
+This means you can have the performance benefits of using a low-level language like C, with the
+safety guarantees and much of the convenience of a higher-level language like Python.
+
+There is much high quality documentation available for learning Rust, but it is probably best to
+start with [The Rust Programming Language book], which is freely available online.
+
+[Rust]: https://www.rust-lang.org/
+[undefined behaviour]: https://en.wikipedia.org/wiki/Undefined_behavior
+[memory safety]: https://www.memorysafety.org/docs/memory-safety/
+[safe subset]: https://doc.rust-lang.org/nomicon/meet-safe-and-unsafe.html
+[The Rust Programming Language book]: https://doc.rust-lang.org/book/
+
+## Installing developer tools
+
+To develop MUSE 2.0 locally you will need the following components:
+
+- [Git]
+- Rust development tools
+- C++ development tools (needed for bindings to the [HiGHS] solver)
+
+You can either install the necessary developer tools locally on your machine manually (a bare metal
+installation) or use the provided [development container]. Bare metal installation should generally
+be preferred if you plan on doing substantial development, as you should get better performance
+locally (and therefore shorter compile times), as well as making it easier to interact with your
+local filesystem. Development containers provide a mechanism for installing all the tools you will
+need (into a [Docker] container) and are generally used either via [Visual Studio Code] running
+locally or [GitHub Codespaces], which run on GitHub-provided virtual machines running remotely.
+
+[Git]: https://git-scm.com/
+[HiGHS]: https://highs.dev/
+[development container]: https://devcontainers.github.io/
+[Docker]: https://www.docker.com/
+[Visual Studio Code]: https://code.visualstudio.com/
+[GitHub Codespaces]: https://github.com/features/codespaces
+
+### Option 1: Bare metal installation
+
+#### Installing the Rust toolchain
 
 We recommend that developers use `rustup` to install the Rust toolchain. Follow the instructions on
 [the `rustup` website](https://rustup.rs/).
@@ -23,12 +66,46 @@ of date. You can update to the latest version with:
 rustup update stable
 ```
 
-## Installing C++ tools for HiGHS
+#### Installing C++ tools for HiGHS
 
-The `highs-sys` crate requires a C++ compiler and cmake to be installed on your system.
+The [`highs-sys`] crate requires a C++ compiler and CMake to be installed on your system.
 These may be installed already, but if you encounter errors during the build process for `highs-sys`
-(e.g. "Unable to find libclang"), you should follow the instructions [here](https://github.com/rust-or/highs-sys)
-under "Building HiGHS".
+(e.g. "Unable to find libclang"), you should follow [the instructions in the `highs-sys`
+repository][highs-sys-repo].
+
+[`highs-sys`]: https://crates.io/crates/highs-sys
+[highs-sys-repo]: https://github.com/rust-or/highs-sys#building-highs
+
+### Option 2: Developing inside a container
+
+If you wish to use the development container locally with Visual Studio Code, you should first
+install the [Dev Containers extension]. Note you will also need Docker to be installed locally. For
+more information, see [the documentation].
+
+You can use GitHub Codespaces to develop directly from your web browser. For more information,
+please see [GitHub's guide]. When you first create your Codespace, you will be asked whether you
+wish to install the recommended extensions and you should choose "yes".
+
+[Dev Containers extension]: https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers
+[the documentation]: https://code.visualstudio.com/docs/devcontainers/containers
+[GitHub's guide]: https://docs.github.com/en/codespaces/developing-in-a-codespace/developing-in-a-codespace
+
+## Downloading the MUSE 2.0 source code
+
+Unless you are developing in a GitHub Codespace (see above), you will need to download the MUSE 2.0
+source code to your local machine before you can develop it. Like many projects, MUSE 2.0 is stored
+in a Git repository [hosted on GitHub]. Many IDEs, such as Visual Studio Code, provide an interface
+to clone Git repositories, but you can also use the Git command-line tool ([see installation
+instructions]), like so:
+
+```sh
+git clone https://github.com/EnergySystemsModellingLab/MUSE_2.0
+```
+
+The source code will now be available in a folder named `MUSE_2.0`.
+
+[hosted on GitHub]: https://github.com/EnergySystemsModellingLab/MUSE_2.0
+[see installation instructions]: https://git-scm.com/downloads
 
 ## Working with the project
 
@@ -127,8 +204,7 @@ python docs/file_formats/generate_docs.py input
 
 ### Recreate the `command_line_help.md` file
 
-This file is created automatically. In order to update it if needed, due to changes in
-the CLI, just run:
+This file is created automatically. In order to examine the output locally, run:
 
 ```sh
 cargo run -- --markdown_help > docs/command_line_help.md
