@@ -943,7 +943,7 @@ mod tests {
         let original_count = asset_pool.active.len();
 
         // Extend with empty iterator
-        asset_pool.extend(Vec::<AssetRef>::new()).unwrap();
+        asset_pool.extend(Vec::<AssetRef>::new());
 
         assert_eq!(asset_pool.active.len(), original_count);
     }
@@ -956,7 +956,7 @@ mod tests {
         let existing_assets = asset_pool.take();
 
         // Extend with the same assets (should maintain their IDs)
-        asset_pool.extend(existing_assets.clone()).unwrap();
+        asset_pool.extend(existing_assets.clone());
 
         assert_eq!(asset_pool.active.len(), 2);
         assert_eq!(asset_pool.active[0].id(), Some(AssetID(0)));
@@ -992,7 +992,7 @@ mod tests {
             .into(),
         ];
 
-        asset_pool.extend(new_assets).unwrap();
+        asset_pool.extend(new_assets);
 
         assert_eq!(asset_pool.active.len(), original_count + 2);
         // New assets should get IDs 2 and 3
@@ -1025,7 +1025,7 @@ mod tests {
         .into();
 
         // Extend with just the new asset (not mixing with existing to avoid duplicates)
-        asset_pool.extend(vec![new_asset]).unwrap();
+        asset_pool.extend(vec![new_asset]);
 
         assert_eq!(asset_pool.active.len(), 3);
         // Check that we have the original assets plus the new one
@@ -1067,7 +1067,7 @@ mod tests {
             .into(),
         ];
 
-        asset_pool.extend(new_assets).unwrap();
+        asset_pool.extend(new_assets);
 
         // Check that assets are sorted by ID
         let ids: Vec<u32> = asset_pool
@@ -1085,7 +1085,7 @@ mod tests {
 
         // The extend method expects unique assets - adding duplicates would violate
         // the debug assertion, so this test verifies the normal case
-        asset_pool.extend(Vec::new()).unwrap();
+        asset_pool.extend(Vec::new());
 
         assert_eq!(asset_pool.active.len(), original_count);
         // Verify all assets are still unique (this is what the debug_assert checks)
@@ -1124,7 +1124,7 @@ mod tests {
             .into(),
         ];
 
-        asset_pool.extend(new_assets).unwrap();
+        asset_pool.extend(new_assets);
 
         // next_id should have incremented for each new asset
         assert_eq!(asset_pool.next_id, 4);
