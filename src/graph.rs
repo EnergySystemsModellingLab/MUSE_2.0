@@ -129,41 +129,59 @@ fn validate_commodities_graph(graph: &CommoditiesGraph, commodities: &CommodityM
     for node_idx in graph.node_indices() {
         let commodity_id = graph.node_weight(node_idx).unwrap();
 
-        // Skip _SOURCE and _SINK commodities
+        // Skip _SOURCE, _SINK, and _DEMAND commodities
         if commodity_id == &CommodityID::from("_SOURCE")
             || commodity_id == &CommodityID::from("_SINK")
+            || commodity_id == &CommodityID::from("_DEMAND")
         {
             continue;
         }
 
+        // Analyse incoming and outgoing edges for the commodity
         let incoming = graph
             .edges_directed(node_idx, petgraph::Direction::Incoming)
             .count();
         let outgoing = graph
             .edges_directed(node_idx, petgraph::Direction::Outgoing)
             .count();
+        let has_demand_edges = graph
+            .edges_directed(node_idx, petgraph::Direction::Outgoing)
+            .any(|edge| edge.weight() == &ProcessID::from("_DEMAND"));
+        let non_demand_outgoing = graph
+            .edges_directed(node_idx, petgraph::Direction::Outgoing)
+            .filter(|edge| edge.weight() != &ProcessID::from("_DEMAND"))
+            .count();
 
         // Match validation rules to commodity type
         let commodity = commodities.get(commodity_id).unwrap();
         match commodity.kind {
             CommodityType::ServiceDemand => {
-                // SVD: must be produced (incoming edges) but not consumed (no outgoing edges)
+                // Cannot have outgoing edges to non-_DEMAND commodities
                 ensure!(
-                    incoming > 0,
-                    "SVD commodity {} must have at least one producer",
+                    non_demand_outgoing == 0,
+                    "SVD commodity {} cannot be be an input to a process",
                     commodity_id
                 );
-                ensure!(
-                    outgoing == 0,
-                    "SVD commodity {} cannot be consumed",
-                    commodity_id
-                );
+                // If it has _DEMAND edges, it must have at least one producer
+                if has_demand_edges {
+                    ensure!(
+                        incoming > 0,
+                        "SVD commodity {} is demanded but has no producers",
+                        commodity_id
+                    );
+                }
             }
             CommodityType::SupplyEqualsDemand => {
                 // SED: if consumed (outgoing edges), must also be produced (incoming edges)
                 ensure!(
                     !(outgoing > 0 && incoming == 0),
-                    "SED commodity {} is consumed but has no producers",
+                    "SED commodity {} may be consumed but has no producers",
+                    commodity_id
+                );
+                // Cannot have _DEMAND edges
+                ensure!(
+                    !has_demand_edges,
+                    "Demand should only be specified for SVD commodities, but SED commodity {} has demand",
                     commodity_id
                 );
             }
@@ -172,6 +190,12 @@ fn validate_commodities_graph(graph: &CommoditiesGraph, commodities: &CommodityM
                 ensure!(
                     !(incoming > 0 && outgoing > 0),
                     "OTH commodity {} cannot have both producers and consumers",
+                    commodity_id
+                );
+                // Cannot have _DEMAND edges
+                ensure!(
+                    !has_demand_edges,
+                    "Demand should only be specified for SVD commodities, but OTH commodity {} has demand",
                     commodity_id
                 );
             }
