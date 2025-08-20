@@ -12,7 +12,7 @@ keywords = ["energy", "modelling"]
 categories = ["science", "simulation", "command-line-utilities"]
 
 [dependencies]
-anyhow = "1.0.98"
+anyhow = "1.0.99"
 csv = "1.3.0"
 log = "0.4.27"
 float-cmp = "0.10.0"
@@ -24,7 +24,7 @@ toml = "0.9.5"
 unicase = "2.8.1"
 fern = {version = "0.7.1", features = ["chrono", "colored"]}
 chrono = "0.4"
-clap = {version = "4.5.44", features = ["cargo", "derive"]}
+clap = {version = "4.5.45", features = ["cargo", "derive"]}
 include_dir = "0.7.4"
 highs = "1.12.0"
 indexmap = "2.10.0"
