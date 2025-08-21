@@ -31,7 +31,7 @@ type Variable = highs::Col;
 type AssetVariableMap = IndexMap<(AssetRef, TimeSliceID), Variable>;
 
 /// Variables representing unmet demand for a given commodity
-type UnmetDemandMap = IndexMap<(CommodityID, RegionID, TimeSliceID), Variable>;
+type UnmetDemandVariableMap = IndexMap<(CommodityID, RegionID, TimeSliceID), Variable>;
 
 /// A map for easy lookup of variables in the problem.
 ///
@@ -46,7 +46,7 @@ pub struct VariableMap {
     asset_vars: AssetVariableMap,
     existing_asset_var_idx: Range<usize>,
     candidate_asset_var_idx: Range<usize>,
-    unmet_demand_vars: UnmetDemandMap,
+    unmet_demand_vars: UnmetDemandVariableMap,
     unmet_demand_var_idx: Range<usize>,
 }
 
@@ -117,7 +117,7 @@ impl VariableMap {
             asset_vars,
             existing_asset_var_idx,
             candidate_asset_var_idx,
-            unmet_demand_vars: UnmetDemandMap::new(),
+            unmet_demand_vars: UnmetDemandVariableMap::new(),
             unmet_demand_var_idx: Range::default(),
         }
     }
