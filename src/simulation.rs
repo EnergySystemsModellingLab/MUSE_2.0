@@ -109,7 +109,7 @@ fn run_dispatch_for_year(
 ) -> Result<(FlowMap, CommodityPrices, ReducedCosts)> {
     // Dispatch optimisation with existing assets only
     let solution_existing = DispatchRun::new(model, assets, year)
-        .with_unmet_demand_allowed()
+        .with_unmet_demand_supported()
         .run("final without candidates", writer)?;
     let flow_map = solution_existing.create_flow_map();
 
@@ -129,7 +129,7 @@ fn run_dispatch_for_year(
         solution_existing
     } else {
         DispatchRun::new(model, assets, year)
-            .with_unmet_demand_allowed()
+            .with_unmet_demand_supported()
             .with_candidates(&candidates)
             .run("final with candidates", writer)?
     };

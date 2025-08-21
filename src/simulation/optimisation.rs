@@ -332,7 +332,7 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
 /// Provides the interface for running the dispatch optimisation.
 ///
 /// The caller can allow the dispatch run to return without error when demand is not met by calling
-/// the `with_unmet_demand_allowed` method.
+/// the `with_unmet_demand_supported` method.
 ///
 /// For a detailed description, please see the [dispatch optimisation formulation][1].
 ///
@@ -380,7 +380,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
     /// Allow the dispatch run to continue even if demand is not fully met.
     ///
     /// Note that if the `allow_unmet_demand` option is set to false, this is a no-op.
-    pub fn with_unmet_demand_allowed(self) -> Self {
+    pub fn with_unmet_demand_supported(self) -> Self {
         Self {
             allow_unmet_demand: self.model.parameters.allow_unmet_demand,
             ..self
