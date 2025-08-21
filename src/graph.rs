@@ -16,6 +16,15 @@ use std::collections::HashMap;
 type CommoditiesGraph = Graph<CommodityID, ProcessID, Directed>;
 
 /// Creates a graph of commodity flows for a given region and year
+///
+/// The graph contains nodes for all commodities that may be consumed/produced by processes in the
+/// specified region/year. There will be an edge between commodity A and B if there exists a process
+/// that produces A and consumes B.
+///
+/// There are also special nodes for _SOURCE and _SINK commodities, which are used to represent
+/// processes that have no inputs or outputs.
+///
+/// The graph does not take into account process availabilities or commodity demands.
 fn create_commodities_graph_for_region_year(
     processes: &ProcessMap,
     region_id: &RegionID,
@@ -78,8 +87,16 @@ fn create_commodities_graph_for_region_year(
     graph
 }
 
-/// Creates a filtered commodity graph with demand edges for a specific time slice selection
-fn create_filtered_graph_with_demand(
+/// Creates a graph representing commodity flows in a specific time slice selection, which will be
+/// used for validation with `validate_commodities_graph`.
+///
+/// It takes a base graph produced by `create_commodities_graph_for_region_year`, and modifies it to
+/// account for process availabilities and commodity demands within the given time slice selection,
+/// returning a new graph.
+///
+/// Commodity demands are represented by a new special _DEMAND node. We only add edges to _DEMAND
+/// for commodities with the same time_slice_level as the selection.
+fn create_commodities_graph_for_validation(
     base_graph: &CommoditiesGraph,
     processes: &ProcessMap,
     commodities: &CommodityMap,
@@ -109,7 +126,6 @@ fn create_filtered_graph_with_demand(
     // Add demand edges
     // We add edges to _DEMAND for commodities that are demanded in the selection
     // NOTE: we only do this for commodities with the same time_slice_level as the selection
-    // This is fine for now because we perform validation at every time slice level
     let demand_node = filtered_graph.add_node(CommodityID::from("_DEMAND"));
     for (commodity_id, commodity) in commodities {
         if time_slice_selection.level() == commodity.time_slice_level
@@ -129,23 +145,15 @@ fn create_filtered_graph_with_demand(
     filtered_graph
 }
 
-/// Validates that the commodity graph follows the rules for different commodity types
+/// Validates that the commodity graph follows the rules for different commodity types.
 ///
-/// # Arguments
+/// It takes as input a graph created by `create_commodities_graph_for_validation`, which is built
+/// for a specific time slice selection (must match the `time_slice_level` passed to this function).
 ///
-/// * `graph` - The commodity flow graph to validate
-/// * `commodities` - Map of commodities with their types
-/// * `time_slice_level` - Only validate commodities at this time slice level
-///
-/// # Returns
-///
-/// `Ok(())` if validation passes, or an error describing the violation
-///
-/// # Rules
-///
-/// - **SVD type commodities**: Must have at least one incoming edge (produced) and no outgoing edges (not consumed)
-/// - **SED type commodities**: If they have outgoing edges (consumed), they must also have incoming edges (produced)
-/// - **OTH type commodities**: Can have incoming or outgoing edges, or neither, but not both
+/// The validation is only performed for commodities with the specified time slice level. For full
+/// validation of all commodities in the model, we therefore need to run this function for all time
+/// slice selections at all time slice levels. This is handled by
+/// `build_and_validate_commodity_graphs_for_model`.
 fn validate_commodities_graph(
     graph: &CommoditiesGraph,
     commodities: &CommodityMap,
@@ -262,25 +270,36 @@ fn topo_sort_commodities(
     Ok(order)
 }
 
-/// Builds and validates commodity graphs for all regions and years
+/// Builds and validates commodity graphs for the entire model.
 ///
-/// This function creates commodity graphs for each region/year combination,
-/// validates them, determines commodity ordering via topological sort,
-/// and validates time-slice specific graphs.
+/// This function creates commodity flow graphs for each region/year combination in the model,
+/// validates the graph structure against commodity type rules, and determines the optimal
+/// investment order for commodities.
+///
+/// The validation process checks three time slice levels:
+/// - **Annual**: Validates annual-level commodities and processes
+/// - **Seasonal**: Validates seasonal-level commodities and processes for each season
+/// - **Day/Night**: Validates day/night-level commodities and processes for each time slice
 ///
 /// # Arguments
 ///
-/// * `processes` - Map of all processes
-/// * `commodities` - Map of all commodities
-/// * `region_ids` - Collection of region IDs
-/// * `years` - Collection of years
-/// * `time_slice_info` - Time slice information
+/// * `processes` - All processes in the model with their flows and activity limits
+/// * `commodities` - All commodities with their types and demand specifications
+/// * `region_ids` - Collection of regions to model
+/// * `years` - Years to analyze
+/// * `time_slice_info` - Time slice configuration (seasons, day/night periods)
 ///
 /// # Returns
 ///
-/// A tuple containing:
-/// * `HashMap<(RegionID, u32), CommoditiesGraph>` - Commodity graphs for each region/year
-/// * `HashMap<(RegionID, u32), Vec<CommodityID>>` - Commodity ordering for each region/year
+/// A map from `(region, year)` to the ordered list of commodities for investment decisions. The
+/// ordering ensures that leaf-node commodities (those with no outgoing edges) are solved first.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Any commodity graph contains cycles
+/// - Commodity type rules are violated (e.g., SVD commodities being consumed)
+/// - Demand cannot be satisfied
 pub fn build_and_validate_commodity_graphs_for_model(
     processes: &crate::process::ProcessMap,
     commodities: &crate::commodity::CommodityMap,
@@ -302,8 +321,9 @@ pub fn build_and_validate_commodity_graphs_for_model(
     let commodity_order: HashMap<(RegionID, u32), Vec<CommodityID>> = commodity_graphs
         .iter()
         .map(|((region_id, year), graph)| -> Result<_> {
-            let order = topo_sort_commodities(graph, commodities)
-                .with_context(|| format!("Error with commodity graph for {region_id} in {year}"))?;
+            let order = topo_sort_commodities(graph, commodities).with_context(|| {
+                format!("Error validating commodity graph for {region_id} in {year}")
+            })?;
             Ok(((region_id.clone(), *year), order))
         })
         .try_collect()?;
@@ -311,7 +331,7 @@ pub fn build_and_validate_commodity_graphs_for_model(
     // Validate graphs at all time slice levels (taking into account process availability and demand)
     for ((region_id, year), base_graph) in &commodity_graphs {
         // Annual validation
-        let annual_graph = create_filtered_graph_with_demand(
+        let annual_graph = create_commodities_graph_for_validation(
             base_graph,
             processes,
             commodities,
@@ -321,11 +341,13 @@ pub fn build_and_validate_commodity_graphs_for_model(
             &TimeSliceSelection::Annual,
         );
         validate_commodities_graph(&annual_graph, commodities, TimeSliceLevel::Annual)
-            .with_context(|| format!("Error validating annual graph for {region_id} in {year}"))?;
+            .with_context(|| {
+                format!("Error validating commodity graph for {region_id} in {year}")
+            })?;
 
         // Seasonal validation
         for season in time_slice_info.iter_selections_at_level(TimeSliceLevel::Season) {
-            let seasonal_graph = create_filtered_graph_with_demand(
+            let seasonal_graph = create_commodities_graph_for_validation(
                 base_graph,
                 processes,
                 commodities,
@@ -336,13 +358,15 @@ pub fn build_and_validate_commodity_graphs_for_model(
             );
             validate_commodities_graph(&seasonal_graph, commodities, TimeSliceLevel::Season)
                 .with_context(|| {
-                    format!("Error validating seasonal graph for {region_id} in {year} in {season}")
+                    format!(
+                        "Error validating commodity graph for {region_id} in {year} in {season}"
+                    )
                 })?;
         }
 
         // DayNight validation
         for time_slice in time_slice_info.iter_selections_at_level(TimeSliceLevel::DayNight) {
-            let daynight_graph = create_filtered_graph_with_demand(
+            let daynight_graph = create_commodities_graph_for_validation(
                 base_graph,
                 processes,
                 commodities,
@@ -354,12 +378,13 @@ pub fn build_and_validate_commodity_graphs_for_model(
             validate_commodities_graph(&daynight_graph, commodities, TimeSliceLevel::DayNight)
                 .with_context(|| {
                     format!(
-                        "Error validating daynight graph for {region_id} in {year} in {time_slice}"
+                        "Error validating commodity graph for {region_id} in {year} in {time_slice}"
                     )
                 })?;
         }
     }
 
+    // If all the validation passes, return the commodity ordering
     Ok(commodity_order)
 }
 
