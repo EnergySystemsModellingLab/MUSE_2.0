@@ -50,4 +50,7 @@ properties:
     default: false
     notes: |
       The simulation will be penalised with the value of lost load for every unit of unmet demand
+
+      This option can break the commodity price calculation. Do not use unless you know what you're
+      doing.
 required: [milestone_years]
