@@ -3,7 +3,7 @@ use crate::commodity::{CommodityID, CommodityMap, CommodityType};
 use crate::process::{ProcessID, ProcessMap};
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
-use crate::units::Dimensionless;
+use crate::units::{Dimensionless, Flow};
 use anyhow::{anyhow, ensure, Context, Result};
 use indexmap::IndexSet;
 use itertools::{iproduct, Itertools};
@@ -20,7 +20,6 @@ fn create_commodities_graph_for_region_year(
     processes: &ProcessMap,
     region_id: &RegionID,
     year: u32,
-    commodities: &CommodityMap,
 ) -> CommoditiesGraph {
     let mut graph = Graph::new();
     let mut commodity_to_node_index = HashMap::new();
@@ -76,9 +75,6 @@ fn create_commodities_graph_for_region_year(
         }
     }
 
-    // Add _DEMAND connections for demanded commodities
-    add_demand_to_graph(&mut graph, commodities, region_id, year);
-
     graph
 }
 
@@ -119,27 +115,40 @@ fn filter_commodities_graph_by_timeslice_availability(
 }
 
 fn add_demand_to_graph(
-    graph: &mut CommoditiesGraph,
+    graph: &CommoditiesGraph,
     commodities: &CommodityMap,
     region_id: &RegionID,
     year: u32,
-) {
-    let demand_node = graph.add_node(CommodityID::from("_DEMAND"));
-    for (commodity_id, commodity) in commodities {
-        if commodity
-            .demand
-            .iter()
-            .any(|((r, y, _), _)| r == region_id && y == &year)
-        {
-            let commodity_node = graph
-                .node_indices()
-                .find(|&idx| graph.node_weight(idx) == Some(commodity_id))
-                .unwrap_or_else(|| graph.add_node(commodity_id.clone()));
+    time_slice_selection: &TimeSliceSelection,
+) -> CommoditiesGraph {
+    let mut graph_with_demand = graph.clone();
+    let demand_node = graph_with_demand.add_node(CommodityID::from("_DEMAND"));
 
-            graph.add_edge(commodity_node, demand_node, ProcessID::from("_DEMAND"));
+    for (commodity_id, commodity) in commodities {
+        // Check if the commodity has demand in this time_slice_selection
+        // We only do this for commodities with the same time_slice_level as the selection
+        let has_demand = if time_slice_selection.level() == commodity.time_slice_level {
+            commodity
+                .demand
+                .get(&(region_id.clone(), year, time_slice_selection.clone()))
+                .is_some_and(|&demand_value| demand_value > Flow(0.0))
+        } else {
+            false
+        };
+
+        // If the commodity is demanded, we add an edge from the commodity to the _DEMAND node
+        if has_demand {
+            let commodity_node = graph_with_demand
+                .node_indices()
+                .find(|&idx| graph_with_demand.node_weight(idx) == Some(commodity_id))
+                .unwrap_or_else(|| graph_with_demand.add_node(commodity_id.clone()));
+            graph_with_demand.add_edge(commodity_node, demand_node, ProcessID::from("_DEMAND"));
         }
     }
+
+    graph_with_demand
 }
+
 /// Validates that the commodity graph follows the rules for different commodity types
 ///
 /// # Arguments
@@ -299,37 +308,52 @@ pub fn build_and_validate_commodity_graphs_for_model(
     years: &[u32],
     time_slice_info: &crate::time_slice::TimeSliceInfo,
 ) -> Result<HashMap<(RegionID, u32), Vec<CommodityID>>> {
-    // Build commodity graphs for each region and year
+    // Build base commodity graphs for each region and year
+    // These do not take into account demand and process availability
     let commodity_graphs: HashMap<(RegionID, u32), CommoditiesGraph> =
         iproduct!(region_ids, years.iter())
             .map(|(region_id, year)| {
-                let graph = create_commodities_graph_for_region_year(
-                    processes,
-                    region_id,
-                    *year,
-                    commodities,
-                );
+                let graph = create_commodities_graph_for_region_year(processes, region_id, *year);
                 ((region_id.clone(), *year), graph)
             })
             .collect();
 
-    // Validate graphs and determine commodity ordering for each region and year
+    // Determine commodity ordering for each region and year
     let commodity_order: HashMap<(RegionID, u32), Vec<CommodityID>> = commodity_graphs
         .iter()
         .map(|((region_id, year), graph)| -> Result<_> {
-            validate_commodities_graph(graph, commodities, TimeSliceLevel::Annual).with_context(
-                || format!("Error validating commodity graph for {region_id} in {year}"),
-            )?;
             let order = topo_sort_commodities(graph, commodities)
                 .with_context(|| format!("Error with commodity graph for {region_id} in {year}"))?;
             Ok(((region_id.clone(), *year), order))
         })
         .try_collect()?;
 
-    // Validate graphs at the seasonal level (taking into account process availability)
+    // Validate graphs at the annual level (taking into account process availability and demand)
+    for ((region_id, year), base_graph) in &commodity_graphs {
+        let filtered_graph = filter_commodities_graph_by_timeslice_availability(
+            base_graph,
+            processes,
+            time_slice_info,
+            region_id,
+            *year,
+            &TimeSliceSelection::Annual,
+        );
+        let graph_with_demand = add_demand_to_graph(
+            &filtered_graph,
+            commodities,
+            region_id,
+            *year,
+            &TimeSliceSelection::Annual,
+        );
+        validate_commodities_graph(&graph_with_demand, commodities, TimeSliceLevel::Annual).with_context(|| {
+            format!("Error validating commodity graph for {region_id} in {year} in annual time slice")
+        })?;
+    }
+
+    // Validate graphs at the seasonal level (taking into account process availability and demand)
     for ((region_id, year), base_graph) in &commodity_graphs {
         for season_selection in time_slice_info.iter_selections_at_level(TimeSliceLevel::Season) {
-            let time_slice_graph = filter_commodities_graph_by_timeslice_availability(
+            let filtered_graph = filter_commodities_graph_by_timeslice_availability(
                 base_graph,
                 processes,
                 time_slice_info,
@@ -337,17 +361,24 @@ pub fn build_and_validate_commodity_graphs_for_model(
                 *year,
                 &season_selection,
             );
+            let graph_with_demand = add_demand_to_graph(
+                &filtered_graph,
+                commodities,
+                region_id,
+                *year,
+                &season_selection,
+            );
 
-            validate_commodities_graph(&time_slice_graph, commodities, TimeSliceLevel::Season).with_context(|| {
+            validate_commodities_graph(&graph_with_demand, commodities, TimeSliceLevel::Season).with_context(|| {
                 format!("Error validating commodity graph for {region_id} in {year} in season {season_selection}")
             })?;
         }
     }
 
-    // Validate graphs at the time slice level (taking into account process availability)
+    // Validate graphs at the time slice level (taking into account process availability and demand)
     for ((region_id, year), base_graph) in &commodity_graphs {
         for time_slice in time_slice_info.iter_selections_at_level(TimeSliceLevel::DayNight) {
-            let time_slice_graph = filter_commodities_graph_by_timeslice_availability(
+            let filtered_graph = filter_commodities_graph_by_timeslice_availability(
                 base_graph,
                 processes,
                 time_slice_info,
@@ -355,7 +386,9 @@ pub fn build_and_validate_commodity_graphs_for_model(
                 *year,
                 &time_slice,
             );
-            validate_commodities_graph(&time_slice_graph, commodities, TimeSliceLevel::DayNight).with_context(|| {
+            let graph_with_demand =
+                add_demand_to_graph(&filtered_graph, commodities, region_id, *year, &time_slice);
+            validate_commodities_graph(&graph_with_demand, commodities, TimeSliceLevel::DayNight).with_context(|| {
                 format!("Error validating commodity graph for {region_id} in {year} in time slice {time_slice}")
             })?;
         }
