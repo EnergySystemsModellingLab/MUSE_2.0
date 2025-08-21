@@ -197,6 +197,7 @@ struct ReducedCostsRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct UnmetDemandRow {
     milestone_year: u32,
+    run_description: String,
     commodity_id: CommodityID,
     region_id: RegionID,
     time_slice: TimeSliceID,
@@ -256,7 +257,11 @@ impl DebugDataWriter {
             solution.iter_commodity_balance_duals(),
         )?;
         self.write_solver_values(milestone_year, run_description, solution.objective_value)?;
-        self.write_unmet_demand(milestone_year, solution.iter_unmet_demand())?;
+        self.write_unmet_demand(
+            milestone_year,
+            run_description,
+            solution.iter_unmet_demand(),
+        )?;
         Ok(())
     }
 
@@ -395,13 +400,19 @@ impl DebugDataWriter {
     }
 
     /// Write unmet demand to file
-    pub fn write_unmet_demand<'a, I>(&mut self, milestone_year: u32, iter: I) -> Result<()>
+    pub fn write_unmet_demand<'a, I>(
+        &mut self,
+        milestone_year: u32,
+        run_description: &str,
+        iter: I,
+    ) -> Result<()>
     where
         I: Iterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, Flow)>,
     {
         for (commodity_id, region_id, time_slice, flow) in iter {
             let row = UnmetDemandRow {
                 milestone_year,
+                run_description: run_description.to_string(),
                 commodity_id: commodity_id.clone(),
                 region_id: region_id.clone(),
                 time_slice: time_slice.clone(),
