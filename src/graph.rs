@@ -155,24 +155,25 @@ fn validate_commodities_graph(
         let outgoing = graph
             .edges_directed(node_idx, petgraph::Direction::Outgoing)
             .count();
-        let has_demand_edges = graph
-            .edges_directed(node_idx, petgraph::Direction::Outgoing)
-            .any(|edge| edge.weight() == &ProcessID::from("_DEMAND"));
-        let non_demand_outgoing = graph
-            .edges_directed(node_idx, petgraph::Direction::Outgoing)
-            .filter(|edge| edge.weight() != &ProcessID::from("_DEMAND"))
-            .count();
 
         // Match validation rules to commodity type
         match commodity.kind {
             CommodityType::ServiceDemand => {
                 // Cannot have outgoing edges to non-_DEMAND commodities
+                let non_demand_outgoing = graph
+                    .edges_directed(node_idx, petgraph::Direction::Outgoing)
+                    .filter(|edge| edge.weight() != &ProcessID::from("_DEMAND"))
+                    .count();
                 ensure!(
                     non_demand_outgoing == 0,
-                    "SVD commodity {} cannot be be an input to a process",
+                    "SVD commodity {} cannot be an input to a process",
                     commodity_id
                 );
+
                 // If it has _DEMAND edges, it must have at least one producer
+                let has_demand_edges = graph
+                    .edges_directed(node_idx, petgraph::Direction::Outgoing)
+                    .any(|edge| edge.weight() == &ProcessID::from("_DEMAND"));
                 if has_demand_edges {
                     ensure!(
                         incoming > 0,
@@ -188,24 +189,12 @@ fn validate_commodities_graph(
                     "SED commodity {} may be consumed but has no producers",
                     commodity_id
                 );
-                // Cannot have _DEMAND edges
-                ensure!(
-                    !has_demand_edges,
-                    "Demand should only be specified for SVD commodities, but SED commodity {} has demand",
-                    commodity_id
-                );
             }
             CommodityType::Other => {
                 // OTH: cannot have both incoming and outgoing edges
                 ensure!(
                     !(incoming > 0 && outgoing > 0),
                     "OTH commodity {} cannot have both producers and consumers",
-                    commodity_id
-                );
-                // Cannot have _DEMAND edges
-                ensure!(
-                    !has_demand_edges,
-                    "Demand should only be specified for SVD commodities, but OTH commodity {} has demand",
                     commodity_id
                 );
             }
@@ -215,7 +204,9 @@ fn validate_commodities_graph(
     Ok(())
 }
 
-/// Performs topological sort on the commodity graph
+/// Performs topological sort on the commodity graph to get the ordering for investments
+///
+/// The returned Vec only includes SVD and SED commodities.
 fn topo_sort_commodities(
     graph: &CommoditiesGraph,
     commodities: &CommodityMap,
@@ -299,7 +290,7 @@ pub fn build_and_validate_commodity_graphs_for_model(
         })
         .try_collect()?;
 
-    // Validate graphs at the seasonal level
+    // Validate graphs at the seasonal level (taking into account process availability)
     for ((region_id, year), base_graph) in &commodity_graphs {
         for season_selection in time_slice_info.iter_selections_at_level(TimeSliceLevel::Season) {
             let time_slice_graph = filter_commodities_graph_by_timeslice_availability(
@@ -317,7 +308,7 @@ pub fn build_and_validate_commodity_graphs_for_model(
         }
     }
 
-    // Validate graphs at the time slice level
+    // Validate graphs at the time slice level (taking into account process availability)
     for ((region_id, year), base_graph) in &commodity_graphs {
         for time_slice in time_slice_info.iter_selections_at_level(TimeSliceLevel::DayNight) {
             let time_slice_graph = filter_commodities_graph_by_timeslice_availability(
@@ -401,18 +392,19 @@ mod tests {
         let mut graph = Graph::new();
         let mut commodities = CommodityMap::new();
 
-        // Add test commodities
+        // Add test commodities (all have DayNight time slice level)
         commodities.insert(CommodityID::from("A"), Rc::new(other_commodity()));
         commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
         commodities.insert(CommodityID::from("C"), Rc::new(svd_commodity()));
 
-        // Test valid graph: A(OTH) -> B(SED) -> C(SVD)
+        // Build valid graph: A(OTH) -> B(SED) -> C(SVD)
         let node_a = graph.add_node(CommodityID::from("A"));
         let node_b = graph.add_node(CommodityID::from("B"));
         let node_c = graph.add_node(CommodityID::from("C"));
         graph.add_edge(node_a, node_b, ProcessID::from("process1"));
         graph.add_edge(node_b, node_c, ProcessID::from("process2"));
 
+        // Validate the graph at DayNight level
         let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::Annual);
         assert!(result.is_ok());
     }
@@ -422,19 +414,21 @@ mod tests {
         let mut graph = Graph::new();
         let mut commodities = CommodityMap::new();
 
+        // Add test commodities (all have DayNight time slice level)
         commodities.insert(CommodityID::from("A"), Rc::new(svd_commodity()));
         commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
         commodities.insert(CommodityID::from("C"), Rc::new(other_commodity()));
 
-        // Test invalid graph: C(OTH) -> A(SVD) -> B(SED) - SVD cannot be consumed
+        // Build invalid graph: C(OTH) -> A(SVD) -> B(SED) - SVD cannot be consumed
         let node_c = graph.add_node(CommodityID::from("C"));
         let node_a = graph.add_node(CommodityID::from("A"));
         let node_b = graph.add_node(CommodityID::from("B"));
         graph.add_edge(node_c, node_a, ProcessID::from("process1"));
         graph.add_edge(node_a, node_b, ProcessID::from("process2"));
 
-        let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::Annual);
-        assert_error!(result, "SVD commodity A cannot be consumed");
+        // Validate the graph at DayNight level
+        let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
+        assert_error!(result, "SVD commodity A cannot be an input to a process");
     }
 
     #[test]
@@ -442,12 +436,14 @@ mod tests {
         let mut graph = Graph::new();
         let mut commodities = CommodityMap::new();
 
+        // Add test commodities (all have DayNight time slice level)
         commodities.insert(CommodityID::from("A"), Rc::new(svd_commodity()));
 
-        // Test invalid graph: A(SVD) with no incoming edges - SVD must be produced
+        // Build invalid graph: A(SVD) with no incoming edges - SVD must be produced
         let _node_a = graph.add_node(CommodityID::from("A"));
 
-        let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::Annual);
+        // Validate the graph at DayNight level
+        let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
         assert_error!(result, "SVD commodity A must have at least one producer");
     }
 
@@ -455,16 +451,22 @@ mod tests {
     fn test_validate_commodities_graph_invalid_sed() {
         let mut graph = Graph::new();
         let mut commodities = CommodityMap::new();
+
+        // Add test commodities (all have DayNight time slice level)
         commodities.insert(CommodityID::from("A"), Rc::new(sed_commodity()));
         commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
 
-        // Test invalid graph: B(SED) -> A(SED)
+        // Build invalid graph: B(SED) -> A(SED)
         let node_a = graph.add_node(CommodityID::from("A"));
         let node_b = graph.add_node(CommodityID::from("B"));
         graph.add_edge(node_b, node_a, ProcessID::from("process1"));
 
-        let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::Annual);
-        assert_error!(result, "SED commodity B is consumed but has no producers");
+        // Validate the graph at DayNight level
+        let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
+        assert_error!(
+            result,
+            "SED commodity B may be consumed but has no producers"
+        );
     }
 
     #[test]
@@ -472,18 +474,20 @@ mod tests {
         let mut graph = Graph::new();
         let mut commodities = CommodityMap::new();
 
+        // Add test commodities (all have DayNight time slice level)
         commodities.insert(CommodityID::from("A"), Rc::new(other_commodity()));
         commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
         commodities.insert(CommodityID::from("C"), Rc::new(sed_commodity()));
 
-        // Test invalid graph: B(SED) -> A(OTH) -> C(SED)
+        // Build invalid graph: B(SED) -> A(OTH) -> C(SED)
         let node_a = graph.add_node(CommodityID::from("A"));
         let node_b = graph.add_node(CommodityID::from("B"));
         let node_c = graph.add_node(CommodityID::from("C"));
         graph.add_edge(node_b, node_a, ProcessID::from("process1"));
         graph.add_edge(node_a, node_c, ProcessID::from("process2"));
 
-        let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::Annual);
+        // Validate the graph at DayNight level
+        let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
         assert_error!(
             result,
             "OTH commodity A cannot have both producers and consumers"
