@@ -10,9 +10,9 @@ use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Activity, Flow, Money, MoneyPerActivity, MoneyPerFlow, UnitType};
 use anyhow::{anyhow, ensure, Result};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use itertools::{chain, iproduct};
-use log::debug;
+use log::{debug, warn};
 use std::ops::Range;
 
 mod constraints;
@@ -449,13 +449,28 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
         let objective_value = Money(solution.objective_value());
         debug!("Objective value: {objective_value}");
 
-        Ok(Solution {
+        let solution = Solution {
             solution: solution.get_solution(),
             variables,
             time_slice_info: &self.model.time_slice_info,
             constraint_keys,
             objective_value,
-        })
+        };
+
+        warn_about_unmet_demand(&solution);
+
+        Ok(solution)
+    }
+}
+
+fn warn_about_unmet_demand(solution: &Solution) {
+    let unsatisfied: IndexSet<_> = solution
+        .iter_unmet_demand()
+        .filter(|(_, _, _, unmet)| *unmet > Flow(0.0))
+        .map(|(commodity_id, region_id, _, _)| (commodity_id, region_id))
+        .collect();
+    for (commodity_id, region_id) in unsatisfied.iter() {
+        warn!("Demand not fully satisfied for commodity '{commodity_id}' in region '{region_id}'");
     }
 }
 
