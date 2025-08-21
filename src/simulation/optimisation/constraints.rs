@@ -137,7 +137,7 @@ where
                     // If the commodity has a time slice level of season/annual, the constraint will
                     // cover multiple time slices
                     for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
-                        let var = variables.get(asset, time_slice);
+                        let var = variables.get_asset_var(asset, time_slice);
                         terms.push((var, flow.coeff.value()));
                     }
                 }
@@ -151,6 +151,15 @@ where
                         region {region_id:?}, year {year:?} due to empty terms."
                     );
                     continue;
+                }
+
+                // Also include unmet demand variables if required
+                if !variables.unmet_demand_var_idx.is_empty() {
+                    for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
+                        let var =
+                            variables.get_unmet_demand_var(commodity_id, region_id, time_slice);
+                        terms.push((var, 1.0));
+                    }
                 }
 
                 // Add constraint. For SED commodities, the RHS is zero and for SVD commodities it
@@ -190,7 +199,7 @@ fn add_activity_constraints(problem: &mut Problem, variables: &VariableMap) -> A
     let offset = problem.num_rows();
 
     let mut keys = Vec::new();
-    for (asset, time_slice, var) in variables.iter() {
+    for (asset, time_slice, var) in variables.iter_asset_vars() {
         let limits = asset.get_activity_limits(time_slice);
         let limits = limits.start().value()..=limits.end().value();
 

@@ -108,8 +108,9 @@ fn run_dispatch_for_year(
     writer: &mut DataWriter,
 ) -> Result<(FlowMap, CommodityPrices, ReducedCosts)> {
     // Dispatch optimisation with existing assets only
-    let solution_existing =
-        DispatchRun::new(model, assets, year).run("final without candidates", writer)?;
+    let solution_existing = DispatchRun::new(model, assets, year)
+        .with_unmet_demand_supported()
+        .run("final without candidates", writer)?;
     let flow_map = solution_existing.create_flow_map();
 
     // Get candidate assets for next year, if any
@@ -128,6 +129,7 @@ fn run_dispatch_for_year(
         solution_existing
     } else {
         DispatchRun::new(model, assets, year)
+            .with_unmet_demand_supported()
             .with_candidates(&candidates)
             .run("final with candidates", writer)?
     };

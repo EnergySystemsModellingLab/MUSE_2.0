@@ -38,5 +38,19 @@ properties:
     description: The cost applied to unmet demand
     default: 1e9
     notes: |
-      Currently this only applies to the LCOX appraisal.
+      The VoLL parameter is used both for the appraisal step and, if `allow_unmet_demand` is set, to
+      the main dispatch optimisation.
+  max_ironing_out_iterations:
+    type: number
+    description: The maximum number of times the ironing loop for agent investment will run
+    default: 100
+  allow_unmet_demand:
+    type: boolean
+    description: Whether to continue the simulation even if there is unmet demand
+    default: false
+    notes: |
+      The simulation will be penalised with the value of lost load for every unit of unmet demand
+
+      This option can break the commodity price calculation. Do not use unless you know what you're
+      doing.
 required: [milestone_years]

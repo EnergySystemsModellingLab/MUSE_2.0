@@ -6,7 +6,7 @@ use crate::input::{
     deserialise_proportion_nonzero, input_err_msg, is_sorted_and_unique, read_toml,
 };
 use crate::process::ProcessMap;
-use crate::region::{RegionID, RegionMap};
+use crate::region::{Region, RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
 use crate::units::{Capacity, Dimensionless, MoneyPerFlow};
 use anyhow::{ensure, Context, Result};
@@ -78,14 +78,18 @@ pub struct ModelFile {
     #[serde(default = "default_capacity_limit_factor")]
     #[serde(deserialize_with = "deserialise_proportion_nonzero")]
     pub capacity_limit_factor: Dimensionless,
-    /// The cost applied to unmet demand.
+    /// The (heavy) financial cost applied to unmet demand.
     ///
-    /// Currently this only applies to the LCOX appraisal.
+    /// The VoLL parameter is used both for the appraisal step and, if `allow_unmet_demand` is set,
+    /// to the main dispatch optimisation.
     #[serde(default = "default_value_of_lost_load")]
     pub value_of_lost_load: MoneyPerFlow,
     /// The maximum number of iterations to run the "ironing out" step of agent investment for
     #[serde(default = "default_max_ironing_out_iterations")]
     pub max_ironing_out_iterations: u32,
+    /// Whether to allow the simulation to continue to run, even if there is unmet demand
+    #[serde(default)]
+    pub allow_unmet_demand: bool,
 }
 
 /// The strategy used for calculating commodity prices
@@ -142,6 +146,14 @@ impl ModelFile {
             );
         }
 
+        if model_file.allow_unmet_demand {
+            warn!(
+                "The 'allow_unmet_demand' option is enabled. This option is known to break \
+                commodity price calculation. See {}/issues/772",
+                env!("CARGO_PKG_REPOSITORY")
+            )
+        }
+
         let validate = || -> Result<()> {
             check_milestone_years(&model_file.milestone_years)?;
             check_capacity_valid_for_asset(model_file.candidate_asset_capacity)
@@ -162,7 +174,7 @@ impl Model {
     }
 
     /// Iterate over the model's regions (region IDs).
-    pub fn iter_regions(&self) -> impl Iterator<Item = &RegionID> + '_ {
+    pub fn iter_regions(&self) -> indexmap::map::Keys<'_, RegionID, Region> {
         self.regions.keys()
     }
 }

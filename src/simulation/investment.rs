@@ -9,9 +9,9 @@ use crate::output::DataWriter;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
-use anyhow::{ensure, Result};
+use anyhow::{bail, Result};
 use itertools::chain;
-use log::debug;
+use log::{debug, warn};
 use std::collections::HashMap;
 
 pub mod appraisal;
@@ -113,6 +113,7 @@ pub fn perform_agent_investment(
             debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
 
             let solution = DispatchRun::new(model, assets.as_slice(), year)
+                .with_unmet_demand_supported()
                 .with_commodity_subset(&seen_commodities)
                 .run(
                     &format!("post {commodity_id}/{region_id} investment"),
@@ -342,11 +343,20 @@ fn select_best_assets(
 
     let mut round = 0;
     while is_any_remaining_demand(&demand) {
-        ensure!(
-            !opt_assets.is_empty(),
-            "Failed to meet demand for commodity '{}' with provided assets",
-            &commodity.id
-        );
+        if opt_assets.is_empty() {
+            if model.parameters.allow_unmet_demand {
+                warn!(
+                    "Remaining demand for commodity '{}' with provided assets",
+                    &commodity.id
+                );
+                return Ok(Vec::new());
+            } else {
+                bail!(
+                    "Failed to meet demand for commodity '{}' with provided assets",
+                    &commodity.id
+                );
+            }
+        }
 
         // Appraise all options
         let mut outputs_for_opts = Vec::new();
