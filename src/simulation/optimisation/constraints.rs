@@ -4,8 +4,9 @@ use crate::asset::{AssetIterator, AssetRef};
 use crate::commodity::{CommodityID, CommodityType};
 use crate::model::Model;
 use crate::region::RegionID;
+use crate::simulation::optimisation::UnmetDemandMap;
 use crate::time_slice::{TimeSliceID, TimeSliceSelection};
-use crate::units::UnitType;
+use crate::units::{Flow, UnitType};
 use highs::RowProblem as Problem;
 use log::debug;
 
@@ -58,6 +59,7 @@ pub struct ConstraintKeys {
 /// * `model` - The model
 /// * `assets` - The asset pool
 /// * `commodities` - The subset of commodities to apply constraints to
+/// * `existing_unmet_demand` - Unmet demand calculated in a previous dispatch run
 /// * `year` - Current milestone year
 ///
 /// # Returns
@@ -69,6 +71,7 @@ pub fn add_asset_constraints<'a, I>(
     model: &'a Model,
     assets: I,
     commodities: &'a [CommodityID],
+    existing_unmet_demand: &'a UnmetDemandMap,
     year: u32,
 ) -> ConstraintKeys
 where
@@ -80,6 +83,7 @@ where
         model,
         assets.clone(),
         commodities,
+        existing_unmet_demand,
         year,
     );
 
@@ -105,6 +109,7 @@ fn add_commodity_balance_constraints<'a, I>(
     model: &'a Model,
     assets: I,
     commodities: &'a [CommodityID],
+    existing_unmet_demand: &'a UnmetDemandMap,
     year: u32,
 ) -> CommodityBalanceKeys
 where
@@ -153,9 +158,25 @@ where
                     continue;
                 }
 
-                // Also include unmet demand variables if required
-                if !variables.unmet_demand_var_idx.is_empty() {
-                    for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
+                // For SVD commodities, include exogenous demand
+                let mut rhs = if commodity.kind == CommodityType::ServiceDemand {
+                    commodity.demand[&(region_id.clone(), year, ts_selection.clone())]
+                } else {
+                    Flow(0.0)
+                };
+
+                for (time_slice, _) in ts_selection.iter(&model.time_slice_info) {
+                    // If unmet demand is supplied, include in calculation
+                    if let Some(unmet) = existing_unmet_demand.get(&(
+                        commodity_id.clone(),
+                        region_id.clone(),
+                        time_slice.clone(),
+                    )) {
+                        rhs -= *unmet;
+                    }
+
+                    // Also include unmet demand variables if required
+                    if !variables.unmet_demand_var_idx.is_empty() {
                         let var =
                             variables.get_unmet_demand_var(commodity_id, region_id, time_slice);
                         terms.push((var, 1.0));
@@ -164,16 +185,9 @@ where
 
                 // Add constraint. For SED commodities, the RHS is zero and for SVD commodities it
                 // is the exogenous demand supplied by the user.
-                let rhs = if commodity.kind == CommodityType::ServiceDemand {
-                    commodity
-                        .demand
-                        .get(&(region_id.clone(), year, ts_selection.clone()))
-                        .unwrap()
-                        .value()
-                } else {
-                    0.0
-                };
+                let rhs = rhs.value();
                 problem.add_row(rhs..=rhs, terms.drain(..));
+
                 keys.push((
                     commodity_id.clone(),
                     region_id.clone(),

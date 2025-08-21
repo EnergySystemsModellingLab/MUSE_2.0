@@ -13,6 +13,7 @@ use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
 use log::debug;
+use std::collections::HashMap;
 use std::ops::Range;
 
 mod constraints;
@@ -20,6 +21,9 @@ use constraints::{add_asset_constraints, ConstraintKeys};
 
 /// A map of commodity flows calculated during the optimisation
 pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), Flow>;
+
+/// A map representing unmet demand from a previous dispatch run
+pub type UnmetDemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 
 /// A decision variable in the optimisation
 ///
@@ -342,6 +346,7 @@ pub struct DispatchRun<'model, 'run> {
     existing_assets: &'run [AssetRef],
     candidate_assets: &'run [AssetRef],
     commodities: &'run [CommodityID],
+    existing_unmet_demand: UnmetDemandMap,
     year: u32,
     allow_unmet_demand: bool,
 }
@@ -354,6 +359,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             existing_assets: assets,
             candidate_assets: &[],
             commodities: &[],
+            existing_unmet_demand: UnmetDemandMap::new(),
             year,
             allow_unmet_demand: false,
         }
@@ -385,6 +391,24 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             allow_unmet_demand: self.model.parameters.allow_unmet_demand,
             ..self
         }
+    }
+
+    /// Assume that there is the specified amount of unmet demand for combinations of
+    /// commodity, region and time slice
+    pub fn with_existing_unmet_demand<'a, I>(mut self, unmet_demand: I) -> Self
+    where
+        I: Iterator<Item = (&'a CommodityID, &'a RegionID, &'a TimeSliceID, Flow)>,
+    {
+        self.existing_unmet_demand.extend(unmet_demand.map(
+            |(commodity_id, region_id, time_slice, flow)| {
+                (
+                    (commodity_id.clone(), region_id.clone(), time_slice.clone()),
+                    flow,
+                )
+            },
+        ));
+
+        self
     }
 
     /// Perform the dispatch optimisation.
@@ -440,6 +464,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             self.model,
             all_assets,
             commodities,
+            &self.existing_unmet_demand,
             self.year,
         );
 

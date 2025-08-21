@@ -130,6 +130,7 @@ fn run_dispatch_for_year(
     } else {
         DispatchRun::new(model, assets, year)
             .with_candidates(&candidates)
+            .with_existing_unmet_demand(solution_existing.iter_unmet_demand())
             .run("final with candidates", writer)?
     };
 
