@@ -20,6 +20,7 @@ fn create_commodities_graph_for_region_year(
     processes: &ProcessMap,
     region_id: &RegionID,
     year: u32,
+    commodities: &CommodityMap,
 ) -> CommoditiesGraph {
     let mut graph = Graph::new();
     let mut commodity_to_node_index = HashMap::new();
@@ -75,6 +76,9 @@ fn create_commodities_graph_for_region_year(
         }
     }
 
+    // Add _DEMAND connections for demanded commodities
+    add_demand_to_graph(&mut graph, commodities, region_id, year);
+
     graph
 }
 
@@ -92,9 +96,14 @@ fn filter_commodities_graph_by_timeslice_availability(
     // Remove edges for processes with zero availability in all time slices in the selection
     filtered_graph.retain_edges(|graph, edge_idx| {
         let process_id = graph.edge_weight(edge_idx).unwrap();
-        let process = processes.get(process_id).unwrap();
+
+        // Skip _DEMAND edges
+        if process_id == &ProcessID::from("_DEMAND") {
+            return true;
+        }
 
         // Keep edge if process has availability > 0 in any time slice
+        let process = processes.get(process_id).unwrap();
         time_slice_selection
             .iter(time_slice_info)
             .any(|(time_slice, _)| {
@@ -109,6 +118,28 @@ fn filter_commodities_graph_by_timeslice_availability(
     filtered_graph
 }
 
+fn add_demand_to_graph(
+    graph: &mut CommoditiesGraph,
+    commodities: &CommodityMap,
+    region_id: &RegionID,
+    year: u32,
+) {
+    let demand_node = graph.add_node(CommodityID::from("_DEMAND"));
+    for (commodity_id, commodity) in commodities {
+        if commodity
+            .demand
+            .iter()
+            .any(|((r, y, _), _)| r == region_id && y == &year)
+        {
+            let commodity_node = graph
+                .node_indices()
+                .find(|&idx| graph.node_weight(idx) == Some(commodity_id))
+                .unwrap_or_else(|| graph.add_node(commodity_id.clone()));
+
+            graph.add_edge(commodity_node, demand_node, ProcessID::from("_DEMAND"));
+        }
+    }
+}
 /// Validates that the commodity graph follows the rules for different commodity types
 ///
 /// # Arguments
@@ -148,7 +179,7 @@ fn validate_commodities_graph(
             continue;
         }
 
-        // Analyse incoming and outgoing edges for the commodity
+        // Count the incoming and outgoing edges for the commodity
         let incoming = graph
             .edges_directed(node_idx, petgraph::Direction::Incoming)
             .count();
@@ -272,7 +303,12 @@ pub fn build_and_validate_commodity_graphs_for_model(
     let commodity_graphs: HashMap<(RegionID, u32), CommoditiesGraph> =
         iproduct!(region_ids, years.iter())
             .map(|(region_id, year)| {
-                let graph = create_commodities_graph_for_region_year(processes, region_id, *year);
+                let graph = create_commodities_graph_for_region_year(
+                    processes,
+                    region_id,
+                    *year,
+                    commodities,
+                );
                 ((region_id.clone(), *year), graph)
             })
             .collect();
@@ -397,12 +433,14 @@ mod tests {
         commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
         commodities.insert(CommodityID::from("C"), Rc::new(svd_commodity()));
 
-        // Build valid graph: A(OTH) -> B(SED) -> C(SVD)
+        // Build valid graph: A(OTH) -> B(SED) -> C(SVD) ->D( _DEMAND)
         let node_a = graph.add_node(CommodityID::from("A"));
         let node_b = graph.add_node(CommodityID::from("B"));
         let node_c = graph.add_node(CommodityID::from("C"));
+        let node_d = graph.add_node(CommodityID::from("_DEMAND"));
         graph.add_edge(node_a, node_b, ProcessID::from("process1"));
         graph.add_edge(node_b, node_c, ProcessID::from("process2"));
+        graph.add_edge(node_c, node_d, ProcessID::from("_DEMAND"));
 
         // Validate the graph at DayNight level
         let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::Annual);
@@ -439,12 +477,14 @@ mod tests {
         // Add test commodities (all have DayNight time slice level)
         commodities.insert(CommodityID::from("A"), Rc::new(svd_commodity()));
 
-        // Build invalid graph: A(SVD) with no incoming edges - SVD must be produced
-        let _node_a = graph.add_node(CommodityID::from("A"));
+        // Build invalid graph: A(SVD) -> B(_DEMAND) - SVD must be produced
+        let node_a = graph.add_node(CommodityID::from("A"));
+        let node_b = graph.add_node(CommodityID::from("_DEMAND"));
+        graph.add_edge(node_a, node_b, ProcessID::from("_DEMAND"));
 
         // Validate the graph at DayNight level
         let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
-        assert_error!(result, "SVD commodity A must have at least one producer");
+        assert_error!(result, "SVD commodity A is demanded but has no producers");
     }
 
     #[test]
