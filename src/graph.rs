@@ -78,27 +78,22 @@ fn create_commodities_graph_for_region_year(
     graph
 }
 
-/// Filters a commodity graph to only include processes with availability in the specified time slice selection
-fn filter_commodities_graph_by_timeslice_availability(
-    graph: &CommoditiesGraph,
+/// Creates a filtered commodity graph with demand edges for a specific time slice selection
+fn create_filtered_graph_with_demand(
+    base_graph: &CommoditiesGraph,
     processes: &ProcessMap,
+    commodities: &CommodityMap,
     time_slice_info: &TimeSliceInfo,
     region_id: &RegionID,
     year: u32,
     time_slice_selection: &TimeSliceSelection,
 ) -> CommoditiesGraph {
-    let mut filtered_graph = graph.clone();
+    let mut filtered_graph = base_graph.clone();
 
-    // Remove edges for processes with zero availability in all time slices in the selection
+    // Filter by process availability
+    // We keep edges if the process has availability > 0 in any time slice in the selection
     filtered_graph.retain_edges(|graph, edge_idx| {
         let process_id = graph.edge_weight(edge_idx).unwrap();
-
-        // Skip _DEMAND edges
-        if process_id == &ProcessID::from("_DEMAND") {
-            return true;
-        }
-
-        // Keep edge if process has availability > 0 in any time slice
         let process = processes.get(process_id).unwrap();
         time_slice_selection
             .iter(time_slice_info)
@@ -111,42 +106,27 @@ fn filter_commodities_graph_by_timeslice_availability(
             })
     });
 
-    filtered_graph
-}
-
-fn add_demand_to_graph(
-    graph: &CommoditiesGraph,
-    commodities: &CommodityMap,
-    region_id: &RegionID,
-    year: u32,
-    time_slice_selection: &TimeSliceSelection,
-) -> CommoditiesGraph {
-    let mut graph_with_demand = graph.clone();
-    let demand_node = graph_with_demand.add_node(CommodityID::from("_DEMAND"));
-
+    // Add demand edges
+    // We add edges to _DEMAND for commodities that are demanded in the selection
+    // NOTE: we only do this for commodities with the same time_slice_level as the selection
+    // This is fine for now because we perform validation at every time slice level
+    let demand_node = filtered_graph.add_node(CommodityID::from("_DEMAND"));
     for (commodity_id, commodity) in commodities {
-        // Check if the commodity has demand in this time_slice_selection
-        // We only do this for commodities with the same time_slice_level as the selection
-        let has_demand = if time_slice_selection.level() == commodity.time_slice_level {
-            commodity
+        if time_slice_selection.level() == commodity.time_slice_level
+            && commodity
                 .demand
                 .get(&(region_id.clone(), year, time_slice_selection.clone()))
-                .is_some_and(|&demand_value| demand_value > Flow(0.0))
-        } else {
-            false
-        };
-
-        // If the commodity is demanded, we add an edge from the commodity to the _DEMAND node
-        if has_demand {
-            let commodity_node = graph_with_demand
+                .is_some_and(|&v| v > Flow(0.0))
+        {
+            let commodity_node = filtered_graph
                 .node_indices()
-                .find(|&idx| graph_with_demand.node_weight(idx) == Some(commodity_id))
-                .unwrap_or_else(|| graph_with_demand.add_node(commodity_id.clone()));
-            graph_with_demand.add_edge(commodity_node, demand_node, ProcessID::from("_DEMAND"));
+                .find(|&idx| filtered_graph.node_weight(idx) == Some(commodity_id))
+                .unwrap_or_else(|| filtered_graph.add_node(commodity_id.clone()));
+            filtered_graph.add_edge(commodity_node, demand_node, ProcessID::from("_DEMAND"));
         }
     }
 
-    graph_with_demand
+    filtered_graph
 }
 
 /// Validates that the commodity graph follows the rules for different commodity types
@@ -328,69 +308,55 @@ pub fn build_and_validate_commodity_graphs_for_model(
         })
         .try_collect()?;
 
-    // Validate graphs at the annual level (taking into account process availability and demand)
+    // Validate graphs at all time slice levels (taking into account process availability and demand)
     for ((region_id, year), base_graph) in &commodity_graphs {
-        let filtered_graph = filter_commodities_graph_by_timeslice_availability(
+        // Annual validation
+        let annual_graph = create_filtered_graph_with_demand(
             base_graph,
             processes,
+            commodities,
             time_slice_info,
             region_id,
             *year,
             &TimeSliceSelection::Annual,
         );
-        let graph_with_demand = add_demand_to_graph(
-            &filtered_graph,
-            commodities,
-            region_id,
-            *year,
-            &TimeSliceSelection::Annual,
-        );
-        validate_commodities_graph(&graph_with_demand, commodities, TimeSliceLevel::Annual).with_context(|| {
-            format!("Error validating commodity graph for {region_id} in {year} in annual time slice")
-        })?;
-    }
+        validate_commodities_graph(&annual_graph, commodities, TimeSliceLevel::Annual)
+            .with_context(|| format!("Error validating annual graph for {region_id} in {year}"))?;
 
-    // Validate graphs at the seasonal level (taking into account process availability and demand)
-    for ((region_id, year), base_graph) in &commodity_graphs {
-        for season_selection in time_slice_info.iter_selections_at_level(TimeSliceLevel::Season) {
-            let filtered_graph = filter_commodities_graph_by_timeslice_availability(
+        // Seasonal validation
+        for season in time_slice_info.iter_selections_at_level(TimeSliceLevel::Season) {
+            let seasonal_graph = create_filtered_graph_with_demand(
                 base_graph,
                 processes,
+                commodities,
                 time_slice_info,
                 region_id,
                 *year,
-                &season_selection,
+                &season,
             );
-            let graph_with_demand = add_demand_to_graph(
-                &filtered_graph,
-                commodities,
-                region_id,
-                *year,
-                &season_selection,
-            );
-
-            validate_commodities_graph(&graph_with_demand, commodities, TimeSliceLevel::Season).with_context(|| {
-                format!("Error validating commodity graph for {region_id} in {year} in season {season_selection}")
-            })?;
+            validate_commodities_graph(&seasonal_graph, commodities, TimeSliceLevel::Season)
+                .with_context(|| {
+                    format!("Error validating seasonal graph for {region_id} in {year} in {season}")
+                })?;
         }
-    }
 
-    // Validate graphs at the time slice level (taking into account process availability and demand)
-    for ((region_id, year), base_graph) in &commodity_graphs {
+        // DayNight validation
         for time_slice in time_slice_info.iter_selections_at_level(TimeSliceLevel::DayNight) {
-            let filtered_graph = filter_commodities_graph_by_timeslice_availability(
+            let daynight_graph = create_filtered_graph_with_demand(
                 base_graph,
                 processes,
+                commodities,
                 time_slice_info,
                 region_id,
                 *year,
                 &time_slice,
             );
-            let graph_with_demand =
-                add_demand_to_graph(&filtered_graph, commodities, region_id, *year, &time_slice);
-            validate_commodities_graph(&graph_with_demand, commodities, TimeSliceLevel::DayNight).with_context(|| {
-                format!("Error validating commodity graph for {region_id} in {year} in time slice {time_slice}")
-            })?;
+            validate_commodities_graph(&daynight_graph, commodities, TimeSliceLevel::DayNight)
+                .with_context(|| {
+                    format!(
+                        "Error validating daynight graph for {region_id} in {year} in {time_slice}"
+                    )
+                })?;
         }
     }
 
