@@ -146,6 +146,14 @@ impl ModelFile {
             );
         }
 
+        if model_file.allow_unmet_demand {
+            warn!(
+                "The 'allow_unmet_demand' option is enabled. This option is known to break \
+                commodity price calculation. See {}/issues/772",
+                env!("CARGO_PKG_REPOSITORY")
+            )
+        }
+
         let validate = || -> Result<()> {
             check_milestone_years(&model_file.milestone_years)?;
             check_capacity_valid_for_asset(model_file.candidate_asset_capacity)
