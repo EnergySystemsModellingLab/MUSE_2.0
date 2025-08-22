@@ -5,7 +5,7 @@ use crate::process::{Process, ProcessFlow, ProcessID, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity};
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
 use itertools::{chain, Itertools};
 use serde::{Deserialize, Serialize};
@@ -144,10 +144,26 @@ impl Asset {
         check_region_year_valid_for_process(&process, &region_id, commission_year)?;
         ensure!(capacity >= Capacity(0.0), "Capacity must be non-negative");
 
+        // There should be process parameters for all **milestone** years, but it is possible to
+        // have assets that are commissioned before the simulation start from assets.csv. We check
+        // for the presence of the params lazily to prevent users having to supply them for all
+        // the possible valid years before the time horizon.
+        let process_parameter = process
+            .parameters
+            .get(&(region_id.clone(), commission_year))
+            .with_context(|| {
+                format!(
+                    "No process parameters supplied for process {} in region {} in year {}. \
+                    You should update process_parameters.csv.",
+                    &process.id, region_id, commission_year
+                )
+            })?
+            .clone();
+
         Ok(Self {
             state,
             process: process.clone(),
-            process_parameter: process.parameters[&(region_id.clone(), commission_year)].clone(),
+            process_parameter,
             region_id,
             capacity,
             commission_year,

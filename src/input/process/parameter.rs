@@ -101,15 +101,18 @@ impl ProcessParameterRaw {
 pub fn read_process_parameters(
     model_dir: &Path,
     processes: &ProcessMap,
+    base_year: u32,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>> {
     let file_path = model_dir.join(PROCESS_PARAMETERS_FILE_NAME);
     let iter = read_csv::<ProcessParameterRaw>(&file_path)?;
-    read_process_parameters_from_iter(iter, processes).with_context(|| input_err_msg(&file_path))
+    read_process_parameters_from_iter(iter, processes, base_year)
+        .with_context(|| input_err_msg(&file_path))
 }
 
 fn read_process_parameters_from_iter<I>(
     iter: I,
     processes: &ProcessMap,
+    base_year: u32,
 ) -> Result<HashMap<ProcessID, ProcessParameterMap>>
 where
     I: Iterator<Item = ProcessParameterRaw>,
@@ -145,7 +148,7 @@ where
         }
     }
 
-    check_process_parameters(processes, &map)?;
+    check_process_parameters(processes, &map, base_year)?;
 
     Ok(map)
 }
@@ -154,6 +157,7 @@ where
 fn check_process_parameters(
     processes: &ProcessMap,
     map: &HashMap<ProcessID, ProcessParameterMap>,
+    base_year: u32,
 ) -> Result<()> {
     for (process_id, process) in processes.iter() {
         let parameters = map
@@ -163,8 +167,10 @@ fn check_process_parameters(
         let reference_years = &process.years;
         let reference_regions = &process.regions;
 
+        // Only give an error for missing parameters >=base_year, so that users are not obliged to
+        // supply them for every valid year before the time horizon
         let mut missing_keys = Vec::new();
-        for year in reference_years {
+        for year in reference_years.iter().filter(|year| **year >= base_year) {
             for region in reference_regions {
                 let key = (region.clone(), *year);
                 if !parameters.contains_key(&key) {
