@@ -8,7 +8,7 @@ ROOT_DIR = Path(__file__).parent.parent
 EXAMPLES_DIR = ROOT_DIR / "examples"
 
 # Path to package schema for models
-schema_path = ROOT_DIR / "schemas" / "input" / "tables.yaml"
+schema_path = ROOT_DIR / "schemas" / "input" / "package.yaml"
 
 
 def main() -> int:
