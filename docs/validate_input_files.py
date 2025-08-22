@@ -8,7 +8,7 @@ ROOT_DIR = Path(__file__).parent.parent
 EXAMPLES_DIR = ROOT_DIR / "examples"
 
 # Path to package schema for models
-schema_path = ROOT_DIR / "schemas" / "input" / "package.yaml"
+schema_path = ROOT_DIR / "schemas" / "input" / "tables.yaml"
 
 
 def main() -> int:
@@ -24,8 +24,7 @@ def main() -> int:
         print(f"\n🔍 Validating {data_dir}...")
 
         # Load the schema as a dict and set basepath to data_dir
-        package = Package(schema_dict)  # ,basepath=str(data_dir))
-        package.basepath = str(data_dir)
+        package = Package(schema_dict, basepath=str(data_dir))
 
         # Validate against the schema
         report = package.validate()
