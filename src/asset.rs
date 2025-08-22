@@ -378,9 +378,9 @@ pub fn check_region_year_valid_for_process(
 ) -> Result<()> {
     ensure!(
         process.regions.contains(region_id),
-        "Region {} is not one of the regions in which process {} operates",
-        region_id,
-        process.id
+        "Process {} does not operate in region {}",
+        process.id,
+        region_id
     );
     ensure!(
         process.active_for_year(year),
@@ -760,7 +760,7 @@ mod tests {
         let region_id = RegionID("FRA".into());
         assert_error!(
             Asset::new_future(agent_id, process.into(), region_id, Capacity(1.0), 2015),
-            "Region FRA is not one of the regions in which process process1 operates"
+            "Process process1 does not operate in region FRA"
         );
     }
 
