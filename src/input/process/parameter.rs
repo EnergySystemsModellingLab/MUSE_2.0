@@ -192,6 +192,11 @@ fn check_process_parameters(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fixture::{assert_error, process_parameter_map, processes, region_id};
+    use crate::process::{ProcessID, ProcessMap, ProcessParameterMap};
+    use crate::region::RegionID;
+    use rstest::rstest;
+    use std::collections::HashMap;
 
     fn create_param_raw(
         lifetime: u32,
@@ -246,6 +251,60 @@ mod tests {
         assert_eq!(
             raw.into_parameter().unwrap(),
             create_param(Dimensionless(1.0), ActivityPerCapacity(1.0))
+        );
+    }
+
+    #[rstest]
+    fn check_process_parameters_ok(
+        processes: ProcessMap,
+        process_parameter_map: ProcessParameterMap,
+    ) {
+        let mut param_map: HashMap<ProcessID, ProcessParameterMap> = HashMap::new();
+        let process_id = processes.keys().next().unwrap().clone();
+        let base_year = 2010;
+
+        param_map.insert(process_id, process_parameter_map.clone());
+        let result = check_process_parameters(&processes, &param_map, base_year);
+        assert!(result.is_ok());
+    }
+
+    #[rstest]
+    fn check_process_parameters_ok_missing_before_base_year(
+        processes: ProcessMap,
+        mut process_parameter_map: ProcessParameterMap,
+        region_id: RegionID,
+    ) {
+        let mut param_map: HashMap<ProcessID, ProcessParameterMap> = HashMap::new();
+        let process_id = processes.keys().next().unwrap().clone();
+        let base_year = 2015;
+
+        // Remove one entry before base_year
+        process_parameter_map.remove(&(region_id, 2012)).unwrap();
+        param_map.insert(process_id, process_parameter_map);
+
+        let result = check_process_parameters(&processes, &param_map, base_year);
+        assert!(result.is_ok());
+    }
+
+    #[rstest]
+    fn check_process_parameters_missing(
+        processes: ProcessMap,
+        mut process_parameter_map: ProcessParameterMap,
+        region_id: RegionID,
+    ) {
+        let mut param_map: HashMap<ProcessID, ProcessParameterMap> = HashMap::new();
+        let process_id = processes.keys().next().unwrap().clone();
+        let base_year = 2010;
+
+        // Remove one region-year key to simulate missing parameter
+        process_parameter_map.remove(&(region_id, 2010)).unwrap();
+        param_map.insert(process_id, process_parameter_map);
+
+        let result = check_process_parameters(&processes, &param_map, base_year);
+        assert_error!(
+            result,
+            "Process process1 is missing parameters for the following regions and years: \
+            [(RegionID(\"GBR\"), 2010)]"
         );
     }
 
