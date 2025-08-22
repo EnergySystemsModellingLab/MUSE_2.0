@@ -19,7 +19,7 @@ repos:
         name: Validate table schemas
         args: ["--schemafile", "schemas/table-schema.json"]
         files: ^schemas/input/
-        exclude: /(model|package)\.yaml$
+        exclude: /model\.yaml$
       - id: check-jsonschema
         name: Validate model.toml files
         args: ["--schemafile", "schemas/input/model.yaml"]
