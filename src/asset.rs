@@ -383,7 +383,7 @@ pub fn check_region_year_valid_for_process(
         process.id
     );
     ensure!(
-        process.years.contains(&year),
+        process.active_for_year(year),
         "Process {} does not operate in the year {}",
         process.id,
         year
