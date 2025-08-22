@@ -1,0 +1,533 @@
+resources:
+  - name: agent_commodity_portions
+    type: table
+    path: agent_commodity_portions.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Portions of commodity demand for which agents are responsible.
+    notes:
+      - If an entry is specified for one agent and commodity, there must be entries covering
+        all milestone years.
+      - For each agent listed in this file, the total portions for each region/commodity/year
+        combination must sum to one.
+      - In addition, there must be entries for every SVD and SED commodity for all regions
+        and milestone years.
+    schema:
+      fields:
+        - name: agent_id
+          type: string
+          description: The agent to apply these values to
+        - name: commodity_id
+          type: string
+          description: The commodity for which the agent is responsible
+        - name: years
+          type: string
+          description: The year(s) to which this entry applies
+          notes: One or more milestone years separated by semicolons or `all`
+        - name: commodity_portion
+          type: number
+          description: Portion of commodity demand
+          notes: Value must be >0 and <=1. The portion applies only to the specified years.
+  - name: agent_cost_limits
+    type: table
+    path: agent_cost_limits.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Limits on expenditure for agents.
+    notes:
+      - If cost limits are provided for an agent, they must be present for all years.
+    schema:
+      fields:
+        - name: agent_id
+          type: string
+          description: The agent to apply these values to
+        - name: years
+          type: string
+          description: The year(s) to which this entry applies
+          notes: One or more milestone years separated by semicolons or `all`
+        - name: capex_limit
+          type: number
+          description: Maximum capital cost the agent will pay
+          notes: Must be >0. Optional (defaults to infinity).
+        - name: annual_cost_limit
+          type: number
+          description: Maximum annual operating cost
+          notes: |
+            The maximum annual operating cost (fuel plus variable operating cost etc.) that the agent
+            will pay. Must be >0. Optional (defaults to infinity).
+  - name: agent_objectives
+    type: table
+    path: agent_objectives.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Describes the agents' objectives.
+    notes:
+      - Every agent must have one objective for each milestone year.
+      - If the weighted sum decision rule is in use, the `decision_weight` value must
+        be provided, otherwise it must be omitted.
+      - If the lexico decision rule is in use, the `decision_lexico_order` value must
+        be provided, otherwise it must be omitted.
+    schema:
+      fields:
+        - name: agent_id
+          type: string
+          description: An agent ID
+        - name: years
+          type: string
+          description: The year(s) to which this entry applies
+          notes: One or more milestone years separated by semicolons or `all`
+        - name: objective_type
+          type: string
+          enum:
+            - lcox
+            - npv
+          description: The type of objective
+          notes: |
+            Must be `npv` (net present value) or `lcox` (levelised cost of X). Note that support for
+            LCOX is experimental and may give bad results.
+        - name: decision_weight
+          type: number
+          description: Weight for weighted sum decision rule
+          notes: Currently unused
+        - name: decision_lexico_order
+          type: integer
+          description: Order in which to consider objectives for lexico decision rule
+          notes: Currently unused
+  - name: agent_search_space
+    type: table
+    path: agent_search_space.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Defines the processes in which an agent will invest for given parameters.
+    notes:
+      - If entries are missing for any combination of agent, commodity or milestone year,
+        then it is assumed that all processes can be considered in this case.
+    schema:
+      fields:
+        - name: agent_id
+          type: string
+          description: An agent ID
+        - name: commodity_id
+          type: string
+          description: The commodity to which this entry applies
+        - name: years
+          type: string
+          description: The year(s) to which this entry applies
+          notes: One or more milestone years separated by semicolons or `all`
+        - name: search_space
+          type: string
+          description: The processes in which this agent will invest
+          notes: |
+            One or more process IDs separated by semicolons. If this field is empty or `all`, all
+            processes will be considered.
+  - name: agents
+    type: table
+    path: agents.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Describes agents in the system
+    schema:
+      fields:
+        - name: id
+          type: string
+          description: A unique identifier for an agent
+        - name: description
+          type: string
+          description: A human-readable label for the agent
+        - name: regions
+          type: string
+          description: The region(s) in which the agent operates
+          notes: One or more region IDs, separated by semicolons or the string `all`
+        - name: decision_rule
+          type: string
+          description: The decision rule applied to objectives
+          notes: Currently the only supported rule is `simple`
+        - name: decision_lexico_tolerance
+          type: number
+          description: Tolerance for `lexico` decision rule
+          notes: Currently unused
+  - name: assets
+    type: table
+    path: assets.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Defines assets in the system
+    schema:
+      fields:
+        - name: process_id
+          type: string
+          description: The process of which this asset is an instance
+        - name: region_id
+          type: string
+          description: The region in which this agent operates
+        - name: agent_id
+          type: string
+          description: The agent to which this asset belongs
+        - name: capacity
+          type: number
+          description: The capacity of the asset
+          notes: Must be >0
+        - name: commission_year
+          type: integer
+          description: The year in which to commission this asset
+          notes: |
+            This value can be any integer >=0. If it is before the start of the
+            simulation, it will already be commissioned in the first year and if it after the end of
+            the simulation then it will never be commissioned.
+  - name: commodities
+    type: table
+    path: commodities.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Describes commodities in the system.
+    notes:
+      - Every SED (supply equals demand) commodity must have both producer and consumer
+        processes for every region and milestone year.
+      - Every SVD (service demand) commodity must have a producer for every region and
+        milestone year.
+    schema:
+      fields:
+        - name: id
+          type: string
+          description: A unique identifier for the commodity
+        - name: description
+          type: string
+          description: A human-readable label for the commodity
+        - name: type
+          type: string
+          description: The type of commodity
+          notes: |
+            Must be one of `svd` (service demand), `sed` (supply equals demand), `inc` (input
+            commodity) or `ouc` (output commodity)"
+        - name: time_slice_level
+          type: string
+          description: The time slice level at which constraints for this commodity are
+            applied
+          notes: |
+            Must be one of `annual` (whole year), `season` (whole season) or `daynight` (a
+            particular time of day)
+  - name: commodity_levies
+    type: table
+    path: commodity_levies.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Defines levies for commodities (or, if `value` is negative, incentives).
+    notes:
+      - If an entry is included for a given combination of commodity and region, entries must be
+        provided covering all milestone years and time slices.
+    schema:
+      fields:
+        - name: commodity_id
+          type: string
+          description: The commodity to which this entry applies
+        - name: regions
+          type: string
+          description: The region(s) to which this entry applies
+          notes: One or more region IDs, separated by semicolons or the string `all`
+        - name: years
+          type: string
+          description: The year(s) to which this entry applies
+          notes: One or more milestone years separated by semicolons or `all`
+        - name: time_slice
+          type: string
+          description: The time slices(s) to which this entry applies
+          notes: |
+            Can be a single time slice (e.g. `winter.day`), a whole season (e.g. `winter`) or
+            `annual`, representing the whole year
+        - name: balance_type
+          type: string
+          description: The type of balance to which this is applied
+          notes: |
+            Can be `cons` (applies to consumption only), `prod` (applies to production only) or
+            `net` (applies to consumption and production)
+        - name: value
+          type: number
+          description: The value of the levy/incentive
+  - name: demand_slicing
+    type: table
+    path: demand_slicing.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Specifies how demand is distributed throughout the year (i.e. for different
+      milestones).
+    notes:
+      - The user must provide entries covering every combination of service demand commodity,
+        region and time slice.
+      - For each combination, the sum of the fractions must equal one.
+    schema:
+      fields:
+        - name: commodity_id
+          type: string
+          description: The service demand commodity to which this entry applies
+        - name: region_id
+          type: string
+          description: The region to which this entry applies
+          notes: A region ID
+        - name: time_slice
+          type: string
+          description: The time slices(s) to which this entry applies
+          notes: |
+            Can be a single time slice (e.g. `winter.day`), a whole season (e.g. `winter`) or
+            `annual`, representing the whole year
+        - name: fraction
+          type: number
+          description: The fraction of annual demand for this entry
+          notes: Must be >0 and <=1
+  - name: demand
+    type: table
+    path: demand.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Specifies the demand for service demand commodities.
+    notes:
+      - Every service demand commodity must have entries in this file covering every combination of
+        milestone year and region
+    schema:
+      fields:
+        - name: commodity_id
+          type: string
+          description: The service demand commodity to which this entry applies
+        - name: region_id
+          type: string
+          description: The region to which this entry applies
+          notes: A region ID
+        - name: year
+          type: string
+          description: The year(s) to which this entry applies
+          notes: One or more milestone years separated by semicolons or `all`
+        - name: demand
+          type: number
+          description: Total demand for this year
+  - name: process_availabilities
+    type: table
+    path: process_availabilities.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Defines how much of a process's capacity is available throughout the
+      year.
+    notes:
+      - Must be provided for every process.
+      - Only one type of limit can be supplied for each combination of process/region/year/time
+        slice.
+    schema:
+      fields:
+        - name: process_id
+          type: string
+          description: The process to which this entry applies
+        - name: regions
+          type: string
+          description: The region(s) to which this entry applies
+          notes: One or more region IDs, separated by semicolons or the string `all`
+        - name: years
+          type: string
+          description: The milestone year(s) to which this entry applies
+          notes: One or more milestone years separated by semicolons or `all`
+        - name: time_slice
+          type: string
+          description: The time slices(s) to which this entry applies
+          notes: "Can be a single time slice (e.g. `winter.day`), a whole season (e.g.
+            `winter`) or `annual`,
+
+            representing the whole year
+
+            "
+        - name: limit_type
+          type: string
+          description: The type of limit
+          notes: |
+            Can be `lo` (a lower bound), `hi` (an upper bound) or `fx` (indicating that the
+            availability is constant)
+        - name: value
+          type: number
+          description: The proportion of capacity which is available
+          notes: Must be >0 and <=1
+  - name: processes
+    type: table
+    path: processes.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Describes processes in the system.
+    schema:
+      fields:
+        - name: id
+          type: string
+          description: A unique identifier for a process
+        - name: description
+          type: string
+          description: A human-readable label for the process
+        - name: regions
+          type: string
+          description: The region(s) in which this process can operate
+          notes: One or more region IDs, separated by semicolons or the string `all`
+        - name: primary_output
+          type: string
+          description: The primary output commodity, if any, for this process
+          notes: "This field *must* be omitted for processes with only input flows. It
+            *can* be omitted if
+
+            there is only one output flow, in which can it will be inferred.
+
+            "
+        - name: start_year
+          type: integer
+          description: The first year when this process is available to agents
+        - name: end_year
+          type: integer
+          description: The last year when this process is available to agents
+          notes: Must be >= to `start_year`
+  - name: process_flows
+    type: table
+    path: process_flows.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: The commodity flows for each process
+    notes:
+      - Commodity flows can vary by region and year.
+      - For each process, there must be entries covering all the years and regions in
+        which the process operates.
+    schema:
+      fields:
+        - name: process_id
+          type: string
+          description: The process to which this entry applies
+        - name: commodity_id
+          type: string
+          description: The commodity for this flow
+        - name: regions
+          type: string
+          description: The region(s) to which this entry applies
+          notes: |
+            One or more region IDs, separated by semicolons or the string `all`. Must be regions in
+            which the process operates.
+        - name: years
+          type: string
+          description: The year(s) to which this entry applies
+          notes: One or more milestone years separated by semicolons or `all`
+        - name: coeff
+          type: number
+          description: The flow for this commodity
+          notes: |
+            Can be <0, indicating an input flow, or >0, indicating an output flow. Cannot be zero.
+        - name: type
+          type: string
+          description: The type of commodity flow
+          notes: Currently this value must be `fixed`
+        - name: cost
+          type: number
+          description: The cost per unit flow
+          notes: Optional. If present, must be >0.
+  - name: process_parameters
+    type: table
+    path: process_parameters.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Parameters for processes which vary by region and year.
+    notes:
+      - For each process, entries must be provided which cover every combination of milestone
+        year and region in which the process operates.
+    schema:
+      fields:
+        - name: process_id
+          type: string
+          description: The process to which this entry applies
+        - name: regions
+          type: string
+          description: The region(s) to which this entry applies
+          notes: |
+            One or more region IDs, separated by semicolons or the string `all`. Must be regions in
+            which the process operates.
+        - name: years
+          type: string
+          description: The milestone year(s) to which this entry applies
+          notes: One or more milestone years separated by semicolons or `all`
+        - name: capital_cost
+          type: number
+          description: Overnight capital cost per unit capacity
+        - name: fixed_operating_cost
+          type: number
+          description: Annual operating cost per unit capacity
+        - name: variable_operating_cost
+          type: number
+          description: Annual variable operating cost per unit activity
+        - name: lifetime
+          type: integer
+          description: Lifetime in years of an asset created from this process
+          notes: Must be a positive integer
+        - name: discount_rate
+          type: number
+          description: Process-specific discount rate
+          notes: Must be positive. A warning will be issued if this number is >1.
+        - name: capacity_to_activity
+          type: number
+          description: Factor for calculating the maximum consumption/production over
+            a year.
+          notes: Must be >=0
+  - name: regions
+    type: table
+    path: regions.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: Describes regions in the system.
+    schema:
+      fields:
+        - name: id
+          type: string
+          description: A unique identifier for a region
+        - name: description
+          type: string
+          description: A human-readable label for the region
+  - name: time_slices
+    type: table
+    path: time_slices.csv
+    scheme: file
+    format: csv
+    mediatype: text/csv
+    encoding: utf-8
+    description: "Time slices define how the year is divided up. Each time slice is
+      composed of a season and a time
+
+      of day. Often, this is written separated by a dot (e.g. `winter.day`)."
+    notes:
+      - The fractions for the different time slices must sum to one.
+    schema:
+      fields:
+        - name: season
+          type: string
+          description: Name of season
+        - name: time_of_day
+          type: string
+          description: Name of time of day
+        - name: fraction
+          type: number
+          description: Fraction of year
+          notes: Must be >0 and <=1
