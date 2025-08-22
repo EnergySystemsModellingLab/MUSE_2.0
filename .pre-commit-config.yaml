@@ -64,3 +64,12 @@ repos:
       - id: codespell
         args: [--ignore-words, .codespell_ignore.txt]
         exclude: \.svg$
+  - repo: local
+    hooks:
+      - id: check-examples
+        name: check-examples
+        entry: python docs/check_examples_hook.py
+        language: python
+        files: examples/.+/[^/]+\.csv$
+        require_serial: true
+        additional_dependencies: [pyyaml, frictionless]
