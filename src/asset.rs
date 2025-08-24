@@ -55,6 +55,11 @@ pub enum AssetState {
         /// The ID of the agent that will own the asset
         agent_id: AgentID,
     },
+    /// The asset has been selected for investment, but not yet confirmed
+    Selected {
+        /// The ID of the agent that owns the asset
+        agent_id: AgentID,
+    },
     /// The asset is a candidate for investment but has not yet been selected
     Candidate {
         /// The ID of the agent that will own the asset
@@ -133,6 +138,27 @@ impl Asset {
         )
     }
 
+    /// Create a new selected asset
+    ///
+    /// This is only used for testing. In the real program, Selected assets can only be created from
+    /// Candidate assets by calling `select_candidate_for_investment`.
+    #[cfg(test)]
+    fn new_selected(
+        agent_id: AgentID,
+        process: Rc<Process>,
+        region_id: RegionID,
+        capacity: Capacity,
+        commission_year: u32,
+    ) -> Result<Self> {
+        Self::new_with_state(
+            AssetState::Selected { agent_id },
+            process,
+            region_id,
+            capacity,
+            commission_year,
+        )
+    }
+
     /// Private helper to create an asset with the given state
     fn new_with_state(
         state: AssetState,
@@ -152,6 +178,11 @@ impl Asset {
             capacity,
             commission_year,
         })
+    }
+
+    /// Get the state of this asset
+    pub fn state(&self) -> &AssetState {
+        &self.state
     }
 
     /// The process parameter for this asset
@@ -282,6 +313,7 @@ impl Asset {
             AssetState::Commissioned { id, .. } => Some(*id),
             AssetState::Decommissioned { id, .. } => Some(*id),
             AssetState::Future { .. } => None,
+            AssetState::Selected { .. } => None,
             AssetState::Candidate { .. } => None,
             AssetState::Mock => None,
         }
@@ -293,6 +325,7 @@ impl Asset {
             AssetState::Commissioned { agent_id, .. } => Some(agent_id),
             AssetState::Decommissioned { agent_id, .. } => Some(agent_id),
             AssetState::Future { agent_id } => Some(agent_id),
+            AssetState::Selected { agent_id } => Some(agent_id),
             AssetState::Candidate { agent_id } => Some(agent_id),
             AssetState::Mock => None,
         }
@@ -345,14 +378,23 @@ impl Asset {
         self.state = AssetState::Commissioned { id, agent_id };
     }
 
-    /// Commission a candidate asset
-    ///
-    /// At this point we also check that the capacity is valid (panics if not).
-    fn commission_candidate(&mut self, id: AssetID) {
-        check_capacity_valid_for_asset(self.capacity).unwrap();
+    /// Select a Candidate asset for investment, converting it to a Selected state
+    pub fn select_candidate_for_investment(&mut self) {
         let agent_id = match &self.state {
             AssetState::Candidate { agent_id } => agent_id.clone(),
-            _ => panic!("commission_candidate can only be called on Candidate assets"),
+            _ => panic!("select_candidate_for_investment can only be called on Candidate assets"),
+        };
+        self.state = AssetState::Selected { agent_id };
+    }
+
+    /// Commission a selected asset
+    ///
+    /// At this point we also check that the capacity is valid (panics if not).
+    fn commission_selected(&mut self, id: AssetID) {
+        check_capacity_valid_for_asset(self.capacity).unwrap();
+        let agent_id = match &self.state {
+            AssetState::Selected { agent_id } => agent_id.clone(),
+            _ => panic!("commission_selected can only be called on Selected assets"),
         };
         self.state = AssetState::Commissioned { id, agent_id };
     }
@@ -466,9 +508,10 @@ impl Hash for AssetRef {
         self.0.region_id.hash(state);
         self.0.commission_year.hash(state);
 
-        // For Commissioned/Decommissioned/Future assets, also include agent_id
+        // For Selected/Commissioned/Decommissioned/Future assets, also include agent_id
         match &self.0.state {
-            AssetState::Commissioned { agent_id, .. }
+            AssetState::Selected { agent_id }
+            | AssetState::Commissioned { agent_id, .. }
             | AssetState::Decommissioned { agent_id, .. }
             | AssetState::Future { agent_id, .. } => {
                 agent_id.hash(state);
@@ -633,15 +676,15 @@ impl AssetPool {
         std::mem::take(&mut self.active)
     }
 
-    /// Extend the active pool with existing or candidate assets
+    /// Extend the active pool with Commissioned or Selected assets
     ///
     /// Returns the same assets after ID assignment.
     pub fn extend(&mut self, mut assets: Vec<AssetRef>) -> Vec<AssetRef> {
         for asset in assets.iter_mut() {
             match &asset.state {
                 AssetState::Commissioned { .. } => {}
-                AssetState::Candidate { .. } => {
-                    asset.make_mut().commission_candidate(AssetID(self.next_id));
+                AssetState::Selected { .. } => {
+                    asset.make_mut().commission_selected(AssetID(self.next_id));
                     self.next_id += 1;
                 }
                 _ => panic!(
@@ -974,7 +1017,7 @@ mod tests {
         // Create new non-commissioned assets
         let process_rc = Rc::new(process);
         let new_assets = vec![
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent2".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -983,7 +1026,7 @@ mod tests {
             )
             .unwrap()
             .into(),
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent3".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -1016,7 +1059,7 @@ mod tests {
         asset_pool.commission_new(2020);
 
         // Create a new non-commissioned asset
-        let new_asset = Asset::new_candidate(
+        let new_asset = Asset::new_selected(
             "agent_new".into(),
             process.into(),
             "GBR".into(),
@@ -1049,7 +1092,7 @@ mod tests {
         // Create new assets that would be out of order if added at the end
         let process_rc = Rc::new(process);
         let new_assets = vec![
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent_high_id".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -1058,7 +1101,7 @@ mod tests {
             )
             .unwrap()
             .into(),
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent_low_id".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -1106,7 +1149,7 @@ mod tests {
         // Create new non-commissioned assets
         let process_rc = Rc::new(process);
         let new_assets = vec![
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent1".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -1115,7 +1158,7 @@ mod tests {
             )
             .unwrap()
             .into(),
-            Asset::new_candidate(
+            Asset::new_selected(
                 "agent2".into(),
                 Rc::clone(&process_rc),
                 "GBR".into(),
@@ -1200,7 +1243,7 @@ mod tests {
         process: Process,
     ) {
         // Create a non-commissioned asset
-        let non_commissioned_asset = Asset::new_candidate(
+        let non_commissioned_asset = Asset::new_future(
             "agent_new".into(),
             process.into(),
             "GBR".into(),
@@ -1230,8 +1273,8 @@ mod tests {
         assert!(asset1.is_commissioned());
         assert_eq!(asset1.id(), Some(AssetID(1)));
 
-        // Test successful commissioning of Candidate asset
-        let mut asset2 = Asset::new_candidate(
+        // Test successful commissioning of Selected asset
+        let mut asset2 = Asset::new_selected(
             "agent1".into(),
             Rc::clone(&process_rc),
             "GBR".into(),
@@ -1239,7 +1282,7 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset2.commission_candidate(AssetID(2));
+        asset2.commission_selected(AssetID(2));
         assert!(asset2.is_commissioned());
         assert_eq!(asset2.id(), Some(AssetID(2)));
 
@@ -1264,7 +1307,7 @@ mod tests {
     }
 
     #[rstest]
-    #[should_panic(expected = "commission_candidate can only be called on Candidate assets")]
+    #[should_panic(expected = "commission_selected can only be called on Selected assets")]
     fn test_commission_candidate_wrong_state(process: Process) {
         let mut asset = Asset::new_future(
             "agent1".into(),
@@ -1274,7 +1317,7 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset.commission_candidate(AssetID(1));
+        asset.commission_selected(AssetID(1));
     }
 
     #[rstest]
