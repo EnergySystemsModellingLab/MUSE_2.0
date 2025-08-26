@@ -55,8 +55,8 @@ enum GraphEdge {
 /// specified region/year. There will be an edge from commodity A to B if there exists a process
 /// that consumes A and produces B.
 ///
-/// There are also special nodes for _SOURCE and _SINK commodities, which are used to represent
-/// processes that have no inputs or outputs.
+/// There are also special `Source` and `Sink` nodes, which are used for processes that have no
+/// inputs or outputs.
 ///
 /// The graph does not take into account process availabilities or commodity demands, both of which
 /// can vary by time slice. See `prepare_commodities_graph_for_validation`.
@@ -89,7 +89,7 @@ fn create_commodities_graph_for_region_year(
             .map(|flow| GraphNode::Commodity(flow.commodity.id.clone()))
             .collect();
 
-        // Use Source node if no inputs, Sink node if no outputs
+        // Use `Source` node if no inputs, `Sink` node if no outputs
         if inputs.is_empty() {
             inputs.push(GraphNode::Source);
         }
@@ -123,7 +123,7 @@ fn create_commodities_graph_for_region_year(
 /// account for process availabilities and commodity demands within the given time slice selection,
 /// returning a new graph.
 ///
-/// Commodity demands are represented by a new special _DEMAND node. We only add edges to _DEMAND
+/// Commodity demands are represented by the `Demand` node. We only add edges to the `Demand` node
 /// for commodities with the same time_slice_level as the selection. Other demands can be ignored
 /// since this graph will only be validated for commodities with the same time_slice_level as the
 /// selection.
@@ -160,7 +160,7 @@ fn prepare_commodities_graph_for_validation(
     });
 
     // Add demand edges
-    // We add edges to the Demand node for commodities that are demanded in the selection
+    // We add edges to the `Demand` node for commodities that are demanded in the selection
     // NOTE: we only do this for commodities with the same time_slice_level as the selection
     let demand_node = filtered_graph.add_node(GraphNode::Demand);
     for (commodity_id, commodity) in commodities {
@@ -228,7 +228,7 @@ fn validate_commodities_graph(
         // Match validation rules to commodity type
         match commodity.kind {
             CommodityType::ServiceDemand => {
-                // Cannot have outgoing edges to non-_DEMAND commodities
+                // Cannot have outgoing `Process` (non-`Demand`) edges
                 let has_non_demand_outgoing = graph
                     .edges_directed(node_idx, petgraph::Direction::Outgoing)
                     .any(|edge| edge.weight() != &GraphEdge::Demand);
@@ -238,7 +238,7 @@ fn validate_commodities_graph(
                     commodity_id
                 );
 
-                // If it has _DEMAND edges, it must have at least one producer
+                // If it has `Demand` edges, it must have at least one producer
                 let has_demand_edges = graph
                     .edges_directed(node_idx, petgraph::Direction::Outgoing)
                     .any(|edge| edge.weight() == &GraphEdge::Demand);
@@ -506,7 +506,7 @@ mod tests {
         commodities.insert("B".into(), Rc::new(sed_commodity));
         commodities.insert("C".into(), Rc::new(svd_commodity));
 
-        // Build valid graph: A(OTH) -> B(SED) -> C(SVD) ->D( _DEMAND)
+        // Build valid graph: A(OTH) -> B(SED) -> C(SVD) ->D(DEMAND)
         let node_a = graph.add_node(GraphNode::Commodity("A".into()));
         let node_b = graph.add_node(GraphNode::Commodity("B".into()));
         let node_c = graph.add_node(GraphNode::Commodity("C".into()));
@@ -554,7 +554,7 @@ mod tests {
         // Add test commodities (all have DayNight time slice level)
         commodities.insert("A".into(), Rc::new(svd_commodity));
 
-        // Build invalid graph: A(SVD) -> B(_DEMAND) - SVD must be produced
+        // Build invalid graph: A(SVD) -> B(DEMAND) - SVD must be produced
         let node_a = graph.add_node(GraphNode::Commodity("A".into()));
         let node_b = graph.add_node(GraphNode::Demand);
         graph.add_edge(node_a, node_b, GraphEdge::Demand);
