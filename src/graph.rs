@@ -100,15 +100,15 @@ fn create_commodities_graph_for_region_year(
         // Create edges from all inputs to all outputs
         // We also create nodes the first time they are encountered
         for (input, output) in iproduct!(inputs, outputs) {
-            let source_node = *commodity_to_node_index
+            let source_node_index = *commodity_to_node_index
                 .entry(input.clone())
                 .or_insert_with(|| graph.add_node(input.clone()));
-            let target_node = *commodity_to_node_index
+            let target_node_index = *commodity_to_node_index
                 .entry(output.clone())
                 .or_insert_with(|| graph.add_node(output.clone()));
             graph.add_edge(
-                source_node,
-                target_node,
+                source_node_index,
+                target_node_index,
                 GraphEdge::Process(process.id.clone()),
             );
         }
@@ -142,7 +142,7 @@ fn prepare_commodities_graph_for_validation(
     // We keep edges if the process has availability > 0 in any time slice in the selection
     filtered_graph.retain_edges(|graph, edge_idx| {
         // Get the process for the edge
-        let Some(GraphEdge::Process(process_id)) = graph.edge_weight(edge_idx) else {
+        let GraphEdge::Process(process_id) = graph.edge_weight(edge_idx).unwrap() else {
             panic!("Demand edges should not be present in the base graph");
         };
         let process = &processes[process_id];
@@ -162,7 +162,7 @@ fn prepare_commodities_graph_for_validation(
     // Add demand edges
     // We add edges to the `Demand` node for commodities that are demanded in the selection
     // NOTE: we only do this for commodities with the same time_slice_level as the selection
-    let demand_node = filtered_graph.add_node(GraphNode::Demand);
+    let demand_node_index = filtered_graph.add_node(GraphNode::Demand);
     for (commodity_id, commodity) in commodities {
         if time_slice_selection.level() == commodity.time_slice_level
             && commodity
@@ -170,16 +170,14 @@ fn prepare_commodities_graph_for_validation(
                 .get(&(region_id.clone(), year, time_slice_selection.clone()))
                 .is_some_and(|&v| v > Flow(0.0))
         {
-            let commodity_node = filtered_graph
+            let commodity_node = GraphNode::Commodity(commodity_id.clone());
+            let commodity_node_index = filtered_graph
                 .node_indices()
-                .find(|&idx| {
-                    filtered_graph.node_weight(idx)
-                        == Some(&GraphNode::Commodity(commodity_id.clone()))
-                })
+                .find(|&idx| filtered_graph.node_weight(idx) == Some(&commodity_node))
                 .unwrap_or_else(|| {
                     filtered_graph.add_node(GraphNode::Commodity(commodity_id.clone()))
                 });
-            filtered_graph.add_edge(commodity_node, demand_node, GraphEdge::Demand);
+            filtered_graph.add_edge(commodity_node_index, demand_node_index, GraphEdge::Demand);
         }
     }
 
@@ -295,7 +293,7 @@ fn topo_sort_commodities(
         .rev()
         .filter_map(|node_idx| {
             // Get the commodity for the node
-            let Some(GraphNode::Commodity(commodity_id)) = graph.node_weight(*node_idx) else {
+            let GraphNode::Commodity(commodity_id) = graph.node_weight(*node_idx).unwrap() else {
                 // Skip special nodes
                 return None;
             };
