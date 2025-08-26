@@ -443,35 +443,27 @@ mod tests {
         // Create a simple linear graph: A -> B -> C
         let mut graph = Graph::new();
 
-        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
-        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
-        let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
+        let node_a = graph.add_node(GraphNode::Commodity("A".into()));
+        let node_b = graph.add_node(GraphNode::Commodity("B".into()));
+        let node_c = graph.add_node(GraphNode::Commodity("C".into()));
 
         // Add edges: A -> B -> C
-        graph.add_edge(
-            node_a,
-            node_b,
-            GraphEdge::Process(ProcessID::from("process1")),
-        );
-        graph.add_edge(
-            node_b,
-            node_c,
-            GraphEdge::Process(ProcessID::from("process2")),
-        );
+        graph.add_edge(node_a, node_b, GraphEdge::Process("process1".into()));
+        graph.add_edge(node_b, node_c, GraphEdge::Process("process2".into()));
 
         // Create commodities map using fixtures
         let mut commodities = CommodityMap::new();
-        commodities.insert(CommodityID::from("A"), Rc::new(sed_commodity()));
-        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
-        commodities.insert(CommodityID::from("C"), Rc::new(svd_commodity()));
+        commodities.insert("A".into(), Rc::new(sed_commodity()));
+        commodities.insert("B".into(), Rc::new(sed_commodity()));
+        commodities.insert("C".into(), Rc::new(svd_commodity()));
 
         let result = topo_sort_commodities(&graph, &commodities).unwrap();
 
         // Expected order: C, B, A (leaf nodes first)
         assert_eq!(result.len(), 3);
-        assert_eq!(result[0], CommodityID::from("C"));
-        assert_eq!(result[1], CommodityID::from("B"));
-        assert_eq!(result[2], CommodityID::from("A"));
+        assert_eq!(result[0], "C".into());
+        assert_eq!(result[1], "B".into());
+        assert_eq!(result[2], "A".into());
     }
 
     #[test]
@@ -479,25 +471,17 @@ mod tests {
         // Create a simple cyclic graph: A -> B -> A
         let mut graph = Graph::new();
 
-        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
-        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
+        let node_a = graph.add_node(GraphNode::Commodity("A".into()));
+        let node_b = graph.add_node(GraphNode::Commodity("B".into()));
 
         // Add edges creating a cycle: A -> B -> A
-        graph.add_edge(
-            node_a,
-            node_b,
-            GraphEdge::Process(ProcessID::from("process1")),
-        );
-        graph.add_edge(
-            node_b,
-            node_a,
-            GraphEdge::Process(ProcessID::from("process2")),
-        );
+        graph.add_edge(node_a, node_b, GraphEdge::Process("process1".into()));
+        graph.add_edge(node_b, node_a, GraphEdge::Process("process2".into()));
 
         // Create commodities map using fixtures
         let mut commodities = CommodityMap::new();
-        commodities.insert(CommodityID::from("A"), Rc::new(sed_commodity()));
-        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
+        commodities.insert("A".into(), Rc::new(sed_commodity()));
+        commodities.insert("B".into(), Rc::new(sed_commodity()));
 
         // This should return an error due to the cycle
         // The error message should flag commodity B
@@ -512,25 +496,17 @@ mod tests {
         let mut commodities = CommodityMap::new();
 
         // Add test commodities (all have DayNight time slice level)
-        commodities.insert(CommodityID::from("A"), Rc::new(other_commodity()));
-        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
-        commodities.insert(CommodityID::from("C"), Rc::new(svd_commodity()));
+        commodities.insert("A".into(), Rc::new(other_commodity()));
+        commodities.insert("B".into(), Rc::new(sed_commodity()));
+        commodities.insert("C".into(), Rc::new(svd_commodity()));
 
         // Build valid graph: A(OTH) -> B(SED) -> C(SVD) ->D( _DEMAND)
-        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
-        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
-        let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
+        let node_a = graph.add_node(GraphNode::Commodity("A".into()));
+        let node_b = graph.add_node(GraphNode::Commodity("B".into()));
+        let node_c = graph.add_node(GraphNode::Commodity("C".into()));
         let node_d = graph.add_node(GraphNode::Demand);
-        graph.add_edge(
-            node_a,
-            node_b,
-            GraphEdge::Process(ProcessID::from("process1")),
-        );
-        graph.add_edge(
-            node_b,
-            node_c,
-            GraphEdge::Process(ProcessID::from("process2")),
-        );
+        graph.add_edge(node_a, node_b, GraphEdge::Process("process1".into()));
+        graph.add_edge(node_b, node_c, GraphEdge::Process("process2".into()));
         graph.add_edge(node_c, node_d, GraphEdge::Demand);
 
         // Validate the graph at DayNight level
@@ -544,24 +520,16 @@ mod tests {
         let mut commodities = CommodityMap::new();
 
         // Add test commodities (all have DayNight time slice level)
-        commodities.insert(CommodityID::from("A"), Rc::new(svd_commodity()));
-        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
-        commodities.insert(CommodityID::from("C"), Rc::new(other_commodity()));
+        commodities.insert("A".into(), Rc::new(svd_commodity()));
+        commodities.insert("B".into(), Rc::new(sed_commodity()));
+        commodities.insert("C".into(), Rc::new(other_commodity()));
 
         // Build invalid graph: C(OTH) -> A(SVD) -> B(SED) - SVD cannot be consumed
-        let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
-        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
-        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
-        graph.add_edge(
-            node_c,
-            node_a,
-            GraphEdge::Process(ProcessID::from("process1")),
-        );
-        graph.add_edge(
-            node_a,
-            node_b,
-            GraphEdge::Process(ProcessID::from("process2")),
-        );
+        let node_c = graph.add_node(GraphNode::Commodity("C".into()));
+        let node_a = graph.add_node(GraphNode::Commodity("A".into()));
+        let node_b = graph.add_node(GraphNode::Commodity("B".into()));
+        graph.add_edge(node_c, node_a, GraphEdge::Process("process1".into()));
+        graph.add_edge(node_a, node_b, GraphEdge::Process("process2".into()));
 
         // Validate the graph at DayNight level
         let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
@@ -574,10 +542,10 @@ mod tests {
         let mut commodities = CommodityMap::new();
 
         // Add test commodities (all have DayNight time slice level)
-        commodities.insert(CommodityID::from("A"), Rc::new(svd_commodity()));
+        commodities.insert("A".into(), Rc::new(svd_commodity()));
 
         // Build invalid graph: A(SVD) -> B(_DEMAND) - SVD must be produced
-        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
+        let node_a = graph.add_node(GraphNode::Commodity("A".into()));
         let node_b = graph.add_node(GraphNode::Demand);
         graph.add_edge(node_a, node_b, GraphEdge::Demand);
 
@@ -592,17 +560,13 @@ mod tests {
         let mut commodities = CommodityMap::new();
 
         // Add test commodities (all have DayNight time slice level)
-        commodities.insert(CommodityID::from("A"), Rc::new(sed_commodity()));
-        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
+        commodities.insert("A".into(), Rc::new(sed_commodity()));
+        commodities.insert("B".into(), Rc::new(sed_commodity()));
 
         // Build invalid graph: B(SED) -> A(SED)
-        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
-        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
-        graph.add_edge(
-            node_b,
-            node_a,
-            GraphEdge::Process(ProcessID::from("process1")),
-        );
+        let node_a = graph.add_node(GraphNode::Commodity("A".into()));
+        let node_b = graph.add_node(GraphNode::Commodity("B".into()));
+        graph.add_edge(node_b, node_a, GraphEdge::Process("process1".into()));
 
         // Validate the graph at DayNight level
         let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
@@ -618,24 +582,16 @@ mod tests {
         let mut commodities = CommodityMap::new();
 
         // Add test commodities (all have DayNight time slice level)
-        commodities.insert(CommodityID::from("A"), Rc::new(other_commodity()));
-        commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
-        commodities.insert(CommodityID::from("C"), Rc::new(sed_commodity()));
+        commodities.insert("A".into(), Rc::new(other_commodity()));
+        commodities.insert("B".into(), Rc::new(sed_commodity()));
+        commodities.insert("C".into(), Rc::new(sed_commodity()));
 
         // Build invalid graph: B(SED) -> A(OTH) -> C(SED)
-        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
-        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
-        let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
-        graph.add_edge(
-            node_b,
-            node_a,
-            GraphEdge::Process(ProcessID::from("process1")),
-        );
-        graph.add_edge(
-            node_a,
-            node_c,
-            GraphEdge::Process(ProcessID::from("process2")),
-        );
+        let node_a = graph.add_node(GraphNode::Commodity("A".into()));
+        let node_b = graph.add_node(GraphNode::Commodity("B".into()));
+        let node_c = graph.add_node(GraphNode::Commodity("C".into()));
+        graph.add_edge(node_b, node_a, GraphEdge::Process("process1".into()));
+        graph.add_edge(node_a, node_c, GraphEdge::Process("process2".into()));
 
         // Validate the graph at DayNight level
         let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
