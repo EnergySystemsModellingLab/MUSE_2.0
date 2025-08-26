@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+#
+# This script is run by pre-commit to check that the examples validate correctly with the supplied
+# schemas
+from collections.abc import Iterable
+from typing import Any
 import yaml
 from frictionless import Package
 import sys
@@ -11,20 +16,28 @@ EXAMPLES_DIR = ROOT_DIR / "examples"
 schema_path = ROOT_DIR / "schemas" / "input" / "package.yaml"
 
 
-def main() -> int:
+def get_examples(paths: Iterable[str]) -> Iterable[Path]:
+    seen = set()
+    for path in map(Path, paths):
+        if not path.name.endswith(".csv"):
+            continue
+        example = path.parent
+        if not example.parent.samefile(EXAMPLES_DIR):
+            continue
+        if example in seen:
+            continue
+        seen.add(example)
+        yield example
+
+
+def main(schema: dict[str, Any], data_dirs: Iterable[Path]) -> int:
     ret = 0
 
-    with open(schema_path) as f:
-        schema_dict = yaml.safe_load(f)
-
-    for data_dir in EXAMPLES_DIR.iterdir():
-        if not data_dir.is_dir():
-            continue
-
+    for data_dir in data_dirs:
         print(f"\n🔍 Validating {data_dir}...")
 
         # Load the schema as a dict and set basepath to data_dir
-        package = Package(schema_dict, basepath=str(data_dir))
+        package = Package(schema, basepath=str(data_dir))
 
         # Validate against the schema
         report = package.validate()
@@ -44,4 +57,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    with open(schema_path) as f:
+        schema = yaml.safe_load(f)
+    examples = get_examples(sys.argv[1:])
+    sys.exit(main(schema, examples))
