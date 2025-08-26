@@ -106,8 +106,13 @@ impl ProcessFlow {
         let levy = self
             .commodity
             .levies
-            .get(&(region_id.clone(), year, time_slice.clone()))
-            .unwrap();
+            .get(&(region_id.clone(), year, time_slice.clone()));
+
+        let levy = match levy {
+            Some(levy) => levy,
+            None => return MoneyPerFlow(0.0),
+        };
+
         let apply_levy = match levy.balance_type {
             BalanceType::Net => true,
             BalanceType::Consumption => self.is_input(),
