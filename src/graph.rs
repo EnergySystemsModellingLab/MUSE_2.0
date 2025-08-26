@@ -14,13 +14,18 @@ use std::collections::HashMap;
 use std::fmt::Display;
 
 /// A graph of commodity flows for a given region and year
-type CommoditiesGraph = Graph<GraphNode, ProcessID, Directed>;
+type CommoditiesGraph = Graph<GraphNode, GraphEdge, Directed>;
 
 #[derive(Eq, PartialEq, Clone, Hash)]
+/// A node in the commodity graph
 enum GraphNode {
+    /// A node representing a commodity
     Commodity(CommodityID),
+    /// A source node for processes that have no inputs
     Source,
+    /// A sink node for processes that have no outputs
     Sink,
+    /// A demand node for commodities with service demands
     Demand,
 }
 
@@ -33,6 +38,15 @@ impl Display for GraphNode {
             GraphNode::Demand => write!(f, "DEMAND"),
         }
     }
+}
+
+#[derive(Eq, PartialEq, Clone, Hash)]
+/// An edge in the commodity graph
+enum GraphEdge {
+    /// An edge representing a process
+    Process(ProcessID),
+    /// An edge representing a service demand
+    Demand,
 }
 
 /// Creates a directed graph of commodity flows for a given region and year.
@@ -92,7 +106,11 @@ fn create_commodities_graph_for_region_year(
             let target_node = *commodity_to_node_index
                 .entry(output.clone())
                 .or_insert_with(|| graph.add_node(output.clone()));
-            graph.add_edge(source_node, target_node, process.id.clone());
+            graph.add_edge(
+                source_node,
+                target_node,
+                GraphEdge::Process(process.id.clone()),
+            );
         }
     }
 
@@ -123,8 +141,13 @@ fn prepare_commodities_graph_for_validation(
     // Filter by process availability
     // We keep edges if the process has availability > 0 in any time slice in the selection
     filtered_graph.retain_edges(|graph, edge_idx| {
-        let process_id = graph.edge_weight(edge_idx).unwrap();
+        // Get the process for the edge
+        let Some(GraphEdge::Process(process_id)) = graph.edge_weight(edge_idx) else {
+            panic!("Demand edges should not be present in the base graph");
+        };
         let process = &processes[process_id];
+
+        // Check if the process has availability > 0 in any time slice in the selection
         time_slice_selection
             .iter(time_slice_info)
             .any(|(time_slice, _)| {
@@ -156,7 +179,7 @@ fn prepare_commodities_graph_for_validation(
                 .unwrap_or_else(|| {
                     filtered_graph.add_node(GraphNode::Commodity(commodity_id.clone()))
                 });
-            filtered_graph.add_edge(commodity_node, demand_node, ProcessID::from("_DEMAND"));
+            filtered_graph.add_edge(commodity_node, demand_node, GraphEdge::Demand);
         }
     }
 
@@ -208,7 +231,7 @@ fn validate_commodities_graph(
                 // Cannot have outgoing edges to non-_DEMAND commodities
                 let has_non_demand_outgoing = graph
                     .edges_directed(node_idx, petgraph::Direction::Outgoing)
-                    .any(|edge| edge.weight() != &ProcessID::from("_DEMAND"));
+                    .any(|edge| edge.weight() != &GraphEdge::Demand);
                 ensure!(
                     !has_non_demand_outgoing,
                     "SVD commodity {} cannot be an input to a process",
@@ -218,7 +241,7 @@ fn validate_commodities_graph(
                 // If it has _DEMAND edges, it must have at least one producer
                 let has_demand_edges = graph
                     .edges_directed(node_idx, petgraph::Direction::Outgoing)
-                    .any(|edge| edge.weight() == &ProcessID::from("_DEMAND"));
+                    .any(|edge| edge.weight() == &GraphEdge::Demand);
                 if has_demand_edges {
                     ensure!(
                         has_incoming,
@@ -425,8 +448,16 @@ mod tests {
         let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
 
         // Add edges: A -> B -> C
-        graph.add_edge(node_a, node_b, ProcessID::from("process1"));
-        graph.add_edge(node_b, node_c, ProcessID::from("process2"));
+        graph.add_edge(
+            node_a,
+            node_b,
+            GraphEdge::Process(ProcessID::from("process1")),
+        );
+        graph.add_edge(
+            node_b,
+            node_c,
+            GraphEdge::Process(ProcessID::from("process2")),
+        );
 
         // Create commodities map using fixtures
         let mut commodities = CommodityMap::new();
@@ -452,8 +483,16 @@ mod tests {
         let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
 
         // Add edges creating a cycle: A -> B -> A
-        graph.add_edge(node_a, node_b, ProcessID::from("process1"));
-        graph.add_edge(node_b, node_a, ProcessID::from("process2"));
+        graph.add_edge(
+            node_a,
+            node_b,
+            GraphEdge::Process(ProcessID::from("process1")),
+        );
+        graph.add_edge(
+            node_b,
+            node_a,
+            GraphEdge::Process(ProcessID::from("process2")),
+        );
 
         // Create commodities map using fixtures
         let mut commodities = CommodityMap::new();
@@ -482,9 +521,17 @@ mod tests {
         let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
         let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
         let node_d = graph.add_node(GraphNode::Demand);
-        graph.add_edge(node_a, node_b, ProcessID::from("process1"));
-        graph.add_edge(node_b, node_c, ProcessID::from("process2"));
-        graph.add_edge(node_c, node_d, ProcessID::from("_DEMAND"));
+        graph.add_edge(
+            node_a,
+            node_b,
+            GraphEdge::Process(ProcessID::from("process1")),
+        );
+        graph.add_edge(
+            node_b,
+            node_c,
+            GraphEdge::Process(ProcessID::from("process2")),
+        );
+        graph.add_edge(node_c, node_d, GraphEdge::Demand);
 
         // Validate the graph at DayNight level
         let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::Annual);
@@ -505,8 +552,16 @@ mod tests {
         let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
         let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
         let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
-        graph.add_edge(node_c, node_a, ProcessID::from("process1"));
-        graph.add_edge(node_a, node_b, ProcessID::from("process2"));
+        graph.add_edge(
+            node_c,
+            node_a,
+            GraphEdge::Process(ProcessID::from("process1")),
+        );
+        graph.add_edge(
+            node_a,
+            node_b,
+            GraphEdge::Process(ProcessID::from("process2")),
+        );
 
         // Validate the graph at DayNight level
         let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
@@ -524,7 +579,7 @@ mod tests {
         // Build invalid graph: A(SVD) -> B(_DEMAND) - SVD must be produced
         let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
         let node_b = graph.add_node(GraphNode::Demand);
-        graph.add_edge(node_a, node_b, ProcessID::from("_DEMAND"));
+        graph.add_edge(node_a, node_b, GraphEdge::Demand);
 
         // Validate the graph at DayNight level
         let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
@@ -543,7 +598,11 @@ mod tests {
         // Build invalid graph: B(SED) -> A(SED)
         let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
         let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
-        graph.add_edge(node_b, node_a, ProcessID::from("process1"));
+        graph.add_edge(
+            node_b,
+            node_a,
+            GraphEdge::Process(ProcessID::from("process1")),
+        );
 
         // Validate the graph at DayNight level
         let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
@@ -567,8 +626,16 @@ mod tests {
         let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
         let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
         let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
-        graph.add_edge(node_b, node_a, ProcessID::from("process1"));
-        graph.add_edge(node_a, node_c, ProcessID::from("process2"));
+        graph.add_edge(
+            node_b,
+            node_a,
+            GraphEdge::Process(ProcessID::from("process1")),
+        );
+        graph.add_edge(
+            node_a,
+            node_c,
+            GraphEdge::Process(ProcessID::from("process2")),
+        );
 
         // Validate the graph at DayNight level
         let result = validate_commodities_graph(&graph, &commodities, TimeSliceLevel::DayNight);
