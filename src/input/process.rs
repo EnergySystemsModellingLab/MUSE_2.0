@@ -9,6 +9,7 @@ use crate::region::{parse_region_str, RegionID};
 use crate::time_slice::TimeSliceInfo;
 use anyhow::{ensure, Context, Ok, Result};
 use indexmap::IndexSet;
+use itertools::chain;
 use serde::Deserialize;
 use std::path::Path;
 use std::rc::Rc;
@@ -57,7 +58,7 @@ pub fn read_processes(
     let mut processes = read_processes_file(model_dir, milestone_years, region_ids, commodities)?;
     let mut activity_limits = read_process_availabilities(model_dir, &processes, time_slice_info)?;
     let mut flows = read_process_flows(model_dir, &mut processes, commodities)?;
-    let mut parameters = read_process_parameters(model_dir, &processes)?;
+    let mut parameters = read_process_parameters(model_dir, &processes, milestone_years[0])?;
 
     // Add data to Process objects
     for (id, process) in processes.iter_mut() {
@@ -108,12 +109,17 @@ where
             process_raw.id
         );
 
-        // Select process years
-        let years = milestone_years
-            .iter()
-            .copied()
-            .filter(|year| (start_year..=end_year).contains(year))
-            .collect();
+        // Select process years. It is possible for assets to have been commissioned before the
+        // simulation's time horizon, so assume that all years >=start_year and <base year are valid
+        // too.
+        let years = chain(
+            start_year..milestone_years[0],
+            milestone_years
+                .iter()
+                .copied()
+                .filter(|year| (start_year..=end_year).contains(year)),
+        )
+        .collect();
 
         // Parse region ID
         let regions = parse_region_str(&process_raw.regions, region_ids)?;

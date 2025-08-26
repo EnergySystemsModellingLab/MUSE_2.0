@@ -103,9 +103,9 @@ pub fn get_svd_map(commodity: &Commodity) -> HashMap<CommodityID, &Commodity> {
 #[fixture]
 pub fn asset(process: Process) -> Asset {
     let region_id: RegionID = "GBR".into();
-    let agent_id = Some("agent1".into());
+    let agent_id = "agent1".into();
     let commission_year = 2015;
-    Asset::new(
+    Asset::new_future(
         agent_id,
         process.into(),
         region_id,
@@ -149,7 +149,7 @@ pub fn process(
     Process {
         id: "process1".into(),
         description: "Description".into(),
-        years: vec![2010, 2020],
+        years: (2010..=2020).collect(),
         activity_limits: ProcessActivityLimitsMap::new(),
         flows: ProcessFlowsMap::new(),
         parameters: process_parameter_map,
