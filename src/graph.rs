@@ -434,12 +434,14 @@ pub fn build_and_validate_commodity_graphs_for_model(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::commodity::Commodity;
     use crate::fixture::{assert_error, other_commodity, sed_commodity, svd_commodity};
     use petgraph::graph::Graph;
+    use rstest::rstest;
     use std::rc::Rc;
 
-    #[test]
-    fn test_topo_sort_linear_graph() {
+    #[rstest]
+    fn test_topo_sort_linear_graph(sed_commodity: Commodity, svd_commodity: Commodity) {
         // Create a simple linear graph: A -> B -> C
         let mut graph = Graph::new();
 
@@ -453,9 +455,9 @@ mod tests {
 
         // Create commodities map using fixtures
         let mut commodities = CommodityMap::new();
-        commodities.insert("A".into(), Rc::new(sed_commodity()));
-        commodities.insert("B".into(), Rc::new(sed_commodity()));
-        commodities.insert("C".into(), Rc::new(svd_commodity()));
+        commodities.insert("A".into(), Rc::new(sed_commodity.clone()));
+        commodities.insert("B".into(), Rc::new(sed_commodity));
+        commodities.insert("C".into(), Rc::new(svd_commodity));
 
         let result = topo_sort_commodities(&graph, &commodities).unwrap();
 
@@ -466,8 +468,8 @@ mod tests {
         assert_eq!(result[2], "A".into());
     }
 
-    #[test]
-    fn test_topo_sort_cyclic_graph() {
+    #[rstest]
+    fn test_topo_sort_cyclic_graph(sed_commodity: Commodity) {
         // Create a simple cyclic graph: A -> B -> A
         let mut graph = Graph::new();
 
@@ -480,8 +482,8 @@ mod tests {
 
         // Create commodities map using fixtures
         let mut commodities = CommodityMap::new();
-        commodities.insert("A".into(), Rc::new(sed_commodity()));
-        commodities.insert("B".into(), Rc::new(sed_commodity()));
+        commodities.insert("A".into(), Rc::new(sed_commodity.clone()));
+        commodities.insert("B".into(), Rc::new(sed_commodity));
 
         // This should return an error due to the cycle
         // The error message should flag commodity B
@@ -490,15 +492,19 @@ mod tests {
         assert_error!(result, "Cycle detected in commodity graph for commodity B");
     }
 
-    #[test]
-    fn test_validate_commodities_graph() {
+    #[rstest]
+    fn test_validate_commodities_graph(
+        other_commodity: Commodity,
+        sed_commodity: Commodity,
+        svd_commodity: Commodity,
+    ) {
         let mut graph = Graph::new();
         let mut commodities = CommodityMap::new();
 
         // Add test commodities (all have DayNight time slice level)
-        commodities.insert("A".into(), Rc::new(other_commodity()));
-        commodities.insert("B".into(), Rc::new(sed_commodity()));
-        commodities.insert("C".into(), Rc::new(svd_commodity()));
+        commodities.insert("A".into(), Rc::new(other_commodity));
+        commodities.insert("B".into(), Rc::new(sed_commodity));
+        commodities.insert("C".into(), Rc::new(svd_commodity));
 
         // Build valid graph: A(OTH) -> B(SED) -> C(SVD) ->D( _DEMAND)
         let node_a = graph.add_node(GraphNode::Commodity("A".into()));
@@ -514,15 +520,19 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_validate_commodities_graph_invalid_svd_consumed() {
+    #[rstest]
+    fn test_validate_commodities_graph_invalid_svd_consumed(
+        svd_commodity: Commodity,
+        sed_commodity: Commodity,
+        other_commodity: Commodity,
+    ) {
         let mut graph = Graph::new();
         let mut commodities = CommodityMap::new();
 
         // Add test commodities (all have DayNight time slice level)
-        commodities.insert("A".into(), Rc::new(svd_commodity()));
-        commodities.insert("B".into(), Rc::new(sed_commodity()));
-        commodities.insert("C".into(), Rc::new(other_commodity()));
+        commodities.insert("A".into(), Rc::new(svd_commodity));
+        commodities.insert("B".into(), Rc::new(sed_commodity));
+        commodities.insert("C".into(), Rc::new(other_commodity));
 
         // Build invalid graph: C(OTH) -> A(SVD) -> B(SED) - SVD cannot be consumed
         let node_c = graph.add_node(GraphNode::Commodity("C".into()));
@@ -536,13 +546,13 @@ mod tests {
         assert_error!(result, "SVD commodity A cannot be an input to a process");
     }
 
-    #[test]
-    fn test_validate_commodities_graph_invalid_svd_not_produced() {
+    #[rstest]
+    fn test_validate_commodities_graph_invalid_svd_not_produced(svd_commodity: Commodity) {
         let mut graph = Graph::new();
         let mut commodities = CommodityMap::new();
 
         // Add test commodities (all have DayNight time slice level)
-        commodities.insert("A".into(), Rc::new(svd_commodity()));
+        commodities.insert("A".into(), Rc::new(svd_commodity));
 
         // Build invalid graph: A(SVD) -> B(_DEMAND) - SVD must be produced
         let node_a = graph.add_node(GraphNode::Commodity("A".into()));
@@ -554,14 +564,14 @@ mod tests {
         assert_error!(result, "SVD commodity A is demanded but has no producers");
     }
 
-    #[test]
-    fn test_validate_commodities_graph_invalid_sed() {
+    #[rstest]
+    fn test_validate_commodities_graph_invalid_sed(sed_commodity: Commodity) {
         let mut graph = Graph::new();
         let mut commodities = CommodityMap::new();
 
         // Add test commodities (all have DayNight time slice level)
-        commodities.insert("A".into(), Rc::new(sed_commodity()));
-        commodities.insert("B".into(), Rc::new(sed_commodity()));
+        commodities.insert("A".into(), Rc::new(sed_commodity.clone()));
+        commodities.insert("B".into(), Rc::new(sed_commodity));
 
         // Build invalid graph: B(SED) -> A(SED)
         let node_a = graph.add_node(GraphNode::Commodity("A".into()));
@@ -576,15 +586,18 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_validate_commodities_graph_invalid_oth() {
+    #[rstest]
+    fn test_validate_commodities_graph_invalid_oth(
+        other_commodity: Commodity,
+        sed_commodity: Commodity,
+    ) {
         let mut graph = Graph::new();
         let mut commodities = CommodityMap::new();
 
         // Add test commodities (all have DayNight time slice level)
-        commodities.insert("A".into(), Rc::new(other_commodity()));
-        commodities.insert("B".into(), Rc::new(sed_commodity()));
-        commodities.insert("C".into(), Rc::new(sed_commodity()));
+        commodities.insert("A".into(), Rc::new(other_commodity));
+        commodities.insert("B".into(), Rc::new(sed_commodity.clone()));
+        commodities.insert("C".into(), Rc::new(sed_commodity));
 
         // Build invalid graph: B(SED) -> A(OTH) -> C(SED)
         let node_a = graph.add_node(GraphNode::Commodity("A".into()));

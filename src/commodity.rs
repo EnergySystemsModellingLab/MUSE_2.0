@@ -24,7 +24,7 @@ pub type DemandMap = HashMap<(RegionID, u32, TimeSliceSelection), Flow>;
 ///
 /// Represents a substance (e.g. CO2) or form of energy (e.g. electricity) that can be produced or
 /// consumed by processes.
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Debug, Deserialize, Clone)]
 pub struct Commodity {
     /// Unique identifier for the commodity (e.g. "ELC")
     pub id: CommodityID,
@@ -79,7 +79,7 @@ pub struct CommodityLevy {
 }
 
 /// Commodity balance type
-#[derive(PartialEq, Debug, DeserializeLabeledStringEnum)]
+#[derive(PartialEq, Debug, DeserializeLabeledStringEnum, Clone)]
 pub enum CommodityType {
     /// Supply and demand of this commodity must be balanced
     #[string = "sed"]
