@@ -12,6 +12,18 @@ from jinja2 import Environment, FileSystemLoader
 
 FILE_FORMAT_DOCS_DIR = Path(__file__).parent
 SCHEMA_DIR = FILE_FORMAT_DOCS_DIR.parent.parent / "schemas"
+INPUT_SCHEMA_DIR = SCHEMA_DIR / "input"
+INPUT_MODEL_FILE_NAME = "model.toml"
+OUTPUT_SCHEMA_DIR = SCHEMA_DIR / "output"
+
+INPUT_FILE_ORDER = {
+    "Time slices": ["time_slices"],
+    "Regions": ["regions"],
+    "Agents": ["agents", "agent_*"],
+    "Assets": ["assets"],
+    "Commodities": ["commodities", "commodity_levies", "demand", "demand_slicing"],
+    "Processes": ["processes", "process_*"],
+}
 
 sys.path.append(str(FILE_FORMAT_DOCS_DIR))
 from format_docs import generate_for_csv, generate_for_toml  # noqa: E402
@@ -24,20 +36,9 @@ def generate_settings_docs(env: Environment) -> tuple[str, str]:
 
 
 def generate_input_docs(env: Environment) -> tuple[str, str]:
-    INPUT_SCHEMA_DIR = SCHEMA_DIR / "input"
-    FILE_ORDER = {
-        "Time slices": ["time_slices"],
-        "Regions": ["regions"],
-        "Agents": ["agents", "agent_*"],
-        "Assets": ["assets"],
-        "Commodities": ["commodities", "commodity_levies", "demand", "demand_slicing"],
-        "Processes": ["processes", "process_*"],
-    }
-    csv_sections = generate_for_csv(FILE_ORDER, INPUT_SCHEMA_DIR, env)
-
-    toml_file_name = "model.toml"
+    csv_sections = generate_for_csv(INPUT_FILE_ORDER, INPUT_SCHEMA_DIR, env)
     toml_info = generate_for_toml(
-        INPUT_SCHEMA_DIR, toml_file_name, env, heading_level=2
+        INPUT_SCHEMA_DIR, INPUT_MODEL_FILE_NAME, env, heading_level=2
     )
 
     template = env.get_template("input_files.md.jinja")
@@ -48,7 +49,6 @@ def generate_input_docs(env: Environment) -> tuple[str, str]:
 
 
 def generate_output_docs(env: Environment) -> tuple[str, str]:
-    OUTPUT_SCHEMA_DIR = SCHEMA_DIR / "output"
     toml_file_name = "metadata.toml"
     toml_info = generate_for_toml(
         OUTPUT_SCHEMA_DIR, toml_file_name, env, heading_level=2
