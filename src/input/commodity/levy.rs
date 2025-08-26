@@ -104,8 +104,11 @@ where
                 .insert(region.clone());
             for year in years.iter() {
                 for (time_slice, _) in ts_selection.iter(time_slice_info) {
-                    let key = (region.clone(), *year, time_slice.clone());
-                    map.insert(key, cost.clone());
+                    try_insert(
+                        map,
+                        (region.clone(), *year, time_slice.clone()),
+                        cost.clone(),
+                    )?;
                 }
             }
         }
