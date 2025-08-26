@@ -11,9 +11,29 @@ use petgraph::algo::toposort;
 use petgraph::graph::Graph;
 use petgraph::Directed;
 use std::collections::HashMap;
+use std::fmt::Display;
 
 /// A graph of commodity flows for a given region and year
-type CommoditiesGraph = Graph<CommodityID, ProcessID, Directed>;
+type CommoditiesGraph = Graph<GraphNode, ProcessID, Directed>;
+
+#[derive(Eq, PartialEq, Clone, Hash)]
+enum GraphNode {
+    Commodity(CommodityID),
+    Source,
+    Sink,
+    Demand,
+}
+
+impl Display for GraphNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GraphNode::Commodity(id) => write!(f, "{id}"),
+            GraphNode::Source => write!(f, "SOURCE"),
+            GraphNode::Sink => write!(f, "SINK"),
+            GraphNode::Demand => write!(f, "DEMAND"),
+        }
+    }
+}
 
 /// Creates a directed graph of commodity flows for a given region and year.
 ///
@@ -34,11 +54,6 @@ fn create_commodities_graph_for_region_year(
     let mut graph = Graph::new();
     let mut commodity_to_node_index = HashMap::new();
 
-    // Create _SOURCE and _SINK commodity IDs
-    // We use these as mock commodities for processes that have no inputs or outputs
-    let source_id = CommodityID::from("_SOURCE");
-    let sink_id = CommodityID::from("_SINK");
-
     let key = (region_id.clone(), year);
     for process in processes.values() {
         let Some(flows) = process.flows.get(&key) else {
@@ -46,30 +61,30 @@ fn create_commodities_graph_for_region_year(
             continue;
         };
 
-        // Get output flows for the process
+        // Get output nodes for the process
         let mut outputs: Vec<_> = flows
             .values()
             .filter(|flow| flow.is_output())
-            .map(|flow| &flow.commodity.id)
+            .map(|flow| GraphNode::Commodity(flow.commodity.id.clone()))
             .collect();
 
-        // Get input flows for the process
+        // Get input nodes for the process
         let mut inputs: Vec<_> = flows
             .values()
             .filter(|flow| flow.is_input())
-            .map(|flow| &flow.commodity.id)
+            .map(|flow| GraphNode::Commodity(flow.commodity.id.clone()))
             .collect();
 
-        // Use _SOURCE if no inputs, _SINK if no outputs
+        // Use Source node if no inputs, Sink node if no outputs
         if inputs.is_empty() {
-            inputs.push(&source_id);
+            inputs.push(GraphNode::Source);
         }
         if outputs.is_empty() {
-            outputs.push(&sink_id);
+            outputs.push(GraphNode::Sink);
         }
 
         // Create edges from all inputs to all outputs
-        // We also create nodes for commodities the first time they are encountered
+        // We also create nodes the first time they are encountered
         for (input, output) in iproduct!(inputs, outputs) {
             let source_node = *commodity_to_node_index
                 .entry(input.clone())
@@ -122,9 +137,9 @@ fn prepare_commodities_graph_for_validation(
     });
 
     // Add demand edges
-    // We add edges to _DEMAND for commodities that are demanded in the selection
+    // We add edges to the Demand node for commodities that are demanded in the selection
     // NOTE: we only do this for commodities with the same time_slice_level as the selection
-    let demand_node = filtered_graph.add_node(CommodityID::from("_DEMAND"));
+    let demand_node = filtered_graph.add_node(GraphNode::Demand);
     for (commodity_id, commodity) in commodities {
         if time_slice_selection.level() == commodity.time_slice_level
             && commodity
@@ -134,8 +149,13 @@ fn prepare_commodities_graph_for_validation(
         {
             let commodity_node = filtered_graph
                 .node_indices()
-                .find(|&idx| filtered_graph.node_weight(idx) == Some(commodity_id))
-                .unwrap_or_else(|| filtered_graph.add_node(commodity_id.clone()));
+                .find(|&idx| {
+                    filtered_graph.node_weight(idx)
+                        == Some(&GraphNode::Commodity(commodity_id.clone()))
+                })
+                .unwrap_or_else(|| {
+                    filtered_graph.add_node(GraphNode::Commodity(commodity_id.clone()))
+                });
             filtered_graph.add_edge(commodity_node, demand_node, ProcessID::from("_DEMAND"));
         }
     }
@@ -158,15 +178,13 @@ fn validate_commodities_graph(
     time_slice_level: TimeSliceLevel,
 ) -> Result<()> {
     for node_idx in graph.node_indices() {
-        let commodity_id = graph.node_weight(node_idx).unwrap();
-
-        // Skip _SOURCE, _SINK, and _DEMAND commodities
-        if commodity_id == &CommodityID::from("_SOURCE")
-            || commodity_id == &CommodityID::from("_SINK")
-            || commodity_id == &CommodityID::from("_DEMAND")
-        {
-            continue;
-        }
+        // Get the commodity ID for the node
+        let graph_node = graph.node_weight(node_idx).unwrap();
+        let commodity_id = match graph_node {
+            GraphNode::Commodity(id) => id,
+            // Skip special nodes
+            _ => continue,
+        };
 
         // Only validate commodities with the specified time slice level
         let commodity = &commodities[commodity_id];
@@ -253,8 +271,14 @@ fn topo_sort_commodities(
         .iter()
         .rev()
         .filter_map(|node_idx| {
-            let commodity_id = graph.node_weight(*node_idx)?;
-            let commodity = commodities.get(commodity_id)?;
+            // Get the commodity for the node
+            let Some(GraphNode::Commodity(commodity_id)) = graph.node_weight(*node_idx) else {
+                // Skip special nodes
+                return None;
+            };
+            let commodity = &commodities[commodity_id];
+
+            // Only include SVD and SED commodities
             matches!(
                 commodity.kind,
                 CommodityType::ServiceDemand | CommodityType::SupplyEqualsDemand
@@ -396,9 +420,9 @@ mod tests {
         // Create a simple linear graph: A -> B -> C
         let mut graph = Graph::new();
 
-        let node_a = graph.add_node(CommodityID::from("A"));
-        let node_b = graph.add_node(CommodityID::from("B"));
-        let node_c = graph.add_node(CommodityID::from("C"));
+        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
+        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
+        let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
 
         // Add edges: A -> B -> C
         graph.add_edge(node_a, node_b, ProcessID::from("process1"));
@@ -424,8 +448,8 @@ mod tests {
         // Create a simple cyclic graph: A -> B -> A
         let mut graph = Graph::new();
 
-        let node_a = graph.add_node(CommodityID::from("A"));
-        let node_b = graph.add_node(CommodityID::from("B"));
+        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
+        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
 
         // Add edges creating a cycle: A -> B -> A
         graph.add_edge(node_a, node_b, ProcessID::from("process1"));
@@ -454,10 +478,10 @@ mod tests {
         commodities.insert(CommodityID::from("C"), Rc::new(svd_commodity()));
 
         // Build valid graph: A(OTH) -> B(SED) -> C(SVD) ->D( _DEMAND)
-        let node_a = graph.add_node(CommodityID::from("A"));
-        let node_b = graph.add_node(CommodityID::from("B"));
-        let node_c = graph.add_node(CommodityID::from("C"));
-        let node_d = graph.add_node(CommodityID::from("_DEMAND"));
+        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
+        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
+        let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
+        let node_d = graph.add_node(GraphNode::Demand);
         graph.add_edge(node_a, node_b, ProcessID::from("process1"));
         graph.add_edge(node_b, node_c, ProcessID::from("process2"));
         graph.add_edge(node_c, node_d, ProcessID::from("_DEMAND"));
@@ -478,9 +502,9 @@ mod tests {
         commodities.insert(CommodityID::from("C"), Rc::new(other_commodity()));
 
         // Build invalid graph: C(OTH) -> A(SVD) -> B(SED) - SVD cannot be consumed
-        let node_c = graph.add_node(CommodityID::from("C"));
-        let node_a = graph.add_node(CommodityID::from("A"));
-        let node_b = graph.add_node(CommodityID::from("B"));
+        let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
+        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
+        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
         graph.add_edge(node_c, node_a, ProcessID::from("process1"));
         graph.add_edge(node_a, node_b, ProcessID::from("process2"));
 
@@ -498,8 +522,8 @@ mod tests {
         commodities.insert(CommodityID::from("A"), Rc::new(svd_commodity()));
 
         // Build invalid graph: A(SVD) -> B(_DEMAND) - SVD must be produced
-        let node_a = graph.add_node(CommodityID::from("A"));
-        let node_b = graph.add_node(CommodityID::from("_DEMAND"));
+        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
+        let node_b = graph.add_node(GraphNode::Demand);
         graph.add_edge(node_a, node_b, ProcessID::from("_DEMAND"));
 
         // Validate the graph at DayNight level
@@ -517,8 +541,8 @@ mod tests {
         commodities.insert(CommodityID::from("B"), Rc::new(sed_commodity()));
 
         // Build invalid graph: B(SED) -> A(SED)
-        let node_a = graph.add_node(CommodityID::from("A"));
-        let node_b = graph.add_node(CommodityID::from("B"));
+        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
+        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
         graph.add_edge(node_b, node_a, ProcessID::from("process1"));
 
         // Validate the graph at DayNight level
@@ -540,9 +564,9 @@ mod tests {
         commodities.insert(CommodityID::from("C"), Rc::new(sed_commodity()));
 
         // Build invalid graph: B(SED) -> A(OTH) -> C(SED)
-        let node_a = graph.add_node(CommodityID::from("A"));
-        let node_b = graph.add_node(CommodityID::from("B"));
-        let node_c = graph.add_node(CommodityID::from("C"));
+        let node_a = graph.add_node(GraphNode::Commodity(CommodityID::from("A")));
+        let node_b = graph.add_node(GraphNode::Commodity(CommodityID::from("B")));
+        let node_c = graph.add_node(GraphNode::Commodity(CommodityID::from("C")));
         graph.add_edge(node_b, node_a, ProcessID::from("process1"));
         graph.add_edge(node_a, node_c, ProcessID::from("process2"));
 
