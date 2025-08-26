@@ -104,22 +104,38 @@ where
                 .insert(region.clone());
             for year in years.iter() {
                 for (time_slice, _) in ts_selection.iter(time_slice_info) {
-                    try_insert(
-                        map,
-                        (region.clone(), *year, time_slice.clone()),
-                        cost.clone(),
-                    )?;
+                    let key = (region.clone(), *year, time_slice.clone());
+                    map.insert(key, cost.clone());
                 }
             }
         }
     }
 
-    // Validate map
+    // Validate map - when provided, all regions/years/time slices must be covered for each commodity
     for (commodity_id, regions) in commodity_regions.iter() {
         let map = map.get(commodity_id).unwrap();
         validate_commodity_levy_map(map, regions, milestone_years, time_slice_info)
             .with_context(|| format!("Missing costs for commodity {commodity_id}"))?;
     }
+
+    // Add empty maps for commodities without levies with all regions/years/time slices considered
+    for commodity_id in commodity_ids.iter() {
+        let map = map
+            .entry(commodity_id.clone())
+            .or_insert_with(CommodityLevyMap::new);
+        for region_id in region_ids.iter() {
+            for year in milestone_years.iter() {
+                for time_slice in time_slice_info.iter_ids() {
+                    let key = (region_id.clone(), *year, time_slice.clone());
+                    map.entry(key).or_insert_with(|| CommodityLevy {
+                        balance_type: BalanceType::Net,
+                        value: MoneyPerFlow(0.0),
+                    });
+                }
+            }
+        }
+    }
+
     Ok(map)
 }
 
