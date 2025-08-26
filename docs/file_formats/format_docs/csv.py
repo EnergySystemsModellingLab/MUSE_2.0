@@ -2,7 +2,7 @@
 #
 # A script to generate markdown documentation from table schemas.
 
-from typing import Iterable
+from typing import Any, Iterable
 import yaml
 from .table import fields2table
 from pathlib import Path
@@ -25,42 +25,38 @@ class Section:
 
 
 def generate_for_csv(
-    file_order: dict[str, list[str]], schema_dir: Path, env: Environment
+    schema_path: Path, sections: dict[str, list[str]], env: Environment
 ) -> str:
-    """Generate markdown from Jinja template using metadata in schemas for CSV files."""
+    """Generate markdown from Jinja template using metadata in table schema for CSV files."""
     template = env.get_template("csv.md.jinja")
-    return template.render(sections=_load_sections(file_order, schema_dir))
+    with schema_path.open() as f:
+        data = yaml.safe_load(f)
+
+    return template.render(sections=_get_sections(data["resources"], sections))
 
 
-def _load_sections(
-    file_order: dict[str, list[str]], schema_dir: Path
+def _get_sections(
+    resources: Iterable[dict[str, Any]], sections: dict[str, list[str]]
 ) -> Iterable[Section]:
-    for title, patterns in file_order.items():
-        paths: list[str] = []
-        for pattern in patterns:
-            paths.extend(map(str, schema_dir.glob(f"{pattern}.yaml")))
-        files = (load_file(Path(path)) for path in sorted(paths))
+    for title, names in sections.items():
+        files = _parse_resources(resources, names)
         yield Section(title, files)
 
 
-def load_file(path: Path) -> File:
-    with path.open() as f:
-        data = yaml.safe_load(f)
+def _parse_resources(
+    resources: Iterable[dict[str, Any]], names: Iterable[str]
+) -> Iterable[File]:
+    for name in names:
+        resource = next(res for res in resources if res["name"] == name)
 
-    try:
-        table = fields2table(data["fields"])
-    except KeyError:
-        print(f"MISSING VALUE IN {path}")
-        raise
-
-    name = f"{path.stem}.csv"
-    desc = add_full_stop(data["description"])
-    if note := data.get("notes", None):
-        note = format_notes(note)
-    return File(name, desc, table, note)
+        desc = _add_full_stop(resource["description"])
+        if note := resource.get("notes", None):
+            note = _format_notes(note)
+        table = fields2table(resource["schema"]["fields"])
+        yield File(name, desc, table, note)
 
 
-def add_full_stop(s: str) -> str:
+def _add_full_stop(s: str) -> str:
     s = s.rstrip()
     if s == "" or s.endswith("."):
         return s
@@ -68,11 +64,11 @@ def add_full_stop(s: str) -> str:
         return f"{s}."
 
 
-def format_notes(notes) -> str:
+def _format_notes(notes) -> str:
     if isinstance(notes, list):
-        items = [add_full_stop(item) for item in notes]
+        items = [_add_full_stop(item) for item in notes]
     elif isinstance(notes, str):
-        items = [add_full_stop(notes)]
+        items = [_add_full_stop(notes)]
     else:
         return ""
     return "\n".join(f"- {item}" for item in items)
