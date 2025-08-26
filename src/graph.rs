@@ -47,30 +47,26 @@ fn create_commodities_graph_for_region_year(
         };
 
         // Get output flows for the process
-        let outputs: Vec<_> = flows
+        let mut outputs: Vec<_> = flows
             .values()
             .filter(|flow| flow.is_output())
             .map(|flow| &flow.commodity.id)
             .collect();
 
         // Get input flows for the process
-        let inputs: Vec<_> = flows
+        let mut inputs: Vec<_> = flows
             .values()
             .filter(|flow| flow.is_input())
             .map(|flow| &flow.commodity.id)
             .collect();
 
         // Use _SOURCE if no inputs, _SINK if no outputs
-        let inputs = if inputs.is_empty() {
-            vec![&source_id]
-        } else {
-            inputs
-        };
-        let outputs = if outputs.is_empty() {
-            vec![&sink_id]
-        } else {
-            outputs
-        };
+        if inputs.is_empty() {
+            inputs.push(&source_id);
+        }
+        if outputs.is_empty() {
+            outputs.push(&sink_id);
+        }
 
         // Create edges from all inputs to all outputs
         // We also create nodes for commodities the first time they are encountered
@@ -79,8 +75,8 @@ fn create_commodities_graph_for_region_year(
                 .entry(input.clone())
                 .or_insert_with(|| graph.add_node(input.clone()));
             let target_node = *commodity_to_node_index
-                .entry((*output).clone())
-                .or_insert_with(|| graph.add_node((*output).clone()));
+                .entry(output.clone())
+                .or_insert_with(|| graph.add_node(output.clone()));
             graph.add_edge(source_node, target_node, process.id.clone());
         }
     }
@@ -113,7 +109,7 @@ fn prepare_commodities_graph_for_validation(
     // We keep edges if the process has availability > 0 in any time slice in the selection
     filtered_graph.retain_edges(|graph, edge_idx| {
         let process_id = graph.edge_weight(edge_idx).unwrap();
-        let process = processes.get(process_id).unwrap();
+        let process = &processes[process_id];
         time_slice_selection
             .iter(time_slice_info)
             .any(|(time_slice, _)| {
@@ -173,29 +169,30 @@ fn validate_commodities_graph(
         }
 
         // Only validate commodities with the specified time slice level
-        let commodity = commodities.get(commodity_id).unwrap();
+        let commodity = &commodities[commodity_id];
         if commodity.time_slice_level != time_slice_level {
             continue;
         }
 
         // Count the incoming and outgoing edges for the commodity
-        let incoming = graph
+        let has_incoming = graph
             .edges_directed(node_idx, petgraph::Direction::Incoming)
-            .count();
-        let outgoing = graph
+            .next()
+            .is_some();
+        let has_outgoing = graph
             .edges_directed(node_idx, petgraph::Direction::Outgoing)
-            .count();
+            .next()
+            .is_some();
 
         // Match validation rules to commodity type
         match commodity.kind {
             CommodityType::ServiceDemand => {
                 // Cannot have outgoing edges to non-_DEMAND commodities
-                let non_demand_outgoing = graph
+                let has_non_demand_outgoing = graph
                     .edges_directed(node_idx, petgraph::Direction::Outgoing)
-                    .filter(|edge| edge.weight() != &ProcessID::from("_DEMAND"))
-                    .count();
+                    .any(|edge| edge.weight() != &ProcessID::from("_DEMAND"));
                 ensure!(
-                    non_demand_outgoing == 0,
+                    !has_non_demand_outgoing,
                     "SVD commodity {} cannot be an input to a process",
                     commodity_id
                 );
@@ -206,7 +203,7 @@ fn validate_commodities_graph(
                     .any(|edge| edge.weight() == &ProcessID::from("_DEMAND"));
                 if has_demand_edges {
                     ensure!(
-                        incoming > 0,
+                        has_incoming,
                         "SVD commodity {} is demanded but has no producers",
                         commodity_id
                     );
@@ -215,7 +212,7 @@ fn validate_commodities_graph(
             CommodityType::SupplyEqualsDemand => {
                 // SED: if consumed (outgoing edges), must also be produced (incoming edges)
                 ensure!(
-                    !(outgoing > 0 && incoming == 0),
+                    !has_outgoing || has_incoming,
                     "SED commodity {} may be consumed but has no producers",
                     commodity_id
                 );
@@ -223,7 +220,7 @@ fn validate_commodities_graph(
             CommodityType::Other => {
                 // OTH: cannot have both incoming and outgoing edges
                 ensure!(
-                    !(incoming > 0 && outgoing > 0),
+                    !(has_incoming && has_outgoing),
                     "OTH commodity {} cannot have both producers and consumers",
                     commodity_id
                 );
@@ -258,14 +255,11 @@ fn topo_sort_commodities(
         .filter_map(|node_idx| {
             let commodity_id = graph.node_weight(*node_idx)?;
             let commodity = commodities.get(commodity_id)?;
-            if matches!(
+            matches!(
                 commodity.kind,
                 CommodityType::ServiceDemand | CommodityType::SupplyEqualsDemand
-            ) {
-                Some(commodity_id.clone())
-            } else {
-                None
-            }
+            )
+            .then(|| commodity_id.clone())
         })
         .collect();
 
@@ -288,7 +282,7 @@ fn topo_sort_commodities(
 /// * `processes` - All processes in the model with their flows and activity limits
 /// * `commodities` - All commodities with their types and demand specifications
 /// * `region_ids` - Collection of regions to model
-/// * `years` - Years to analyze
+/// * `years` - Years to analyse
 /// * `time_slice_info` - Time slice configuration (seasons, day/night periods)
 ///
 /// # Returns
@@ -303,11 +297,11 @@ fn topo_sort_commodities(
 /// - Commodity type rules are violated (e.g., SVD commodities being consumed)
 /// - Demand cannot be satisfied
 pub fn build_and_validate_commodity_graphs_for_model(
-    processes: &crate::process::ProcessMap,
-    commodities: &crate::commodity::CommodityMap,
+    processes: &ProcessMap,
+    commodities: &CommodityMap,
     region_ids: &IndexSet<RegionID>,
     years: &[u32],
-    time_slice_info: &crate::time_slice::TimeSliceInfo,
+    time_slice_info: &TimeSliceInfo,
 ) -> Result<HashMap<(RegionID, u32), Vec<CommodityID>>> {
     // Build base commodity graphs for each region and year
     // These do not take into account demand and process availability
