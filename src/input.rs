@@ -1,13 +1,13 @@
 //! Common routines for handling input data.
 use crate::asset::AssetPool;
-use crate::graph::{create_commodities_graph_for_region_year, topo_sort_commodities};
+use crate::graph::build_and_validate_commodity_graphs_for_model;
 use crate::id::{HasID, IDLike};
 use crate::model::{Model, ModelFile};
-use crate::units::{Dimensionless, UnitType};
+use crate::units::UnitType;
 use anyhow::{bail, ensure, Context, Result};
 use float_cmp::approx_eq;
 use indexmap::IndexMap;
-use itertools::{iproduct, Itertools};
+use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -200,15 +200,15 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
     let agent_ids = agents.keys().cloned().collect();
     let assets = read_assets(model_dir.as_ref(), &agent_ids, &processes, &region_ids)?;
 
-    // Determine commodity ordering for each region and year
-    let commodity_order = iproduct!(region_ids, years.iter())
-        .map(|(region_id, year)| -> Result<_> {
-            let graph = create_commodities_graph_for_region_year(&processes, &region_id, *year);
-            let order = topo_sort_commodities(&graph)
-                .with_context(|| format!("Error with commodity graph for {region_id} in {year}"))?;
-            Ok(((region_id, *year), order))
-        })
-        .try_collect()?;
+    // Build and validate commodity graphs for all regions and years
+    // This gives us the commodity order for each region/year which is passed to the model
+    let commodity_order = build_and_validate_commodity_graphs_for_model(
+        &processes,
+        &commodities,
+        &region_ids,
+        years,
+        &time_slice_info,
+    )?;
 
     let model_path = model_dir
         .as_ref()
@@ -231,6 +231,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
 mod tests {
     use super::*;
     use crate::id::GenericID;
+    use crate::units::Dimensionless;
     use rstest::rstest;
     use serde::de::value::{Error as ValueError, F64Deserializer};
     use serde::de::IntoDeserializer;
