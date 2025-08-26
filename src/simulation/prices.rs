@@ -298,7 +298,7 @@ fn reduced_costs_for_existing<'a>(
                 flow.coeff
                     * prices
                         .get(&flow.commodity.id, asset.region_id(), time_slice)
-                        .unwrap_or(MoneyPerFlow(0.0))
+                        .unwrap()
             })
             .sum();
         let reduced_cost = operating_cost - revenue_from_flows;
