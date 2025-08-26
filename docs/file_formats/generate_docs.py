@@ -13,16 +13,30 @@ from jinja2 import Environment, FileSystemLoader
 FILE_FORMAT_DOCS_DIR = Path(__file__).parent
 SCHEMA_DIR = FILE_FORMAT_DOCS_DIR.parent.parent / "schemas"
 INPUT_SCHEMA_DIR = SCHEMA_DIR / "input"
-INPUT_FILE_ORDER = {
-    "Time slices": ["time_slices"],
-    "Regions": ["regions"],
-    "Agents": ["agents", "agent_*"],
-    "Assets": ["assets"],
-    "Commodities": ["commodities", "commodity_levies", "demand", "demand_slicing"],
-    "Processes": ["processes", "process_*"],
-}
+INPUT_TABLE_SCHEMA_PATH = INPUT_SCHEMA_DIR / "package.yaml"
 INPUT_MODEL_SCHEMA_PATH = INPUT_SCHEMA_DIR / "model.yaml"
 INPUT_MODEL_FILE_NAME = "model.toml"
+
+INPUT_SECTIONS = {
+    "Time slices": ["time_slices"],
+    "Regions": ["regions"],
+    "Agents": [
+        "agents",
+        "agent_commodity_portions",
+        "agent_cost_limits",
+        "agent_objectives",
+        "agent_search_space",
+    ],
+    "Assets": ["assets"],
+    "Commodities": ["commodities", "commodity_levies", "demand", "demand_slicing"],
+    "Processes": [
+        "processes",
+        "process_availabilities",
+        "process_flows",
+        "process_parameters",
+    ],
+}
+
 
 sys.path.append(str(FILE_FORMAT_DOCS_DIR))
 from format_docs import generate_for_csv, generate_for_toml  # noqa: E402
@@ -35,7 +49,7 @@ def generate_settings_docs(env: Environment) -> tuple[str, str]:
 
 
 def generate_input_docs(env: Environment) -> tuple[str, str]:
-    csv_sections = generate_for_csv(INPUT_FILE_ORDER, INPUT_SCHEMA_DIR, env)
+    csv_sections = generate_for_csv(INPUT_TABLE_SCHEMA_PATH, INPUT_SECTIONS, env)
     toml_info = generate_for_toml(
         INPUT_MODEL_SCHEMA_PATH, INPUT_MODEL_FILE_NAME, env, heading_level=2
     )
