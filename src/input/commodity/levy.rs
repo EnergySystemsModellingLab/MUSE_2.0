@@ -156,10 +156,6 @@ where
 /// * `region_id` - The region ID to add
 /// * `milestone_years` - All milestone years
 /// * `time_slice_info` - Information about time slices
-///
-/// # Returns
-///
-/// Nothing. The map is updated in place.
 fn add_missing_region_to_commodity_levy_map(
     map: &mut CommodityLevyMap,
     region_id: &RegionID,
@@ -318,13 +314,12 @@ mod tests {
 
         // Check that costs have been added for the new region
         for time_slice in time_slice_info.iter_ids() {
-            assert!(cost_map.contains_key(&(region_id.clone(), 2020, time_slice.clone())));
             assert_eq!(
-                cost_map[&(region_id.clone(), 2020, time_slice.clone())],
-                CommodityLevy {
+                cost_map.get(&(region_id.clone(), 2020, time_slice.clone())),
+                Some(CommodityLevy {
                     balance_type: BalanceType::Net,
                     value: MoneyPerFlow(0.0)
-                }
+                })
             );
         }
     }
