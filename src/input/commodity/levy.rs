@@ -53,7 +53,7 @@ pub fn read_commodity_levies(
     milestone_years: &[u32],
 ) -> Result<HashMap<CommodityID, CommodityLevyMap>> {
     let file_path = model_dir.join(COMMODITY_LEVIES_FILE_NAME);
-    let commodity_levies_csv = read_csv_optional::<CommodityLevyRaw>(&file_path)?;
+    let commodity_levies_csv = read_csv::<CommodityLevyRaw>(&file_path)?;
     read_commodity_levies_iter(
         commodity_levies_csv,
         commodity_ids,
