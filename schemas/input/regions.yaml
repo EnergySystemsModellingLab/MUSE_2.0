@@ -1,0 +1,11 @@
+$schema: https://specs.frictionlessdata.io/schemas/table-schema.json
+description: |
+  Describes regions in the system.
+
+fields:
+  - name: id
+    type: string
+    description: A unique identifier for a region
+  - name: description
+    type: string
+    description: A human-readable label for the region
