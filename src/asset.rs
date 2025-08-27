@@ -1296,14 +1296,8 @@ mod tests {
     #[rstest]
     #[should_panic(expected = "commission_future can only be called on Future assets")]
     fn test_commission_future_wrong_states(process: Process) {
-        let mut asset = Asset::new_candidate(
-            "agent1".into(),
-            process.into(),
-            "GBR".into(),
-            Capacity(1.0),
-            2020,
-        )
-        .unwrap();
+        let mut asset =
+            Asset::new_candidate(process.into(), "GBR".into(), Capacity(1.0), 2020).unwrap();
         asset.commission_future(AssetID(1));
     }
 
@@ -1324,14 +1318,8 @@ mod tests {
     #[rstest]
     #[should_panic(expected = "Cannot decommission an asset that hasn't been commissioned")]
     fn test_decommission_wrong_state(process: Process) {
-        let mut asset = Asset::new_candidate(
-            "agent1".into(),
-            process.into(),
-            "GBR".into(),
-            Capacity(1.0),
-            2020,
-        )
-        .unwrap();
+        let mut asset =
+            Asset::new_candidate(process.into(), "GBR".into(), Capacity(1.0), 2020).unwrap();
         asset.decommission(2025);
     }
 }
