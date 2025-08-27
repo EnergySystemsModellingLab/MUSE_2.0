@@ -502,14 +502,30 @@ impl Deref for AssetRef {
 
 impl PartialEq for AssetRef {
     fn eq(&self, other: &Self) -> bool {
-        if self.0.id().is_some() {
-            self.0.id() == other.0.id()
-        } else {
-            other.0.id().is_none()
-                && Rc::ptr_eq(&self.0.process, &other.0.process)
-                && self.0.region_id == other.0.region_id
-                && self.0.commission_year == other.0.commission_year
-        }
+        // Follows the same logic as Hash
+        Rc::ptr_eq(&self.0.process, &other.0.process)
+            && self.0.region_id == other.0.region_id
+            && self.0.commission_year == other.0.commission_year
+            && match (&self.0.state, &other.0.state) {
+                // Both must be in the "with agent_id" group
+                (
+                    AssetState::Selected { .. }
+                    | AssetState::Commissioned { .. }
+                    | AssetState::Decommissioned { .. }
+                    | AssetState::Future { .. },
+                    AssetState::Selected { .. }
+                    | AssetState::Commissioned { .. }
+                    | AssetState::Decommissioned { .. }
+                    | AssetState::Future { .. },
+                ) => self.agent_id() == other.agent_id(),
+                // Both must be in the "without agent_id" group
+                (
+                    AssetState::Candidate { .. } | AssetState::Mock,
+                    AssetState::Candidate { .. } | AssetState::Mock,
+                ) => true,
+                // Different hash patterns = never equal
+                _ => false,
+            }
     }
 }
 
