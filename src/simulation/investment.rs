@@ -302,14 +302,9 @@ fn get_candidate_assets<'a>(
     agent
         .iter_possible_producers_of(region_id, &commodity.id, year)
         .map(move |process| {
-            let mut asset = Asset::new_candidate(
-                agent.id.clone(),
-                process.clone(),
-                region_id.clone(),
-                Capacity(0.0),
-                year,
-            )
-            .unwrap();
+            let mut asset =
+                Asset::new_candidate(process.clone(), region_id.clone(), Capacity(0.0), year)
+                    .unwrap();
             asset.set_capacity(get_demand_limiting_capacity(
                 time_slice_info,
                 &asset,
@@ -397,7 +392,7 @@ fn select_best_assets(
         // Log the selected asset
         let commissioned_txt = match best_output.asset.state() {
             AssetState::Commissioned { .. } => "existing",
-            AssetState::Candidate { .. } => "candidate",
+            AssetState::Candidate => "candidate",
             _ => unreachable!("Selected asset should be either Commissioned or Candidate"),
         };
         debug!(
@@ -421,9 +416,12 @@ fn select_best_assets(
     }
 
     // Convert Candidate assets to Selected
+    // At this point we also assign the agent ID to the asset
     for asset in best_assets.iter_mut() {
-        if let AssetState::Candidate { .. } = asset.state() {
-            asset.make_mut().select_candidate_for_investment();
+        if let AssetState::Candidate = asset.state() {
+            asset
+                .make_mut()
+                .select_candidate_for_investment(agent.id.clone());
         }
     }
 
@@ -449,7 +447,7 @@ fn update_assets(
             opt_assets.retain(|asset| *asset != best_asset);
             best_assets.push(best_asset);
         }
-        AssetState::Candidate { .. } => {
+        AssetState::Candidate => {
             // Remove this capacity from the available remaining capacity for this asset
             let remaining_capacity = remaining_candidate_capacity.get_mut(&best_asset).unwrap();
             *remaining_capacity -= capacity;

@@ -61,10 +61,7 @@ pub enum AssetState {
         agent_id: AgentID,
     },
     /// The asset is a candidate for investment but has not yet been selected
-    Candidate {
-        /// The ID of the agent that will own the asset
-        agent_id: AgentID,
-    },
+    Candidate,
     /// A mock asset for dispatch optimisation
     Mock,
 }
@@ -89,14 +86,13 @@ pub struct Asset {
 impl Asset {
     /// Create a new candidate asset
     pub fn new_candidate(
-        agent_id: AgentID,
         process: Rc<Process>,
         region_id: RegionID,
         capacity: Capacity,
         commission_year: u32,
     ) -> Result<Self> {
         Self::new_with_state(
-            AssetState::Candidate { agent_id },
+            AssetState::Candidate,
             process,
             region_id,
             capacity,
@@ -330,7 +326,7 @@ impl Asset {
             AssetState::Decommissioned { id, .. } => Some(*id),
             AssetState::Future { .. } => None,
             AssetState::Selected { .. } => None,
-            AssetState::Candidate { .. } => None,
+            AssetState::Candidate => None,
             AssetState::Mock => None,
         }
     }
@@ -342,7 +338,7 @@ impl Asset {
             AssetState::Decommissioned { agent_id, .. } => Some(agent_id),
             AssetState::Future { agent_id } => Some(agent_id),
             AssetState::Selected { agent_id } => Some(agent_id),
-            AssetState::Candidate { agent_id } => Some(agent_id),
+            AssetState::Candidate => None,
             AssetState::Mock => None,
         }
     }
@@ -355,7 +351,7 @@ impl Asset {
     /// Set the capacity for this asset (only for Candidate assets)
     pub fn set_capacity(&mut self, capacity: Capacity) {
         assert!(
-            matches!(self.state, AssetState::Candidate { .. }),
+            matches!(self.state, AssetState::Candidate),
             "set_capacity can only be called on Candidate assets"
         );
         assert!(capacity >= Capacity(0.0), "Capacity must be >= 0");
@@ -365,7 +361,7 @@ impl Asset {
     /// Increase the capacity for this asset (only for Candidate assets)
     pub fn increase_capacity(&mut self, capacity: Capacity) {
         assert!(
-            matches!(self.state, AssetState::Candidate { .. }),
+            matches!(self.state, AssetState::Candidate),
             "increase_capacity can only be called on Candidate assets"
         );
         assert!(capacity >= Capacity(0.0), "Added capacity must be >= 0");
@@ -395,11 +391,11 @@ impl Asset {
     }
 
     /// Select a Candidate asset for investment, converting it to a Selected state
-    pub fn select_candidate_for_investment(&mut self) {
-        let agent_id = match &self.state {
-            AssetState::Candidate { agent_id } => agent_id.clone(),
-            _ => panic!("select_candidate_for_investment can only be called on Candidate assets"),
-        };
+    pub fn select_candidate_for_investment(&mut self, agent_id: AgentID) {
+        assert!(
+            matches!(self.state, AssetState::Candidate),
+            "select_candidate_for_investment can only be called on Candidate assets"
+        );
         self.state = AssetState::Selected { agent_id };
     }
 
@@ -520,8 +516,8 @@ impl PartialEq for AssetRef {
                 ) => self.agent_id() == other.agent_id(),
                 // Both must be in the "without agent_id" group
                 (
-                    AssetState::Candidate { .. } | AssetState::Mock,
-                    AssetState::Candidate { .. } | AssetState::Mock,
+                    AssetState::Candidate | AssetState::Mock,
+                    AssetState::Candidate | AssetState::Mock,
                 ) => true,
                 // Different hash patterns = never equal
                 _ => false,

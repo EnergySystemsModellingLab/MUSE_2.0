@@ -25,7 +25,7 @@ pub fn add_capacity_constraint(
             // Fixed capacity for commissioned assets
             capacity.value()..=capacity.value()
         }
-        AssetState::Candidate { .. } => {
+        AssetState::Candidate => {
             // Variable capacity between 0 and max for candidate assets
             0.0..=capacity.value()
         }
@@ -56,7 +56,7 @@ pub fn add_activity_constraints(
         AssetState::Commissioned { .. } => {
             add_activity_constraints_for_existing(problem, asset, activity_vars)
         }
-        AssetState::Candidate { .. } => {
+        AssetState::Candidate => {
             add_activity_constraints_for_candidate(problem, asset, capacity_var, activity_vars)
         }
         _ => unreachable!(

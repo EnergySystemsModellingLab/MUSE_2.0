@@ -31,7 +31,7 @@ pub fn activity_surplus(
 pub fn annual_fixed_cost(asset: &AssetRef) -> MoneyPerCapacity {
     match asset.state() {
         AssetState::Commissioned { .. } => annual_fixed_cost_for_existing(asset),
-        AssetState::Candidate { .. } => annual_fixed_cost_for_candidate(asset),
+        AssetState::Candidate => annual_fixed_cost_for_candidate(asset),
         _ => unreachable!(
             "annual_fixed_cost should only be called with Commissioned or Candidate assets"
         ),
