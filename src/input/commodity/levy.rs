@@ -121,7 +121,8 @@ where
         validate_commodity_levy_map(map, regions, milestone_years, time_slice_info)
             .with_context(|| format!("Missing costs for commodity {commodity_id}"))?;
 
-        for region_id in region_ids.difference(regions) {
+        let difference: IndexSet<_> = region_ids.difference(regions).cloned().collect();
+        for region_id in difference.iter() {
             add_missing_region_to_commodity_levy_map(
                 map,
                 region_id,
@@ -283,7 +284,9 @@ mod tests {
         for time_slice in time_slice_info.iter_ids() {
             assert!(cost_map.contains_key(&(region_id.clone(), 2020, time_slice.clone())));
             assert_eq!(
-                cost_map[&(region_id.clone(), 2020, time_slice.clone()))],
+                cost_map
+                    .get(&(region_id.clone(), 2020, time_slice.clone()))
+                    .unwrap(),
                 &CommodityLevy {
                     balance_type: BalanceType::Net,
                     value: MoneyPerFlow(0.0)
