@@ -22,6 +22,7 @@ pub trait UnitType:
     + Sum
     + ApproxEq<Margin = F64Margin>
     + fmt::Display
+    + Default
 {
     /// Create from an f64 value
     fn new(value: f64) -> Self;
@@ -50,6 +51,7 @@ macro_rules! base_unit_struct {
             Copy,
             PartialEq,
             PartialOrd,
+            Default,
             Serialize,
             Deserialize,
             derive_more::Add,
