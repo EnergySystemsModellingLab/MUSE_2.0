@@ -133,7 +133,6 @@ struct CommodityPriceRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ActivityRow {
     milestone_year: u32,
-    run_context: Option<String>,
     run_description: String,
     asset_id: Option<AssetID>,
     process_id: ProcessID,
@@ -146,7 +145,6 @@ struct ActivityRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ActivityDualsRow {
     milestone_year: u32,
-    run_context: Option<String>,
     run_description: String,
     asset_id: Option<AssetID>,
     process_id: ProcessID,
@@ -159,7 +157,6 @@ struct ActivityDualsRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct CommodityBalanceDualsRow {
     milestone_year: u32,
-    run_context: Option<String>,
     run_description: String,
     commodity_id: CommodityID,
     region_id: RegionID,
@@ -171,7 +168,6 @@ struct CommodityBalanceDualsRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct SolverValuesRow {
     milestone_year: u32,
-    run_context: Option<String>,
     run_description: String,
     objective_value: Money,
 }
@@ -180,7 +176,6 @@ struct SolverValuesRow {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct AppraisalResultsRow {
     milestone_year: u32,
-    run_context: Option<String>,
     run_description: String,
     asset_id: Option<AssetID>,
     process_id: ProcessID,
@@ -235,6 +230,15 @@ impl DebugDataWriter {
         })
     }
 
+    /// Prepend the current context to the run description
+    fn with_context(&self, run_description: &str) -> String {
+        if let Some(context) = &self.context {
+            format!("{context}; {run_description}")
+        } else {
+            run_description.to_string()
+        }
+    }
+
     /// Write debug info about the dispatch optimisation
     fn write_dispatch_debug_info(
         &mut self,
@@ -270,8 +274,7 @@ impl DebugDataWriter {
         for (asset, time_slice, activity) in iter {
             let row = ActivityRow {
                 milestone_year,
-                run_description: run_description.to_string(),
-                run_context: self.context.clone(),
+                run_description: self.with_context(run_description),
                 asset_id: asset.id(),
                 process_id: asset.process_id().clone(),
                 region_id: asset.region_id().clone(),
@@ -297,8 +300,7 @@ impl DebugDataWriter {
         for (asset, time_slice, value) in iter {
             let row = ActivityDualsRow {
                 milestone_year,
-                run_description: run_description.to_string(),
-                run_context: self.context.clone(),
+                run_description: self.with_context(run_description),
                 asset_id: asset.id(),
                 process_id: asset.process_id().clone(),
                 region_id: asset.region_id().clone(),
@@ -324,8 +326,7 @@ impl DebugDataWriter {
         for (commodity_id, region_id, time_slice, value) in iter {
             let row = CommodityBalanceDualsRow {
                 milestone_year,
-                run_description: run_description.to_string(),
-                run_context: self.context.clone(),
+                run_description: self.with_context(run_description),
                 commodity_id: commodity_id.clone(),
                 region_id: region_id.clone(),
                 time_slice: time_slice.clone(),
@@ -346,8 +347,7 @@ impl DebugDataWriter {
     ) -> Result<()> {
         let row = SolverValuesRow {
             milestone_year,
-            run_description: run_description.to_string(),
-            run_context: self.context.clone(),
+            run_description: self.with_context(run_description),
             objective_value,
         };
         self.solver_values_writer.serialize(row)?;
@@ -366,8 +366,7 @@ impl DebugDataWriter {
         for result in appraisal_results {
             let row = AppraisalResultsRow {
                 milestone_year,
-                run_description: run_description.to_string(),
-                run_context: self.context.clone(),
+                run_description: self.with_context(run_description),
                 asset_id: result.asset.id(),
                 process_id: result.asset.process_id().clone(),
                 region_id: result.asset.region_id().clone(),
@@ -705,7 +704,6 @@ mod tests {
         // Read back and compare
         let expected = CommodityBalanceDualsRow {
             milestone_year,
-            run_context: None,
             run_description,
             commodity_id,
             region_id,
@@ -745,7 +743,6 @@ mod tests {
         // Read back and compare
         let expected = ActivityDualsRow {
             milestone_year,
-            run_context: None,
             run_description,
             asset_id: asset.id(),
             process_id: asset.process_id().clone(),
@@ -786,7 +783,6 @@ mod tests {
         // Read back and compare
         let expected = ActivityRow {
             milestone_year,
-            run_context: None,
             run_description,
             asset_id: asset.id(),
             process_id: asset.process_id().clone(),
@@ -821,7 +817,6 @@ mod tests {
         // Read back and compare
         let expected = SolverValuesRow {
             milestone_year,
-            run_context: None,
             run_description,
             objective_value,
         };
@@ -859,7 +854,6 @@ mod tests {
         // Read back and compare
         let expected = AppraisalResultsRow {
             milestone_year,
-            run_context: None,
             run_description,
             asset_id: asset.id(),
             process_id: asset.process_id().clone(),

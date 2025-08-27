@@ -29,7 +29,7 @@ pub fn add_capacity_constraint(
             // Variable capacity between 0 and max for candidate assets
             0.0..=capacity.value()
         }
-        _ => unreachable!(
+        _ => panic!(
             "add_capacity_constraint should only be called with Commissioned or Candidate assets"
         ),
     };
@@ -59,7 +59,7 @@ pub fn add_activity_constraints(
         AssetState::Candidate => {
             add_activity_constraints_for_candidate(problem, asset, capacity_var, activity_vars)
         }
-        _ => unreachable!(
+        _ => panic!(
             "add_activity_constraints should only be called with Commissioned or Candidate assets"
         ),
     }

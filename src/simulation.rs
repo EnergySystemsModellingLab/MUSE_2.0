@@ -117,7 +117,7 @@ pub fn run(
         writer.write_assets(assets.iter_all())?;
 
         // Run dispatch optimisation
-        info!("Running dispatch optimisation...");
+        info!("Running final dispatch optimisation for year {year}...");
         let next_year = year_iter.peek().copied();
         let (flow_map, prices, new_reduced_costs) =
             run_dispatch_for_year(&model, assets.as_slice(), year, next_year, &mut writer)?;

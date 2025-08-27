@@ -393,7 +393,7 @@ fn select_best_assets(
         let commissioned_txt = match best_output.asset.state() {
             AssetState::Commissioned { .. } => "existing",
             AssetState::Candidate => "candidate",
-            _ => unreachable!("Selected asset should be either Commissioned or Candidate"),
+            _ => panic!("Selected asset should be either Commissioned or Candidate"),
         };
         debug!(
             "Selected {} asset '{}' (capacity: {})",
@@ -472,9 +472,7 @@ fn update_assets(
                 best_assets.push(best_asset);
             };
         }
-        _ => unreachable!(
-            "update_assets should only be called with Commissioned or Candidate assets"
-        ),
+        _ => panic!("update_assets should only be called with Commissioned or Candidate assets"),
     }
 }
 

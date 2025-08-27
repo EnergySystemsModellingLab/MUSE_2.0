@@ -399,7 +399,7 @@ impl Asset {
         self.state = AssetState::Selected { agent_id };
     }
 
-    /// Commission a selected asset
+    /// Commission a selected asset and give ownership to the specified agent
     ///
     /// At this point we also check that the capacity is valid (panics if not).
     fn commission_selected(&mut self, id: AssetID) {
@@ -511,7 +511,7 @@ impl Eq for AssetRef {}
 impl Hash for AssetRef {
     /// Hash asset based on the combination of process_id, region_id, commission_year and agent_id
     /// In practice this means that, for assets with the same process_id, region_id and commission_year,
-    /// Selected/Future/Commissioned/Decommissioned assets (which have an agent_id) will all have the
+    /// Selected/Future/Commissioned/Decommissioned assets with the same agent_id will all have the
     /// same hash, whereas Candidate/Mock assets (which don't have an agent_id) will have a different
     /// hash.
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -629,7 +629,7 @@ impl AssetPool {
             // Return true if asset **not** in active pool
             !self.active.iter().any(|a| match &a.state {
                 AssetState::Commissioned { id: active_id, .. } => active_id == id,
-                _ => unreachable!("Active pool should only contain commissioned assets"),
+                _ => panic!("Active pool should only contain commissioned assets"),
             })
         });
         let decommissioned = decommission_assets(to_decommission, year);
@@ -648,7 +648,7 @@ impl AssetPool {
             .active
             .binary_search_by(|asset| match &asset.state {
                 AssetState::Commissioned { id: asset_id, .. } => asset_id.cmp(&id),
-                _ => unreachable!("Active pool should only contain commissioned assets"),
+                _ => panic!("Active pool should only contain commissioned assets"),
             })
             .ok()?;
 
