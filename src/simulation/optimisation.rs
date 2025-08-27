@@ -13,6 +13,7 @@ use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
 use log::debug;
+use std::collections::HashMap;
 use std::ops::Range;
 
 mod constraints;
@@ -176,7 +177,6 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
 
 /// Provides the interface for running the dispatch optimisation.
 ///
-///
 /// For a detailed description, please see the [dispatch optimisation formulation][1].
 ///
 /// [1]: https://energysystemsmodellinglab.github.io/MUSE_2.0/model/dispatch_optimisation.html
@@ -185,6 +185,7 @@ pub struct DispatchRun<'model, 'run> {
     existing_assets: &'run [AssetRef],
     candidate_assets: &'run [AssetRef],
     commodities: &'run [CommodityID],
+    input_prices: HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
     year: u32,
 }
 
@@ -196,6 +197,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             existing_assets: assets,
             candidate_assets: &[],
             commodities: &[],
+            input_prices: HashMap::new(),
             year,
         }
     }
@@ -214,6 +216,17 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
 
         Self {
             commodities,
+            ..self
+        }
+    }
+
+    /// Explicitly provide prices for certain input commodities
+    pub fn with_input_prices(
+        self,
+        input_prices: HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
+    ) -> Self {
+        Self {
+            input_prices,
             ..self
         }
     }
@@ -245,6 +258,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             &mut problem,
             &mut variables,
             &self.model.time_slice_info,
+            &self.input_prices,
             self.existing_assets,
             self.year,
         );
@@ -252,6 +266,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             &mut problem,
             &mut variables,
             &self.model.time_slice_info,
+            &self.input_prices,
             self.candidate_assets,
             self.year,
         );
@@ -301,12 +316,14 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
 /// * `problem` - The optimisation problem
 /// * `variables` - The variable map
 /// * `time_slice_info` - Information about assets
+/// * `input_prices` - Optional explicit prices for input commodities
 /// * `assets` - Assets to include
 /// * `year` - Current milestone year
 fn add_variables(
     problem: &mut Problem,
     variables: &mut VariableMap,
     time_slice_info: &TimeSliceInfo,
+    input_prices: &HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
     assets: &[AssetRef],
     year: u32,
 ) -> Range<usize> {
@@ -314,7 +331,7 @@ fn add_variables(
     let start = problem.num_cols();
 
     for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
-        let coeff = calculate_cost_coefficient(asset, year, time_slice);
+        let coeff = calculate_cost_coefficient(asset, year, time_slice, input_prices);
         let var = problem.add_column(coeff.value(), 0.0..);
         let key = (asset.clone(), time_slice.clone());
         let existing = variables.0.insert(key, var).is_some();
@@ -329,6 +346,9 @@ fn calculate_cost_coefficient(
     asset: &Asset,
     year: u32,
     time_slice: &TimeSliceID,
+    input_prices: &HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
 ) -> MoneyPerActivity {
-    asset.get_operating_cost(year, time_slice)
+    let opex = asset.get_operating_cost(year, time_slice);
+    let input_cost = asset.get_input_cost_from_prices(input_prices, time_slice);
+    opex + input_cost
 }
