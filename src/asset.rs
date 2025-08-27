@@ -822,7 +822,7 @@ mod tests {
         });
 
         // Create asset
-        let asset = Asset::new_mock(process, region_id.clone(), 2020, Capacity(1.0)).unwrap();
+        let asset = Asset::new_candidate(process, region_id.clone(), Capacity(1.0), 2020).unwrap();
 
         // Set input prices
         let mut input_prices = HashMap::new();

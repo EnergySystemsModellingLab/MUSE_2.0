@@ -85,6 +85,7 @@ pub fn run(
                 &model,
                 year,
                 &existing_assets,
+                &prices,
                 &reduced_costs,
                 &mut writer,
             )

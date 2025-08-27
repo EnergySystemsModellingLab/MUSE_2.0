@@ -7,13 +7,14 @@ use crate::commodity::{Commodity, CommodityID, CommodityMap};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
+use crate::simulation::CommodityPrices;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
+use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity, MoneyPerFlow};
 use anyhow::{ensure, Result};
 use indexmap::IndexMap;
-use itertools::chain;
+use itertools::{chain, iproduct};
 use log::debug;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub mod appraisal;
 use appraisal::appraise_investment;
@@ -31,7 +32,6 @@ type AllDemandMap = IndexMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 /// * `model` - The model
 /// * `year` - Current milestone year
 /// * `assets` - The asset pool
-/// * `flow_map` - Map of commodity flows
 /// * `prices` - Commodity prices
 /// * `reduced_costs` - Reduced costs for assets
 /// * `writer` - Data writer
@@ -39,6 +39,7 @@ pub fn perform_agent_investment(
     model: &Model,
     year: u32,
     existing_assets: &[AssetRef],
+    prices: &CommodityPrices,
     reduced_costs: &ReducedCosts,
     writer: &mut DataWriter,
 ) -> Result<Vec<AssetRef>> {
@@ -117,8 +118,17 @@ pub fn perform_agent_investment(
             // previous iterations should not change
             debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
 
+            // As upstream commodities by definition will not yet have producers, we explicitly set
+            // their prices using previous values so that they don't appear free
+            let input_prices = get_input_prices_for_assets(
+                &model.time_slice_info,
+                prices,
+                region_id,
+                &selected_assets,
+            );
             let solution = DispatchRun::new(model, &all_selected_assets, year)
                 .with_commodity_subset(&seen_commodities)
+                .with_input_prices(input_prices)
                 .run(
                     &format!("post {commodity_id}/{region_id} investment"),
                     writer,
@@ -314,6 +324,43 @@ fn get_candidate_assets<'a>(
 
             asset.into()
         })
+}
+
+/// Get a map of prices for a subset of commodities
+fn get_prices_subset(
+    time_slice_info: &TimeSliceInfo,
+    prices: &CommodityPrices,
+    region_id: &RegionID,
+    commodities: &HashSet<CommodityID>,
+) -> HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow> {
+    iproduct!(commodities.iter(), time_slice_info.iter_ids())
+        .map(|(commodity_id, time_slice)| {
+            let price = prices.get(commodity_id, region_id, time_slice).unwrap();
+            (
+                (commodity_id.clone(), region_id.clone(), time_slice.clone()),
+                price,
+            )
+        })
+        .collect()
+}
+
+/// Get prices for all input commodities for assets
+fn get_input_prices_for_assets(
+    time_slice_info: &TimeSliceInfo,
+    prices: &CommodityPrices,
+    region_id: &RegionID,
+    assets: &[AssetRef],
+) -> HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow> {
+    let commodities = assets
+        .iter()
+        .flat_map(|asset| {
+            asset
+                .iter_flows()
+                .filter(|flow| flow.is_input())
+                .map(|flow| flow.commodity.id.clone())
+        })
+        .collect();
+    get_prices_subset(time_slice_info, prices, region_id, &commodities)
 }
 
 /// Get the best assets for meeting demand for the given commodity
