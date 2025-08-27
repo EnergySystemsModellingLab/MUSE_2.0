@@ -136,6 +136,8 @@ struct ActivityRow {
     run_context: Option<String>,
     run_description: String,
     asset_id: Option<AssetID>,
+    process_id: ProcessID,
+    region_id: RegionID,
     time_slice: TimeSliceID,
     activity: Activity,
 }
@@ -147,6 +149,8 @@ struct ActivityDualsRow {
     run_context: Option<String>,
     run_description: String,
     asset_id: Option<AssetID>,
+    process_id: ProcessID,
+    region_id: RegionID,
     time_slice: TimeSliceID,
     value: MoneyPerActivity,
 }
@@ -180,6 +184,7 @@ struct AppraisalResultsRow {
     run_description: String,
     asset_id: Option<AssetID>,
     process_id: ProcessID,
+    region_id: RegionID,
     capacity: Capacity,
     unmet_demand: Flow,
     metric: f64,
@@ -191,6 +196,7 @@ struct ReducedCostsRow {
     milestone_year: u32,
     asset_id: Option<AssetID>,
     process_id: ProcessID,
+    region_id: RegionID,
     time_slice: TimeSliceID,
     reduced_cost: MoneyPerActivity,
 }
@@ -267,6 +273,8 @@ impl DebugDataWriter {
                 run_description: run_description.to_string(),
                 run_context: self.context.clone(),
                 asset_id: asset.id(),
+                process_id: asset.process_id().clone(),
+                region_id: asset.region_id().clone(),
                 time_slice: time_slice.clone(),
                 activity,
             };
@@ -292,6 +300,8 @@ impl DebugDataWriter {
                 run_description: run_description.to_string(),
                 run_context: self.context.clone(),
                 asset_id: asset.id(),
+                process_id: asset.process_id().clone(),
+                region_id: asset.region_id().clone(),
                 time_slice: time_slice.clone(),
                 value,
             };
@@ -360,6 +370,7 @@ impl DebugDataWriter {
                 run_context: self.context.clone(),
                 asset_id: result.asset.id(),
                 process_id: result.asset.process_id().clone(),
+                region_id: result.asset.region_id().clone(),
                 capacity: result.capacity,
                 unmet_demand: result.unmet_demand.values().copied().sum(),
                 metric: result.metric,
@@ -381,6 +392,7 @@ impl DebugDataWriter {
                 milestone_year,
                 asset_id: asset.id(),
                 process_id: asset.process_id().clone(),
+                region_id: asset.region_id().clone(),
                 time_slice: time_slice.clone(),
                 reduced_cost: *reduced_cost,
             };
@@ -394,6 +406,10 @@ impl DebugDataWriter {
     fn flush(&mut self) -> Result<()> {
         self.activity_writer.flush()?;
         self.commodity_balance_duals_writer.flush()?;
+        self.activity_duals_writer.flush()?;
+        self.solver_values_writer.flush()?;
+        self.appraisal_results_writer.flush()?;
+        self.reduced_costs_writer.flush()?;
 
         Ok(())
     }
@@ -732,6 +748,8 @@ mod tests {
             run_context: None,
             run_description,
             asset_id: asset.id(),
+            process_id: asset.process_id().clone(),
+            region_id: asset.region_id().clone(),
             time_slice,
             value,
         };
@@ -771,6 +789,8 @@ mod tests {
             run_context: None,
             run_description,
             asset_id: asset.id(),
+            process_id: asset.process_id().clone(),
+            region_id: asset.region_id().clone(),
             time_slice,
             activity,
         };
@@ -843,6 +863,7 @@ mod tests {
             run_description,
             asset_id: asset.id(),
             process_id: asset.process_id().clone(),
+            region_id: asset.region_id().clone(),
             capacity: Capacity(42.0),
             unmet_demand: Flow(0.0),
             metric: 3.14,
@@ -879,6 +900,7 @@ mod tests {
             milestone_year,
             asset_id: asset.id(),
             process_id: asset.process_id().clone(),
+            region_id: asset.region_id().clone(),
             time_slice,
             reduced_cost: MoneyPerActivity(0.5),
         };
