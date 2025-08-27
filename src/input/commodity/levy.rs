@@ -121,8 +121,7 @@ where
         validate_commodity_levy_map(map, regions, milestone_years, time_slice_info)
             .with_context(|| format!("Missing costs for commodity {commodity_id}"))?;
 
-        let difference: IndexSet<_> = region_ids.difference(regions).cloned().collect();
-        for region_id in difference.iter() {
+        for region_id in region_ids.difference(regions) {
             add_missing_region_to_commodity_levy_map(
                 map,
                 region_id,
