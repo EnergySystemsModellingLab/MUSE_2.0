@@ -8,6 +8,7 @@ use crate::units::MoneyPerFlow;
 use crate::year::parse_year_str;
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexSet;
+use log::warn;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -114,32 +115,44 @@ where
         }
     }
 
-    // Validate map - when provided, all regions/years/time slices must be covered for each commodity
+    // Validate map and complete with missing regions/years/time slices
     for (commodity_id, regions) in commodity_regions.iter() {
-        let map = map.get(commodity_id).unwrap();
+        let map = map.get_mut(commodity_id).unwrap();
         validate_commodity_levy_map(map, regions, milestone_years, time_slice_info)
             .with_context(|| format!("Missing costs for commodity {commodity_id}"))?;
-    }
 
-    // Add empty maps for commodities without levies with all regions/years/time slices considered
-    for commodity_id in commodity_ids.iter() {
-        let map = map
-            .entry(commodity_id.clone())
-            .or_insert_with(CommodityLevyMap::new);
-        for region_id in region_ids.iter() {
-            for year in milestone_years.iter() {
-                for time_slice in time_slice_info.iter_ids() {
-                    let key = (region_id.clone(), *year, time_slice.clone());
-                    map.entry(key).or_insert_with(|| CommodityLevy {
-                        balance_type: BalanceType::Net,
-                        value: MoneyPerFlow(0.0),
-                    });
-                }
-            }
+        let difference: IndexSet<_> = region_ids.difference(regions).cloned().collect();
+        for region_id in difference.iter() {
+            add_missing_region_to_commodity_levy_map(
+                map,
+                region_id,
+                milestone_years,
+                time_slice_info,
+            );
+            warn!("No levy specified for commodity {commodity_id} in region {region_id}. Assuming zero levy.");
         }
     }
 
     Ok(map)
+}
+
+fn add_missing_region_to_commodity_levy_map(
+    map: &mut CommodityLevyMap,
+    region_id: &RegionID,
+    milestone_years: &[u32],
+    time_slice_info: &TimeSliceInfo,
+) {
+    for year in milestone_years.iter() {
+        for time_slice in time_slice_info.iter_ids() {
+            map.insert(
+                (region_id.clone(), *year, time_slice.clone()),
+                CommodityLevy {
+                    balance_type: BalanceType::Net,
+                    value: MoneyPerFlow(0.0),
+                },
+            );
+        }
+    }
 }
 
 fn validate_commodity_levy_map(
@@ -251,5 +264,34 @@ mod tests {
             validate_commodity_levy_map(&cost_map, &region_ids, &[2020], &time_slice_info),
             "Missing cost for region GBR, year 2020, time slice winter.night"
         );
+    }
+
+    #[rstest]
+    fn test_add_missing_region_to_commodity_levy_map(
+        cost_map: CommodityLevyMap,
+        time_slice_info: TimeSliceInfo,
+        region_id: RegionID,
+    ) {
+        let mut cost_map = cost_map;
+        add_missing_region_to_commodity_levy_map(
+            &mut cost_map,
+            &region_id,
+            &[2020],
+            &time_slice_info,
+        );
+
+        // Check that costs have been added for the new region
+        for time_slice in time_slice_info.iter_ids() {
+            assert!(cost_map.contains_key(&(region_id.clone(), 2020, time_slice.clone())));
+            assert_eq!(
+                cost_map
+                    .get(&(region_id.clone(), 2020, time_slice.clone()))
+                    .unwrap(),
+                &CommodityLevy {
+                    balance_type: BalanceType::Net,
+                    value: MoneyPerFlow(0.0)
+                }
+            );
+        }
     }
 }
