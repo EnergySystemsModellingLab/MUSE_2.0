@@ -284,10 +284,8 @@ mod tests {
         for time_slice in time_slice_info.iter_ids() {
             assert!(cost_map.contains_key(&(region_id.clone(), 2020, time_slice.clone())));
             assert_eq!(
-                cost_map
-                    .get(&(region_id.clone(), 2020, time_slice.clone()))
-                    .unwrap(),
-                &CommodityLevy {
+                cost_map[&(region_id.clone(), 2020, time_slice.clone())],
+                CommodityLevy {
                     balance_type: BalanceType::Net,
                     value: MoneyPerFlow(0.0)
                 }
