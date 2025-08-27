@@ -64,6 +64,19 @@ pub fn read_commodity_levies(
     .with_context(|| input_err_msg(&file_path))
 }
 
+/// Read costs associated with each commodity from an iterator over raw cost entries.
+///
+/// # Arguments
+///
+/// * `iter` - An iterator over raw commodity levy entries
+/// * `commodity_ids` - All possible commodity IDs
+/// * `region_ids` - All possible region IDs
+/// * `time_slice_info` - Information about time slices
+/// * `milestone_years` - All milestone years
+///
+/// # Returns
+///
+/// A map containing levies, grouped by commodity ID.
 fn read_commodity_levies_iter<I>(
     iter: I,
     commodity_ids: &IndexSet<CommodityID>,
@@ -135,6 +148,18 @@ where
     Ok(map)
 }
 
+/// Add missing region to commodity levy map with zero cost for all years and time slices.
+///
+/// # Arguments
+///
+/// * `map` - The commodity levy map to update
+/// * `region_id` - The region ID to add
+/// * `milestone_years` - All milestone years
+/// * `time_slice_info` - Information about time slices
+///
+/// # Returns
+///
+/// Nothing. The map is updated in place.
 fn add_missing_region_to_commodity_levy_map(
     map: &mut CommodityLevyMap,
     region_id: &RegionID,
@@ -154,6 +179,18 @@ fn add_missing_region_to_commodity_levy_map(
     }
 }
 
+/// Validate that the commodity levy map contains entries for all regions, years and time slices.
+///
+/// # Arguments
+///
+/// * `map` - The commodity levy map to validate
+/// * `regions` - The set of regions that should be covered
+/// * `milestone_years` - All milestone years
+/// * `time_slice_info` - Information about time slices
+///
+/// # Returns
+///
+/// Nothing if the map is valid. An error if the map is missing any entries.
 fn validate_commodity_levy_map(
     map: &CommodityLevyMap,
     regions: &IndexSet<RegionID>,
