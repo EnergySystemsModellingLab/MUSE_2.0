@@ -13,7 +13,7 @@ use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
 use log::debug;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 
 mod constraints;
@@ -240,7 +240,8 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
     ///
     /// # Returns
     ///
-    /// A solution containing new commodity flows for assets and prices for (some) commodities.
+    /// A solution containing new commodity flows for assets and prices for (some) commodities or an
+    /// error.
     pub fn run(self, run_description: &str, writer: &mut DataWriter) -> Result<Solution<'model>> {
         let solution = self.run_no_save()?;
         writer.write_dispatch_debug_info(self.year, run_description, &solution)?;
@@ -279,6 +280,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             all_commodities = self.model.commodities.keys().cloned().collect();
             &all_commodities
         };
+        self.check_input_prices(commodities);
 
         // Add constraints
         let all_assets = chain(self.existing_assets.iter(), self.candidate_assets.iter());
@@ -306,6 +308,23 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             constraint_keys,
             objective_value,
         })
+    }
+
+    /// Sanity check for input prices.
+    ///
+    /// Input prices should only be provided for commodities for which there will be no commodity
+    /// balance constraint.
+    fn check_input_prices(&self, commodities: &[CommodityID]) {
+        let commodities_set: HashSet<_> = commodities.iter().collect();
+        let has_prices_for_commodity_subset = self
+            .input_prices
+            .keys()
+            .any(|(commodity_id, _, _)| commodities_set.contains(commodity_id));
+        assert!(
+            !has_prices_for_commodity_subset,
+            "Input prices were included for commodities that are being modelled, which is not \
+            allowed."
+        )
     }
 }
 
