@@ -502,50 +502,23 @@ impl PartialEq for AssetRef {
         Rc::ptr_eq(&self.0.process, &other.0.process)
             && self.0.region_id == other.0.region_id
             && self.0.commission_year == other.0.commission_year
-            && match (&self.0.state, &other.0.state) {
-                // Both must be in the "with agent_id" group
-                (
-                    AssetState::Selected { .. }
-                    | AssetState::Commissioned { .. }
-                    | AssetState::Decommissioned { .. }
-                    | AssetState::Future { .. },
-                    AssetState::Selected { .. }
-                    | AssetState::Commissioned { .. }
-                    | AssetState::Decommissioned { .. }
-                    | AssetState::Future { .. },
-                ) => self.agent_id() == other.agent_id(),
-                // Both must be in the "without agent_id" group
-                (
-                    AssetState::Candidate | AssetState::Mock,
-                    AssetState::Candidate | AssetState::Mock,
-                ) => true,
-                // Different hash patterns = never equal
-                _ => false,
-            }
+            && self.0.agent_id() == other.0.agent_id()
     }
 }
 
 impl Eq for AssetRef {}
 
 impl Hash for AssetRef {
-    /// Hash asset based on its state:
-    /// - Commissioned/Decommissioned/Future assets: hash process_id;region_id;agent_id;commission_year
-    /// - Candidate/Mock assets: hash process_id;region_id;commission_year
+    /// Hash asset based on the combination of process_id, region_id, commission_year and agent_id
+    /// In practice this means that, for assets with the same process_id, region_id and commission_year,
+    /// Selected/Future/Commissioned/Decommissioned assets (which have an agent_id) will all have the
+    /// same hash, whereas Candidate/Mock assets (which don't have an agent_id) will have a different
+    /// hash.
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.process.id.hash(state);
         self.0.region_id.hash(state);
         self.0.commission_year.hash(state);
-
-        // For Selected/Commissioned/Decommissioned/Future assets, also include agent_id
-        match &self.0.state {
-            AssetState::Selected { agent_id }
-            | AssetState::Commissioned { agent_id, .. }
-            | AssetState::Decommissioned { agent_id, .. }
-            | AssetState::Future { agent_id, .. } => {
-                agent_id.hash(state);
-            }
-            _ => {}
-        }
+        self.0.agent_id().hash(state);
     }
 }
 
