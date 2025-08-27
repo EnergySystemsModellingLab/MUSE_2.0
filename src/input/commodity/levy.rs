@@ -316,7 +316,7 @@ mod tests {
         for time_slice in time_slice_info.iter_ids() {
             assert_eq!(
                 cost_map.get(&(region_id.clone(), 2020, time_slice.clone())),
-                Some(CommodityLevy {
+                Some(&CommodityLevy {
                     balance_type: BalanceType::Net,
                     value: MoneyPerFlow(0.0)
                 })
