@@ -102,7 +102,7 @@ pub fn run(
 
             // Break
             ironing_out_iter += 1;
-            if ironing_out_iter >= 10 {
+            if ironing_out_iter >= model.parameters.max_ironing_out_iterations {
                 break selected_assets;
             }
         };
