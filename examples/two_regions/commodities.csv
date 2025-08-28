@@ -1,6 +1,6 @@
 id,description,type,time_slice_level
-electricity,Electricity,SED,daynight
-gas,Gas,SED,daynight
-heat,Heat,SVD,daynight
-wind,Wind,OTH,daynight
-CO2f,Carbon dioxide,OTH,daynight
+electricity,Electricity,sed,daynight
+gas,Gas,sed,daynight
+heat,Heat,svd,daynight
+wind,Wind,oth,daynight
+CO2f,Carbon dioxide,oth,daynight
