@@ -57,10 +57,10 @@ pub enum AssetState {
     },
     /// The asset has been selected for investment, but not yet confirmed
     Selected {
-        /// The ID of the agent that owns the asset
+        /// The ID of the agent that would own the asset
         agent_id: AgentID,
     },
-    /// The asset is a candidate for investment but has not yet been selected
+    /// The asset is a candidate for investment but has not yet been selected by an agent
     Candidate,
     /// A mock asset for dispatch optimisation
     Mock,
@@ -509,11 +509,10 @@ impl PartialEq for AssetRef {
 impl Eq for AssetRef {}
 
 impl Hash for AssetRef {
-    /// Hash asset based on the combination of process_id, region_id, commission_year and agent_id
+    /// Hash asset based on the combination of process_id, region_id, commission_year and agent_id.
     /// In practice this means that, for assets with the same process_id, region_id and commission_year,
-    /// Selected/Future/Commissioned/Decommissioned assets with the same agent_id will all have the
-    /// same hash, whereas Candidate/Mock assets (which don't have an agent_id) will have a different
-    /// hash.
+    /// Selected/Future/Commissioned/Decommissioned assets with the same agent_id will all hash the
+    /// same, which will be different from Candidate/Mock assets (which don't have an agent_id).
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.process.id.hash(state);
         self.0.region_id.hash(state);

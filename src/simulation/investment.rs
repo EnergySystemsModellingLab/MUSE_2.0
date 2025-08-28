@@ -55,8 +55,7 @@ pub fn perform_agent_investment(
             seen_commodities.push(commodity_id.clone());
             let commodity = &model.commodities[commodity_id];
 
-            // List of assets selected for this region/commodity
-            // This includes Commissioned assets that are selected for retention, and new Selected assets
+            // List of assets selected/retained for this region/commodity
             let mut selected_assets = Vec::new();
 
             for (agent, commodity_portion) in
