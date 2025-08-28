@@ -3,4 +3,4 @@ electricity,Electricity,sed,daynight
 gas,Gas,sed,daynight
 heat,Heat,svd,daynight
 wind,Wind,oth,daynight
-CO2f,Carbon dioxide,oth,daynight
+CO2f,CO2 emitted,oth,daynight
