@@ -24,7 +24,7 @@ INPUT_FILE_ORDER = {
     "Commodities": ["commodities", "commodity_levies", "demand", "demand_slicing"],
     "Processes": ["processes", "process_*"],
 }
-OUTPUT_FILE_ORDER: dict[str, list[str]] = {"Main CSV output files": []}
+OUTPUT_FILE_ORDER = {"Main CSV output files": ["assets"]}
 
 sys.path.append(str(FILE_FORMAT_DOCS_DIR))
 from format_docs import generate_for_csv, generate_for_toml  # noqa: E402
