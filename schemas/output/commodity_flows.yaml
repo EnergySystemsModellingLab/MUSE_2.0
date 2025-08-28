@@ -1,0 +1,23 @@
+$schema: https://specs.frictionlessdata.io/schemas/table-schema.json
+description: How much of each commodity was produced and consumed in the course of the simulation.
+
+fields:
+  - name: milestone_year
+    type: integer
+    description: Milestone year of the simulation
+  - name: asset_id
+    type: integer
+    description: The asset this entry relates to
+    notes: See the `assets.csv` output file for information about assets
+  - name: commodity_id
+    type: string
+    description: The commodity this entry relates to
+  - name: time_slice
+    type: string
+    description: The time slice during which this flow occurred
+  - name: flow
+    type: number
+    description: The amount of commodity flow
+    notes: |
+      If the commodity was produced, this value will be positive and if it was consumed, it will be
+      negative.

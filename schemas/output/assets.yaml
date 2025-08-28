@@ -1,0 +1,32 @@
+$schema: https://specs.frictionlessdata.io/schemas/table-schema.json
+description: Assets commissioned during the course of the simulation.
+
+fields:
+  - name: asset_id
+    type: string
+    description: The ID number of this asset
+    notes: |
+      Every commissioned asset in the system is automatically assigned a numerical ID. This includes
+      assets supplied by the user in the `assets.csv` input file as well as those selected by agents
+      during the simulation.
+  - name: process_id
+    type: string
+    description: The ID of this asset's associated process
+  - name: region_id
+    type: string
+    description: The region in which this asset exists
+  - name: agent_id
+    type: string
+    description: The agent to which this asset belongs
+  - name: commission_year
+    type: integer
+    description: The year in which the asset was commissioned
+  - name: decommission_year
+    type: integer
+    description: The year in which the asset was decommissioned
+    notes: |
+      This field will be empty if the asset was not decommissioned during the lifetime of the
+      simulation
+  - name: capacity
+    type: number
+    description: The capacity of the asset
