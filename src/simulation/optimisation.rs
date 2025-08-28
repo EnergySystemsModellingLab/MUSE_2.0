@@ -175,6 +175,24 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
     Ok(solved)
 }
 
+/// Sanity check for input prices.
+///
+/// Input prices should only be provided for commodities for which there will be no commodity
+/// balance constraint.
+fn check_input_prices(
+    input_prices: &HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
+    commodities: &[CommodityID],
+) {
+    let commodities_set: HashSet<_> = commodities.iter().collect();
+    let has_prices_for_commodity_subset = input_prices
+        .keys()
+        .any(|(commodity_id, _, _)| commodities_set.contains(commodity_id));
+    assert!(
+        !has_prices_for_commodity_subset,
+        "Input prices were included for commodities that are being modelled, which is not allowed."
+    )
+}
+
 /// Provides the interface for running the dispatch optimisation.
 ///
 /// For a detailed description, please see the [dispatch optimisation formulation][1].
@@ -185,7 +203,7 @@ pub struct DispatchRun<'model, 'run> {
     existing_assets: &'run [AssetRef],
     candidate_assets: &'run [AssetRef],
     commodities: &'run [CommodityID],
-    input_prices: HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
+    input_prices: Option<&'run HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>>,
     year: u32,
 }
 
@@ -197,7 +215,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             existing_assets: assets,
             candidate_assets: &[],
             commodities: &[],
-            input_prices: HashMap::new(),
+            input_prices: None,
             year,
         }
     }
@@ -223,10 +241,10 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
     /// Explicitly provide prices for certain input commodities
     pub fn with_input_prices(
         self,
-        input_prices: HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
+        input_prices: &'run HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
     ) -> Self {
         Self {
-            input_prices,
+            input_prices: Some(input_prices),
             ..self
         }
     }
@@ -252,6 +270,15 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
     ///
     /// This is an internal function as callers always want to save results.
     fn run_no_save(&self) -> Result<Solution<'model>> {
+        // Construct an empty map of prices if the user hasn't provided any
+        let empty_price_map;
+        let input_prices = if let Some(prices) = self.input_prices {
+            prices
+        } else {
+            empty_price_map = HashMap::new();
+            &empty_price_map
+        };
+
         // Set up problem
         let mut problem = Problem::default();
         let mut variables = VariableMap::default();
@@ -259,7 +286,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             &mut problem,
             &mut variables,
             &self.model.time_slice_info,
-            &self.input_prices,
+            input_prices,
             self.existing_assets,
             self.year,
         );
@@ -267,7 +294,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             &mut problem,
             &mut variables,
             &self.model.time_slice_info,
-            &self.input_prices,
+            input_prices,
             self.candidate_assets,
             self.year,
         );
@@ -280,7 +307,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             all_commodities = self.model.commodities.keys().cloned().collect();
             &all_commodities
         };
-        self.check_input_prices(commodities);
+        check_input_prices(input_prices, commodities);
 
         // Add constraints
         let all_assets = chain(self.existing_assets.iter(), self.candidate_assets.iter());
@@ -308,23 +335,6 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             constraint_keys,
             objective_value,
         })
-    }
-
-    /// Sanity check for input prices.
-    ///
-    /// Input prices should only be provided for commodities for which there will be no commodity
-    /// balance constraint.
-    fn check_input_prices(&self, commodities: &[CommodityID]) {
-        let commodities_set: HashSet<_> = commodities.iter().collect();
-        let has_prices_for_commodity_subset = self
-            .input_prices
-            .keys()
-            .any(|(commodity_id, _, _)| commodities_set.contains(commodity_id));
-        assert!(
-            !has_prices_for_commodity_subset,
-            "Input prices were included for commodities that are being modelled, which is not \
-            allowed."
-        )
     }
 }
 

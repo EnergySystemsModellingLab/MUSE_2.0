@@ -128,7 +128,7 @@ pub fn perform_agent_investment(
             );
             let solution = DispatchRun::new(model, &all_selected_assets, year)
                 .with_commodity_subset(&seen_commodities)
-                .with_input_prices(input_prices)
+                .with_input_prices(&input_prices)
                 .run(
                     &format!("post {commodity_id}/{region_id} investment"),
                     writer,
