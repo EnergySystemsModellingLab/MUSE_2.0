@@ -3,6 +3,6 @@ GASPRD,Gas produced,sed,season
 GASNAT,Natural gas,sed,season
 BIOPRD,Biomass produced,sed,season
 BIOPEL,Biomass pellets,sed,season
-ELCTRI,Electricity,sed,daynight
+electricity,Electricity,sed,daynight
 heat,Residential heating,svd,daynight
 CO2f,CO2 emitted,oth,annual

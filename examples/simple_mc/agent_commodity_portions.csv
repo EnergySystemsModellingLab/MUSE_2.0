@@ -3,5 +3,5 @@ A0_GEX,GASPRD,all,1
 A0_GPR,GASNAT,all,1
 A0_BPD,BIOPRD,all,1
 A0_BPL,BIOPEL,all,1
-A0_ELC,ELCTRI,all,1
+A0_ELC,electricity,all,1
 A0_RES,heat,all,1
