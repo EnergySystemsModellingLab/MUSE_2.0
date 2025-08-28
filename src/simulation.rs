@@ -67,8 +67,7 @@ pub fn run(
         // year.
         assets.decommission_old(year);
 
-        // Newly commissioned assets will be included in optimisation for at least one milestone
-        // year before agents have the option of decommissioning them
+        // Commission pre-defined assets for this year
         assets.commission_new(year);
 
         // Take all the active assets as a list of existing assets
