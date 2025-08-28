@@ -24,6 +24,7 @@ INPUT_FILE_ORDER = {
     "Commodities": ["commodities", "commodity_levies", "demand", "demand_slicing"],
     "Processes": ["processes", "process_*"],
 }
+OUTPUT_FILE_ORDER: dict[str, list[str]] = {"Main CSV output files": []}
 
 sys.path.append(str(FILE_FORMAT_DOCS_DIR))
 from format_docs import generate_for_csv, generate_for_toml  # noqa: E402
@@ -49,13 +50,16 @@ def generate_input_docs(env: Environment) -> tuple[str, str]:
 
 
 def generate_output_docs(env: Environment) -> tuple[str, str]:
+    csv_sections = generate_for_csv(OUTPUT_FILE_ORDER, OUTPUT_SCHEMA_DIR, env)
     toml_file_name = "metadata.toml"
     toml_info = generate_for_toml(
         OUTPUT_SCHEMA_DIR, toml_file_name, env, heading_level=2
     )
 
     template = env.get_template("output_files.md.jinja")
-    out = template.render(toml_info=toml_info, script_name=Path(__file__).name)
+    out = template.render(
+        csv_sections=csv_sections, toml_info=toml_info, script_name=Path(__file__).name
+    )
     return ("output_files.md", out)
 
 
