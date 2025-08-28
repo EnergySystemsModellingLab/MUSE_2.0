@@ -37,7 +37,7 @@ macro_rules! define_param_default {
 define_unit_param_default!(default_candidate_asset_capacity, Capacity, 0.0001);
 define_unit_param_default!(default_capacity_limit_factor, Dimensionless, 0.1);
 define_unit_param_default!(default_value_of_lost_load, MoneyPerFlow, 1e9);
-define_param_default!(default_max_ironing_out_iterations, u32, 100);
+define_param_default!(default_max_ironing_out_iterations, u32, 2);
 
 /// Model definition
 pub struct Model {

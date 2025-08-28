@@ -198,6 +198,7 @@ struct ReducedCostsRow {
 
 /// For writing extra debug information about the model
 struct DebugDataWriter {
+    context: Option<String>,
     activity_writer: csv::Writer<File>,
     commodity_balance_duals_writer: csv::Writer<File>,
     activity_duals_writer: csv::Writer<File>,
@@ -219,6 +220,7 @@ impl DebugDataWriter {
         };
 
         Ok(Self {
+            context: None,
             activity_writer: new_writer(ACTIVITY_FILE_NAME)?,
             commodity_balance_duals_writer: new_writer(COMMODITY_BALANCE_DUALS_FILE_NAME)?,
             activity_duals_writer: new_writer(ACTIVITY_DUALS_FILE_NAME)?,
@@ -226,6 +228,15 @@ impl DebugDataWriter {
             appraisal_results_writer: new_writer(APPRAISAL_RESULTS_FILE_NAME)?,
             reduced_costs_writer: new_writer(REDUCED_COSTS_FILE_NAME)?,
         })
+    }
+
+    /// Prepend the current context to the run description
+    fn with_context(&self, run_description: &str) -> String {
+        if let Some(context) = &self.context {
+            format!("{context}; {run_description}")
+        } else {
+            run_description.to_string()
+        }
     }
 
     /// Write debug info about the dispatch optimisation
@@ -263,7 +274,7 @@ impl DebugDataWriter {
         for (asset, time_slice, activity) in iter {
             let row = ActivityRow {
                 milestone_year,
-                run_description: run_description.to_string(),
+                run_description: self.with_context(run_description),
                 asset_id: asset.id(),
                 process_id: asset.process_id().clone(),
                 region_id: asset.region_id().clone(),
@@ -289,7 +300,7 @@ impl DebugDataWriter {
         for (asset, time_slice, value) in iter {
             let row = ActivityDualsRow {
                 milestone_year,
-                run_description: run_description.to_string(),
+                run_description: self.with_context(run_description),
                 asset_id: asset.id(),
                 process_id: asset.process_id().clone(),
                 region_id: asset.region_id().clone(),
@@ -315,7 +326,7 @@ impl DebugDataWriter {
         for (commodity_id, region_id, time_slice, value) in iter {
             let row = CommodityBalanceDualsRow {
                 milestone_year,
-                run_description: run_description.to_string(),
+                run_description: self.with_context(run_description),
                 commodity_id: commodity_id.clone(),
                 region_id: region_id.clone(),
                 time_slice: time_slice.clone(),
@@ -336,7 +347,7 @@ impl DebugDataWriter {
     ) -> Result<()> {
         let row = SolverValuesRow {
             milestone_year,
-            run_description: run_description.to_string(),
+            run_description: self.with_context(run_description),
             objective_value,
         };
         self.solver_values_writer.serialize(row)?;
@@ -355,7 +366,7 @@ impl DebugDataWriter {
         for result in appraisal_results {
             let row = AppraisalResultsRow {
                 milestone_year,
-                run_description: run_description.to_string(),
+                run_description: self.with_context(run_description),
                 asset_id: result.asset.id(),
                 process_id: result.asset.process_id().clone(),
                 region_id: result.asset.region_id().clone(),
@@ -548,6 +559,20 @@ impl DataWriter {
         }
 
         Ok(())
+    }
+
+    /// Add context to the debug writer
+    pub fn set_debug_context(&mut self, context: String) {
+        if let Some(ref mut wtr) = &mut self.debug_writer {
+            wtr.context = Some(context);
+        }
+    }
+
+    /// Clear context from the debug writer
+    pub fn clear_debug_context(&mut self) {
+        if let Some(ref mut wtr) = &mut self.debug_writer {
+            wtr.context = None;
+        }
     }
 }
 

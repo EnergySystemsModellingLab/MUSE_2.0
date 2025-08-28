@@ -2,7 +2,7 @@
 use super::optimisation::{DispatchRun, FlowMap};
 use super::prices::ReducedCosts;
 use crate::agent::Agent;
-use crate::asset::{Asset, AssetIterator, AssetPool, AssetRef};
+use crate::asset::{Asset, AssetIterator, AssetRef, AssetState};
 use crate::commodity::{Commodity, CommodityID, CommodityMap};
 use crate::model::Model;
 use crate::output::DataWriter;
@@ -38,23 +38,27 @@ type AllDemandMap = IndexMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 pub fn perform_agent_investment(
     model: &Model,
     year: u32,
-    assets: &mut AssetPool,
+    existing_assets: &[AssetRef],
     reduced_costs: &ReducedCosts,
     writer: &mut DataWriter,
-) -> Result<()> {
-    // Get all existing assets and clear pool
-    let existing_assets = assets.take();
-
+) -> Result<Vec<AssetRef>> {
     // Initialise demand map
     let mut demand =
         flatten_preset_demands_for_year(&model.commodities, &model.time_slice_info, year);
+
+    // Keep a list of all the assets selected
+    // This includes Commissioned assets that are selected for retention, and new Selected assets
+    let mut all_selected_assets = Vec::new();
 
     for region_id in model.iter_regions() {
         let mut seen_commodities = Vec::new();
         for commodity_id in model.commodity_order[&(region_id.clone(), year)].iter() {
             seen_commodities.push(commodity_id.clone());
             let commodity = &model.commodities[commodity_id];
-            let mut new_assets = Vec::new();
+
+            // List of assets selected/retained for this region/commodity
+            let mut selected_assets = Vec::new();
+
             for (agent, commodity_portion) in
                 get_responsible_agents(model.agents.values(), commodity_id, region_id, year)
             {
@@ -75,7 +79,7 @@ pub fn perform_agent_investment(
                 // Existing and candidate assets from which to choose
                 let opt_assets = get_asset_options(
                     &model.time_slice_info,
-                    &existing_assets,
+                    existing_assets,
                     &demand_portion_for_commodity,
                     agent,
                     commodity,
@@ -95,25 +99,25 @@ pub fn perform_agent_investment(
                     year,
                     writer,
                 )?;
-                new_assets.extend(best_assets);
+                selected_assets.extend(best_assets);
             }
 
-            // If no assets have been selected, skip dispatch optimisation
+            // If no assets have been selected for this region/commodity, skip dispatch optimisation
             // **TODO**: this probably means there's no demand for the commodity, which we could
             // presumably preempt
-            if new_assets.is_empty() {
+            if selected_assets.is_empty() {
                 continue;
             }
 
-            // Add assets to pool
-            new_assets = assets.extend(new_assets);
+            // Add the selected assets to the list of all selected assets
+            all_selected_assets.extend(selected_assets.clone());
 
             // Perform dispatch optimisation with assets that have been selected so far
-            // **TODO**: presumably we only need to do this for new_assets, as assets added in
+            // **TODO**: presumably we only need to do this for selected_assets, as assets added in
             // previous iterations should not change
             debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
 
-            let solution = DispatchRun::new(model, assets.as_slice(), year)
+            let solution = DispatchRun::new(model, &all_selected_assets, year)
                 .with_commodity_subset(&seen_commodities)
                 .run(
                     &format!("post {commodity_id}/{region_id} investment"),
@@ -121,14 +125,11 @@ pub fn perform_agent_investment(
                 )?;
 
             // Update demand map with flows from newly added assets
-            update_demand_map(&mut demand, &solution.create_flow_map(), &new_assets);
+            update_demand_map(&mut demand, &solution.create_flow_map(), &selected_assets);
         }
     }
 
-    // Decommission non-selected assets
-    assets.decommission_if_not_active(existing_assets, year);
-
-    Ok(())
+    Ok(all_selected_assets)
 }
 
 /// Flatten the preset commodity demands for a given year into a map of commodity, region and
@@ -301,14 +302,9 @@ fn get_candidate_assets<'a>(
     agent
         .iter_possible_producers_of(region_id, &commodity.id, year)
         .map(move |process| {
-            let mut asset = Asset::new_candidate(
-                agent.id.clone(),
-                process.clone(),
-                region_id.clone(),
-                Capacity(0.0),
-                year,
-            )
-            .unwrap();
+            let mut asset =
+                Asset::new_candidate(process.clone(), region_id.clone(), Capacity(0.0), year)
+                    .unwrap();
             asset.set_capacity(get_demand_limiting_capacity(
                 time_slice_info,
                 &asset,
@@ -394,10 +390,10 @@ fn select_best_assets(
         );
 
         // Log the selected asset
-        let commissioned_txt = if best_output.asset.is_commissioned() {
-            "existing"
-        } else {
-            "candidate"
+        let commissioned_txt = match best_output.asset.state() {
+            AssetState::Commissioned { .. } => "existing",
+            AssetState::Candidate => "candidate",
+            _ => panic!("Selected asset should be either Commissioned or Candidate"),
         };
         debug!(
             "Selected {} asset '{}' (capacity: {})",
@@ -419,6 +415,16 @@ fn select_best_assets(
         round += 1;
     }
 
+    // Convert Candidate assets to Selected
+    // At this point we also assign the agent ID to the asset
+    for asset in best_assets.iter_mut() {
+        if let AssetState::Candidate = asset.state() {
+            asset
+                .make_mut()
+                .select_candidate_for_investment(agent.id.clone());
+        }
+    }
+
     Ok(best_assets)
 }
 
@@ -435,35 +441,38 @@ fn update_assets(
     remaining_candidate_capacity: &mut HashMap<AssetRef, Capacity>,
     best_assets: &mut Vec<AssetRef>,
 ) {
-    // New capacity given for candidates only
-    if !best_asset.is_commissioned() {
-        // Remove this capacity from the available remaining capacity for this asset
-        let remaining_capacity = remaining_candidate_capacity.get_mut(&best_asset).unwrap();
-        *remaining_capacity -= capacity;
-
-        // If there's no capacity remaining, remove the asset from the options
-        if *remaining_capacity <= Capacity(0.0) {
-            let old_idx = opt_assets
-                .iter()
-                .position(|asset| *asset == best_asset)
-                .unwrap();
-            opt_assets.swap_remove(old_idx);
-            remaining_candidate_capacity.remove(&best_asset);
-        }
-
-        if let Some(existing_asset) = best_assets.iter_mut().find(|asset| **asset == best_asset) {
-            // Add the additional required capacity
-            existing_asset.make_mut().increase_capacity(capacity);
-        } else {
-            // Update the capacity of the chosen asset
-            best_asset.make_mut().set_capacity(capacity);
+    match best_asset.state() {
+        AssetState::Commissioned { .. } => {
+            // Remove this asset from the options
+            opt_assets.retain(|asset| *asset != best_asset);
             best_assets.push(best_asset);
-        };
-    } else {
-        // Remove this asset from the options
-        opt_assets.retain(|asset| *asset != best_asset);
+        }
+        AssetState::Candidate => {
+            // Remove this capacity from the available remaining capacity for this asset
+            let remaining_capacity = remaining_candidate_capacity.get_mut(&best_asset).unwrap();
+            *remaining_capacity -= capacity;
 
-        best_assets.push(best_asset);
+            // If there's no capacity remaining, remove the asset from the options
+            if *remaining_capacity <= Capacity(0.0) {
+                let old_idx = opt_assets
+                    .iter()
+                    .position(|asset| *asset == best_asset)
+                    .unwrap();
+                opt_assets.swap_remove(old_idx);
+                remaining_candidate_capacity.remove(&best_asset);
+            }
+
+            if let Some(existing_asset) = best_assets.iter_mut().find(|asset| **asset == best_asset)
+            {
+                // If the asset is already in the list of best assets, add the additional required capacity
+                existing_asset.make_mut().increase_capacity(capacity);
+            } else {
+                // Otherwise, update the capacity of the chosen asset and add it to the list of best assets
+                best_asset.make_mut().set_capacity(capacity);
+                best_assets.push(best_asset);
+            };
+        }
+        _ => panic!("update_assets should only be called with Commissioned or Candidate assets"),
     }
 }
 

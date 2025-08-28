@@ -1,5 +1,5 @@
 //! Costs for the optimisation problem.
-use crate::asset::AssetRef;
+use crate::asset::{AssetRef, AssetState};
 use crate::finance::annual_capital_cost;
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::TimeSliceID;
@@ -29,10 +29,12 @@ pub fn activity_surplus(
 /// - For a commissioned asset, this only includes operating costs.
 /// - For a candidate asset, this includes both operating and capital costs.
 pub fn annual_fixed_cost(asset: &AssetRef) -> MoneyPerCapacity {
-    if asset.is_commissioned() {
-        annual_fixed_cost_for_existing(asset)
-    } else {
-        annual_fixed_cost_for_candidate(asset)
+    match asset.state() {
+        AssetState::Commissioned { .. } => annual_fixed_cost_for_existing(asset),
+        AssetState::Candidate => annual_fixed_cost_for_candidate(asset),
+        _ => {
+            panic!("annual_fixed_cost should only be called with Commissioned or Candidate assets")
+        }
     }
 }
 

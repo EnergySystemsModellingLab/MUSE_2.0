@@ -1,7 +1,7 @@
 //! Constraints for the optimisation problem.
 use super::optimisation::Variable;
 use super::DemandMap;
-use crate::asset::AssetRef;
+use crate::asset::{AssetRef, AssetState};
 use crate::commodity::Commodity;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Flow};
@@ -20,10 +20,18 @@ pub fn add_capacity_constraint(
     capacity_var: Variable,
 ) {
     let capacity = max_capacity.unwrap_or(asset.capacity());
-    let bounds = if asset.is_commissioned() {
-        capacity.value()..=capacity.value()
-    } else {
-        0.0..=capacity.value()
+    let bounds = match asset.state() {
+        AssetState::Commissioned { .. } => {
+            // Fixed capacity for commissioned assets
+            capacity.value()..=capacity.value()
+        }
+        AssetState::Candidate => {
+            // Variable capacity between 0 and max for candidate assets
+            0.0..=capacity.value()
+        }
+        _ => panic!(
+            "add_capacity_constraint should only be called with Commissioned or Candidate assets"
+        ),
     };
     problem.add_row(bounds, [(capacity_var, 1.0)]);
 }
@@ -44,10 +52,16 @@ pub fn add_activity_constraints(
     capacity_var: Variable,
     activity_vars: &IndexMap<TimeSliceID, Variable>,
 ) {
-    if asset.is_commissioned() {
-        add_activity_constraints_for_existing(problem, asset, activity_vars)
-    } else {
-        add_activity_constraints_for_candidate(problem, asset, capacity_var, activity_vars)
+    match asset.state() {
+        AssetState::Commissioned { .. } => {
+            add_activity_constraints_for_existing(problem, asset, activity_vars)
+        }
+        AssetState::Candidate => {
+            add_activity_constraints_for_candidate(problem, asset, capacity_var, activity_vars)
+        }
+        _ => panic!(
+            "add_activity_constraints should only be called with Commissioned or Candidate assets"
+        ),
     }
 }
 
