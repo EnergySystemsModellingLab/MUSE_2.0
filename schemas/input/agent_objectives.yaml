@@ -22,7 +22,7 @@ fields:
     enum: [lcox, npv]
     description: The type of objective
     notes: |
-      Must be `npv` (net present value) or `lcox` (levelised cost of X). Note that support for LCOX
+      Must be `npv` (net present value) or `lcox` (levelised cost of X). Note that support for NPV
       is experimental and may give bad results.
   - name: decision_weight
     type: number

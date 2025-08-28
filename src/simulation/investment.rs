@@ -10,6 +10,7 @@ use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity};
 use anyhow::{ensure, Result};
+use indexmap::IndexMap;
 use itertools::chain;
 use log::debug;
 use std::collections::HashMap;
@@ -18,10 +19,10 @@ pub mod appraisal;
 use appraisal::appraise_investment;
 
 /// A map of demand across time slices for a specific commodity and region
-type DemandMap = HashMap<TimeSliceID, Flow>;
+type DemandMap = IndexMap<TimeSliceID, Flow>;
 
 /// Demand for a given combination of commodity, region and time slice
-type AllDemandMap = HashMap<(CommodityID, RegionID, TimeSliceID), Flow>;
+type AllDemandMap = IndexMap<(CommodityID, RegionID, TimeSliceID), Flow>;
 
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
@@ -428,7 +429,7 @@ fn select_best_assets(
 }
 
 /// Check whether there is any remaining demand that is unmet in any time slice
-fn is_any_remaining_demand(demand: &HashMap<TimeSliceID, Flow>) -> bool {
+fn is_any_remaining_demand(demand: &DemandMap) -> bool {
     demand.values().any(|flow| *flow > Flow(0.0))
 }
 
@@ -490,9 +491,9 @@ mod tests {
         ActivityPerCapacity, Dimensionless, Flow, FlowPerActivity, MoneyPerActivity,
         MoneyPerCapacity, MoneyPerCapacityPerYear, MoneyPerFlow,
     };
+    use indexmap::indexmap;
     use itertools::Itertools;
     use rstest::rstest;
-    use std::collections::HashMap;
     use std::rc::Rc;
 
     /// Custom fixture for process parameters with non-zero capacity_to_activity
@@ -553,8 +554,7 @@ mod tests {
         let asset = asset(process);
 
         // Create demand map - demand of 10.0 for our time slice
-        let mut demand = HashMap::new();
-        demand.insert(time_slice.clone(), Flow(10.0));
+        let demand = indexmap! { time_slice.clone() => Flow(10.0)};
 
         // Call the function
         let result = get_demand_limiting_capacity(&time_slice_info, &asset, &commodity_rc, &demand);
@@ -618,9 +618,10 @@ mod tests {
         let asset = asset(process);
 
         // Create demand map with different demands for each time slice
-        let mut demand = HashMap::new();
-        demand.insert(time_slice1.clone(), Flow(4.0)); // Requires capacity of 4.0/2.0 = 2.0
-        demand.insert(time_slice2.clone(), Flow(3.0)); // Would require infinite capacity, but should be skipped
+        let demand = indexmap! {
+            time_slice1.clone() => Flow(4.0), // Requires capacity of 4.0/2.0 = 2.0
+            time_slice2.clone() => Flow(3.0), // Would require infinite capacity, but should be skipped
+        };
 
         // Call the function
         let result =

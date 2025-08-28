@@ -585,7 +585,6 @@ mod tests {
     use indexmap::indexmap;
     use itertools::{assert_equal, Itertools};
     use rstest::rstest;
-    use std::collections::HashMap;
     use std::iter;
     use tempfile::tempdir;
 
@@ -842,7 +841,7 @@ mod tests {
             let appraisal = AppraisalOutput {
                 asset: asset.clone(),
                 capacity: Capacity(42.0),
-                unmet_demand: HashMap::new(),
+                unmet_demand: Default::default(),
                 metric: 3.14,
             };
             writer
