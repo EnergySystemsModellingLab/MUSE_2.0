@@ -324,10 +324,7 @@ impl Asset {
         match &self.state {
             AssetState::Commissioned { id, .. } => Some(*id),
             AssetState::Decommissioned { id, .. } => Some(*id),
-            AssetState::Future { .. } => None,
-            AssetState::Selected { .. } => None,
-            AssetState::Candidate => None,
-            AssetState::Mock => None,
+            _ => None,
         }
     }
 
@@ -338,8 +335,7 @@ impl Asset {
             AssetState::Decommissioned { agent_id, .. } => Some(agent_id),
             AssetState::Future { agent_id } => Some(agent_id),
             AssetState::Selected { agent_id } => Some(agent_id),
-            AssetState::Candidate => None,
-            AssetState::Mock => None,
+            _ => None,
         }
     }
 
@@ -351,7 +347,7 @@ impl Asset {
     /// Set the capacity for this asset (only for Candidate assets)
     pub fn set_capacity(&mut self, capacity: Capacity) {
         assert!(
-            matches!(self.state, AssetState::Candidate),
+            self.state == AssetState::Candidate,
             "set_capacity can only be called on Candidate assets"
         );
         assert!(capacity >= Capacity(0.0), "Capacity must be >= 0");
@@ -361,7 +357,7 @@ impl Asset {
     /// Increase the capacity for this asset (only for Candidate assets)
     pub fn increase_capacity(&mut self, capacity: Capacity) {
         assert!(
-            matches!(self.state, AssetState::Candidate),
+            self.state == AssetState::Candidate,
             "increase_capacity can only be called on Candidate assets"
         );
         assert!(capacity >= Capacity(0.0), "Added capacity must be >= 0");
@@ -393,7 +389,7 @@ impl Asset {
     /// Select a Candidate asset for investment, converting it to a Selected state
     pub fn select_candidate_for_investment(&mut self, agent_id: AgentID) {
         assert!(
-            matches!(self.state, AssetState::Candidate),
+            self.state == AssetState::Candidate,
             "select_candidate_for_investment can only be called on Candidate assets"
         );
         self.state = AssetState::Selected { agent_id };
