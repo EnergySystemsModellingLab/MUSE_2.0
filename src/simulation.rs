@@ -196,11 +196,11 @@ fn mock_candidate_assets_for_year(
     {
         for region_id in process.regions.iter() {
             candidates.push(
-                Asset::new_mock(
+                Asset::new_candidate(
                     Rc::clone(process),
                     region_id.clone(),
-                    year,
                     candidate_asset_capacity,
+                    year,
                 )
                 .unwrap()
                 .into(),

@@ -29,9 +29,6 @@ pub struct AssetID(u32);
 /// `commission_future` or `commission_candidate` respectively.
 ///
 /// `Commissioned` assets can be decommissioned by calling `decommission`.
-///
-/// `Mock` assets are used for dispatch optimisation to determine reduced costs for potential
-/// candidates. They cannot be commissioned directly.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum AssetState {
     /// The asset has been commissioned
@@ -62,8 +59,6 @@ pub enum AssetState {
     },
     /// The asset is a candidate for investment but has not yet been selected by an agent
     Candidate,
-    /// A mock asset for dispatch optimisation
-    Mock,
 }
 
 /// An asset controlled by an agent.
@@ -111,22 +106,6 @@ impl Asset {
         check_capacity_valid_for_asset(capacity)?;
         Self::new_with_state(
             AssetState::Future { agent_id },
-            process,
-            region_id,
-            capacity,
-            commission_year,
-        )
-    }
-
-    /// Create a new mock asset
-    pub fn new_mock(
-        process: Rc<Process>,
-        region_id: RegionID,
-        commission_year: u32,
-        capacity: Capacity,
-    ) -> Result<Self> {
-        Self::new_with_state(
-            AssetState::Mock,
             process,
             region_id,
             capacity,
@@ -508,7 +487,7 @@ impl Hash for AssetRef {
     /// Hash asset based on the combination of process_id, region_id, commission_year and agent_id.
     /// In practice this means that, for assets with the same process_id, region_id and commission_year,
     /// Selected/Future/Commissioned/Decommissioned assets with the same agent_id will all hash the
-    /// same, which will be different from Candidate/Mock assets (which don't have an agent_id).
+    /// same, which will be different from Candidate assets (which don't have an agent_id).
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.process.id.hash(state);
         self.0.region_id.hash(state);
