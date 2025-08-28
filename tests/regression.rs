@@ -9,13 +9,27 @@ use tempfile::tempdir;
 
 const FLOAT_CMP_TOLERANCE: f64 = 1e-10;
 
-/// Regression tests for the example models.
+// The two functions below give spurious warnings about being unused because of the multiple `mod
+// regression` declarations in different test files, so we suppress the warnings manually
+
+/// Run a regression test for an example model
+#[allow(dead_code)]
 pub fn run_regression_test(example_name: &str) {
+    run_regression_test_debug_opt(example_name, false);
+}
+
+/// Run a regression test for an example model
+#[allow(dead_code)]
+pub fn run_regression_test_with_debug_files(example_name: &str) {
+    run_regression_test_debug_opt(example_name, true);
+}
+
+fn run_regression_test_debug_opt(example_name: &str, debug_model: bool) {
     std::env::set_var("MUSE2_LOG_LEVEL", "off");
 
     let tempdir = tempdir().unwrap();
     let output_dir = tempdir.path();
-    handle_example_run_command(example_name, Some(output_dir), true).unwrap();
+    handle_example_run_command(example_name, Some(output_dir), debug_model).unwrap();
 
     let test_data_dir = PathBuf::from(format!("tests/data/{example_name}"));
     compare_output_dirs(output_dir, &test_data_dir);
