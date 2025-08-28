@@ -3,5 +3,5 @@ GASDRV,Dry gas extraction,all,GASPRD,2020,2040
 GASPRC,Gas processing,all,GASNAT,2020,2040
 WNDFRM,Wind farm,all,ELCTRI,2020,2040
 GASCGT,Gas combined cycle turbine,all,ELCTRI,2020,2040
-RGASBR,Gas boiler,all,RSHEAT,2020,2040
-RELCHP,Heat pump,all,RSHEAT,2020,2040
+RGASBR,Gas boiler,all,heat,2020,2040
+RELCHP,Heat pump,all,heat,2020,2040

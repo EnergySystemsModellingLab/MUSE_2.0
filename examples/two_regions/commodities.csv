@@ -1,6 +1,6 @@
 id,description,type,time_slice_level
 electricity,Electricity,sed,daynight
 gas,Gas,sed,daynight
-heat,Heat,svd,daynight
+heat,Residential heat,svd,daynight
 wind,Wind,oth,daynight
 CO2f,CO2 emitted,oth,daynight

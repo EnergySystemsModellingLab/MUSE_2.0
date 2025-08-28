@@ -5,6 +5,6 @@ BIOPRO,Biomass production,all,BIOPRD,2020,2040
 BIOPLL,Biomass pelletiser,all,BIOPEL,2020,2040
 WNDFRM,Wind farm,all,ELCTRI,2020,2040
 GASCGT,Gas combined cycle turbine,all,ELCTRI,2020,2040
-RGASBR,Gas boiler,all,RSHEAT,2020,2040
-RELCHP,Heat pump,all,RSHEAT,2020,2040
-RBIOBL,Biomass boiler,all,RSHEAT,2020,2040
+RGASBR,Gas boiler,all,heat,2020,2040
+RELCHP,Heat pump,all,heat,2020,2040
+RBIOBL,Biomass boiler,all,heat,2020,2040
