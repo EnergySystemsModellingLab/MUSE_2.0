@@ -91,15 +91,15 @@ where
             missing_years
         );
 
-        let lcox_years = milestone_years
+        let npv_years = milestone_years
             .iter()
             .copied()
-            .filter(|year| agent_objectives[year] == ObjectiveType::LevelisedCostOfX)
+            .filter(|year| agent_objectives[year] == ObjectiveType::NetPresentValue)
             .collect_vec();
-        if !lcox_years.is_empty() {
+        if !npv_years.is_empty() {
             warn!(
-                "Agent {agent_id} is using LCOX in years {lcox_years:?}. \
-                Support for LCOX is currently experimental and may give bad results."
+                "Agent {agent_id} is using NPV in years {npv_years:?}. \
+                Support for NPV is currently experimental and may give bad results."
             );
         }
     }
