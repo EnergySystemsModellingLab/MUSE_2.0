@@ -108,6 +108,7 @@ impl ProcessFlow {
             .levies
             .get(&(region_id.clone(), year, time_slice.clone()))
             .unwrap();
+
         let apply_levy = match levy.balance_type {
             BalanceType::Net => true,
             BalanceType::Consumption => self.is_input(),

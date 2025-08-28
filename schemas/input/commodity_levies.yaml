@@ -4,7 +4,9 @@ description: |
 
 notes:
   - If an entry is included for a given combination of commodity and region, entries must be
-    provided covering all milestone years and time slices.
+    provided covering all milestone years and time slices. For those regions not explicitly included
+    for a given commodity, a zero levy/incentive is assumed. At least one levy/incentive entry must
+    be provided for at least one commodity.
 
 fields:
   - name: commodity_id
