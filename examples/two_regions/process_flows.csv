@@ -1,5 +1,5 @@
 process_id,commodity_id,regions,years,coeff
-gassupply1,gas,R1;R2,all,1
+gassupply,gas,R1;R2,all,1
 gasCCGT,gas,R1;R2,all,-1.67
 gasCCGT,electricity,R1;R2,all,1
 gasCCGT,CO2f,R1;R2,all,91.67

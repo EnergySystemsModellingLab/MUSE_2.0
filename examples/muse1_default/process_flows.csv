@@ -1,5 +1,5 @@
 process_id,commodity_id,regions,years,coeff,type,cost
-gassupply1,gas,R1,all,1,fixed,
+gassupply,gas,R1,all,1,fixed,
 gasCCGT,gas,R1,all,-1.67,fixed,
 gasCCGT,electricity,R1,all,1,fixed,
 gasCCGT,CO2f,R1,all,91.67,fixed,
