@@ -53,7 +53,9 @@ pub fn perform_agent_investment(
 
     for region_id in model.iter_regions() {
         let cur_commodities = &model.commodity_order[&(region_id.clone(), year)];
-        let mut input_prices =
+
+        // Prices to be used for input flows for commodities not produced in dispatch run
+        let mut external_prices =
             get_prices_for_commodities(prices, &model.time_slice_info, region_id, cur_commodities);
         let mut seen_commodities = Vec::new();
         for commodity_id in cur_commodities.iter() {
@@ -62,7 +64,11 @@ pub fn perform_agent_investment(
 
             // Remove prices for already-seen commodities
             for time_slice in model.time_slice_info.iter_ids() {
-                input_prices.remove(&(commodity_id.clone(), region_id.clone(), time_slice.clone()));
+                external_prices.remove(&(
+                    commodity_id.clone(),
+                    region_id.clone(),
+                    time_slice.clone(),
+                ));
             }
 
             // List of assets selected/retained for this region/commodity
@@ -130,7 +136,7 @@ pub fn perform_agent_investment(
             // their prices using previous values so that they don't appear free
             let solution = DispatchRun::new(model, &all_selected_assets, year)
                 .with_commodity_subset(&seen_commodities)
-                .with_input_prices(&input_prices)
+                .with_input_prices(&external_prices)
                 .run(
                     &format!("post {commodity_id}/{region_id} investment"),
                     writer,
