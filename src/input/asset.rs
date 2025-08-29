@@ -1,7 +1,7 @@
 //! Code for reading [Asset]s from a CSV file.
 use super::*;
 use crate::agent::AgentID;
-use crate::asset::Asset;
+use crate::asset::{Asset, AssetID};
 use crate::id::IDCollection;
 use crate::process::ProcessMap;
 use crate::region::RegionID;
@@ -69,22 +69,24 @@ fn read_assets_from_iter<I>(
 where
     I: Iterator<Item = AssetRaw>,
 {
-    iter.map(|asset| -> Result<_> {
-        let agent_id = agent_ids.get_id(&asset.agent_id)?;
-        let process = processes
-            .get(asset.process_id.as_str())
-            .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
-        let region_id = region_ids.get_id(&asset.region_id)?;
+    iter.enumerate()
+        .map(|(id, asset)| -> Result<_> {
+            let agent_id = agent_ids.get_id(&asset.agent_id)?;
+            let process = processes
+                .get(asset.process_id.as_str())
+                .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
+            let region_id = region_ids.get_id(&asset.region_id)?;
 
-        Asset::new_future(
-            agent_id.clone(),
-            Rc::clone(process),
-            region_id.clone(),
-            asset.capacity,
-            asset.commission_year,
-        )
-    })
-    .try_collect()
+            Asset::new_future(
+                AssetID(id as u32),
+                agent_id.clone(),
+                Rc::clone(process),
+                region_id.clone(),
+                asset.capacity,
+                asset.commission_year,
+            )
+        })
+        .try_collect()
 }
 
 #[cfg(test)]
@@ -115,6 +117,7 @@ mod tests {
             commission_year: 2010,
         };
         let asset_out = Asset::new_future(
+            AssetID(0),
             "agent1".into(),
             Rc::clone(processes.values().next().unwrap()),
             "GBR".into(),
