@@ -1,4 +1,4 @@
 agent_id,objective_type,years
-A1_RES,lcox,all
-A1_PWR,lcox,all
-A1_GAS,lcox,all
+residentialagent,lcox,all
+poweragent,lcox,all
+gasagent,lcox,all

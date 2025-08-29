@@ -1,7 +1,7 @@
 process_id,region_id,agent_id,capacity,commission_year
-gasextraction,GBR,A0_GEX,4002.26,2020
-gasprocessing,GBR,A0_GPR,3782.13,2020
-windfarm,GBR,A0_ELC,3.964844,2020
-gasCCGT,GBR,A0_ELC,2.43,2020
-gasboiler,GBR,A0_RES,2900.0,2020
-heatpump,GBR,A0_RES,399.98,2020
+gasextraction,GBR,gasextractors,4002.26,2020
+gasprocessing,GBR,gasprocessors,3782.13,2020
+windfarm,GBR,electricityagent,3.964844,2020
+gasCCGT,GBR,electricityagent,2.43,2020
+gasboiler,GBR,residentialagent,2900.0,2020
+heatpump,GBR,residentialagent,399.98,2020
