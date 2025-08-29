@@ -17,7 +17,7 @@ use std::slice;
 
 /// A unique identifier for an asset
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct AssetID(u32);
+pub struct AssetID(pub u32);
 
 /// The state of an asset
 ///
@@ -50,6 +50,8 @@ pub enum AssetState {
     },
     /// The asset is planned for commissioning in the future
     Future {
+        /// The ID of the asset
+        id: AssetID,
         /// The ID of the agent that will own the asset
         agent_id: AgentID,
     },
@@ -98,6 +100,7 @@ impl Asset {
 
     /// Create a new future asset
     pub fn new_future(
+        id: AssetID,
         agent_id: AgentID,
         process: Rc<Process>,
         region_id: RegionID,
@@ -106,7 +109,7 @@ impl Asset {
     ) -> Result<Self> {
         check_capacity_valid_for_asset(capacity)?;
         Self::new_with_state(
-            AssetState::Future { agent_id },
+            AssetState::Future { id, agent_id },
             process,
             region_id,
             capacity,
@@ -334,7 +337,7 @@ impl Asset {
         match &self.state {
             AssetState::Commissioned { agent_id, .. } => Some(agent_id),
             AssetState::Decommissioned { agent_id, .. } => Some(agent_id),
-            AssetState::Future { agent_id } => Some(agent_id),
+            AssetState::Future { agent_id, .. } => Some(agent_id),
             AssetState::Selected { agent_id } => Some(agent_id),
             _ => None,
         }
@@ -379,9 +382,9 @@ impl Asset {
     }
 
     /// Commission a future asset
-    fn commission_future(&mut self, id: AssetID) {
-        let agent_id = match &self.state {
-            AssetState::Future { agent_id } => agent_id.clone(),
+    fn commission_future(&mut self) {
+        let (id, agent_id) = match &self.state {
+            AssetState::Future { id, agent_id } => (*id, agent_id.clone()),
             _ => panic!("commission_future can only be called on Future assets"),
         };
         self.state = AssetState::Commissioned { id, agent_id };
@@ -561,9 +564,9 @@ impl AssetPool {
 
         Self {
             active: Vec::new(),
-            future: assets,
+            future: assets.clone(),
             decommissioned: Vec::new(),
-            next_id: 0,
+            next_id: assets.len() as u32,
         }
     }
 
@@ -583,8 +586,7 @@ impl AssetPool {
 
         // Move assets from future to active
         for mut asset in self.future.drain(0..count) {
-            asset.commission_future(AssetID(self.next_id));
-            self.next_id += 1;
+            asset.commission_future();
             self.active.push(asset.into());
         }
     }
