@@ -98,7 +98,7 @@ pub fn run(
 
             // Check if prices have converged
             let prices_stable =
-                new_prices.within_tolerance(&prices, model.parameters.price_tolerance);
+                prices.within_tolerance(&new_prices, model.parameters.price_tolerance);
 
             // Update prices and reduced costs for the next iteration
             prices = new_prices;

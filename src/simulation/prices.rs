@@ -181,7 +181,7 @@ impl CommodityPrices {
             .copied()
     }
 
-    /// Check if prices are within tolerance of another price set
+    /// Check if prices are within relative tolerance of another price set
     pub fn within_tolerance(&self, other: &Self, tolerance: f64) -> bool {
         if self.0.len() != other.0.len() {
             return false;
@@ -189,7 +189,8 @@ impl CommodityPrices {
 
         for (key, &price) in &self.0 {
             if let Some(&other_price) = other.0.get(key) {
-                if (price.value() - other_price.value()).abs() > tolerance {
+                let abs_diff = (price.value() - other_price.value()).abs();
+                if price.value() > 0.0 && abs_diff / price.value() > tolerance {
                     return false;
                 }
             } else {
