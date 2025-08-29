@@ -4,11 +4,12 @@ use crate::commodity::CommodityID;
 use crate::process::{Process, ProcessFlow, ProcessID, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
-use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity};
+use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity, MoneyPerFlow};
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
 use itertools::{chain, Itertools};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::ops::{Deref, RangeInclusive};
 use std::rc::Rc;
@@ -230,6 +231,27 @@ impl Asset {
             .sum();
 
         self.process_parameter.variable_operating_cost + flows_cost
+    }
+
+    /// Get the cost of input flows using the commodity prices in `input_prices`
+    pub fn get_input_cost_from_prices(
+        &self,
+        input_prices: &HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
+        time_slice: &TimeSliceID,
+    ) -> MoneyPerActivity {
+        self.iter_flows()
+            .filter_map(|flow| {
+                if !flow.is_input() {
+                    return None;
+                }
+                let price = *input_prices.get(&(
+                    flow.commodity.id.clone(),
+                    self.region_id.clone(),
+                    time_slice.clone(),
+                ))?;
+                Some(-flow.coeff * price)
+            })
+            .sum()
     }
 
     /// Maximum activity for this asset
@@ -720,19 +742,100 @@ impl<'a, I> AssetIterator<'a> for I where I: Iterator<Item = &'a AssetRef> + Siz
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixture::{assert_error, process, time_slice};
+    use crate::commodity::{Commodity, CommodityID, CommodityType};
+    use crate::fixture::{
+        assert_error, commodity_id, process, process_parameter_map, region_id, time_slice,
+    };
     use crate::process::{
-        Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessParameter, ProcessParameterMap,
+        FlowType, Process, ProcessActivityLimitsMap, ProcessFlow, ProcessFlowsMap, ProcessID,
+        ProcessParameter, ProcessParameterMap,
     };
+    use crate::region::RegionID;
+    use crate::time_slice::{TimeSliceID, TimeSliceLevel};
     use crate::units::{
-        ActivityPerCapacity, Dimensionless, MoneyPerActivity, MoneyPerCapacity,
-        MoneyPerCapacityPerYear,
+        ActivityPerCapacity, Capacity, Dimensionless, FlowPerActivity, MoneyPerActivity,
+        MoneyPerCapacity, MoneyPerCapacityPerYear, MoneyPerFlow,
     };
-    use indexmap::IndexSet;
+    use indexmap::{IndexMap, IndexSet};
     use itertools::{assert_equal, Itertools};
     use rstest::{fixture, rstest};
+    use std::collections::HashMap;
     use std::iter;
-    use std::ops::RangeInclusive;
+    use std::rc::Rc;
+
+    #[rstest]
+    fn test_get_input_cost_from_prices(
+        region_id: RegionID,
+        commodity_id: CommodityID,
+        mut process_parameter_map: ProcessParameterMap,
+        time_slice: TimeSliceID,
+    ) {
+        // Create a commodity
+        let commodity = Rc::new(Commodity {
+            id: commodity_id.clone(),
+            description: "Test commodity".to_string(),
+            kind: CommodityType::ServiceDemand,
+            time_slice_level: TimeSliceLevel::Annual,
+            levies: Default::default(),
+            demand: Default::default(),
+        });
+
+        // Create a process flow (input)
+        let flow = ProcessFlow {
+            commodity: commodity.clone(),
+            coeff: FlowPerActivity(-2.0), // input
+            kind: FlowType::Fixed,
+            cost: MoneyPerFlow(0.0),
+        };
+
+        // Insert process parameter for year 2020
+        process_parameter_map.insert(
+            (region_id.clone(), 2020),
+            Rc::new(ProcessParameter {
+                capital_cost: Default::default(),
+                fixed_operating_cost: Default::default(),
+                variable_operating_cost: Default::default(),
+                lifetime: 1,
+                discount_rate: Default::default(),
+                capacity_to_activity: ActivityPerCapacity(1.0),
+            }),
+        );
+
+        // Create flows map
+        let mut flows: HashMap<(RegionID, u32), IndexMap<CommodityID, ProcessFlow>> =
+            Default::default();
+        let mut flow_map: IndexMap<CommodityID, ProcessFlow> = Default::default();
+        flow_map.insert(commodity_id.clone(), flow);
+        flows.insert((region_id.clone(), 2020), flow_map);
+
+        let mut regions = indexmap::IndexSet::new();
+        regions.insert(region_id.clone());
+        let process = Rc::new(Process {
+            id: ProcessID::from("PROC1"),
+            description: "Test process".to_string(),
+            flows,
+            parameters: process_parameter_map,
+            regions,
+            primary_output: Some(commodity_id.clone()),
+            years: vec![2020],
+            activity_limits: Default::default(),
+        });
+
+        // Create asset
+        let asset = Asset::new_candidate(process, region_id.clone(), Capacity(1.0), 2020).unwrap();
+
+        // Set input prices
+        let mut input_prices = HashMap::new();
+        input_prices.insert(
+            (commodity_id.clone(), region_id.clone(), time_slice.clone()),
+            MoneyPerFlow(3.0),
+        );
+
+        // Call function
+        let cost = asset.get_input_cost_from_prices(&input_prices, &time_slice);
+        // Should be -coeff * price = -(-2.0) * 3.0 = 6.0
+        assert_eq!(cost.0, 6.0);
+    }
 
     #[rstest]
     #[case(Capacity(0.01))]

@@ -13,6 +13,7 @@ use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
 use log::debug;
+use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 
 mod constraints;
@@ -174,8 +175,25 @@ pub fn solve_optimal(model: highs::Model) -> Result<highs::SolvedModel> {
     Ok(solved)
 }
 
-/// Provides the interface for running the dispatch optimisation.
+/// Sanity check for input prices.
 ///
+/// Input prices should only be provided for commodities for which there will be no commodity
+/// balance constraint.
+fn check_input_prices(
+    input_prices: &HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
+    commodities: &[CommodityID],
+) {
+    let commodities_set: HashSet<_> = commodities.iter().collect();
+    let has_prices_for_commodity_subset = input_prices
+        .keys()
+        .any(|(commodity_id, _, _)| commodities_set.contains(commodity_id));
+    assert!(
+        !has_prices_for_commodity_subset,
+        "Input prices were included for commodities that are being modelled, which is not allowed."
+    )
+}
+
+/// Provides the interface for running the dispatch optimisation.
 ///
 /// For a detailed description, please see the [dispatch optimisation formulation][1].
 ///
@@ -185,6 +203,7 @@ pub struct DispatchRun<'model, 'run> {
     existing_assets: &'run [AssetRef],
     candidate_assets: &'run [AssetRef],
     commodities: &'run [CommodityID],
+    input_prices: Option<&'run HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>>,
     year: u32,
 }
 
@@ -196,6 +215,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             existing_assets: assets,
             candidate_assets: &[],
             commodities: &[],
+            input_prices: None,
             year,
         }
     }
@@ -218,6 +238,17 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
         }
     }
 
+    /// Explicitly provide prices for certain input commodities
+    pub fn with_input_prices(
+        self,
+        input_prices: &'run HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
+    ) -> Self {
+        Self {
+            input_prices: Some(input_prices),
+            ..self
+        }
+    }
+
     /// Perform the dispatch optimisation.
     ///
     /// # Arguments
@@ -227,7 +258,8 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
     ///
     /// # Returns
     ///
-    /// A solution containing new commodity flows for assets and prices for (some) commodities.
+    /// A solution containing new commodity flows for assets and prices for (some) commodities or an
+    /// error.
     pub fn run(self, run_description: &str, writer: &mut DataWriter) -> Result<Solution<'model>> {
         let solution = self.run_no_save()?;
         writer.write_dispatch_debug_info(self.year, run_description, &solution)?;
@@ -245,6 +277,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             &mut problem,
             &mut variables,
             &self.model.time_slice_info,
+            self.input_prices,
             self.existing_assets,
             self.year,
         );
@@ -252,6 +285,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             &mut problem,
             &mut variables,
             &self.model.time_slice_info,
+            self.input_prices,
             self.candidate_assets,
             self.year,
         );
@@ -264,6 +298,9 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             all_commodities = self.model.commodities.keys().cloned().collect();
             &all_commodities
         };
+        if let Some(input_prices) = self.input_prices {
+            check_input_prices(input_prices, commodities);
+        }
 
         // Add constraints
         let all_assets = chain(self.existing_assets.iter(), self.candidate_assets.iter());
@@ -301,12 +338,14 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
 /// * `problem` - The optimisation problem
 /// * `variables` - The variable map
 /// * `time_slice_info` - Information about assets
+/// * `input_prices` - Optional explicit prices for input commodities
 /// * `assets` - Assets to include
 /// * `year` - Current milestone year
 fn add_variables(
     problem: &mut Problem,
     variables: &mut VariableMap,
     time_slice_info: &TimeSliceInfo,
+    input_prices: Option<&HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>>,
     assets: &[AssetRef],
     year: u32,
 ) -> Range<usize> {
@@ -314,7 +353,7 @@ fn add_variables(
     let start = problem.num_cols();
 
     for (asset, time_slice) in iproduct!(assets.iter(), time_slice_info.iter_ids()) {
-        let coeff = calculate_cost_coefficient(asset, year, time_slice);
+        let coeff = calculate_cost_coefficient(asset, year, time_slice, input_prices);
         let var = problem.add_column(coeff.value(), 0.0..);
         let key = (asset.clone(), time_slice.clone());
         let existing = variables.0.insert(key, var).is_some();
@@ -324,11 +363,31 @@ fn add_variables(
     start..problem.num_cols()
 }
 
-/// Calculate the cost coefficient for a decision variable
+/// Calculate the cost coefficient for a decision variable.
+///
+/// Normally, the cost coefficient is the same as the asset's operating costs for the given year and
+/// time slice. If `input_prices` is provided then those prices are added to the flow costs for the
+/// relevant commodities, if they are input flows for the asset.
+///
+/// # Arguments
+///
+/// * `asset` - The asset to calculate the coefficient for
+/// * `year` - The current milestone year
+/// * `time_slice` - The time slice to which this coefficient applies
+/// * `input_prices` - Optional map of prices to include for input commodities
+///
+/// # Returns
+///
+/// The cost coefficient to be used for the relevant decision variable.
 fn calculate_cost_coefficient(
     asset: &Asset,
     year: u32,
     time_slice: &TimeSliceID,
+    input_prices: Option<&HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>>,
 ) -> MoneyPerActivity {
-    asset.get_operating_cost(year, time_slice)
+    let opex = asset.get_operating_cost(year, time_slice);
+    let input_cost = input_prices
+        .map(|prices| asset.get_input_cost_from_prices(prices, time_slice))
+        .unwrap_or_default();
+    opex + input_cost
 }
