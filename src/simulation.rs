@@ -51,7 +51,7 @@ pub fn run(
     // Run dispatch optimisation
     info!("Running dispatch optimisation...");
     let next_year = year_iter.peek().copied();
-    let (flow_map, prices, mut reduced_costs) =
+    let (flow_map, mut prices, mut reduced_costs) =
         run_dispatch_for_year(&model, assets.as_slice(), year, next_year, &mut writer)?;
 
     // Write results of dispatch optimisation to file
@@ -93,8 +93,9 @@ pub fn run(
 
             // Run dispatch optimisation to get updated reduced costs for the next iteration
             info!("Running dispatch optimisation...");
-            let (_flow_map, _prices, new_reduced_costs) =
+            let (_flow_map, new_prices, new_reduced_costs) =
                 run_dispatch_for_year(&model, &selected_assets, year, Some(year), &mut writer)?;
+            prices = new_prices;
             reduced_costs = new_reduced_costs;
 
             // Clear context
