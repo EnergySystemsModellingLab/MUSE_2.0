@@ -371,57 +371,28 @@ pub fn build_and_validate_commodity_graphs_for_model(
 
     // Validate graphs at all time slice levels (taking into account process availability and demand)
     for ((region_id, year), base_graph) in &commodity_graphs {
-        // Annual validation
-        let annual_graph = prepare_commodities_graph_for_validation(
-            base_graph,
-            processes,
-            commodities,
-            time_slice_info,
-            region_id,
-            *year,
-            &TimeSliceSelection::Annual,
-        );
-        validate_commodities_graph(&annual_graph, commodities, TimeSliceLevel::Annual)
-            .with_context(|| {
-                format!("Error validating commodity graph for {region_id} in {year}")
-            })?;
-
-        // Seasonal validation
-        for season in time_slice_info.iter_selections_at_level(TimeSliceLevel::Season) {
-            let seasonal_graph = prepare_commodities_graph_for_validation(
-                base_graph,
-                processes,
-                commodities,
-                time_slice_info,
-                region_id,
-                *year,
-                &season,
-            );
-            validate_commodities_graph(&seasonal_graph, commodities, TimeSliceLevel::Season)
-                .with_context(|| {
+        for ts_level in [
+            TimeSliceLevel::Annual,
+            TimeSliceLevel::Season,
+            TimeSliceLevel::DayNight,
+        ] {
+            for ts_selection in time_slice_info.iter_selections_at_level(ts_level) {
+                let graph = prepare_commodities_graph_for_validation(
+                    base_graph,
+                    processes,
+                    commodities,
+                    time_slice_info,
+                    region_id,
+                    *year,
+                    &ts_selection,
+                );
+                validate_commodities_graph(&graph, commodities, ts_level).with_context(|| {
                     format!(
-                        "Error validating commodity graph for {region_id} in {year} in {season}"
+                        "Error validating commodity graph for \
+                            {region_id} in {year} in {ts_selection}"
                     )
                 })?;
-        }
-
-        // DayNight validation
-        for time_slice in time_slice_info.iter_selections_at_level(TimeSliceLevel::DayNight) {
-            let daynight_graph = prepare_commodities_graph_for_validation(
-                base_graph,
-                processes,
-                commodities,
-                time_slice_info,
-                region_id,
-                *year,
-                &time_slice,
-            );
-            validate_commodities_graph(&daynight_graph, commodities, TimeSliceLevel::DayNight)
-                .with_context(|| {
-                    format!(
-                        "Error validating commodity graph for {region_id} in {year} in {time_slice}"
-                    )
-                })?;
+            }
         }
     }
 
