@@ -1,4 +1,4 @@
 id,description,regions,decision_rule
-A1_RES,Residential sector agent,R1;R2,single
-A1_PWR,Power sector agent,R1;R2,single
-A1_GAS,Gas sector agent,R1;R2,single
+residentialagent,Residential sector agent,R1;R2,single
+poweragent,Power sector agent,R1;R2,single
+gasagent,Gas sector agent,R1;R2,single

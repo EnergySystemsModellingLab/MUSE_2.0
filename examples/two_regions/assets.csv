@@ -1,5 +1,5 @@
 agent_id,process_id,region_id,commission_year,capacity
-A1_GAS,gassupply1,R1,2020,24
-A1_RES,gasboiler,R1,2020,19
-A1_GAS,gassupply1,R2,2020,24
-A1_RES,gasboiler,R2,2020,19
+gasagent,gassupply,R1,2020,24
+residentialagent,gasboiler,R1,2020,19
+gasagent,gassupply,R2,2020,24
+residentialagent,gasboiler,R2,2020,19
