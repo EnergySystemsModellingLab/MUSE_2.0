@@ -87,7 +87,7 @@ pub struct ModelFile {
     /// The maximum number of iterations to run the "ironing out" step of agent investment for
     #[serde(default = "default_max_ironing_out_iterations")]
     pub max_ironing_out_iterations: u32,
-    /// The tolerance for price convergence in the ironing out loop
+    /// The relative tolerance for price convergence in the ironing out loop
     #[serde(default = "default_price_tolerance")]
     pub price_tolerance: f64,
 }

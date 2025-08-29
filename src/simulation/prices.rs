@@ -185,10 +185,6 @@ impl CommodityPrices {
     ///
     /// Both objects must have exactly the same set of keys, otherwise it will panic.
     pub fn within_tolerance(&self, other: &Self, tolerance: f64) -> bool {
-        if self.0.len() != other.0.len() {
-            return false;
-        }
-
         for (key, &price) in &self.0 {
             let other_price = other.0.get(key).unwrap();
             let abs_diff = (price.value() - other_price.value()).abs();
