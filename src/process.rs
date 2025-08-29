@@ -37,7 +37,7 @@ pub type ProcessFlowsMap = HashMap<(RegionID, u32), IndexMap<CommodityID, Proces
 /// Represents a process within the simulation
 #[derive(PartialEq, Debug)]
 pub struct Process {
-    /// A unique identifier for the process (e.g. GASDRV)
+    /// A unique identifier for the process (e.g. gasextraction)
     pub id: ProcessID,
     /// A human-readable description for the process (e.g. dry gas extraction)
     pub description: String,

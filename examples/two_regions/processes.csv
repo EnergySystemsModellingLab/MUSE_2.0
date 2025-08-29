@@ -1,6 +1,6 @@
 id,description,regions,primary_output,start_year,end_year
 gassupply,Gas supply,all,gas,1990,2050
-gasCCGT,Gas CCGT,all,electricity,1990,2050
-windturbine,Wind turbine,all,electricity,1990,2050
+gasCCGT,Gas combined cycle gas turbine,all,electricity,1990,2050
+windfarm,Wind farm,all,electricity,1990,2050
 gasboiler,Gas boiler,all,heat,1990,2050
 heatpump,Heat pump,all,heat,1990,2050
