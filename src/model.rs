@@ -37,7 +37,8 @@ macro_rules! define_param_default {
 define_unit_param_default!(default_candidate_asset_capacity, Capacity, 0.0001);
 define_unit_param_default!(default_capacity_limit_factor, Dimensionless, 0.1);
 define_unit_param_default!(default_value_of_lost_load, MoneyPerFlow, 1e9);
-define_param_default!(default_max_ironing_out_iterations, u32, 2);
+define_param_default!(default_max_ironing_out_iterations, u32, 10);
+define_param_default!(default_price_tolerance, f64, 1e-6);
 
 /// Model definition
 pub struct Model {
@@ -86,6 +87,9 @@ pub struct ModelFile {
     /// The maximum number of iterations to run the "ironing out" step of agent investment for
     #[serde(default = "default_max_ironing_out_iterations")]
     pub max_ironing_out_iterations: u32,
+    /// The tolerance for price convergence in the ironing out loop
+    #[serde(default = "default_price_tolerance")]
+    pub price_tolerance: f64,
 }
 
 /// The strategy used for calculating commodity prices

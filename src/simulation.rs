@@ -95,15 +95,31 @@ pub fn run(
             info!("Running dispatch optimisation...");
             let (_flow_map, new_prices, new_reduced_costs) =
                 run_dispatch_for_year(&model, &selected_assets, year, Some(year), &mut writer)?;
+
+            // Check if prices have converged
+            let prices_stable =
+                new_prices.within_tolerance(&prices, model.parameters.price_tolerance);
+
+            // Update prices and reduced costs for the next iteration
             prices = new_prices;
             reduced_costs = new_reduced_costs;
 
-            // Clear context
+            // Clear writer context
             writer.clear_debug_context();
 
-            // Break
+            // Break early if prices have converged
+            if prices_stable {
+                info!("Prices converged after {} iterations", ironing_out_iter + 1);
+                break selected_assets;
+            }
+
+            // Break if max iterations reached
             ironing_out_iter += 1;
             if ironing_out_iter == model.parameters.max_ironing_out_iterations {
+                info!(
+                    "Max ironing out iterations ({}) reached",
+                    model.parameters.max_ironing_out_iterations
+                );
                 break selected_assets;
             }
         };
@@ -120,16 +136,17 @@ pub fn run(
         // Run dispatch optimisation
         info!("Running final dispatch optimisation for year {year}...");
         let next_year = year_iter.peek().copied();
-        let (flow_map, prices, new_reduced_costs) =
+        let (flow_map, new_prices, new_reduced_costs) =
             run_dispatch_for_year(&model, assets.as_slice(), year, next_year, &mut writer)?;
 
         // Write results of dispatch optimisation to file
         writer.write_flows(year, &flow_map)?;
-        writer.write_prices(year, &prices)?;
+        writer.write_prices(year, &new_prices)?;
         writer.write_debug_reduced_costs(year, &new_reduced_costs)?;
 
-        // Reduced costs for the next year
+        // Reduced cost and prices for the next year
         reduced_costs = new_reduced_costs;
+        prices = new_prices;
     }
 
     writer.flush()?;

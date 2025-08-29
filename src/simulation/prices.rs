@@ -180,6 +180,24 @@ impl CommodityPrices {
             .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
             .copied()
     }
+
+    /// Check if prices are within tolerance of another price set
+    pub fn within_tolerance(&self, other: &Self, tolerance: f64) -> bool {
+        if self.0.len() != other.0.len() {
+            return false;
+        }
+
+        for (key, &price) in &self.0 {
+            if let Some(&other_price) = other.0.get(key) {
+                if (price.value() - other_price.value()).abs() > tolerance {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 impl<'a> FromIterator<(&'a CommodityID, &'a RegionID, &'a TimeSliceID, MoneyPerFlow)>
