@@ -363,7 +363,22 @@ fn add_variables(
     start..problem.num_cols()
 }
 
-/// Calculate the cost coefficient for a decision variable
+/// Calculate the cost coefficient for a decision variable.
+///
+/// Normally, the cost coefficient is the same as the asset's operating costs for the given year and
+/// time slice. If `input_prices` is provided then those prices are added to the flow costs for the
+/// relevant commodities, if they are input flows for the asset.
+///
+/// # Arguments
+///
+/// * `asset` - The asset to calculate the coefficient for
+/// * `year` - The current milestone year
+/// * `time_slice` - The time slice to which this coefficient applies
+/// * `input_prices` - Optional map of prices to include for input commodities
+///
+/// # Returns
+///
+/// The cost coefficient to be used for the relevant decision variable.
 fn calculate_cost_coefficient(
     asset: &Asset,
     year: u32,
