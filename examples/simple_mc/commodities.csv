@@ -1,6 +1,6 @@
 id,description,type,time_slice_level
-GASPRD,Gas produced,sed,season
-GASNAT,Natural gas,sed,season
+gasraw,Gas produced,sed,season
+gas,Natural gas,sed,season
 BIOPRD,Biomass produced,sed,season
 BIOPEL,Biomass pellets,sed,season
 electricity,Electricity,sed,daynight

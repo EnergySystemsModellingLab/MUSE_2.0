@@ -1,6 +1,6 @@
 agent_id,commodity_id,years,commodity_portion
-A0_GEX,GASPRD,all,1
-A0_GPR,GASNAT,all,1
+A0_GEX,gasraw,all,1
+A0_GPR,gas,all,1
 A0_BPD,BIOPRD,all,1
 A0_BPL,BIOPEL,all,1
 A0_ELC,electricity,all,1
