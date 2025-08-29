@@ -182,18 +182,24 @@ impl CommodityPrices {
     }
 
     /// Check if prices are within relative tolerance of another price set
+    ///
+    /// Both objects must have exactly the same set of keys, otherwise it will panic.
     pub fn within_tolerance(&self, other: &Self, tolerance: f64) -> bool {
         if self.0.len() != other.0.len() {
             return false;
         }
 
         for (key, &price) in &self.0 {
-            if let Some(&other_price) = other.0.get(key) {
-                let abs_diff = (price.value() - other_price.value()).abs();
-                if price.value() > 0.0 && abs_diff / price.value() > tolerance {
+            let other_price = other.0.get(key).unwrap();
+            let abs_diff = (price.value() - other_price.value()).abs();
+
+            // Check if prices are within tolerance
+            if price.value() > 0.0 {
+                if abs_diff / price.value() > tolerance {
                     return false;
                 }
-            } else {
+            } else if other_price.value() != 0.0 {
+                // Current price is zero but other price is nonzero
                 return false;
             }
         }
@@ -324,4 +330,56 @@ fn reduced_costs_for_existing<'a>(
 
         ((asset.clone(), time_slice.clone()), reduced_cost)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commodity::CommodityID;
+    use crate::region::RegionID;
+    use crate::time_slice::TimeSliceID;
+
+    #[test]
+    fn test_within_tolerance() {
+        let mut prices1 = CommodityPrices::default();
+        let mut prices2 = CommodityPrices::default();
+
+        let commodity = CommodityID::new("test_commodity");
+        let region = RegionID::new("test_region");
+        let time_slice: TimeSliceID = "summer.day".into();
+
+        prices1.insert(&commodity, &region, &time_slice, MoneyPerFlow(100.0));
+        prices2.insert(&commodity, &region, &time_slice, MoneyPerFlow(105.0));
+
+        // 5% difference should be within 0.1 tolerance
+        assert!(prices1.within_tolerance(&prices2, 0.1));
+
+        // 5% difference should NOT be within 0.01 tolerance
+        assert!(!prices1.within_tolerance(&prices2, 0.01));
+    }
+
+    #[test]
+    fn test_within_tolerance_zero_prices() {
+        let mut prices1 = CommodityPrices::default();
+        let mut prices2 = CommodityPrices::default();
+
+        let commodity = CommodityID::new("test_commodity");
+        let region = RegionID::new("test_region");
+        let time_slice: TimeSliceID = "winter.night".into();
+
+        // Both zero - should be within tolerance
+        prices1.insert(&commodity, &region, &time_slice, MoneyPerFlow(0.0));
+        prices2.insert(&commodity, &region, &time_slice, MoneyPerFlow(0.0));
+        assert!(prices1.within_tolerance(&prices2, 0.01));
+
+        // Zero to nonzero - should NOT be within tolerance
+        prices1.insert(&commodity, &region, &time_slice, MoneyPerFlow(0.0));
+        prices2.insert(&commodity, &region, &time_slice, MoneyPerFlow(10.0));
+        assert!(!prices1.within_tolerance(&prices2, 0.01));
+
+        // Nonzero to zero - should NOT be within tolerance
+        prices1.insert(&commodity, &region, &time_slice, MoneyPerFlow(10.0));
+        prices2.insert(&commodity, &region, &time_slice, MoneyPerFlow(0.0));
+        assert!(!prices1.within_tolerance(&prices2, 0.01));
+    }
 }
