@@ -270,15 +270,6 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
     ///
     /// This is an internal function as callers always want to save results.
     fn run_no_save(&self) -> Result<Solution<'model>> {
-        // Construct an empty map of prices if the user hasn't provided any
-        let empty_price_map;
-        let input_prices = if let Some(prices) = self.input_prices {
-            prices
-        } else {
-            empty_price_map = HashMap::new();
-            &empty_price_map
-        };
-
         // Set up problem
         let mut problem = Problem::default();
         let mut variables = VariableMap::default();
@@ -286,7 +277,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             &mut problem,
             &mut variables,
             &self.model.time_slice_info,
-            input_prices,
+            self.input_prices,
             self.existing_assets,
             self.year,
         );
@@ -294,7 +285,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             &mut problem,
             &mut variables,
             &self.model.time_slice_info,
-            input_prices,
+            self.input_prices,
             self.candidate_assets,
             self.year,
         );
@@ -307,7 +298,9 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             all_commodities = self.model.commodities.keys().cloned().collect();
             &all_commodities
         };
-        check_input_prices(input_prices, commodities);
+        if let Some(input_prices) = self.input_prices {
+            check_input_prices(input_prices, commodities);
+        }
 
         // Add constraints
         let all_assets = chain(self.existing_assets.iter(), self.candidate_assets.iter());
@@ -352,7 +345,7 @@ fn add_variables(
     problem: &mut Problem,
     variables: &mut VariableMap,
     time_slice_info: &TimeSliceInfo,
-    input_prices: &HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
+    input_prices: Option<&HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>>,
     assets: &[AssetRef],
     year: u32,
 ) -> Range<usize> {
@@ -375,9 +368,11 @@ fn calculate_cost_coefficient(
     asset: &Asset,
     year: u32,
     time_slice: &TimeSliceID,
-    input_prices: &HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>,
+    input_prices: Option<&HashMap<(CommodityID, RegionID, TimeSliceID), MoneyPerFlow>>,
 ) -> MoneyPerActivity {
     let opex = asset.get_operating_cost(year, time_slice);
-    let input_cost = asset.get_input_cost_from_prices(input_prices, time_slice);
+    let input_cost = input_prices
+        .map(|prices| asset.get_input_cost_from_prices(prices, time_slice))
+        .unwrap_or_default();
     opex + input_cost
 }
