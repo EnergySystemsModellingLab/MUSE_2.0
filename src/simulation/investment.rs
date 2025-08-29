@@ -62,7 +62,11 @@ pub fn perform_agent_investment(
             seen_commodities.push(commodity_id.clone());
             let commodity = &model.commodities[commodity_id];
 
-            // Remove prices for already-seen commodities
+            // Remove prices for already-seen commodities. Commodities which are produced by at
+            // least one asset in the dispatch run will have prices produced endogenously (via the
+            // commodity balance constraints), but commodities for which investment has not yet been
+            // performed will, by definition, not have any producers. For these, we provide prices
+            // from the previous dispatch run otherwise they will appear to be free to the model.
             for time_slice in model.time_slice_info.iter_ids() {
                 external_prices.remove(&(
                     commodity_id.clone(),
