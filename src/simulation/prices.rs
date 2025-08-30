@@ -6,7 +6,7 @@ use crate::process::ProcessFlow;
 use crate::region::RegionID;
 use crate::simulation::optimisation::Solution;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{MoneyPerActivity, MoneyPerFlow};
+use crate::units::{Dimensionless, MoneyPerActivity, MoneyPerFlow};
 use indexmap::IndexMap;
 use itertools::iproduct;
 use std::collections::{BTreeMap, HashMap};
@@ -184,17 +184,17 @@ impl CommodityPrices {
     /// Check if prices are within relative tolerance of another price set
     ///
     /// Both objects must have exactly the same set of keys, otherwise it will panic.
-    pub fn within_tolerance(&self, other: &Self, tolerance: f64) -> bool {
+    pub fn within_tolerance(&self, other: &Self, tolerance: Dimensionless) -> bool {
         for (key, &price) in &self.0 {
             let other_price = other.0.get(key).unwrap();
-            let abs_diff = (price.value() - other_price.value()).abs();
+            let abs_diff = (price - *other_price).abs();
 
             // Check if prices are within tolerance
-            if price.value() > 0.0 {
-                if abs_diff / price.value() > tolerance {
+            if price > MoneyPerFlow(0.0) {
+                if abs_diff / price > tolerance {
                     return false;
                 }
-            } else if other_price.value() != 0.0 {
+            } else if *other_price != MoneyPerFlow(0.0) {
                 // Current price is zero but other price is nonzero
                 return false;
             }
@@ -348,10 +348,10 @@ mod tests {
         prices2.insert(&commodity, &region, &time_slice, MoneyPerFlow(105.0));
 
         // 5% difference should be within 0.1 tolerance
-        assert!(prices1.within_tolerance(&prices2, 0.1));
+        assert!(prices1.within_tolerance(&prices2, Dimensionless(0.1)));
 
         // 5% difference should NOT be within 0.01 tolerance
-        assert!(!prices1.within_tolerance(&prices2, 0.01));
+        assert!(!prices1.within_tolerance(&prices2, Dimensionless(0.01)));
     }
 
     #[test]
@@ -366,16 +366,16 @@ mod tests {
         // Both zero - should be within tolerance
         prices1.insert(&commodity, &region, &time_slice, MoneyPerFlow(0.0));
         prices2.insert(&commodity, &region, &time_slice, MoneyPerFlow(0.0));
-        assert!(prices1.within_tolerance(&prices2, 0.01));
+        assert!(prices1.within_tolerance(&prices2, Dimensionless(0.01)));
 
         // Zero to nonzero - should NOT be within tolerance
         prices1.insert(&commodity, &region, &time_slice, MoneyPerFlow(0.0));
         prices2.insert(&commodity, &region, &time_slice, MoneyPerFlow(10.0));
-        assert!(!prices1.within_tolerance(&prices2, 0.01));
+        assert!(!prices1.within_tolerance(&prices2, Dimensionless(0.01)));
 
         // Nonzero to zero - should NOT be within tolerance
         prices1.insert(&commodity, &region, &time_slice, MoneyPerFlow(10.0));
         prices2.insert(&commodity, &region, &time_slice, MoneyPerFlow(0.0));
-        assert!(!prices1.within_tolerance(&prices2, 0.01));
+        assert!(!prices1.within_tolerance(&prices2, Dimensionless(0.01)));
     }
 }
