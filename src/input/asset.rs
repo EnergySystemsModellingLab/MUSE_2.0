@@ -8,7 +8,6 @@ use crate::region::RegionID;
 use crate::units::Capacity;
 use anyhow::{Context, Result};
 use indexmap::IndexSet;
-use itertools::Itertools;
 use serde::Deserialize;
 use std::path::Path;
 use std::rc::Rc;
@@ -41,7 +40,7 @@ pub fn read_assets(
     agent_ids: &IndexSet<AgentID>,
     processes: &ProcessMap,
     region_ids: &IndexSet<RegionID>,
-) -> Result<Vec<Asset>> {
+) -> Result<AssetPool> {
     let file_path = model_dir.join(ASSETS_FILE_NAME);
     let assets_csv = read_csv(&file_path)?;
     read_assets_from_iter(assets_csv, agent_ids, processes, region_ids)
@@ -65,28 +64,30 @@ fn read_assets_from_iter<I>(
     agent_ids: &IndexSet<AgentID>,
     processes: &ProcessMap,
     region_ids: &IndexSet<RegionID>,
-) -> Result<Vec<Asset>>
+) -> Result<AssetPool>
 where
     I: Iterator<Item = AssetRaw>,
 {
-    iter.enumerate()
-        .map(|(id, asset)| -> Result<_> {
-            let agent_id = agent_ids.get_id(&asset.agent_id)?;
-            let process = processes
-                .get(asset.process_id.as_str())
-                .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
-            let region_id = region_ids.get_id(&asset.region_id)?;
+    let mut assets = Vec::new();
+    for (id, asset) in iter.enumerate() {
+        let agent_id = agent_ids.get_id(&asset.agent_id)?;
+        let process = processes
+            .get(asset.process_id.as_str())
+            .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
+        let region_id = region_ids.get_id(&asset.region_id)?;
 
-            Asset::new_future(
-                AssetID(id as u32),
-                agent_id.clone(),
-                Rc::clone(process),
-                region_id.clone(),
-                asset.capacity,
-                asset.commission_year,
-            )
-        })
-        .try_collect()
+        let asset = Asset::new_future(
+            AssetID(id as u32),
+            agent_id.clone(),
+            Rc::clone(process),
+            region_id.clone(),
+            asset.capacity,
+            asset.commission_year,
+        )?;
+        assets.push(asset);
+    }
+
+    Ok(AssetPool::new(assets))
 }
 
 #[cfg(test)]

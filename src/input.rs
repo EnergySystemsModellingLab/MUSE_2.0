@@ -224,7 +224,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
         regions,
         commodity_order,
     };
-    Ok((model, AssetPool::new(assets)))
+    Ok((model, assets))
 }
 
 #[cfg(test)]
