@@ -1,0 +1,19 @@
+$schema: https://specs.frictionlessdata.io/schemas/table-schema.json
+description: The prices of commodities over time and place
+
+fields:
+  - name: milestone_year
+    type: integer
+    description: Milestone year of the simulation
+  - name: commodity_id
+    type: string
+    description: The commodity this entry relates to
+  - name: region_id
+    type: string
+    description: The region this entry relates to
+  - name: time_slice
+    type: string
+    description: The time slice in which this price holds
+  - name: price
+    type: number
+    description: The price of the commodity
