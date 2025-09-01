@@ -64,6 +64,14 @@ pub fn run(
     while let Some(year) = year_iter.next() {
         info!("Milestone year: {year}");
 
+        // In preparation for this year, we need to add reduced costs for assets that are about to
+        // be commissioned
+        add_reduced_costs_for_future_assets(
+            &model,
+            &mut reduced_costs,
+            &assets.future_assets_for_year(year),
+        );
+
         // Decommission assets whose lifetime has passed. We do this *before* agent investment, to
         // prevent agents from selecting assets that are being decommissioned in this milestone
         // year.
@@ -132,15 +140,6 @@ pub fn run(
 
         // Reduced costs for the next year
         reduced_costs = new_reduced_costs;
-
-        // In preparation for the next year, we need to add reduced costs for future assets
-        if let Some(next_year) = next_year {
-            add_reduced_costs_for_future_assets(
-                &model,
-                &mut reduced_costs,
-                &assets.future_assets_for_year(next_year),
-            );
-        }
     }
 
     writer.flush()?;
