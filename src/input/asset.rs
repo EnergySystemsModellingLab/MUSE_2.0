@@ -1,6 +1,7 @@
 //! Code for reading [Asset]s from a CSV file.
 use super::*;
 use crate::agent::AgentID;
+use crate::asset::AssetPool;
 use crate::id::IDCollection;
 use crate::process::ProcessMap;
 use crate::region::RegionID;
@@ -33,7 +34,7 @@ struct AssetRaw {
 ///
 /// # Returns
 ///
-/// A `HashMap` containing assets grouped by agent ID.
+/// An [`AssetPool`] or an error.
 pub fn read_assets(
     model_dir: &Path,
     agent_ids: &IndexSet<AgentID>,
@@ -57,7 +58,7 @@ pub fn read_assets(
 ///
 /// # Returns
 ///
-/// A [`Vec`] of [`Asset`]s or an error.
+/// An [`AssetPool`] or an error.
 fn read_assets_from_iter<I>(
     iter: I,
     agent_ids: &IndexSet<AgentID>,

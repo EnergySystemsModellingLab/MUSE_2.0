@@ -306,6 +306,7 @@ impl Asset {
         match &self.state {
             AssetState::Commissioned { id, .. } => Some(*id),
             AssetState::Decommissioned { id, .. } => Some(*id),
+            AssetState::Future { id, .. } => Some(*id),
             _ => None,
         }
     }
