@@ -186,16 +186,17 @@ impl CommodityPrices {
     /// Both objects must have exactly the same set of keys, otherwise it will panic.
     pub fn within_tolerance(&self, other: &Self, tolerance: Dimensionless) -> bool {
         for (key, &price) in &self.0 {
-            let other_price = other.0.get(key).unwrap();
-            let abs_diff = (price - *other_price).abs();
+            let other_price = other.0[key];
+            let abs_diff = (price - other_price).abs();
 
-            // Check if prices are within tolerance
-            if price > MoneyPerFlow(0.0) {
-                if abs_diff / price > tolerance {
+            // Special case: last price was zero
+            if price == MoneyPerFlow(0.0) {
+                // Current price is zero but other price is nonzero
+                if other_price != MoneyPerFlow(0.0) {
                     return false;
                 }
-            } else if *other_price != MoneyPerFlow(0.0) {
-                // Current price is zero but other price is nonzero
+            // Check if price is within tolerance
+            } else if abs_diff / price.abs() > tolerance {
                 return false;
             }
         }
