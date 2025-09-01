@@ -9,23 +9,19 @@ import argparse
 SCHEMA_PATH = Path(__file__).parent / "input" / "assets.yaml"
 
 
-def process_file(schema: Schema, file_path: Path) -> bool:
+def process_file(schema: Schema, file_path: Path) -> list[str]:
     report = validate(
         source=str(file_path),
         schema=schema,
     )
 
-    success = report.valid
-    if success:
-        print(f"✅ {file_path} is valid!")
-    else:
-        print(f"❌ {file_path} has errors:")
+    errors = []
+    if not report.valid:
         for task in report.tasks:
-            if task.errors:
-                for error in task.errors:
-                    print(f"   - {error.message}")
+            for error in task.errors:
+                errors.append(error.message)
 
-    return success
+    return errors
 
 
 def main() -> int:
@@ -36,12 +32,20 @@ def main() -> int:
     parser.add_argument("file_paths", type=Path, nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
+    # Load schema
     with args.schema.open() as f:
         schema = Schema(yaml.safe_load(f))
 
+    # Process files
     for file_path in args.file_paths:
-        if not process_file(schema, file_path):
+        errors = process_file(schema, file_path)
+        if not errors:
+            print(f"✅ {file_path} is valid!")
+        else:
             ret = 1
+            print(f"❌ {file_path} has errors:")
+            for error in errors:
+                print(f"   - {error}")
 
     return ret
 
