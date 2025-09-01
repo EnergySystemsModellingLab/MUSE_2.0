@@ -764,7 +764,7 @@ mod tests {
             2015,
         )
         .unwrap();
-        assert!(asset.id().is_none());
+        assert!(asset.id().is_some());
     }
 
     #[rstest]
