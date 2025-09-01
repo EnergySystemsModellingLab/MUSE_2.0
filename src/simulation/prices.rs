@@ -6,7 +6,7 @@ use crate::process::ProcessFlow;
 use crate::region::RegionID;
 use crate::simulation::optimisation::Solution;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
-use crate::units::{MoneyPerActivity, MoneyPerFlow};
+use crate::units::{Dimensionless, MoneyPerActivity, MoneyPerFlow};
 use indexmap::IndexMap;
 use itertools::iproduct;
 use std::collections::{BTreeMap, HashMap};
@@ -180,6 +180,28 @@ impl CommodityPrices {
             .get(&(commodity_id.clone(), region_id.clone(), time_slice.clone()))
             .copied()
     }
+
+    /// Check if prices are within relative tolerance of another price set
+    ///
+    /// Both objects must have exactly the same set of keys, otherwise it will panic.
+    pub fn within_tolerance(&self, other: &Self, tolerance: Dimensionless) -> bool {
+        for (key, &price) in &self.0 {
+            let other_price = other.0[key];
+            let abs_diff = (price - other_price).abs();
+
+            // Special case: last price was zero
+            if price == MoneyPerFlow(0.0) {
+                // Current price is zero but other price is nonzero
+                if other_price != MoneyPerFlow(0.0) {
+                    return false;
+                }
+            // Check if price is within tolerance
+            } else if abs_diff / price.abs() > tolerance {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 impl<'a> FromIterator<(&'a CommodityID, &'a RegionID, &'a TimeSliceID, MoneyPerFlow)>
@@ -305,4 +327,43 @@ fn reduced_costs_for_existing<'a>(
 
         ((asset.clone(), time_slice.clone()), reduced_cost)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::commodity::CommodityID;
+    use crate::region::RegionID;
+    use crate::time_slice::TimeSliceID;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case(MoneyPerFlow(100.0), MoneyPerFlow(100.0), Dimensionless(0.0), true)] // exactly equal
+    #[case(MoneyPerFlow(100.0), MoneyPerFlow(105.0), Dimensionless(0.1), true)] // within tolerance
+    #[case(MoneyPerFlow(-100.0), MoneyPerFlow(-105.0), Dimensionless(0.1), true)] // within tolerance, both negative
+    #[case(MoneyPerFlow(0.0), MoneyPerFlow(0.0), Dimensionless(0.1), true)] // both zero
+    #[case(MoneyPerFlow(100.0), MoneyPerFlow(105.0), Dimensionless(0.01), false)] // difference bigger than tolerance
+    #[case(MoneyPerFlow(100.0), MoneyPerFlow(-105.0), Dimensionless(0.1), false)] // comparing positive and negative prices
+    #[case(MoneyPerFlow(0.0), MoneyPerFlow(10.0), Dimensionless(0.1), false)] // comparing zero and positive
+    #[case(MoneyPerFlow(0.0), MoneyPerFlow(-10.0), Dimensionless(0.1), false)] // comparing zero and negative
+    #[case(MoneyPerFlow(10.0), MoneyPerFlow(0.0), Dimensionless(0.1), false)] // comparing positive and zero
+    #[case(MoneyPerFlow(-10.0), MoneyPerFlow(0.0), Dimensionless(0.1), false)] // comparing negative and zero
+    fn test_within_tolerance_scenarios(
+        #[case] price1: MoneyPerFlow,
+        #[case] price2: MoneyPerFlow,
+        #[case] tolerance: Dimensionless,
+        #[case] expected: bool,
+    ) {
+        let mut prices1 = CommodityPrices::default();
+        let mut prices2 = CommodityPrices::default();
+
+        let commodity = CommodityID::new("test_commodity");
+        let region = RegionID::new("test_region");
+        let time_slice: TimeSliceID = "summer.day".into();
+
+        prices1.insert(&commodity, &region, &time_slice, price1);
+        prices2.insert(&commodity, &region, &time_slice, price2);
+
+        assert_eq!(prices1.within_tolerance(&prices2, tolerance), expected);
+    }
 }
