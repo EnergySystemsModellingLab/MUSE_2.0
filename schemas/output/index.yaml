@@ -1,0 +1,7 @@
+schemas:
+  - include: assets.yaml
+    path: assets.csv
+  - include: commodity_flows.yaml
+    path: commodity_flows.csv
+  - include: commodity_prices.yaml
+    path: commodity_prices.csv
