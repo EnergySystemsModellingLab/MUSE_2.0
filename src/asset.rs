@@ -98,7 +98,7 @@ impl Asset {
     }
 
     /// Create a new future asset
-    pub fn new_future(
+    fn new_future(
         id: AssetID,
         agent_id: AgentID,
         process: Rc<Process>,
@@ -523,6 +523,7 @@ where
 }
 
 /// A pool of [`Asset`]s
+#[derive(Default)]
 pub struct AssetPool {
     /// The pool of active assets, sorted by ID
     active: Vec<AssetRef>,
@@ -535,17 +536,26 @@ pub struct AssetPool {
 }
 
 impl AssetPool {
-    /// Create a new [`AssetPool`]
-    pub fn new(mut assets: Vec<Asset>) -> Self {
-        // Sort in order of commission year
-        assets.sort_by(|a, b| a.commission_year.cmp(&b.commission_year));
-
-        Self {
-            active: Vec::new(),
-            future: assets.clone(),
-            decommissioned: Vec::new(),
-            next_id: assets.len() as u32,
-        }
+    /// Create a new future asset and add it to the pool
+    pub fn add_future(
+        &mut self,
+        agent_id: AgentID,
+        process: Rc<Process>,
+        region_id: RegionID,
+        capacity: Capacity,
+        commission_year: u32,
+    ) -> Result<()> {
+        let asset = Asset::new_future(
+            AssetID(self.next_id),
+            agent_id,
+            process,
+            region_id,
+            capacity,
+            commission_year,
+        )?;
+        self.future.push(asset);
+        self.next_id += 1;
+        Ok(())
     }
 
     /// Get the active pool as a slice of [`AssetRef`]s
