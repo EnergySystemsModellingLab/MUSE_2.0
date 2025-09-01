@@ -3,7 +3,9 @@ use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
-use crate::simulation::prices::{update_prices_and_reduced_costs, ReducedCosts};
+use crate::simulation::prices::{
+    add_reduced_costs_for_future_assets, calculate_prices_and_reduced_costs, ReducedCosts,
+};
 use crate::units::Capacity;
 use anyhow::{Context, Result};
 use log::info;
@@ -130,6 +132,15 @@ pub fn run(
 
         // Reduced costs for the next year
         reduced_costs = new_reduced_costs;
+
+        // In preparation for the next year, we need to add reduced costs for future assets
+        if let Some(next_year) = next_year {
+            add_reduced_costs_for_future_assets(
+                &model,
+                &mut reduced_costs,
+                &assets.future_assets_for_year(next_year),
+            );
+        }
     }
 
     writer.flush()?;
@@ -171,16 +182,8 @@ fn run_dispatch_for_year(
     };
 
     // Calculate commodity prices and asset reduced costs
-    let mut prices = CommodityPrices::default();
-    let mut reduced_costs = ReducedCosts::default();
-    update_prices_and_reduced_costs(
-        model,
-        &solution,
-        assets,
-        year,
-        &mut prices,
-        &mut reduced_costs,
-    );
+    let (prices, reduced_costs) =
+        calculate_prices_and_reduced_costs(model, &solution, assets, year);
 
     Ok((flow_map, prices, reduced_costs))
 }

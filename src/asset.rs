@@ -407,6 +407,17 @@ impl Asset {
         };
         self.state = AssetState::Commissioned { id, agent_id };
     }
+
+    /// Creates a Candidate asset matching a given Future asset
+    pub fn as_candidate(&self) -> AssetRef {
+        assert!(
+            matches!(self.state, AssetState::Future { .. }),
+            "as_candidate can only be called on Future assets"
+        );
+        let mut copy = self.clone();
+        copy.state = AssetState::Candidate;
+        copy.into()
+    }
 }
 
 impl std::fmt::Debug for Asset {
@@ -698,6 +709,15 @@ impl AssetPool {
         // Sanity check: all assets should be unique
         debug_assert_eq!(self.active.iter().unique().count(), self.active.len());
         assets
+    }
+
+    /// Get assets in the future pool that will be commissioned by the specified year
+    pub fn future_assets_for_year(&self, year: u32) -> Vec<Asset> {
+        self.future
+            .iter()
+            .filter(|asset| asset.commission_year <= year)
+            .cloned()
+            .collect()
     }
 }
 
