@@ -1,6 +1,7 @@
 //! Code for reading [Asset]s from a CSV file.
 use super::*;
 use crate::agent::AgentID;
+use crate::asset::{Asset, AssetID};
 use crate::id::IDCollection;
 use crate::process::ProcessMap;
 use crate::region::RegionID;
@@ -67,24 +68,26 @@ fn read_assets_from_iter<I>(
 where
     I: Iterator<Item = AssetRaw>,
 {
-    let mut asset_pool = AssetPool::default();
-    for asset in iter {
+    let mut assets = Vec::new();
+    for (id, asset) in iter.enumerate() {
         let agent_id = agent_ids.get_id(&asset.agent_id)?;
         let process = processes
             .get(asset.process_id.as_str())
             .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
         let region_id = region_ids.get_id(&asset.region_id)?;
 
-        asset_pool.add_future(
+        let asset = Asset::new_future(
+            AssetID(id as u32),
             agent_id.clone(),
             Rc::clone(process),
             region_id.clone(),
             asset.capacity,
             asset.commission_year,
         )?;
+        assets.push(asset);
     }
 
-    Ok(asset_pool)
+    Ok(AssetPool::new(assets))
 }
 
 #[cfg(test)]
