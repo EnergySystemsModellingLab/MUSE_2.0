@@ -1,7 +1,6 @@
 //! Code for reading [Asset]s from a CSV file.
 use super::*;
 use crate::agent::AgentID;
-use crate::asset::{Asset, AssetID};
 use crate::id::IDCollection;
 use crate::process::ProcessMap;
 use crate::region::RegionID;
@@ -68,26 +67,24 @@ fn read_assets_from_iter<I>(
 where
     I: Iterator<Item = AssetRaw>,
 {
-    let mut assets = Vec::new();
-    for (id, asset) in iter.enumerate() {
+    let mut asset_pool = AssetPool::default();
+    for asset in iter {
         let agent_id = agent_ids.get_id(&asset.agent_id)?;
         let process = processes
             .get(asset.process_id.as_str())
             .with_context(|| format!("Invalid process ID: {}", &asset.process_id))?;
         let region_id = region_ids.get_id(&asset.region_id)?;
 
-        let asset = Asset::new_future(
-            AssetID(id as u32),
+        asset_pool.create_asset(
             agent_id.clone(),
             Rc::clone(process),
             region_id.clone(),
             asset.capacity,
             asset.commission_year,
         )?;
-        assets.push(asset);
     }
 
-    Ok(AssetPool::new(assets))
+    Ok(asset_pool)
 }
 
 #[cfg(test)]
@@ -95,7 +92,6 @@ mod tests {
     use super::*;
     use crate::fixture::{processes, region_ids};
 
-    use itertools::assert_equal;
     use rstest::{fixture, rstest};
     use std::iter;
 
@@ -117,19 +113,20 @@ mod tests {
             capacity: Capacity(1.0),
             commission_year: 2010,
         };
-        let asset_out = Asset::new_future(
-            AssetID(0),
-            "agent1".into(),
-            Rc::clone(processes.values().next().unwrap()),
-            "GBR".into(),
-            Capacity(1.0),
-            2010,
-        )
-        .unwrap();
-        assert_equal(
+        let mut asset_pool = AssetPool::default();
+        asset_pool
+            .create_asset(
+                "agent1".into(),
+                Rc::clone(processes.values().next().unwrap()),
+                "GBR".into(),
+                Capacity(1.0),
+                2010,
+            )
+            .unwrap();
+        assert_eq!(
             read_assets_from_iter(iter::once(asset_in), &agent_ids, &processes, &region_ids)
                 .unwrap(),
-            iter::once(asset_out),
+            asset_pool,
         );
     }
 

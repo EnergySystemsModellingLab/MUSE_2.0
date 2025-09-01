@@ -101,26 +101,27 @@ pub fn get_svd_map(commodity: &Commodity) -> HashMap<CommodityID, &Commodity> {
 }
 
 #[fixture]
-pub fn asset(process: Process) -> Asset {
+pub fn assets(process: Process) -> AssetPool {
     let region_id: RegionID = "GBR".into();
     let agent_id = "agent1".into();
     let commission_year = 2015;
-    Asset::new_future(
+    let mut pool = AssetPool::default();
+    pool.create_asset(
         agent_id,
         process.into(),
         region_id,
         Capacity(2.0),
         commission_year,
     )
-    .unwrap()
+    .unwrap();
+    pool.commission_new(commission_year);
+    pool
 }
 
 #[fixture]
-pub fn assets(asset: Asset) -> AssetPool {
-    let year = asset.commission_year();
-    let mut assets = AssetPool::new(iter::once(asset).collect());
-    assets.commission_new(year);
-    assets
+pub fn asset(process: Process) -> Asset {
+    let pool = assets(process);
+    (*pool.as_slice()[0]).clone()
 }
 
 #[fixture]

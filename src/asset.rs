@@ -16,7 +16,7 @@ use std::slice;
 
 /// A unique identifier for an asset
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct AssetID(pub u32);
+pub struct AssetID(u32);
 
 /// The state of an asset
 ///
@@ -98,7 +98,7 @@ impl Asset {
     }
 
     /// Create a new future asset
-    pub fn new_future(
+    fn new_future(
         id: AssetID,
         agent_id: AgentID,
         process: Rc<Process>,
@@ -523,6 +523,7 @@ where
 }
 
 /// A pool of [`Asset`]s
+#[derive(Default, PartialEq, Debug)]
 pub struct AssetPool {
     /// The pool of active assets, sorted by ID
     active: Vec<AssetRef>,
@@ -535,17 +536,26 @@ pub struct AssetPool {
 }
 
 impl AssetPool {
-    /// Create a new [`AssetPool`]
-    pub fn new(mut assets: Vec<Asset>) -> Self {
-        // Sort in order of commission year
-        assets.sort_by(|a, b| a.commission_year.cmp(&b.commission_year));
-
-        Self {
-            active: Vec::new(),
-            future: assets.clone(),
-            decommissioned: Vec::new(),
-            next_id: assets.len() as u32,
-        }
+    /// Create a new asset and add it to the Future pool
+    pub fn create_asset(
+        &mut self,
+        agent_id: AgentID,
+        process: Rc<Process>,
+        region_id: RegionID,
+        capacity: Capacity,
+        commission_year: u32,
+    ) -> Result<()> {
+        let asset = Asset::new_future(
+            AssetID(self.next_id),
+            agent_id,
+            process,
+            region_id,
+            capacity,
+            commission_year,
+        )?;
+        self.future.push(asset);
+        self.next_id += 1;
+        Ok(())
     }
 
     /// Get the active pool as a slice of [`AssetRef`]s
@@ -744,7 +754,15 @@ mod tests {
     fn test_asset_new_valid(process: Process, #[case] capacity: Capacity) {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("GBR".into());
-        let asset = Asset::new_future(agent_id, process.into(), region_id, capacity, 2015).unwrap();
+        let asset = Asset::new_future(
+            AssetID(0),
+            agent_id,
+            process.into(),
+            region_id,
+            capacity,
+            2015,
+        )
+        .unwrap();
         assert!(asset.id().is_none());
     }
 
@@ -759,7 +777,14 @@ mod tests {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("GBR".into());
         assert_error!(
-            Asset::new_future(agent_id, process.into(), region_id, capacity, 2015),
+            Asset::new_future(
+                AssetID(0),
+                agent_id,
+                process.into(),
+                region_id,
+                capacity,
+                2015
+            ),
             "Capacity must be a finite, positive number"
         );
     }
@@ -769,7 +794,14 @@ mod tests {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("GBR".into());
         assert_error!(
-            Asset::new_future(agent_id, process.into(), region_id, Capacity(1.0), 2009),
+            Asset::new_future(
+                AssetID(0),
+                agent_id,
+                process.into(),
+                region_id,
+                Capacity(1.0),
+                2009
+            ),
             "Process process1 does not operate in the year 2009"
         );
     }
@@ -779,7 +811,14 @@ mod tests {
         let agent_id = AgentID("agent1".into());
         let region_id = RegionID("FRA".into());
         assert_error!(
-            Asset::new_future(agent_id, process.into(), region_id, Capacity(1.0), 2015),
+            Asset::new_future(
+                AssetID(0),
+                agent_id,
+                process.into(),
+                region_id,
+                Capacity(1.0),
+                2015
+            ),
             "Process process1 does not operate in region FRA"
         );
     }
@@ -809,21 +848,18 @@ mod tests {
             regions: IndexSet::from(["GBR".into()]),
             primary_output: None,
         });
-        let future = [2020, 2010]
-            .map(|year| {
-                Asset::new_future(
-                    "agent1".into(),
-                    Rc::clone(&process),
-                    "GBR".into(),
-                    Capacity(1.0),
-                    year,
-                )
-                .unwrap()
-            })
-            .into_iter()
-            .collect_vec();
-
-        AssetPool::new(future)
+        let mut pool = AssetPool::default();
+        for year in [2010, 2020] {
+            pool.create_asset(
+                "agent1".into(),
+                Rc::clone(&process),
+                "GBR".into(),
+                Capacity(1.0),
+                year,
+            )
+            .unwrap();
+        }
+        pool
     }
 
     #[fixture]
@@ -868,6 +904,7 @@ mod tests {
     #[fixture]
     fn asset_with_activity_limits(process_with_activity_limits: Process) -> Asset {
         Asset::new_future(
+            AssetID(0),
             "agent1".into(),
             Rc::new(process_with_activity_limits),
             "GBR".into(),
@@ -1221,6 +1258,7 @@ mod tests {
     ) {
         // Create a non-commissioned asset
         let non_commissioned_asset = Asset::new_future(
+            AssetID(0),
             "agent_new".into(),
             process.into(),
             "GBR".into(),
@@ -1239,6 +1277,7 @@ mod tests {
         // Test successful commissioning of Future asset
         let process_rc = Rc::new(process);
         let mut asset1 = Asset::new_future(
+            AssetID(1),
             "agent1".into(),
             Rc::clone(&process_rc),
             "GBR".into(),
@@ -1246,7 +1285,7 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset1.commission_future(AssetID(1));
+        asset1.commission_future();
         assert!(asset1.is_commissioned());
         assert_eq!(asset1.id(), Some(AssetID(1)));
 
@@ -1274,13 +1313,14 @@ mod tests {
     fn test_commission_future_wrong_states(process: Process) {
         let mut asset =
             Asset::new_candidate(process.into(), "GBR".into(), Capacity(1.0), 2020).unwrap();
-        asset.commission_future(AssetID(1));
+        asset.commission_future();
     }
 
     #[rstest]
     #[should_panic(expected = "commission_selected can only be called on Selected assets")]
     fn test_commission_candidate_wrong_state(process: Process) {
         let mut asset = Asset::new_future(
+            AssetID(1),
             "agent1".into(),
             process.into(),
             "GBR".into(),
