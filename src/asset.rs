@@ -412,7 +412,8 @@ impl Asset {
     pub fn as_candidate(&self) -> AssetRef {
         assert!(
             matches!(self.state, AssetState::Commissioned { .. }),
-            "as_candidate can only be called on Commissioned assets"
+            "as_candidate can only be called on Commissioned assets, not {:?}",
+            self.state
         );
         let mut copy = self.clone();
         copy.state = AssetState::Candidate;

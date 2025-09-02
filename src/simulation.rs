@@ -49,8 +49,8 @@ pub fn run(
     writer.write_assets(assets.iter_all())?;
 
     // Gather candidates for the next year
-    let next_year = year_iter.peek().copied().unwrap();
-    let candidates = candidate_assets_for_year(
+    let next_year = year_iter.peek().copied().unwrap(); // should be at least one more year
+    let mut candidates = candidate_assets_for_year(
         &model.processes,
         next_year,
         model.parameters.candidate_asset_capacity,
@@ -98,10 +98,24 @@ pub fn run(
             )
             .context("Agent investment failed")?;
 
-            // Run dispatch optimisation to get updated reduced costs for the next iteration
+            // We need to add candidates from all existing_assets that aren't in selected_assets as
+            // these may be re-chosen in the next iteration
+            let candidates_for_existing = existing_assets
+                .iter()
+                .filter(|asset| !selected_assets.contains(asset))
+                .map(|asset| asset.as_candidate())
+                .collect();
+
+            // Run dispatch optimisation to get updated reduced costs and prices for the next
+            // iteration
             info!("Running dispatch optimisation...");
-            let (_flow_map, new_prices, new_reduced_costs) =
-                run_dispatch_for_year(&model, &selected_assets, &candidates, year, &mut writer)?;
+            let (_flow_map, new_prices, new_reduced_costs) = run_dispatch_for_year(
+                &model,
+                &selected_assets,
+                &[candidates.clone(), candidates_for_existing].concat(),
+                year,
+                &mut writer,
+            )?;
 
             // Check if prices have converged
             let prices_stable =
@@ -142,7 +156,7 @@ pub fn run(
 
         // Gather candidates for the next year, if any
         let next_year = year_iter.peek().copied();
-        let candidates = next_year
+        candidates = next_year
             .map(|next_year| {
                 candidate_assets_for_year(
                     &model.processes,
