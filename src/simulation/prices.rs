@@ -1,5 +1,5 @@
 //! Code for updating the simulation state.
-use crate::asset::{Asset, AssetRef, AssetState};
+use crate::asset::AssetRef;
 use crate::commodity::CommodityID;
 use crate::model::{Model, PricingStrategy};
 use crate::process::ProcessFlow;
@@ -79,30 +79,6 @@ pub fn calculate_prices_and_reduced_costs(
     ));
 
     (prices, reduced_costs)
-}
-
-/// Add reduced costs to the ReducedCosts map for a set of Future assets
-///
-/// For each Future asset, we use the reduced costs for the appropriate Candidate asset, which should
-/// already be in the ReducedCosts map
-pub fn add_reduced_costs_for_future_assets(
-    model: &Model,
-    reduced_costs: &mut ReducedCosts,
-    future_assets: &[Asset],
-) {
-    for asset in future_assets {
-        assert!(
-            matches!(asset.state(), AssetState::Future { .. }),
-            "asset is not a Future asset"
-        );
-        let candidate = asset.as_candidate();
-        for time_slice in model.time_slice_info.iter_ids() {
-            let reduced_cost = reduced_costs
-                .get(&(candidate.clone(), time_slice.clone()))
-                .unwrap();
-            reduced_costs.insert((asset.clone().into(), time_slice.clone()), *reduced_cost);
-        }
-    }
 }
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
