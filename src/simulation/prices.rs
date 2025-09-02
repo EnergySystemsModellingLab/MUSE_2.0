@@ -366,3 +366,28 @@ fn reduced_costs_for_existing<'a>(
         ((asset.clone(), time_slice.clone()), reduced_cost)
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fixture::{asset, assets, process, time_slice};
+    use crate::process::Process;
+    use indexmap::indexmap;
+    use rstest::rstest;
+
+    #[rstest]
+    fn test_get_reduced_cost_fallback_to_candidate(process: Process, time_slice: TimeSliceID) {
+        let asset_pool = assets(asset(process));
+        let asset = asset_pool.as_slice().first().unwrap();
+
+        // Create reduced costs with only the candidate version
+        let candidate = asset.as_candidate();
+        let reduced_costs = ReducedCosts::from(indexmap! {
+            (candidate.clone(), time_slice.clone()) => MoneyPerActivity(42.0)
+        });
+
+        // Should fallback to candidate when asset not found
+        let result = reduced_costs.get(asset, &time_slice);
+        assert_eq!(result, MoneyPerActivity(42.0));
+    }
+}
