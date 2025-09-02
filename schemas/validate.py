@@ -58,7 +58,7 @@ class SchemaIndex:
         return errors
 
 
-def get_data_dirs(paths: Iterable[str]) -> Iterable[Path]:
+def get_data_dirs(paths: Iterable[str], root: Path | None) -> Iterable[Path]:
     seen = set()
 
     def get_data_dirs_inner():
@@ -71,6 +71,9 @@ def get_data_dirs(paths: Iterable[str]) -> Iterable[Path]:
 
     for path in get_data_dirs_inner():
         if path not in seen:
+            if root and not path.parent.samefile(root):
+                continue
+
             seen.add(path)
             yield path
 
@@ -80,17 +83,18 @@ def main() -> int:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--schema-index", type=Path, required=True)
+    parser.add_argument("--root", type=Path)
     parser.add_argument("file_paths", type=Path, nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
     index = SchemaIndex(args.schema_index)
-    for data_dir in get_data_dirs(args.file_paths):
-        errors = index.validate(data_dir)
-        if not errors:
+    for data_dir in get_data_dirs(args.file_paths, args.root):
+        errors_map = index.validate(data_dir)
+        if not errors_map:
             print(f"✅ {data_dir} is valid!")
         else:
             ret = 1
-            for file_path, errors in errors.items():
+            for file_path, errors in errors_map.items():
                 print(f"❌ {file_path} has errors:")
                 for error in errors:
                     print(f"   - {error}")
