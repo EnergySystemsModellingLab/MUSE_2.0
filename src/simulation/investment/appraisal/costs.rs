@@ -11,7 +11,7 @@ pub fn activity_cost(
     reduced_costs: &ReducedCosts,
     time_slice: TimeSliceID,
 ) -> MoneyPerActivity {
-    *reduced_costs.get(&(asset.clone(), time_slice)).unwrap()
+    reduced_costs.get(&(asset.clone(), time_slice))
 }
 
 /// Calculates the surplus per unit of activity for an asset.
@@ -20,7 +20,7 @@ pub fn activity_surplus(
     reduced_costs: &ReducedCosts,
     time_slice: TimeSliceID,
 ) -> MoneyPerActivity {
-    -*reduced_costs.get(&(asset.clone(), time_slice)).unwrap()
+    -reduced_costs.get(&(asset.clone(), time_slice))
 }
 
 /// Calculates the annual fixed costs per unit of capacity for an asset.

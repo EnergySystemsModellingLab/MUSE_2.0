@@ -12,7 +12,59 @@ use itertools::iproduct;
 use std::collections::{BTreeMap, HashMap};
 
 /// A map of reduced costs for different assets in different time slices
-pub type ReducedCosts = IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
+#[derive(Default, Clone)]
+pub struct ReducedCosts(IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>);
+
+impl ReducedCosts {
+    /// Get the reduced cost for the specified asset and time slice
+    pub fn get(&self, key: &(AssetRef, TimeSliceID)) -> MoneyPerActivity {
+        self.0[key]
+    }
+
+    /// Extend the reduced costs map
+    pub fn extend<T>(&mut self, iter: T)
+    where
+        T: IntoIterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)>,
+    {
+        self.0.extend(iter);
+    }
+
+    /// Iterate over the map
+    pub fn iter(&self) -> impl Iterator<Item = (&(AssetRef, TimeSliceID), &MoneyPerActivity)> {
+        self.0.iter()
+    }
+
+    /// Iterate mutably over the map
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (&(AssetRef, TimeSliceID), &mut MoneyPerActivity)> {
+        self.0.iter_mut()
+    }
+}
+
+impl FromIterator<((AssetRef, TimeSliceID), MoneyPerActivity)> for ReducedCosts {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)>,
+    {
+        ReducedCosts(iter.into_iter().collect())
+    }
+}
+
+impl IntoIterator for ReducedCosts {
+    type Item = ((AssetRef, TimeSliceID), MoneyPerActivity);
+    type IntoIter = indexmap::map::IntoIter<(AssetRef, TimeSliceID), MoneyPerActivity>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl From<IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>> for ReducedCosts {
+    fn from(map: IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>) -> Self {
+        ReducedCosts(map)
+    }
+}
 
 /// Update commodity prices and reduced costs for assets.
 ///

@@ -386,7 +386,7 @@ impl DebugDataWriter {
         milestone_year: u32,
         reduced_costs: &ReducedCosts,
     ) -> Result<()> {
-        for ((asset, time_slice), reduced_cost) in reduced_costs {
+        for ((asset, time_slice), reduced_cost) in reduced_costs.iter() {
             let row = ReducedCostsRow {
                 milestone_year,
                 asset_id: asset.id(),
@@ -881,7 +881,8 @@ mod tests {
             let mut writer = DebugDataWriter::create(dir.path()).unwrap();
             let reduced_costs = indexmap! {
                 (asset.clone(), time_slice.clone()) => MoneyPerActivity(0.5)
-            };
+            }
+            .into();
             writer
                 .write_reduced_costs(milestone_year, &reduced_costs)
                 .unwrap();
