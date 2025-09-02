@@ -408,11 +408,11 @@ impl Asset {
         self.state = AssetState::Commissioned { id, agent_id };
     }
 
-    /// Creates a Candidate asset matching a given Future asset
+    /// Creates a Candidate asset matching a given Commissioned asset
     pub fn as_candidate(&self) -> AssetRef {
         assert!(
-            matches!(self.state, AssetState::Future { .. }),
-            "as_candidate can only be called on Future assets"
+            matches!(self.state, AssetState::Commissioned { .. }),
+            "as_candidate can only be called on Commissioned assets"
         );
         let mut copy = self.clone();
         copy.state = AssetState::Candidate;

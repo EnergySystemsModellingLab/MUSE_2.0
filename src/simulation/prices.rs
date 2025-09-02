@@ -17,8 +17,15 @@ pub struct ReducedCosts(IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>);
 
 impl ReducedCosts {
     /// Get the reduced cost for the specified asset and time slice
-    pub fn get(&self, key: &(AssetRef, TimeSliceID)) -> MoneyPerActivity {
-        self.0[key]
+    ///
+    /// If no reduced cost is found for the asset, the reduced cost is returned for the relevant
+    /// candidate asset. This can occur the first year an asset is commissioned, or if an asset
+    /// was not selected in an earlier iteration of the ironing out loop.
+    pub fn get(&self, asset: &AssetRef, time_slice: &TimeSliceID) -> MoneyPerActivity {
+        *self
+            .0
+            .get(&(asset.clone(), time_slice.clone()))
+            .unwrap_or_else(|| &self.0[&(asset.as_candidate().clone(), time_slice.clone())])
     }
 
     /// Extend the reduced costs map
