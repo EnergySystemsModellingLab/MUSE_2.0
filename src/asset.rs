@@ -411,7 +411,7 @@ impl Asset {
     /// Creates a Candidate asset matching a given Commissioned asset
     ///
     /// Optionally, the capacity can be set to a different value.
-    pub fn as_candidate(&self, capacity: Option<Capacity>) -> AssetRef {
+    pub fn as_candidate(&self, capacity: Option<Capacity>) -> Asset {
         assert!(
             matches!(self.state, AssetState::Commissioned { .. }),
             "as_candidate can only be called on Commissioned assets, not {:?}",
@@ -419,8 +419,8 @@ impl Asset {
         );
         let mut copy = self.clone();
         copy.state = AssetState::Candidate;
-        copy.capacity = capacity.unwrap_or(copy.capacity);
-        copy.into()
+        copy.set_capacity(capacity.unwrap_or(copy.capacity));
+        copy
     }
 }
 
