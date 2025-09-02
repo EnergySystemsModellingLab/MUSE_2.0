@@ -8,8 +8,6 @@ import yaml
 import argparse
 from dataclasses import dataclass
 
-SCHEMA_PATH = Path(__file__).parent / "input" / "assets.yaml"
-
 
 class Validator:
     def __init__(self, schema_path: Path) -> None:
