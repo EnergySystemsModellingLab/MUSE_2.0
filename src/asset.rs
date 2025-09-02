@@ -710,15 +710,6 @@ impl AssetPool {
         debug_assert_eq!(self.active.iter().unique().count(), self.active.len());
         assets
     }
-
-    /// Get assets in the future pool that will be commissioned by the specified year
-    pub fn future_assets_for_year(&self, year: u32) -> Vec<Asset> {
-        self.future
-            .iter()
-            .filter(|asset| asset.commission_year <= year)
-            .cloned()
-            .collect()
-    }
 }
 
 /// Additional methods for iterating over assets
