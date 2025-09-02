@@ -25,7 +25,7 @@ impl ReducedCosts {
         *self
             .0
             .get(&(asset.clone(), time_slice.clone()))
-            .unwrap_or_else(|| &self.0[&(asset.as_candidate().clone(), time_slice.clone())])
+            .unwrap_or_else(|| &self.0[&(asset.as_candidate().into(), time_slice.clone())])
     }
 
     /// Extend the reduced costs map
@@ -73,7 +73,7 @@ impl From<IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>> for ReducedCosts 
     }
 }
 
-/// Update commodity prices and reduced costs for assets.
+/// Calculate commodity prices and reduced costs for assets.
 ///
 /// Note that the behaviour will be different depending on the [`PricingStrategy`] the user has
 /// selected.
@@ -82,7 +82,7 @@ impl From<IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>> for ReducedCosts 
 ///
 /// * `model` - The model
 /// * `solution` - Solution to dispatch optimisation
-/// * `assets` - Asset pool
+/// * `existing_assets` - Existing assets
 /// * `year` - Current milestone year
 pub fn calculate_prices_and_reduced_costs(
     model: &Model,
@@ -408,7 +408,7 @@ mod tests {
         // Create reduced costs with only the candidate version
         let candidate = asset.as_candidate();
         let reduced_costs = ReducedCosts::from(indexmap! {
-            (candidate.clone(), time_slice.clone()) => MoneyPerActivity(42.0)
+            (candidate.into(), time_slice.clone()) => MoneyPerActivity(42.0)
         });
 
         // Should fallback to candidate when asset not found

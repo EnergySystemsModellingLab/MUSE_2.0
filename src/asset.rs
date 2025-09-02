@@ -409,14 +409,14 @@ impl Asset {
     }
 
     /// Creates a Candidate asset matching a given Commissioned asset
-    pub fn as_candidate(&self) -> AssetRef {
+    pub fn as_candidate(&self) -> Self {
         assert!(
             matches!(self.state, AssetState::Commissioned { .. }),
             "as_candidate can only be called on Commissioned assets"
         );
         let mut copy = self.clone();
         copy.state = AssetState::Candidate;
-        copy.into()
+        copy
     }
 }
 
