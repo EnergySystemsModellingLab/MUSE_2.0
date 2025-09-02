@@ -506,13 +506,12 @@ impl Deref for AssetRef {
 
 impl PartialEq for AssetRef {
     fn eq(&self, other: &Self) -> bool {
-        // For assets to be considered equal, they must have the same process, region and commission
-        // year. Additionally, if assets have an ID and an agent ID, then these must match
+        // For assets to be considered equal, they must have the same process, region, commission
+        // year and state
         Rc::ptr_eq(&self.0.process, &other.0.process)
             && self.0.region_id == other.0.region_id
             && self.0.commission_year == other.0.commission_year
-            && self.0.agent_id() == other.0.agent_id()
-            && self.0.id() == other.0.id()
+            && self.0.state == other.0.state
     }
 }
 
