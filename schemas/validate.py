@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from collections.abc import Iterable
 from frictionless import validate, Schema
 import sys
 from pathlib import Path
@@ -57,16 +58,33 @@ class SchemaIndex:
         return errors
 
 
+def get_data_dirs(paths: Iterable[str]) -> Iterable[Path]:
+    seen = set()
+
+    def get_data_dirs_inner():
+        for path in map(Path, paths):
+            if path.is_dir():
+                yield path
+            else:
+                data_dir = path.parent
+                yield data_dir
+
+    for path in get_data_dirs_inner():
+        if path not in seen:
+            seen.add(path)
+            yield path
+
+
 def main() -> int:
     ret = 0
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--schema-index", type=Path, required=True)
-    parser.add_argument("data_dirs", type=Path, nargs=argparse.REMAINDER)
+    parser.add_argument("file_paths", type=Path, nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
     index = SchemaIndex(args.schema_index)
-    for data_dir in args.data_dirs:
+    for data_dir in get_data_dirs(args.file_paths):
         errors = index.validate(data_dir)
         if not errors:
             print(f"✅ {data_dir} is valid!")
