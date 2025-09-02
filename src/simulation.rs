@@ -103,7 +103,7 @@ pub fn run(
             let candidates_for_existing = existing_assets
                 .iter()
                 .filter(|asset| !selected_assets.contains(asset))
-                .map(|asset| asset.as_candidate())
+                .map(|asset| asset.as_candidate(Some(model.parameters.candidate_asset_capacity)))
                 .collect();
 
             // Run dispatch optimisation to get updated reduced costs and prices for the next
