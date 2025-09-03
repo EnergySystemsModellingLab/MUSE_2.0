@@ -401,19 +401,28 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    fn test_get_reduced_cost_fallback_to_candidate(process: Process, time_slice: TimeSliceID) {
+    fn test_get_reduced_cost(process: Process, time_slice: TimeSliceID) {
         let asset_pool = assets(asset(process));
         let asset = asset_pool.as_slice().first().unwrap();
 
         // Create reduced costs with only the candidate version
         let candidate = asset.as_candidate();
-        let reduced_costs = ReducedCosts::from(indexmap! {
+        let mut reduced_costs = ReducedCosts::from(indexmap! {
             (candidate.into(), time_slice.clone()) => MoneyPerActivity(42.0)
         });
 
         // Should fallback to candidate when asset not found
         let result = reduced_costs.get(asset, &time_slice);
         assert_eq!(result, MoneyPerActivity(42.0));
+
+        // Add a reduced cost for the asset
+        reduced_costs.extend(indexmap! {
+            (asset.clone(), time_slice.clone()) => MoneyPerActivity(100.0)
+        });
+
+        // Now should return the asset's reduced cost
+        let result = reduced_costs.get(asset, &time_slice);
+        assert_eq!(result, MoneyPerActivity(100.0));
     }
 
     #[rstest]
