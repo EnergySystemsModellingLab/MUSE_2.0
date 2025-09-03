@@ -345,6 +345,30 @@ impl Asset {
         self.capacity
     }
 
+    /// Get a description string for this asset
+    ///
+    /// Returns a string in the format "State;ProcessID;RegionID;CommissionYear;AgentID"
+    /// e.g. "Commissioned;WNDFRM;GBR;2030;A1"
+    pub fn description(&self) -> String {
+        let state_name = match &self.state {
+            AssetState::Commissioned { .. } => "Commissioned",
+            AssetState::Decommissioned { .. } => "Decommissioned",
+            AssetState::Future { .. } => "Future",
+            AssetState::Selected { .. } => "Selected",
+            AssetState::Candidate => "Candidate",
+        };
+
+        let agent_id = self
+            .agent_id()
+            .map(|id| id.to_string())
+            .unwrap_or_else(|| "None".to_string());
+
+        format!(
+            "{};{};{};{};{}",
+            state_name, self.commission_year, self.process.id, self.region_id, agent_id
+        )
+    }
+
     /// Set the capacity for this asset (only for Candidate assets)
     pub fn set_capacity(&mut self, capacity: Capacity) {
         assert!(

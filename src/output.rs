@@ -135,8 +135,7 @@ struct ActivityRow {
     milestone_year: u32,
     run_description: String,
     asset_id: Option<AssetID>,
-    process_id: ProcessID,
-    region_id: RegionID,
+    asset_description: String,
     time_slice: TimeSliceID,
     activity: Activity,
 }
@@ -147,8 +146,7 @@ struct ActivityDualsRow {
     milestone_year: u32,
     run_description: String,
     asset_id: Option<AssetID>,
-    process_id: ProcessID,
-    region_id: RegionID,
+    asset_description: String,
     time_slice: TimeSliceID,
     value: MoneyPerActivity,
 }
@@ -178,8 +176,7 @@ struct AppraisalResultsRow {
     milestone_year: u32,
     run_description: String,
     asset_id: Option<AssetID>,
-    process_id: ProcessID,
-    region_id: RegionID,
+    asset_description: String,
     capacity: Capacity,
     unmet_demand: Flow,
     metric: f64,
@@ -190,8 +187,7 @@ struct AppraisalResultsRow {
 struct ReducedCostsRow {
     milestone_year: u32,
     asset_id: Option<AssetID>,
-    process_id: ProcessID,
-    region_id: RegionID,
+    asset_description: String,
     time_slice: TimeSliceID,
     reduced_cost: MoneyPerActivity,
 }
@@ -276,8 +272,7 @@ impl DebugDataWriter {
                 milestone_year,
                 run_description: self.with_context(run_description),
                 asset_id: asset.id(),
-                process_id: asset.process_id().clone(),
-                region_id: asset.region_id().clone(),
+                asset_description: asset.description(),
                 time_slice: time_slice.clone(),
                 activity,
             };
@@ -302,8 +297,7 @@ impl DebugDataWriter {
                 milestone_year,
                 run_description: self.with_context(run_description),
                 asset_id: asset.id(),
-                process_id: asset.process_id().clone(),
-                region_id: asset.region_id().clone(),
+                asset_description: asset.description(),
                 time_slice: time_slice.clone(),
                 value,
             };
@@ -368,8 +362,7 @@ impl DebugDataWriter {
                 milestone_year,
                 run_description: self.with_context(run_description),
                 asset_id: result.asset.id(),
-                process_id: result.asset.process_id().clone(),
-                region_id: result.asset.region_id().clone(),
+                asset_description: result.asset.description(),
                 capacity: result.capacity,
                 unmet_demand: result.unmet_demand.values().copied().sum(),
                 metric: result.metric,
@@ -390,8 +383,7 @@ impl DebugDataWriter {
             let row = ReducedCostsRow {
                 milestone_year,
                 asset_id: asset.id(),
-                process_id: asset.process_id().clone(),
-                region_id: asset.region_id().clone(),
+                asset_description: asset.description(),
                 time_slice: time_slice.clone(),
                 reduced_cost: *reduced_cost,
             };
@@ -744,8 +736,7 @@ mod tests {
             milestone_year,
             run_description,
             asset_id: asset.id(),
-            process_id: asset.process_id().clone(),
-            region_id: asset.region_id().clone(),
+            asset_description: asset.description(),
             time_slice,
             value,
         };
@@ -784,8 +775,7 @@ mod tests {
             milestone_year,
             run_description,
             asset_id: asset.id(),
-            process_id: asset.process_id().clone(),
-            region_id: asset.region_id().clone(),
+            asset_description: asset.description(),
             time_slice,
             activity,
         };
@@ -855,8 +845,7 @@ mod tests {
             milestone_year,
             run_description,
             asset_id: asset.id(),
-            process_id: asset.process_id().clone(),
-            region_id: asset.region_id().clone(),
+            asset_description: asset.description(),
             capacity: Capacity(42.0),
             unmet_demand: Flow(0.0),
             metric: 3.14,
@@ -892,8 +881,7 @@ mod tests {
         let expected = ReducedCostsRow {
             milestone_year,
             asset_id: asset.id(),
-            process_id: asset.process_id().clone(),
-            region_id: asset.region_id().clone(),
+            asset_description: asset.description(),
             time_slice,
             reduced_cost: MoneyPerActivity(0.5),
         };
