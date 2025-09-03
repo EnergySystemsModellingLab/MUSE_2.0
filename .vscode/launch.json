@@ -15,6 +15,7 @@
                     "kind": "bin"
                 }
             },
+            "program": "${workspaceFolder}/target/debug/muse2",
             "args": ["run", "${workspaceFolder}/examples/simple"],
             "cwd": "${workspaceFolder}"
         },
