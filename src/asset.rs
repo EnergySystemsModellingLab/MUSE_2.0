@@ -8,6 +8,7 @@ use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity, Mo
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
 use itertools::{chain, Itertools};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -536,6 +537,12 @@ where
     I: IntoIterator<Item = AssetRef> + 'a,
 {
     assets.into_iter().map(move |mut asset| {
+        debug!(
+            "Decommissioning asset '{}' for agent '{}'",
+            asset.process_id(),
+            asset.agent_id().unwrap()
+        );
+
         asset.make_mut().decommission(year);
         asset
     })
