@@ -358,14 +358,13 @@ impl Asset {
             AssetState::Candidate => "Candidate",
         };
 
-        let agent_id = self
-            .agent_id()
-            .map(|id| id.to_string())
-            .unwrap_or_else(|| "None".to_string());
-
         format!(
             "{};{};{};{};{}",
-            state_name, self.commission_year, self.process.id, self.region_id, agent_id
+            state_name,
+            self.commission_year,
+            self.process.id,
+            self.region_id,
+            self.agent_id().map_or("None", |id| &id.0)
         )
     }
 
