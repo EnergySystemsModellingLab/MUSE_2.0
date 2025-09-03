@@ -12,6 +12,16 @@ use itertools::iproduct;
 use std::collections::{BTreeMap, HashMap};
 
 /// A map of reduced costs for different assets in different time slices
+///
+/// This is the system cost associated with one unit of activity (MoneyPerActivity) for each asset
+/// in each time slice.
+///
+/// For candidate assets this is calculated directly from the activity variable duals.
+///
+/// For existing assets this is calculated from the operating cost and the revenue from flows.
+///
+/// These may be used in the investment algorithm, depending on the appraisal method, to compare the
+/// cost effectiveness of different potential investment decisions.
 #[derive(Default, Clone)]
 pub struct ReducedCosts(IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>);
 
