@@ -13,7 +13,7 @@ use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity, MoneyPerFlow}
 use anyhow::{ensure, Result};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
-use log::debug;
+use log::{debug, info, warn};
 use std::collections::HashMap;
 
 pub mod appraisal;
@@ -125,6 +125,7 @@ pub fn perform_agent_investment(
             // **TODO**: this probably means there's no demand for the commodity, which we could
             // presumably preempt
             if selected_assets.is_empty() {
+                debug!("NO ASSETS SELECTED!!!!!");
                 continue;
             }
 
@@ -368,6 +369,10 @@ fn select_best_assets(
     year: u32,
     writer: &mut DataWriter,
 ) -> Result<Vec<AssetRef>> {
+    info!("RUNNING APPRAISAL");
+    if !is_any_remaining_demand(&demand) {
+        warn!("NO REMAINING DEMAND; APPRAISAL SKIPPED");
+    }
     let mut best_assets: Vec<AssetRef> = Vec::new();
 
     let mut remaining_candidate_capacity = HashMap::from_iter(
