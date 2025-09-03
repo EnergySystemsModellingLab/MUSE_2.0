@@ -407,6 +407,17 @@ impl Asset {
         };
         self.state = AssetState::Commissioned { id, agent_id };
     }
+
+    /// Creates a Candidate asset matching a given Commissioned asset
+    pub fn as_candidate(&self) -> Self {
+        assert!(
+            matches!(self.state, AssetState::Commissioned { .. }),
+            "as_candidate can only be called on Commissioned assets"
+        );
+        let mut copy = self.clone();
+        copy.state = AssetState::Candidate;
+        copy
+    }
 }
 
 impl std::fmt::Debug for Asset {
@@ -495,26 +506,43 @@ impl Deref for AssetRef {
 
 impl PartialEq for AssetRef {
     fn eq(&self, other: &Self) -> bool {
-        // Follows the same logic as Hash
+        // For assets to be considered equal, they must have the same process, region, commission
+        // year and state
         Rc::ptr_eq(&self.0.process, &other.0.process)
             && self.0.region_id == other.0.region_id
             && self.0.commission_year == other.0.commission_year
-            && self.0.agent_id() == other.0.agent_id()
+            && self.0.state == other.0.state
     }
 }
 
 impl Eq for AssetRef {}
 
 impl Hash for AssetRef {
-    /// Hash asset based on the combination of process_id, region_id, commission_year and agent_id.
-    /// In practice this means that, for assets with the same process_id, region_id and commission_year,
-    /// Selected/Future/Commissioned/Decommissioned assets with the same agent_id will all hash the
-    /// same, which will be different from Candidate assets (which don't have an agent_id).
+    /// Hash an asset according to its state:
+    /// - Commissioned assets are hashed based on their ID alone
+    /// - Selected assets are hashed based on process_id, region_id, commission_year and agent_id
+    /// - Candidate assets are hashed based on process_id, region_id and commission_year
+    /// - Future and Decommissioned assets cannot currently be hashed
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.process.id.hash(state);
-        self.0.region_id.hash(state);
-        self.0.commission_year.hash(state);
-        self.0.agent_id().hash(state);
+        match &self.0.state {
+            AssetState::Commissioned { id, .. } => {
+                // Hashed based on their ID alone, since this is sufficient to uniquely identify the
+                // asset
+                id.hash(state);
+            }
+            AssetState::Candidate | AssetState::Selected { .. } => {
+                // Hashed based on process_id, region_id, commission_year and (for Selected assets)
+                // agent_id
+                self.0.process.id.hash(state);
+                self.0.region_id.hash(state);
+                self.0.commission_year.hash(state);
+                self.0.agent_id().hash(state);
+            }
+            AssetState::Future { .. } | AssetState::Decommissioned { .. } => {
+                // We shouldn't currently need to hash Future or Decommissioned assets
+                unimplemented!("Cannot hash Future or Decommissioned assets");
+            }
+        }
     }
 }
 

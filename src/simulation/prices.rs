@@ -12,9 +12,78 @@ use itertools::iproduct;
 use std::collections::{BTreeMap, HashMap};
 
 /// A map of reduced costs for different assets in different time slices
-pub type ReducedCosts = IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
+///
+/// This is the system cost associated with one unit of activity (MoneyPerActivity) for each asset
+/// in each time slice.
+///
+/// For candidate assets this is calculated directly from the activity variable duals.
+///
+/// For existing assets this is calculated from the operating cost and the revenue from flows.
+///
+/// These may be used in the investment algorithm, depending on the appraisal method, to compare the
+/// cost effectiveness of different potential investment decisions.
+#[derive(Default, Clone)]
+pub struct ReducedCosts(IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>);
 
-/// Update commodity prices and reduced costs for assets.
+impl ReducedCosts {
+    /// Get the reduced cost for the specified asset and time slice
+    ///
+    /// If no reduced cost is found for the asset, the reduced cost is returned for the relevant
+    /// candidate asset. This can occur the first year an asset is commissioned, or if an asset
+    /// was not selected in an earlier iteration of the ironing out loop.
+    pub fn get(&self, asset: &AssetRef, time_slice: &TimeSliceID) -> MoneyPerActivity {
+        *self
+            .0
+            .get(&(asset.clone(), time_slice.clone()))
+            .unwrap_or_else(|| &self.0[&(asset.as_candidate().into(), time_slice.clone())])
+    }
+
+    /// Extend the reduced costs map
+    pub fn extend<T>(&mut self, iter: T)
+    where
+        T: IntoIterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)>,
+    {
+        self.0.extend(iter);
+    }
+
+    /// Iterate over the map
+    pub fn iter(&self) -> impl Iterator<Item = (&(AssetRef, TimeSliceID), &MoneyPerActivity)> {
+        self.0.iter()
+    }
+
+    /// Iterate mutably over the map
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (&(AssetRef, TimeSliceID), &mut MoneyPerActivity)> {
+        self.0.iter_mut()
+    }
+}
+
+impl FromIterator<((AssetRef, TimeSliceID), MoneyPerActivity)> for ReducedCosts {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = ((AssetRef, TimeSliceID), MoneyPerActivity)>,
+    {
+        ReducedCosts(iter.into_iter().collect())
+    }
+}
+
+impl IntoIterator for ReducedCosts {
+    type Item = ((AssetRef, TimeSliceID), MoneyPerActivity);
+    type IntoIter = indexmap::map::IntoIter<(AssetRef, TimeSliceID), MoneyPerActivity>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl From<IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>> for ReducedCosts {
+    fn from(map: IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>) -> Self {
+        ReducedCosts(map)
+    }
+}
+
+/// Calculate commodity prices and reduced costs for assets.
 ///
 /// Note that the behaviour will be different depending on the [`PricingStrategy`] the user has
 /// selected.
@@ -23,18 +92,17 @@ pub type ReducedCosts = IndexMap<(AssetRef, TimeSliceID), MoneyPerActivity>;
 ///
 /// * `model` - The model
 /// * `solution` - Solution to dispatch optimisation
-/// * `assets` - Asset pool
+/// * `existing_assets` - Existing assets
 /// * `year` - Current milestone year
-/// * `prices` - Commodity prices
-/// * `reduced_costs` - Reduced costs for assets
-pub fn update_prices_and_reduced_costs(
+pub fn calculate_prices_and_reduced_costs(
     model: &Model,
     solution: &Solution,
     existing_assets: &[AssetRef],
     year: u32,
-    prices: &mut CommodityPrices,
-    reduced_costs: &mut ReducedCosts,
-) {
+) -> (CommodityPrices, ReducedCosts) {
+    let mut prices = CommodityPrices::default();
+    let mut reduced_costs = ReducedCosts::default();
+
     let shadow_prices = CommodityPrices::from_iter(solution.iter_commodity_balance_duals());
     let reduced_costs_for_candidates: ReducedCosts = solution
         .iter_reduced_costs_for_candidates()
@@ -75,9 +143,11 @@ pub fn update_prices_and_reduced_costs(
     reduced_costs.extend(reduced_costs_for_existing(
         &model.time_slice_info,
         existing_assets,
-        prices,
+        &prices,
         year,
     ));
+
+    (prices, reduced_costs)
 }
 
 /// A map relating commodity ID + region + time slice to current price (endogenous)
@@ -333,9 +403,37 @@ fn reduced_costs_for_existing<'a>(
 mod tests {
     use super::*;
     use crate::commodity::CommodityID;
+    use crate::fixture::{asset, assets, process, time_slice};
+    use crate::process::Process;
     use crate::region::RegionID;
     use crate::time_slice::TimeSliceID;
+    use indexmap::indexmap;
     use rstest::rstest;
+
+    #[rstest]
+    fn test_get_reduced_cost(process: Process, time_slice: TimeSliceID) {
+        let asset_pool = assets(asset(process));
+        let asset = asset_pool.as_slice().first().unwrap();
+
+        // Create reduced costs with only the candidate version
+        let candidate = asset.as_candidate();
+        let mut reduced_costs = ReducedCosts::from(indexmap! {
+            (candidate.into(), time_slice.clone()) => MoneyPerActivity(42.0)
+        });
+
+        // Should fallback to candidate when asset not found
+        let result = reduced_costs.get(asset, &time_slice);
+        assert_eq!(result, MoneyPerActivity(42.0));
+
+        // Add a reduced cost for the asset
+        reduced_costs.extend(indexmap! {
+            (asset.clone(), time_slice.clone()) => MoneyPerActivity(100.0)
+        });
+
+        // Now should return the asset's reduced cost
+        let result = reduced_costs.get(asset, &time_slice);
+        assert_eq!(result, MoneyPerActivity(100.0));
+    }
 
     #[rstest]
     #[case(MoneyPerFlow(100.0), MoneyPerFlow(100.0), Dimensionless(0.0), true)] // exactly equal
