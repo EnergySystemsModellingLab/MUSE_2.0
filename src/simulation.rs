@@ -75,9 +75,30 @@ pub fn run(
 
         // Ironing out loop
         let mut ironing_out_iter = 0;
+        let mut missing_assets: Vec<_> = Vec::new();
         let selected_assets: Vec<AssetRef> = loop {
             // Add context to the writer
             writer.set_debug_context(format!("ironing out iteration {ironing_out_iter}"));
+
+            if missing_assets.is_empty() {
+                info!("MISSING ASSETS: NONE");
+            } else {
+                info!("MISSING ASSETS FROM PREVIOUS YEAR: {missing_assets:?}");
+
+                let time_slice = model.time_slice_info.iter_ids().next().unwrap();
+                let num_in_rc = missing_assets
+                    .iter()
+                    .filter(|asset: &&AssetRef| {
+                        let key = ((*asset).clone(), time_slice.clone());
+                        reduced_costs.contains_key(&key)
+                    })
+                    .count();
+                info!(
+                    "!!! {}/{} HAVE REDUCED COSTS",
+                    num_in_rc,
+                    missing_assets.len()
+                );
+            }
 
             // Perform agent investment
             info!("Running agent investment...");
@@ -95,6 +116,12 @@ pub fn run(
             info!("Running dispatch optimisation...");
             let (_flow_map, new_prices, new_reduced_costs) =
                 run_dispatch_for_year(&model, &selected_assets, year, Some(year), &mut writer)?;
+
+            missing_assets = existing_assets
+                .iter()
+                .filter(|asset| !selected_assets.contains(asset))
+                .cloned()
+                .collect();
 
             // Check if prices have converged
             let prices_stable =
