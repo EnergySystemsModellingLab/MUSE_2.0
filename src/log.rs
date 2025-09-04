@@ -6,10 +6,11 @@
 use anyhow::{bail, Result};
 use chrono::Local;
 use fern::colors::{Color, ColoredLevelConfig};
-use fern::{log_file, Dispatch, FormatCallback};
+use fern::{Dispatch, FormatCallback};
 use log::{LevelFilter, Record};
 use std::env;
 use std::fmt::{Arguments, Display};
+use std::fs::OpenOptions;
 use std::io::IsTerminal;
 use std::path::Path;
 use std::sync::OnceLock;
@@ -84,8 +85,15 @@ pub fn init(log_level_from_settings: Option<&str>, output_path: &Path) -> Result
     let use_colour_stderr = std::io::stderr().is_terminal();
 
     // Create log files
-    let info_log_file = log_file(output_path.join(LOG_INFO_FILE_NAME))?;
-    let err_log_file = log_file(output_path.join(LOG_ERROR_FILE_NAME))?;
+    let new_log_file = |file_name| {
+        OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(output_path.join(file_name))
+    };
+    let info_log_file = new_log_file(LOG_INFO_FILE_NAME)?;
+    let err_log_file = new_log_file(LOG_ERROR_FILE_NAME)?;
 
     // Configure the logger
     let dispatch = Dispatch::new()
