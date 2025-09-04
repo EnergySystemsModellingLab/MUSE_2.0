@@ -8,6 +8,7 @@ use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity, Mo
 use anyhow::{ensure, Context, Result};
 use indexmap::IndexMap;
 use itertools::{chain, Itertools};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -559,11 +560,22 @@ impl Ord for AssetRef {
 }
 
 /// Convert the specified assets to being decommissioned and return
-fn decommission_assets<'a, I>(assets: I, year: u32) -> impl Iterator<Item = AssetRef> + 'a
+fn decommission_assets<'a, I>(
+    assets: I,
+    year: u32,
+    reason: &'a str,
+) -> impl Iterator<Item = AssetRef> + 'a
 where
     I: IntoIterator<Item = AssetRef> + 'a,
 {
     assets.into_iter().map(move |mut asset| {
+        debug!(
+            "Decommissioning asset '{}' for agent '{}' (reason: {})",
+            asset.process_id(),
+            asset.agent_id().unwrap(),
+            reason
+        );
+
         asset.make_mut().decommission(year);
         asset
     })
@@ -611,6 +623,11 @@ impl AssetPool {
 
         // Move assets from future to active
         for mut asset in self.future.drain(0..count) {
+            debug!(
+                "Commissioning asset '{}' for agent '{}' (reason: user input)",
+                asset.process_id(),
+                asset.agent_id().unwrap(),
+            );
             asset.commission_future(AssetID(self.next_id));
             self.next_id += 1;
             self.active.push(asset.into());
@@ -625,7 +642,7 @@ impl AssetPool {
             .extract_if(.., |asset| asset.max_decommission_year() <= year);
 
         // Set `decommission_year` and copy to `self.decommissioned`
-        let decommissioned = decommission_assets(to_decommission, year);
+        let decommissioned = decommission_assets(to_decommission, year, "end of life");
         self.decommissioned.extend(decommissioned);
     }
 
@@ -656,7 +673,7 @@ impl AssetPool {
                 _ => panic!("Active pool should only contain commissioned assets"),
             })
         });
-        let decommissioned = decommission_assets(to_decommission, year);
+        let decommissioned = decommission_assets(to_decommission, year, "not selected");
         self.decommissioned.extend(decommissioned);
     }
 
@@ -709,6 +726,11 @@ impl AssetPool {
             match &asset.state {
                 AssetState::Commissioned { .. } => {}
                 AssetState::Selected { .. } => {
+                    debug!(
+                        "Commissioning asset '{}' for agent '{}' (reason: selected)",
+                        asset.process_id(),
+                        asset.agent_id().unwrap(),
+                    );
                     asset.make_mut().commission_selected(AssetID(self.next_id));
                     self.next_id += 1;
                 }
