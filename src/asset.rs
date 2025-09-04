@@ -532,15 +532,20 @@ impl Ord for AssetRef {
 }
 
 /// Convert the specified assets to being decommissioned and return
-fn decommission_assets<'a, I>(assets: I, year: u32) -> impl Iterator<Item = AssetRef> + 'a
+fn decommission_assets<'a, I>(
+    assets: I,
+    year: u32,
+    reason: &'a str,
+) -> impl Iterator<Item = AssetRef> + 'a
 where
     I: IntoIterator<Item = AssetRef> + 'a,
 {
     assets.into_iter().map(move |mut asset| {
         debug!(
-            "Decommissioning asset '{}' for agent '{}'",
+            "Decommissioning asset '{}' for agent '{}' (reason: {})",
             asset.process_id(),
-            asset.agent_id().unwrap()
+            asset.agent_id().unwrap(),
+            reason
         );
 
         asset.make_mut().decommission(year);
@@ -604,7 +609,7 @@ impl AssetPool {
             .extract_if(.., |asset| asset.max_decommission_year() <= year);
 
         // Set `decommission_year` and copy to `self.decommissioned`
-        let decommissioned = decommission_assets(to_decommission, year);
+        let decommissioned = decommission_assets(to_decommission, year, "end of life");
         self.decommissioned.extend(decommissioned);
     }
 
@@ -635,7 +640,7 @@ impl AssetPool {
                 _ => panic!("Active pool should only contain commissioned assets"),
             })
         });
-        let decommissioned = decommission_assets(to_decommission, year);
+        let decommissioned = decommission_assets(to_decommission, year, "not selected");
         self.decommissioned.extend(decommissioned);
     }
 
