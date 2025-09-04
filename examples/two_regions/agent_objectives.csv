@@ -1,4 +1,4 @@
 agent_id,objective_type,years
-A1_RES,LCOX,all
-A1_PWR,LCOX,all
-A1_GAS,LCOX,all
+A1_RES,lcox,all
+A1_PWR,lcox,all
+A1_GAS,lcox,all
