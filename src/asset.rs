@@ -595,6 +595,11 @@ impl AssetPool {
 
         // Move assets from future to active
         for mut asset in self.future.drain(0..count) {
+            debug!(
+                "Commissioning asset '{}' for agent '{}' (reason: user input)",
+                asset.process_id(),
+                asset.agent_id().unwrap(),
+            );
             asset.commission_future(AssetID(self.next_id));
             self.next_id += 1;
             self.active.push(asset.into());
@@ -693,6 +698,11 @@ impl AssetPool {
             match &asset.state {
                 AssetState::Commissioned { .. } => {}
                 AssetState::Selected { .. } => {
+                    debug!(
+                        "Commissioning asset '{}' for agent '{}' (reason: selected)",
+                        asset.process_id(),
+                        asset.agent_id().unwrap(),
+                    );
                     asset.make_mut().commission_selected(AssetID(self.next_id));
                     self.next_id += 1;
                 }
