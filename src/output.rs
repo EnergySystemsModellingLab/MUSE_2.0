@@ -33,23 +33,17 @@ const COMMODITY_PRICES_FILE_NAME: &str = "commodity_prices.csv";
 /// The output file name for assets
 const ASSETS_FILE_NAME: &str = "assets.csv";
 
-/// The output file name for raw activity
-const ACTIVITY_FILE_NAME: &str = "debug_activity.csv";
+/// The output file name for asset-related dispatch info
+const DISPATCH_ASSETS_FILE_NAME: &str = "debug_dispatch_assets.csv";
 
 /// The output file name for commodity balance duals
 const COMMODITY_BALANCE_DUALS_FILE_NAME: &str = "debug_commodity_balance_duals.csv";
-
-/// The output file name for activity duals
-const ACTIVITY_DUALS_FILE_NAME: &str = "debug_activity_duals.csv";
 
 /// The output file name for extra solver output values
 const SOLVER_VALUES_FILE_NAME: &str = "debug_solver.csv";
 
 /// The output file name for appraisal results
 const APPRAISAL_RESULTS_FILE_NAME: &str = "debug_appraisal_results.csv";
-
-/// The output file name for reduced costs
-const REDUCED_COSTS_FILE_NAME: &str = "debug_reduced_costs.csv";
 
 /// Get the model name from the specified directory path
 pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
@@ -131,7 +125,7 @@ struct CommodityPriceRow {
 
 /// Represents the activity in a row of the activity CSV file
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-struct ActivityRow {
+struct DispatchAssetsRow {
     milestone_year: u32,
     run_description: String,
     asset_id: Option<AssetID>,
@@ -139,18 +133,8 @@ struct ActivityRow {
     region_id: RegionID,
     time_slice: TimeSliceID,
     activity: Activity,
-}
-
-/// Represents the activity duals data in a row of the activity duals CSV file
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-struct ActivityDualsRow {
-    milestone_year: u32,
-    run_description: String,
-    asset_id: Option<AssetID>,
-    process_id: ProcessID,
-    region_id: RegionID,
-    time_slice: TimeSliceID,
-    value: MoneyPerActivity,
+    activity_dual: MoneyPerActivity,
+    reduced_cost: MoneyPerActivity,
 }
 
 /// Represents the commodity balance duals data in a row of the commodity balance duals CSV file
@@ -185,26 +169,13 @@ struct AppraisalResultsRow {
     metric: f64,
 }
 
-/// Represents the reduced costs in a row of the reduced costs CSV file
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-struct ReducedCostsRow {
-    milestone_year: u32,
-    asset_id: Option<AssetID>,
-    process_id: ProcessID,
-    region_id: RegionID,
-    time_slice: TimeSliceID,
-    reduced_cost: MoneyPerActivity,
-}
-
 /// For writing extra debug information about the model
 struct DebugDataWriter {
     context: Option<String>,
-    activity_writer: csv::Writer<File>,
+    dispatch_assets_writer: csv::Writer<File>,
     commodity_balance_duals_writer: csv::Writer<File>,
-    activity_duals_writer: csv::Writer<File>,
     solver_values_writer: csv::Writer<File>,
     appraisal_results_writer: csv::Writer<File>,
-    reduced_costs_writer: csv::Writer<File>,
 }
 
 impl DebugDataWriter {
@@ -221,12 +192,10 @@ impl DebugDataWriter {
 
         Ok(Self {
             context: None,
-            activity_writer: new_writer(ACTIVITY_FILE_NAME)?,
+            dispatch_assets_writer: new_writer(DISPATCH_ASSETS_FILE_NAME)?,
             commodity_balance_duals_writer: new_writer(COMMODITY_BALANCE_DUALS_FILE_NAME)?,
-            activity_duals_writer: new_writer(ACTIVITY_DUALS_FILE_NAME)?,
             solver_values_writer: new_writer(SOLVER_VALUES_FILE_NAME)?,
             appraisal_results_writer: new_writer(APPRAISAL_RESULTS_FILE_NAME)?,
-            reduced_costs_writer: new_writer(REDUCED_COSTS_FILE_NAME)?,
         })
     }
 
@@ -247,11 +216,6 @@ impl DebugDataWriter {
         solution: &Solution,
     ) -> Result<()> {
         self.write_activity(milestone_year, run_description, solution.iter_activity())?;
-        self.write_activity_duals(
-            milestone_year,
-            run_description,
-            solution.iter_activity_duals(),
-        )?;
         self.write_commodity_balance_duals(
             milestone_year,
             run_description,
@@ -282,32 +246,6 @@ impl DebugDataWriter {
                 activity,
             };
             self.activity_writer.serialize(row)?;
-        }
-
-        Ok(())
-    }
-
-    /// Write activity duals to file
-    fn write_activity_duals<'a, I>(
-        &mut self,
-        milestone_year: u32,
-        run_description: &str,
-        iter: I,
-    ) -> Result<()>
-    where
-        I: Iterator<Item = (&'a AssetRef, &'a TimeSliceID, MoneyPerActivity)>,
-    {
-        for (asset, time_slice, value) in iter {
-            let row = ActivityDualsRow {
-                milestone_year,
-                run_description: self.with_context(run_description),
-                asset_id: asset.id(),
-                process_id: asset.process_id().clone(),
-                region_id: asset.region_id().clone(),
-                time_slice: time_slice.clone(),
-                value,
-            };
-            self.activity_duals_writer.serialize(row)?;
         }
 
         Ok(())
@@ -375,27 +313,6 @@ impl DebugDataWriter {
                 metric: result.metric,
             };
             self.appraisal_results_writer.serialize(row)?;
-        }
-
-        Ok(())
-    }
-
-    /// Write reduced costs to file
-    fn write_reduced_costs(
-        &mut self,
-        milestone_year: u32,
-        reduced_costs: &ReducedCosts,
-    ) -> Result<()> {
-        for ((asset, time_slice), reduced_cost) in reduced_costs.iter() {
-            let row = ReducedCostsRow {
-                milestone_year,
-                asset_id: asset.id(),
-                process_id: asset.process_id().clone(),
-                region_id: asset.region_id().clone(),
-                time_slice: time_slice.clone(),
-                reduced_cost: *reduced_cost,
-            };
-            self.reduced_costs_writer.serialize(row)?;
         }
 
         Ok(())
