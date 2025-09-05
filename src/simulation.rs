@@ -48,13 +48,17 @@ pub fn run(
     // Write assets to file
     writer.write_assets(assets.iter_all())?;
 
-    // Gather candidates for the next year
-    let next_year = year_iter.peek().copied().unwrap(); // should be at least one more year
-    let mut candidates = candidate_assets_for_year(
-        &model.processes,
-        next_year,
-        model.parameters.candidate_asset_capacity,
-    );
+    // Gather candidates for the next year, if any
+    let next_year = year_iter.peek().copied();
+    let mut candidates = next_year
+        .map(|next_year| {
+            candidate_assets_for_year(
+                &model.processes,
+                next_year,
+                model.parameters.candidate_asset_capacity,
+            )
+        })
+        .unwrap_or_default();
 
     // Run dispatch optimisation
     info!("Running dispatch optimisation...");
@@ -100,15 +104,17 @@ pub fn run(
 
             // We need to add candidates from all existing_assets that aren't in selected_assets as
             // these may be re-chosen in the next iteration
-            let candidates_for_existing = existing_assets
-                .iter()
-                .filter(|asset| !selected_assets.contains(asset))
-                .map(|asset| {
-                    asset
-                        .as_candidate(Some(model.parameters.candidate_asset_capacity))
-                        .into()
-                })
-                .collect();
+            let mut all_candidates = candidates.clone();
+            all_candidates.extend(
+                existing_assets
+                    .iter()
+                    .filter(|asset| !selected_assets.contains(asset))
+                    .map(|asset| {
+                        asset
+                            .as_candidate(Some(model.parameters.candidate_asset_capacity))
+                            .into()
+                    }),
+            );
 
             // Run dispatch optimisation to get updated reduced costs and prices for the next
             // iteration
@@ -116,7 +122,7 @@ pub fn run(
             let (_flow_map, new_prices, new_reduced_costs) = run_dispatch_for_year(
                 &model,
                 &selected_assets,
-                &[candidates.clone(), candidates_for_existing].concat(),
+                &all_candidates,
                 year,
                 &mut writer,
             )?;

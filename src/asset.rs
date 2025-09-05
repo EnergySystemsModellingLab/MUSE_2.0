@@ -63,6 +63,19 @@ pub enum AssetState {
     Candidate,
 }
 
+impl AssetState {
+    /// Get the name of the asset state
+    pub fn name(&self) -> &str {
+        match self {
+            AssetState::Commissioned { .. } => "Commissioned",
+            AssetState::Decommissioned { .. } => "Decommissioned",
+            AssetState::Future { .. } => "Future",
+            AssetState::Selected { .. } => "Selected",
+            AssetState::Candidate => "Candidate",
+        }
+    }
+}
+
 /// An asset controlled by an agent.
 #[derive(Clone, PartialEq)]
 pub struct Asset {
@@ -415,8 +428,8 @@ impl Asset {
     pub fn as_candidate(&self, capacity: Option<Capacity>) -> Asset {
         assert!(
             matches!(self.state, AssetState::Commissioned { .. }),
-            "as_candidate can only be called on Commissioned assets, not {:?}",
-            self.state
+            "as_candidate can only be called on Commissioned assets, not {}",
+            self.state.name()
         );
         let mut copy = self.clone();
         copy.state = AssetState::Candidate;
