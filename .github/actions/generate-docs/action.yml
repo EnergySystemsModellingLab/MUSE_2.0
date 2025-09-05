@@ -1,5 +1,5 @@
 name: Generate documentation
-description: Automatically generate documentation (before mdbook is run)
+description: Generate all documentation
 
 runs:
   using: composite
@@ -8,17 +8,16 @@ runs:
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
         toolchain: stable
-    - name: Update CLI documentation
+    - name: Install just
       shell: bash
-      run: cargo run -- --markdown-help > docs/command_line_help.md
-    - name: Install Python dependencies
+      run: cargo install just
+    - name: Install mdBook
       shell: bash
-      run: pip install -r doc-requirements.txt
-    - name: Generate documentation for file formats
+      run: cargo install mdbook
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
+    - name: Build documentation
       shell: bash
-      run: python docs/file_formats/generate_docs.py
-    - name: Build API docs
-      shell: bash
-      run: |
-        export RUSTDOCFLAGS="-D warnings"
-        cargo doc --no-deps --document-private-items
+      run: just build-docs

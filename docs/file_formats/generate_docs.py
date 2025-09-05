@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = [
+#     "jinja2",
+#     "pyyaml",
+#     "table2md",
+# ]
+# ///
 #
 # A script to generate markdown documentation from table schemas. If invoked without any arguments,
 # it will generate all file format documentation. Alternatively, you can specify one or more type
