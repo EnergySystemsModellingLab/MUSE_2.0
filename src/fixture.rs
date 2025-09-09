@@ -16,8 +16,8 @@ use crate::units::{
     ActivityPerCapacity, Capacity, Dimensionless, MoneyPerActivity, MoneyPerCapacity,
     MoneyPerCapacityPerYear, Year,
 };
-use indexmap::indexmap;
 use indexmap::IndexSet;
+use indexmap::indexmap;
 use itertools::Itertools;
 use rstest::fixture;
 use std::collections::HashMap;

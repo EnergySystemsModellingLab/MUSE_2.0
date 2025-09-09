@@ -3,7 +3,7 @@ use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
-use crate::simulation::prices::{calculate_prices_and_reduced_costs, ReducedCosts};
+use crate::simulation::prices::{ReducedCosts, calculate_prices_and_reduced_costs};
 use crate::units::Capacity;
 use anyhow::{Context, Result};
 use log::info;

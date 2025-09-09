@@ -8,7 +8,7 @@ use crate::output::DataWriter;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Activity, Flow, Money, MoneyPerActivity, MoneyPerFlow, UnitType};
-use anyhow::{anyhow, ensure, Result};
+use anyhow::{Result, anyhow, ensure};
 use highs::{HighsModelStatus, RowProblem as Problem, Sense};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 
 mod constraints;
-use constraints::{add_asset_constraints, ConstraintKeys};
+use constraints::{ConstraintKeys, add_asset_constraints};
 
 /// A map of commodity flows calculated during the optimisation
 pub type FlowMap = IndexMap<(AssetRef, CommodityID, TimeSliceID), Flow>;
@@ -151,7 +151,7 @@ impl Solution<'_> {
         &'a self,
         variable_idx: &Range<usize>,
         output: &'a [f64],
-    ) -> impl Iterator<Item = (&'a AssetRef, &'a TimeSliceID, T)> {
+    ) -> impl Iterator<Item = (&'a AssetRef, &'a TimeSliceID, T)> + use<'a, T> {
         let keys = self.variables.0.keys().skip(variable_idx.start);
         assert!(keys.len() >= variable_idx.len());
 

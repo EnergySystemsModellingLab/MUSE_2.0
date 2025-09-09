@@ -9,7 +9,7 @@ use crate::process::ProcessMap;
 use crate::region::{RegionID, RegionMap};
 use crate::time_slice::TimeSliceInfo;
 use crate::units::{Capacity, Dimensionless, MoneyPerFlow};
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use log::warn;
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
