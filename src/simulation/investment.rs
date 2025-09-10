@@ -404,9 +404,11 @@ fn select_best_assets(
                 &demand,
             )?;
 
-            // Store the appraisal results if the capacity is positive, otherwise we won't consider
-            // the asset for investment. This can happen if the asset has zero activity limits for
-            // all time slices with demand.
+            // Store the appraisal results if the capacity is positive. If capacity is zero,
+            // this means the asset is infeasible for investment. This can happen if the asset has
+            // zero activity limits for all time slices with demand. This can also happen due to a
+            // known issue with the NPV objective, for which we do not currently have a solution
+            // (see https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/716).
             if output.capacity > Capacity(0.0) {
                 outputs_for_opts.push(output);
             } else {
