@@ -126,9 +126,10 @@ mod tests {
             value: MoneyPerFlow(0.5),
         };
         let mut map = CommodityLevyMap::new();
-        assert!(map
-            .insert(("GBR".into(), 2010, ts.clone()), value.clone())
-            .is_none());
+        assert!(
+            map.insert(("GBR".into(), 2010, ts.clone()), value.clone())
+                .is_none()
+        );
         assert_eq!(map.get(&("GBR".into(), 2010, ts)).unwrap(), &value);
     }
 }

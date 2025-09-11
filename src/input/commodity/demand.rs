@@ -1,13 +1,13 @@
 //! Code for working with demand for a given commodity. Demand can vary by region, year and time
 //! slice.
 use super::super::*;
-use super::demand_slicing::{read_demand_slices, DemandSliceMap};
+use super::demand_slicing::{DemandSliceMap, read_demand_slices};
 use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
 use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel};
 use crate::units::Flow;
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use indexmap::IndexSet;
 use itertools::iproduct;
 use serde::Deserialize;
@@ -403,13 +403,15 @@ mod tests {
             commodity_id: "commodity1".to_string(),
             demand: Flow(10.0),
         };
-        assert!(read_demand_from_iter(
-            std::iter::once(demand),
-            &svd_commodities,
-            &region_ids,
-            &[2020, 2030]
-        )
-        .is_err());
+        assert!(
+            read_demand_from_iter(
+                std::iter::once(demand),
+                &svd_commodities,
+                &region_ids,
+                &[2020, 2030]
+            )
+            .is_err()
+        );
     }
 
     /// Create an example demand file in dir_path
