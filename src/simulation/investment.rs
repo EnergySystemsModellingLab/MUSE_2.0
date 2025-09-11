@@ -10,7 +10,7 @@ use crate::region::RegionID;
 use crate::simulation::CommodityPrices;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity, MoneyPerFlow};
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
 use log::debug;
@@ -134,7 +134,9 @@ pub fn perform_agent_investment(
             // Perform dispatch optimisation with assets that have been selected so far
             // **TODO**: presumably we only need to do this for selected_assets, as assets added in
             // previous iterations should not change
-            debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
+            debug!(
+                "Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'"
+            );
 
             // As upstream commodities by definition will not yet have producers, we explicitly set
             // their prices using previous values so that they don't appear free

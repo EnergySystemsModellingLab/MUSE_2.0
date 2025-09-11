@@ -5,7 +5,7 @@ use crate::process::{FlowType, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessM
 use crate::region::parse_region_str;
 use crate::units::{FlowPerActivity, MoneyPerFlow};
 use crate::year::parse_year_str;
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::HashMap;

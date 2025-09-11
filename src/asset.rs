@@ -5,9 +5,9 @@ use crate::process::{Process, ProcessFlow, ProcessID, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity, MoneyPerFlow};
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use indexmap::IndexMap;
-use itertools::{chain, Itertools};
+use itertools::{Itertools, chain};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -824,7 +824,7 @@ mod tests {
         MoneyPerCapacity, MoneyPerCapacityPerYear, MoneyPerFlow,
     };
     use indexmap::{IndexMap, IndexSet};
-    use itertools::{assert_equal, Itertools};
+    use itertools::{Itertools, assert_equal};
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
     use std::iter;
@@ -1223,10 +1223,12 @@ mod tests {
         assert!(asset_pool.active.iter().any(|a| a.id() == Some(AssetID(1))));
         assert!(asset_pool.active.iter().any(|a| a.id() == Some(AssetID(2))));
         // Check that the new asset has the correct agent
-        assert!(asset_pool
-            .active
-            .iter()
-            .any(|a| a.agent_id() == Some(&"agent_new".into())));
+        assert!(
+            asset_pool
+                .active
+                .iter()
+                .any(|a| a.agent_id() == Some(&"agent_new".into()))
+        );
     }
 
     #[rstest]

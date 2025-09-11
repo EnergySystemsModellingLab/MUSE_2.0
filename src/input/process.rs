@@ -5,9 +5,9 @@ use crate::id::IDCollection;
 use crate::process::{
     Process, ProcessActivityLimitsMap, ProcessFlowsMap, ProcessID, ProcessMap, ProcessParameterMap,
 };
-use crate::region::{parse_region_str, RegionID};
+use crate::region::{RegionID, parse_region_str};
 use crate::time_slice::TimeSliceInfo;
-use anyhow::{ensure, Context, Ok, Result};
+use anyhow::{Context, Ok, Result, ensure};
 use indexmap::IndexSet;
 use itertools::chain;
 use serde::Deserialize;

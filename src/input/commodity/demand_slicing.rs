@@ -6,9 +6,9 @@ use crate::input::commodity::demand::BorrowedCommodityMap;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceSelection};
 use crate::units::Dimensionless;
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use indexmap::IndexSet;
-use itertools::{iproduct, Itertools};
+use itertools::{Itertools, iproduct};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -102,10 +102,13 @@ where
                     demand_fraction,
                 )
                 .is_some();
-            ensure!(!existing,
+            ensure!(
+                !existing,
                 "Duplicate demand slicing entry (or same time slice covered by more than one entry) \
-                (commodity: {}, region: {}, time slice(s): {})"
-                ,commodity.id,region_id,ts_selection
+                (commodity: {}, region: {}, time slice(s): {})",
+                commodity.id,
+                region_id,
+                ts_selection
             );
         }
     }

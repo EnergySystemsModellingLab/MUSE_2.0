@@ -2,11 +2,11 @@
 use super::super::*;
 use crate::commodity::{BalanceType, CommodityID, CommodityLevy, CommodityLevyMap};
 use crate::id::IDCollection;
-use crate::region::{parse_region_str, RegionID};
+use crate::region::{RegionID, parse_region_str};
 use crate::time_slice::TimeSliceInfo;
 use crate::units::MoneyPerFlow;
 use crate::year::parse_year_str;
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use indexmap::IndexSet;
 use log::warn;
 use serde::Deserialize;
@@ -141,7 +141,9 @@ where
                 milestone_years,
                 time_slice_info,
             );
-            warn!("No levy specified for commodity {commodity_id} in region {region_id}. Assuming zero levy.");
+            warn!(
+                "No levy specified for commodity {commodity_id} in region {region_id}. Assuming zero levy."
+            );
         }
     }
 
