@@ -15,7 +15,7 @@ help:
     @just --list
 
 # Generate test coverage in HTML format
-coverage:
+coverage *ARGS:
     @cargo llvm-cov --html
 
 # Regenerate data for regression tests
