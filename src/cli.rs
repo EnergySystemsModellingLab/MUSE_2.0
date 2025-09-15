@@ -48,6 +48,20 @@ enum Commands {
     },
 }
 
+impl Commands {
+    /// Execute the supplied CLI command
+    fn execute(self) -> Result<()> {
+        match self {
+            Self::Run {
+                model_dir,
+                output_dir,
+                debug_model,
+            } => handle_run_command(&model_dir, output_dir.as_deref(), debug_model),
+            Self::Example { subcommand } => subcommand.execute(),
+        }
+    }
+}
+
 /// The available subcommands for managing example models.
 #[derive(Subcommand)]
 enum ExampleSubcommands {
@@ -78,6 +92,27 @@ enum ExampleSubcommands {
     },
 }
 
+impl ExampleSubcommands {
+    /// Execute the supplied example subcommand
+    fn execute(self) -> Result<()> {
+        match self {
+            Self::List => handle_example_list_command(),
+            Self::Info { name } => handle_example_info_command(&name)?,
+            Self::Extract {
+                name,
+                new_path: dest,
+            } => handle_example_extract_command(&name, dest.as_deref())?,
+            Self::Run {
+                name,
+                output_dir,
+                debug_model,
+            } => handle_example_run_command(&name, output_dir.as_deref(), debug_model)?,
+        }
+
+        Ok(())
+    }
+}
+
 /// Parse CLI arguments and start MUSE2
 pub fn run_cli() -> Result<()> {
     let cli = Cli::parse();
@@ -99,28 +134,7 @@ fn execute_cli_command(command: Option<Commands>) -> Result<()> {
         return Ok(());
     };
 
-    match command {
-        Commands::Run {
-            model_dir,
-            output_dir,
-            debug_model,
-        } => handle_run_command(&model_dir, output_dir.as_deref(), debug_model)?,
-        Commands::Example { subcommand } => match subcommand {
-            ExampleSubcommands::List => handle_example_list_command(),
-            ExampleSubcommands::Info { name } => handle_example_info_command(&name)?,
-            ExampleSubcommands::Extract {
-                name,
-                new_path: dest,
-            } => handle_example_extract_command(&name, dest.as_deref())?,
-            ExampleSubcommands::Run {
-                name,
-                output_dir,
-                debug_model,
-            } => handle_example_run_command(&name, output_dir.as_deref(), debug_model)?,
-        },
-    }
-
-    Ok(())
+    command.execute()
 }
 
 /// Handle the `run` command.
