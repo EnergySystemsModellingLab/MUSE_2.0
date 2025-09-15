@@ -2,7 +2,7 @@
 export RUSTDOCFLAGS := "-D warnings"
 
 # Build all documentation
-all: api cli-help file-format book
+all: api cli-help file-format examples book
 
 # Build book
 book:
@@ -28,3 +28,8 @@ cli-help:
 file-format *ARGS:
     @echo Building docs for file formats
     @uv run docs/file_formats/generate_docs.py {{ARGS}}
+
+# Build documentation for examples
+examples:
+    @echo Building docs for examples
+    @uv run docs/generate_example_docs.py
