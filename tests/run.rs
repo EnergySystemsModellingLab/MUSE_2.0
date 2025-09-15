@@ -1,5 +1,5 @@
 //! Integration tests for the `run` command.
-use muse2::commands::handle_run_command;
+use muse2::cli::handle_run_command;
 use muse2::log::is_logger_initialised;
 use std::path::PathBuf;
 use tempfile::tempdir;

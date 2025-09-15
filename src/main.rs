@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::{CommandFactory, Parser};
 use human_panic::{metadata, setup_panic};
 use log::error;
-use muse2::commands::{
+use muse2::cli::{
     Cli, Commands, ExampleSubcommands, handle_example_extract_command, handle_example_info_command,
     handle_example_list_command, handle_example_run_command, handle_run_command,
 };
