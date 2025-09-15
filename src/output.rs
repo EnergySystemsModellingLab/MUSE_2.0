@@ -4,10 +4,10 @@ use crate::asset::{Asset, AssetID, AssetRef};
 use crate::commodity::CommodityID;
 use crate::process::ProcessID;
 use crate::region::RegionID;
+use crate::simulation::CommodityPrices;
 use crate::simulation::investment::appraisal::AppraisalOutput;
 use crate::simulation::optimisation::{FlowMap, Solution};
 use crate::simulation::prices::ReducedCosts;
-use crate::simulation::CommodityPrices;
 use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, Capacity, Flow, Money, MoneyPerActivity, MoneyPerFlow};
 use anyhow::{Context, Result};
@@ -460,7 +460,7 @@ impl DataWriter {
         run_description: &str,
         solution: &Solution,
     ) -> Result<()> {
-        if let Some(ref mut wtr) = &mut self.debug_writer {
+        if let Some(wtr) = &mut self.debug_writer {
             wtr.write_dispatch_debug_info(milestone_year, run_description, solution)?;
         }
 
@@ -474,7 +474,7 @@ impl DataWriter {
         run_description: &str,
         appraisal_results: &[AppraisalOutput],
     ) -> Result<()> {
-        if let Some(ref mut wtr) = &mut self.debug_writer {
+        if let Some(wtr) = &mut self.debug_writer {
             wtr.write_appraisal_results(milestone_year, run_description, appraisal_results)?;
         }
 
@@ -544,7 +544,7 @@ impl DataWriter {
         milestone_year: u32,
         reduced_costs: &ReducedCosts,
     ) -> Result<()> {
-        if let Some(ref mut wtr) = &mut self.debug_writer {
+        if let Some(wtr) = &mut self.debug_writer {
             wtr.write_reduced_costs(milestone_year, reduced_costs)?;
         }
         Ok(())
@@ -554,7 +554,7 @@ impl DataWriter {
     pub fn flush(&mut self) -> Result<()> {
         self.flows_writer.flush()?;
         self.prices_writer.flush()?;
-        if let Some(ref mut wtr) = &mut self.debug_writer {
+        if let Some(wtr) = &mut self.debug_writer {
             wtr.flush()?;
         }
 
@@ -563,14 +563,14 @@ impl DataWriter {
 
     /// Add context to the debug writer
     pub fn set_debug_context(&mut self, context: String) {
-        if let Some(ref mut wtr) = &mut self.debug_writer {
+        if let Some(wtr) = &mut self.debug_writer {
             wtr.context = Some(context);
         }
     }
 
     /// Clear context from the debug writer
     pub fn clear_debug_context(&mut self) {
-        if let Some(ref mut wtr) = &mut self.debug_writer {
+        if let Some(wtr) = &mut self.debug_writer {
             wtr.context = None;
         }
     }
@@ -583,7 +583,7 @@ mod tests {
     use crate::fixture::{assets, commodity_id, region_id, time_slice};
     use crate::time_slice::TimeSliceID;
     use indexmap::indexmap;
-    use itertools::{assert_equal, Itertools};
+    use itertools::{Itertools, assert_equal};
     use rstest::rstest;
     use std::iter;
     use tempfile::tempdir;
@@ -842,7 +842,7 @@ mod tests {
                 asset: asset.clone(),
                 capacity: Capacity(42.0),
                 unmet_demand: Default::default(),
-                metric: 3.14,
+                metric: 4.14,
             };
             writer
                 .write_appraisal_results(milestone_year, &run_description, &[appraisal])
@@ -859,7 +859,7 @@ mod tests {
             region_id: asset.region_id().clone(),
             capacity: Capacity(42.0),
             unmet_demand: Flow(0.0),
-            metric: 3.14,
+            metric: 4.14,
         };
         let records: Vec<AppraisalResultsRow> =
             csv::Reader::from_path(dir.path().join(APPRAISAL_RESULTS_FILE_NAME))

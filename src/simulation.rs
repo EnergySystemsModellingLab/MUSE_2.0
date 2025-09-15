@@ -3,7 +3,7 @@ use crate::asset::{Asset, AssetPool, AssetRef};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessMap;
-use crate::simulation::prices::{calculate_prices_and_reduced_costs, ReducedCosts};
+use crate::simulation::prices::{ReducedCosts, calculate_prices_and_reduced_costs};
 use crate::units::Capacity;
 use anyhow::{Context, Result};
 use log::info;
@@ -48,11 +48,22 @@ pub fn run(
     // Write assets to file
     writer.write_assets(assets.iter_all())?;
 
+    // Gather candidates for the next year, if any
+    let next_year = year_iter.peek().copied();
+    let mut candidates = next_year
+        .map(|next_year| {
+            candidate_assets_for_year(
+                &model.processes,
+                next_year,
+                model.parameters.candidate_asset_capacity,
+            )
+        })
+        .unwrap_or_default();
+
     // Run dispatch optimisation
     info!("Running dispatch optimisation...");
-    let next_year = year_iter.peek().copied();
     let (flow_map, mut prices, mut reduced_costs) =
-        run_dispatch_for_year(&model, assets.as_slice(), year, next_year, &mut writer)?;
+        run_dispatch_for_year(&model, assets.as_slice(), &candidates, year, &mut writer)?;
 
     // Write results of dispatch optimisation to file
     writer.write_flows(year, &flow_map)?;
@@ -91,10 +102,30 @@ pub fn run(
             )
             .context("Agent investment failed")?;
 
-            // Run dispatch optimisation to get updated reduced costs for the next iteration
+            // We need to add candidates from all existing_assets that aren't in selected_assets as
+            // these may be re-chosen in the next iteration
+            let mut all_candidates = candidates.clone();
+            all_candidates.extend(
+                existing_assets
+                    .iter()
+                    .filter(|asset| !selected_assets.contains(asset))
+                    .map(|asset| {
+                        asset
+                            .as_candidate(Some(model.parameters.candidate_asset_capacity))
+                            .into()
+                    }),
+            );
+
+            // Run dispatch optimisation to get updated reduced costs and prices for the next
+            // iteration
             info!("Running dispatch optimisation...");
-            let (_flow_map, new_prices, new_reduced_costs) =
-                run_dispatch_for_year(&model, &selected_assets, year, Some(year), &mut writer)?;
+            let (_flow_map, new_prices, new_reduced_costs) = run_dispatch_for_year(
+                &model,
+                &selected_assets,
+                &all_candidates,
+                year,
+                &mut writer,
+            )?;
 
             // Check if prices have converged
             let prices_stable =
@@ -133,11 +164,22 @@ pub fn run(
         // Write assets
         writer.write_assets(assets.iter_all())?;
 
+        // Gather candidates for the next year, if any
+        let next_year = year_iter.peek().copied();
+        candidates = next_year
+            .map(|next_year| {
+                candidate_assets_for_year(
+                    &model.processes,
+                    next_year,
+                    model.parameters.candidate_asset_capacity,
+                )
+            })
+            .unwrap_or_default();
+
         // Run dispatch optimisation
         info!("Running final dispatch optimisation for year {year}...");
-        let next_year = year_iter.peek().copied();
         let (flow_map, new_prices, new_reduced_costs) =
-            run_dispatch_for_year(&model, assets.as_slice(), year, next_year, &mut writer)?;
+            run_dispatch_for_year(&model, assets.as_slice(), &candidates, year, &mut writer)?;
 
         // Write results of dispatch optimisation to file
         writer.write_flows(year, &flow_map)?;
@@ -158,8 +200,8 @@ pub fn run(
 fn run_dispatch_for_year(
     model: &Model,
     assets: &[AssetRef],
+    candidates: &[AssetRef],
     year: u32,
-    next_year: Option<u32>,
     writer: &mut DataWriter,
 ) -> Result<(FlowMap, CommodityPrices, ReducedCosts)> {
     // Dispatch optimisation with existing assets only
@@ -167,23 +209,12 @@ fn run_dispatch_for_year(
         DispatchRun::new(model, assets, year).run("final without candidates", writer)?;
     let flow_map = solution_existing.create_flow_map();
 
-    // Get candidate assets for next year, if any
-    let candidates = next_year
-        .map(|next_year| {
-            mock_candidate_assets_for_year(
-                &model.processes,
-                next_year,
-                model.parameters.candidate_asset_capacity,
-            )
-        })
-        .unwrap_or_default();
-
     // Perform a separate dispatch run with existing assets and candidates (if there are any)
     let solution = if candidates.is_empty() {
         solution_existing
     } else {
         DispatchRun::new(model, assets, year)
-            .with_candidates(&candidates)
+            .with_candidates(candidates)
             .run("final with candidates", writer)?
     };
 
@@ -194,8 +225,8 @@ fn run_dispatch_for_year(
     Ok((flow_map, prices, reduced_costs))
 }
 
-/// Create mock assets for all potential candidates in a specified year
-fn mock_candidate_assets_for_year(
+/// Create candidate assets for all potential processes in a specified year
+fn candidate_assets_for_year(
     processes: &ProcessMap,
     year: u32,
     candidate_asset_capacity: Capacity,

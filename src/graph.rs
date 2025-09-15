@@ -4,12 +4,12 @@ use crate::process::{ProcessID, ProcessMap};
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel, TimeSliceSelection};
 use crate::units::{Dimensionless, Flow};
-use anyhow::{anyhow, ensure, Context, Result};
+use anyhow::{Context, Result, anyhow, ensure};
 use indexmap::IndexSet;
-use itertools::{iproduct, Itertools};
+use itertools::{Itertools, iproduct};
+use petgraph::Directed;
 use petgraph::algo::toposort;
 use petgraph::graph::Graph;
-use petgraph::Directed;
 use std::collections::HashMap;
 use std::fmt::Display;
 

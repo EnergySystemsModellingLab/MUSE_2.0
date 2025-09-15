@@ -5,9 +5,10 @@ use crate::process::{Process, ProcessFlow, ProcessID, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity, MoneyPerFlow};
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use indexmap::IndexMap;
-use itertools::{chain, Itertools};
+use itertools::{Itertools, chain};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -60,6 +61,19 @@ pub enum AssetState {
     },
     /// The asset is a candidate for investment but has not yet been selected by an agent
     Candidate,
+}
+
+impl AssetState {
+    /// Get the name of the asset state
+    pub fn name(&self) -> &str {
+        match self {
+            AssetState::Commissioned { .. } => "Commissioned",
+            AssetState::Decommissioned { .. } => "Decommissioned",
+            AssetState::Future { .. } => "Future",
+            AssetState::Selected { .. } => "Selected",
+            AssetState::Candidate => "Candidate",
+        }
+    }
 }
 
 /// An asset controlled by an agent.
@@ -409,13 +423,17 @@ impl Asset {
     }
 
     /// Creates a Candidate asset matching a given Commissioned asset
-    pub fn as_candidate(&self) -> Self {
+    ///
+    /// Optionally, the capacity can be set to a different value.
+    pub fn as_candidate(&self, capacity: Option<Capacity>) -> Asset {
         assert!(
             matches!(self.state, AssetState::Commissioned { .. }),
-            "as_candidate can only be called on Commissioned assets"
+            "as_candidate can only be called on Commissioned assets, not {}",
+            self.state.name()
         );
         let mut copy = self.clone();
         copy.state = AssetState::Candidate;
+        copy.set_capacity(capacity.unwrap_or(copy.capacity));
         copy
     }
 }
@@ -559,11 +577,22 @@ impl Ord for AssetRef {
 }
 
 /// Convert the specified assets to being decommissioned and return
-fn decommission_assets<'a, I>(assets: I, year: u32) -> impl Iterator<Item = AssetRef> + 'a
+fn decommission_assets<'a, I>(
+    assets: I,
+    year: u32,
+    reason: &'a str,
+) -> impl Iterator<Item = AssetRef> + 'a
 where
     I: IntoIterator<Item = AssetRef> + 'a,
 {
     assets.into_iter().map(move |mut asset| {
+        debug!(
+            "Decommissioning asset '{}' for agent '{}' (reason: {})",
+            asset.process_id(),
+            asset.agent_id().unwrap(),
+            reason
+        );
+
         asset.make_mut().decommission(year);
         asset
     })
@@ -611,6 +640,11 @@ impl AssetPool {
 
         // Move assets from future to active
         for mut asset in self.future.drain(0..count) {
+            debug!(
+                "Commissioning asset '{}' for agent '{}' (reason: user input)",
+                asset.process_id(),
+                asset.agent_id().unwrap(),
+            );
             asset.commission_future(AssetID(self.next_id));
             self.next_id += 1;
             self.active.push(asset.into());
@@ -625,7 +659,7 @@ impl AssetPool {
             .extract_if(.., |asset| asset.max_decommission_year() <= year);
 
         // Set `decommission_year` and copy to `self.decommissioned`
-        let decommissioned = decommission_assets(to_decommission, year);
+        let decommissioned = decommission_assets(to_decommission, year, "end of life");
         self.decommissioned.extend(decommissioned);
     }
 
@@ -656,7 +690,7 @@ impl AssetPool {
                 _ => panic!("Active pool should only contain commissioned assets"),
             })
         });
-        let decommissioned = decommission_assets(to_decommission, year);
+        let decommissioned = decommission_assets(to_decommission, year, "not selected");
         self.decommissioned.extend(decommissioned);
     }
 
@@ -709,6 +743,11 @@ impl AssetPool {
             match &asset.state {
                 AssetState::Commissioned { .. } => {}
                 AssetState::Selected { .. } => {
+                    debug!(
+                        "Commissioning asset '{}' for agent '{}' (reason: selected)",
+                        asset.process_id(),
+                        asset.agent_id().unwrap(),
+                    );
                     asset.make_mut().commission_selected(AssetID(self.next_id));
                     self.next_id += 1;
                 }
@@ -785,7 +824,7 @@ mod tests {
         MoneyPerCapacity, MoneyPerCapacityPerYear, MoneyPerFlow,
     };
     use indexmap::{IndexMap, IndexSet};
-    use itertools::{assert_equal, Itertools};
+    use itertools::{Itertools, assert_equal};
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
     use std::iter;
@@ -1184,10 +1223,12 @@ mod tests {
         assert!(asset_pool.active.iter().any(|a| a.id() == Some(AssetID(1))));
         assert!(asset_pool.active.iter().any(|a| a.id() == Some(AssetID(2))));
         // Check that the new asset has the correct agent
-        assert!(asset_pool
-            .active
-            .iter()
-            .any(|a| a.agent_id() == Some(&"agent_new".into())));
+        assert!(
+            asset_pool
+                .active
+                .iter()
+                .any(|a| a.agent_id() == Some(&"agent_new".into()))
+        );
     }
 
     #[rstest]
