@@ -53,6 +53,11 @@ pub enum Commands {
 pub enum ExampleSubcommands {
     /// List available examples.
     List,
+    /// Provide information about the specified example.
+    Info {
+        /// The name of the example.
+        name: String,
+    },
     /// Extract an example model configuration to a new directory.
     Extract {
         /// The name of the example to extract.
@@ -114,6 +119,20 @@ pub fn handle_example_list_command() {
     for entry in EXAMPLES_DIR.dirs() {
         println!("{}", entry.path().display());
     }
+}
+
+/// Handle the `example info` command.
+pub fn handle_example_info_command(name: &str) -> Result<()> {
+    let path: PathBuf = [name, "README.txt"].iter().collect();
+    let readme = EXAMPLES_DIR
+        .get_file(path)
+        .context("Example not found.")?
+        .contents_utf8()
+        .expect("README.txt is not UTF-8 encoded");
+
+    println!("{}", readme);
+
+    Ok(())
 }
 
 /// Handle the `example extract` command

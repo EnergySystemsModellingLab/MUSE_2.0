@@ -3,8 +3,8 @@ use clap::{CommandFactory, Parser};
 use human_panic::{metadata, setup_panic};
 use log::error;
 use muse2::commands::{
-    handle_example_extract_command, handle_example_list_command, handle_example_run_command,
-    handle_run_command, Cli, Commands, ExampleSubcommands,
+    handle_example_extract_command, handle_example_info_command, handle_example_list_command,
+    handle_example_run_command, handle_run_command, Cli, Commands, ExampleSubcommands,
 };
 use muse2::log::is_logger_initialised;
 
@@ -50,6 +50,7 @@ fn execute_cli_command(command: Option<Commands>) -> Result<()> {
         } => handle_run_command(&model_dir, output_dir.as_deref(), debug_model)?,
         Commands::Example { subcommand } => match subcommand {
             ExampleSubcommands::List => handle_example_list_command(),
+            ExampleSubcommands::Info { name } => handle_example_info_command(&name)?,
             ExampleSubcommands::Extract {
                 name,
                 new_path: dest,
