@@ -1,0 +1,19 @@
+# Example models
+
+This document describes the various example models included with MUSE 2.0.
+
+To list the available examples, run:
+
+```sh
+muse2 example list
+```
+
+To view details of a particular example, run e.g.:
+
+```sh
+muse2 example info simple
+```
+{% for example in examples %}
+## `{{ example.name }}` example
+
+{{ example.readme }}{% endfor %}

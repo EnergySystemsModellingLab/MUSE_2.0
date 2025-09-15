@@ -80,7 +80,9 @@ generators = {
 
 
 def main(options: Iterable[str]) -> None:
-    env = Environment(loader=FileSystemLoader(FILE_FORMAT_DOCS_DIR / "templates"))
+    env = Environment(
+        loader=FileSystemLoader(FILE_FORMAT_DOCS_DIR.parent / "templates")
+    )
 
     for option in options:
         try:

@@ -3,6 +3,7 @@
 [Introduction](introduction.md)
 
 - [User Guide](user_guide.md)
+- [Example Models](examples.md)
 - [Command Line Help](command_line_help.md)
 - [File Formats](file_formats/file_formats.md)
   - [Program Settings](file_formats/program_settings.md)
