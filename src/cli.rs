@@ -5,30 +5,30 @@ use crate::output::{create_output_directory, get_output_dir};
 use crate::settings::Settings;
 use ::log::info;
 use anyhow::{Context, Result, ensure};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use include_dir::{Dir, DirEntry, include_dir};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
 /// The directory containing the example models.
-pub const EXAMPLES_DIR: Dir = include_dir!("examples");
+const EXAMPLES_DIR: Dir = include_dir!("examples");
 
 /// The command line interface for the simulation.
 #[derive(Parser)]
 #[command(version, about)]
-pub struct Cli {
+struct Cli {
     /// The available commands.
     #[command(subcommand)]
-    pub command: Option<Commands>,
+    command: Option<Commands>,
     /// Flag to provide the CLI docs as markdown
     #[arg(long, hide = true)]
-    pub markdown_help: bool,
+    markdown_help: bool,
 }
 
 /// The available commands.
 #[derive(Subcommand)]
-pub enum Commands {
+enum Commands {
     /// Run a simulation model.
     Run {
         /// Path to the model directory.
@@ -50,7 +50,7 @@ pub enum Commands {
 
 /// The available subcommands for managing example models.
 #[derive(Subcommand)]
-pub enum ExampleSubcommands {
+enum ExampleSubcommands {
     /// List available examples.
     List,
     /// Provide information about the specified example.
@@ -76,6 +76,51 @@ pub enum ExampleSubcommands {
         #[arg(long)]
         debug_model: bool,
     },
+}
+
+/// Parse CLI arguments and start MUSE2
+pub fn run_cli() -> Result<()> {
+    let cli = Cli::parse();
+
+    // Invoked as: `$ muse2 --markdown-help`
+    if cli.markdown_help {
+        clap_markdown::print_help_markdown::<Cli>();
+        return Ok(());
+    }
+
+    execute_cli_command(cli.command)
+}
+
+fn execute_cli_command(command: Option<Commands>) -> Result<()> {
+    let Some(command) = command else {
+        // Output program help in markdown format
+        let help_str = Cli::command().render_long_help().to_string();
+        println!("{help_str}");
+        return Ok(());
+    };
+
+    match command {
+        Commands::Run {
+            model_dir,
+            output_dir,
+            debug_model,
+        } => handle_run_command(&model_dir, output_dir.as_deref(), debug_model)?,
+        Commands::Example { subcommand } => match subcommand {
+            ExampleSubcommands::List => handle_example_list_command(),
+            ExampleSubcommands::Info { name } => handle_example_info_command(&name)?,
+            ExampleSubcommands::Extract {
+                name,
+                new_path: dest,
+            } => handle_example_extract_command(&name, dest.as_deref())?,
+            ExampleSubcommands::Run {
+                name,
+                output_dir,
+                debug_model,
+            } => handle_example_run_command(&name, output_dir.as_deref(), debug_model)?,
+        },
+    }
+
+    Ok(())
 }
 
 /// Handle the `run` command.
@@ -115,14 +160,14 @@ pub fn handle_run_command(
 }
 
 /// Handle the `example list` command.
-pub fn handle_example_list_command() {
+fn handle_example_list_command() {
     for entry in EXAMPLES_DIR.dirs() {
         println!("{}", entry.path().display());
     }
 }
 
 /// Handle the `example info` command.
-pub fn handle_example_info_command(name: &str) -> Result<()> {
+fn handle_example_info_command(name: &str) -> Result<()> {
     let path: PathBuf = [name, "README.txt"].iter().collect();
     let readme = EXAMPLES_DIR
         .get_file(path)
@@ -136,7 +181,7 @@ pub fn handle_example_info_command(name: &str) -> Result<()> {
 }
 
 /// Handle the `example extract` command
-pub fn handle_example_extract_command(name: &str, dest: Option<&Path>) -> Result<()> {
+fn handle_example_extract_command(name: &str, dest: Option<&Path>) -> Result<()> {
     let dest = dest.unwrap_or(Path::new(name));
     extract_example(name, dest)
 }
