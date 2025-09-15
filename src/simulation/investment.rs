@@ -10,7 +10,7 @@ use crate::region::RegionID;
 use crate::simulation::CommodityPrices;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{Capacity, Dimensionless, Flow, FlowPerCapacity, MoneyPerFlow};
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use indexmap::IndexMap;
 use itertools::{chain, iproduct};
 use log::debug;
@@ -134,7 +134,9 @@ pub fn perform_agent_investment(
             // Perform dispatch optimisation with assets that have been selected so far
             // **TODO**: presumably we only need to do this for selected_assets, as assets added in
             // previous iterations should not change
-            debug!("Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'");
+            debug!(
+                "Running post-investment dispatch for commodity '{commodity_id}' in region '{region_id}'"
+            );
 
             // As upstream commodities by definition will not yet have producers, we explicitly set
             // their prices using previous values so that they don't appear free
@@ -404,8 +406,27 @@ fn select_best_assets(
                 &demand,
             )?;
 
-            outputs_for_opts.push(output);
+            // Store the appraisal results if the capacity is positive. If capacity is zero,
+            // this means the asset is infeasible for investment. This can happen if the asset has
+            // zero activity limits for all time slices with demand. This can also happen due to a
+            // known issue with the NPV objective, for which we do not currently have a solution
+            // (see https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/716).
+            if output.capacity > Capacity(0.0) {
+                outputs_for_opts.push(output);
+            } else {
+                debug!(
+                    "Skipping candidate '{}' with zero capacity",
+                    asset.process_id()
+                );
+            }
         }
+
+        // Make sure there are some options to consider
+        ensure!(
+            !outputs_for_opts.is_empty(),
+            "No feasible investment options for commodity '{}'",
+            &commodity.id
+        );
 
         // Save appraisal results
         writer.write_appraisal_debug_info(
@@ -418,16 +439,7 @@ fn select_best_assets(
         let best_output = outputs_for_opts
             .into_iter()
             .min_by(|a, b| a.metric.partial_cmp(&b.metric).unwrap())
-            .expect("No outputs given");
-
-        // Sanity check. We currently have no good way to handle this scenario and it can
-        // cause an infinite loop.
-        assert!(
-            best_output.capacity > Capacity(0.0),
-            "Attempted to select asset '{}' with zero capacity.\nSee: \
-            https://github.com/EnergySystemsModellingLab/MUSE_2.0/issues/716",
-            &best_output.asset.process_id()
-        );
+            .unwrap();
 
         // Log the selected asset
         let commissioned_txt = match best_output.asset.state() {

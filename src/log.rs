@@ -3,7 +3,7 @@
 //! This module sets up logging with various levels (error, warn, info, debug, trace) and optional
 //! colourisation based on terminal support. It also allows configuration of the log level through
 //! environment variables.
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use chrono::Local;
 use fern::colors::{Color, ColoredLevelConfig};
 use fern::{Dispatch, FormatCallback};

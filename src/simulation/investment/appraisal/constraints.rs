@@ -1,6 +1,6 @@
 //! Constraints for the optimisation problem.
-use super::optimisation::Variable;
 use super::DemandMap;
+use super::optimisation::Variable;
 use crate::asset::{AssetRef, AssetState};
 use crate::commodity::Commodity;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};

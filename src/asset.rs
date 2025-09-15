@@ -5,9 +5,9 @@ use crate::process::{Process, ProcessFlow, ProcessID, ProcessParameter};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, ActivityPerCapacity, Capacity, MoneyPerActivity, MoneyPerFlow};
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use indexmap::IndexMap;
-use itertools::{chain, Itertools};
+use itertools::{Itertools, chain};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -61,6 +61,19 @@ pub enum AssetState {
     },
     /// The asset is a candidate for investment but has not yet been selected by an agent
     Candidate,
+}
+
+impl AssetState {
+    /// Get the name of the asset state
+    pub fn name(&self) -> &str {
+        match self {
+            AssetState::Commissioned { .. } => "Commissioned",
+            AssetState::Decommissioned { .. } => "Decommissioned",
+            AssetState::Future { .. } => "Future",
+            AssetState::Selected { .. } => "Selected",
+            AssetState::Candidate => "Candidate",
+        }
+    }
 }
 
 /// An asset controlled by an agent.
@@ -410,13 +423,17 @@ impl Asset {
     }
 
     /// Creates a Candidate asset matching a given Commissioned asset
-    pub fn as_candidate(&self) -> Self {
+    ///
+    /// Optionally, the capacity can be set to a different value.
+    pub fn as_candidate(&self, capacity: Option<Capacity>) -> Asset {
         assert!(
             matches!(self.state, AssetState::Commissioned { .. }),
-            "as_candidate can only be called on Commissioned assets"
+            "as_candidate can only be called on Commissioned assets, not {}",
+            self.state.name()
         );
         let mut copy = self.clone();
         copy.state = AssetState::Candidate;
+        copy.set_capacity(capacity.unwrap_or(copy.capacity));
         copy
     }
 }
@@ -807,7 +824,7 @@ mod tests {
         MoneyPerCapacity, MoneyPerCapacityPerYear, MoneyPerFlow,
     };
     use indexmap::{IndexMap, IndexSet};
-    use itertools::{assert_equal, Itertools};
+    use itertools::{Itertools, assert_equal};
     use rstest::{fixture, rstest};
     use std::collections::HashMap;
     use std::iter;
@@ -1206,10 +1223,12 @@ mod tests {
         assert!(asset_pool.active.iter().any(|a| a.id() == Some(AssetID(1))));
         assert!(asset_pool.active.iter().any(|a| a.id() == Some(AssetID(2))));
         // Check that the new asset has the correct agent
-        assert!(asset_pool
-            .active
-            .iter()
-            .any(|a| a.agent_id() == Some(&"agent_new".into())));
+        assert!(
+            asset_pool
+                .active
+                .iter()
+                .any(|a| a.agent_id() == Some(&"agent_new".into()))
+        );
     }
 
     #[rstest]

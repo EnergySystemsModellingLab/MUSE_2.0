@@ -31,6 +31,11 @@ To develop MUSE 2.0 locally you will need the following components:
 - Rust development tools
 - C++ development tools (needed for bindings to the [HiGHS] solver)
 
+Optional requirements:
+
+- [Just] (recommended)
+- [uv] (required for `pre-commit` and file format documentation)
+
 You can either install the necessary developer tools locally on your machine manually (a bare metal
 installation) or use the provided [development container]. Bare metal installation should generally
 be preferred if you plan on doing substantial development, as you should get better performance
@@ -39,12 +44,17 @@ local filesystem. Development containers provide a mechanism for installing all 
 need (into a [Docker] container) and are generally used either via [Visual Studio Code] running
 locally or [GitHub Codespaces], which run on GitHub-provided virtual machines running remotely.
 
+We provide a [justfile] for some common developer tasks.
+
 [Git]: https://git-scm.com/
 [HiGHS]: https://highs.dev/
+[Just]: https://github.com/casey/just
+[uv]: https://docs.astral.sh/uv/
 [development container]: https://devcontainers.github.io/
 [Docker]: https://www.docker.com/
 [Visual Studio Code]: https://code.visualstudio.com/
 [GitHub Codespaces]: https://github.com/features/codespaces
+[justfile]: ../justfile
 
 ### Option 1: Bare metal installation
 
@@ -155,10 +165,46 @@ Once installed, you can use it like so:
 cargo llvm-cov --open
 ```
 
+Alternatively, you can use Just:
+
+```sh
+just coverage --open
+```
+
 This will generate a report in HTML format showing which lines are not currently covered by tests
 and open it in your default browser.
 
 ## Developing the documentation
+
+You can make changes to the documentation without having any additional tools installed, however,
+you will if you wish to view your changes locally.
+
+For developing the main documentation, you will need [mdBook] installed (see below) and for the file
+format documentation, you will need [uv].
+
+If you have all the necessary tools installed and wish to build all of the documentation, you can
+run:
+
+```sh
+just build-docs
+```
+
+However, you will likely want to build only part of the documentation, which you can do by passing
+another argument to this command, e.g.:
+
+```sh
+just build-docs file-format
+```
+
+To see the possible recipes, run:
+
+```sh
+just --list build-docs
+```
+
+[mdBook]: https://rust-lang.github.io/mdBook/
+
+### The book
 
 We use [mdBook](https://rust-lang.github.io/mdBook/) for generating technical documentation.
 
@@ -190,16 +236,16 @@ schemas](https://specs.frictionlessdata.io//table-schema/) (a similar format).
 
 The documentation is generated with the
 [`docs/file_formats/generate_docs.py`](https://github.com/EnergySystemsModellingLab/MUSE_2.0/tree/main/docs/file_formats/generate_docs.py)
-script. To generate all docs, run:
+script. To generate all file format docs, run:
 
 ```sh
-python docs/file_formats/generate_docs.py
+just build-docs file-format
 ```
 
 To generate just one kind of docs (e.g. for input files only), run:
 
 ```sh
-python docs/file_formats/generate_docs.py input
+just build-docs file-format input
 ```
 
 ### Recreate the `command_line_help.md` file
@@ -207,20 +253,20 @@ python docs/file_formats/generate_docs.py input
 This file is created automatically. In order to examine the output locally, run:
 
 ```sh
-cargo run -- --markdown_help > docs/command_line_help.md
+just build-docs cli-help
 ```
+
+The file will be written to `docs/command_line_help.md`.
 
 ## Pre-Commit hooks
 
-Developers must install the `pre-commit` tool in order to automatically run this
-repository's hooks when making a new Git commit. Follow [the instructions on the `pre-commit`
-website](https://pre-commit.com/#install) in order to get started.
+We use [`pre-commit`] to automatically run a number of hooks for this repository when a new Git
+commit is made. You can run `pre-commit` via our `justfile`, provided you have `uv` installed.
 
-Once you have installed `pre-commit`, you need to enable its use for this repository by installing
-the hooks, like so:
+You can enable `pre-commit` for this repository with:
 
 ```sh
-pre-commit install
+just pre-commit install
 ```
 
 Thereafter, a series of checks should be run every time you commit with Git. In addition, the

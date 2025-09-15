@@ -3,8 +3,8 @@ use clap::{CommandFactory, Parser};
 use human_panic::{metadata, setup_panic};
 use log::error;
 use muse2::commands::{
-    handle_example_extract_command, handle_example_info_command, handle_example_list_command,
-    handle_example_run_command, handle_run_command, Cli, Commands, ExampleSubcommands,
+    Cli, Commands, ExampleSubcommands, handle_example_extract_command, handle_example_info_command,
+    handle_example_list_command, handle_example_run_command, handle_run_command,
 };
 use muse2::log::is_logger_initialised;
 

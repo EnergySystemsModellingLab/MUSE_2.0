@@ -2,7 +2,7 @@
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use muse2::commands::handle_example_run_command;
-use std::fs::{read_dir, File};
+use std::fs::{File, read_dir};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
@@ -25,7 +25,7 @@ pub fn run_regression_test_with_debug_files(example_name: &str) {
 }
 
 fn run_regression_test_debug_opt(example_name: &str, debug_model: bool) {
-    std::env::set_var("MUSE2_LOG_LEVEL", "off");
+    unsafe { std::env::set_var("MUSE2_LOG_LEVEL", "off") };
 
     let tempdir = tempdir().unwrap();
     let output_dir = tempdir.path();
