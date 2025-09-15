@@ -69,11 +69,7 @@ pub fn run_cli() -> Result<()> {
         return Ok(());
     }
 
-    execute_cli_command(cli.command)
-}
-
-fn execute_cli_command(command: Option<Commands>) -> Result<()> {
-    let Some(command) = command else {
+    let Some(command) = cli.command else {
         // Output program help in markdown format
         let help_str = Cli::command().render_long_help().to_string();
         println!("{help_str}");
