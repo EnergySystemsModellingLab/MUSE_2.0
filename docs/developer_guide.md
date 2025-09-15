@@ -236,7 +236,7 @@ schemas](https://specs.frictionlessdata.io//table-schema/) (a similar format).
 
 The documentation is generated with the
 [`docs/file_formats/generate_docs.py`](https://github.com/EnergySystemsModellingLab/MUSE_2.0/tree/main/docs/file_formats/generate_docs.py)
-script. To generate all docs, run:
+script. To generate all file format docs, run:
 
 ```sh
 just build-docs file-format
