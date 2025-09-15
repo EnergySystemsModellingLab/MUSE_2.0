@@ -1,0 +1,17 @@
+name: Update Rust toolchain
+on:
+  workflow_dispatch: # allows manual triggering
+  schedule:
+    - cron: "0 0 * * mon"
+
+jobs:
+  update-rust-toolchain:
+    name: "Update rust-toolchain"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: update rust toolchain
+        uses: a-kenji/update-rust-toolchain@v1
+        with:
+          token: ${{ secrets.GH_TOKEN_FOR_UPDATES }}
