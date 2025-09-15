@@ -1,5 +1,3 @@
-# Default model for MUSE v1
-
 This model is a port of the default model for MUSE v1 (see [1]), primarily for comparison (e.g.
 benchmarking). Note that the model is not an exact port as MUSE v1 and MUSE v2 support different
 features. Also be aware that due to this and differences in the underlying algorithm, investment
