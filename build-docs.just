@@ -2,7 +2,7 @@
 export RUSTDOCFLAGS := "-D warnings"
 
 # Build all documentation
-all: api cli-help file-format examples book
+all: cli-help file-format examples book api
 
 # Build book
 book:
