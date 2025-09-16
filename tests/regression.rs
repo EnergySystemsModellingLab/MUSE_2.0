@@ -2,6 +2,7 @@
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use muse2::cli::example::handle_example_run_command;
+use muse2::settings::Settings;
 use std::fs::{File, read_dir};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -29,7 +30,13 @@ fn run_regression_test_debug_opt(example_name: &str, debug_model: bool) {
 
     let tempdir = tempdir().unwrap();
     let output_dir = tempdir.path();
-    handle_example_run_command(example_name, Some(output_dir), debug_model).unwrap();
+    handle_example_run_command(
+        example_name,
+        Some(output_dir),
+        debug_model,
+        Some(Settings::default()),
+    )
+    .unwrap();
 
     let test_data_dir = PathBuf::from(format!("tests/data/{example_name}"));
     compare_output_dirs(output_dir, &test_data_dir);

@@ -53,7 +53,7 @@ impl Commands {
                 model_dir,
                 output_dir,
                 debug_model,
-            } => handle_run_command(&model_dir, output_dir.as_deref(), debug_model),
+            } => handle_run_command(&model_dir, output_dir.as_deref(), debug_model, None),
             Self::Example { subcommand } => subcommand.execute(),
         }
     }
@@ -84,9 +84,14 @@ pub fn handle_run_command(
     model_path: &Path,
     output_path: Option<&Path>,
     debug_model: bool,
+    settings: Option<Settings>,
 ) -> Result<()> {
-    // Load program settings
-    let mut settings = Settings::load().context("Failed to load settings.")?;
+    // Load program settings, if not provided
+    let mut settings = if let Some(settings) = settings {
+        settings
+    } else {
+        Settings::load().context("Failed to load settings.")?
+    };
 
     // This setting can be overridden by command-line argument
     if debug_model {

@@ -1,5 +1,6 @@
 //! Code related to the example models and the CLI commands for interacting with them.
 use super::handle_run_command;
+use crate::settings::Settings;
 use anyhow::{Context, Result, ensure};
 use clap::Subcommand;
 use include_dir::{Dir, DirEntry, include_dir};
@@ -54,7 +55,7 @@ impl ExampleSubcommands {
                 name,
                 output_dir,
                 debug_model,
-            } => handle_example_run_command(&name, output_dir.as_deref(), debug_model)?,
+            } => handle_example_run_command(&name, output_dir.as_deref(), debug_model, None)?,
         }
 
         Ok(())
@@ -120,9 +121,10 @@ pub fn handle_example_run_command(
     name: &str,
     output_path: Option<&Path>,
     debug_model: bool,
+    settings: Option<Settings>,
 ) -> Result<()> {
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
     let model_path = temp_dir.path().join(name);
     extract_example(name, &model_path)?;
-    handle_run_command(&model_path, output_path, debug_model)
+    handle_run_command(&model_path, output_path, debug_model, settings)
 }
