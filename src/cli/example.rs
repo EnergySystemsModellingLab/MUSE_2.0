@@ -1,52 +1,14 @@
-//! The command line interface for the simulation.
-use crate::input::load_model;
-use crate::log;
-use crate::output::{create_output_directory, get_output_dir};
-use crate::settings::Settings;
-use ::log::info;
+//! Code related to the example models and the CLI commands for interacting with them.
+use super::handle_run_command;
 use anyhow::{Context, Result, ensure};
-use clap::{Parser, Subcommand};
+use clap::Subcommand;
 use include_dir::{Dir, DirEntry, include_dir};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
 /// The directory containing the example models.
-pub const EXAMPLES_DIR: Dir = include_dir!("examples");
-
-/// The command line interface for the simulation.
-#[derive(Parser)]
-#[command(version, about)]
-pub struct Cli {
-    /// The available commands.
-    #[command(subcommand)]
-    pub command: Option<Commands>,
-    /// Flag to provide the CLI docs as markdown
-    #[arg(long, hide = true)]
-    pub markdown_help: bool,
-}
-
-/// The available commands.
-#[derive(Subcommand)]
-pub enum Commands {
-    /// Run a simulation model.
-    Run {
-        /// Path to the model directory.
-        model_dir: PathBuf,
-        /// Directory for output files
-        #[arg(short, long)]
-        output_dir: Option<PathBuf>,
-        /// Whether to write additional information to CSV files
-        #[arg(long)]
-        debug_model: bool,
-    },
-    /// Manage example models.
-    Example {
-        /// The available subcommands for managing example models.
-        #[command(subcommand)]
-        subcommand: ExampleSubcommands,
-    },
-}
+const EXAMPLES_DIR: Dir = include_dir!("examples");
 
 /// The available subcommands for managing example models.
 #[derive(Subcommand)]
@@ -78,51 +40,36 @@ pub enum ExampleSubcommands {
     },
 }
 
-/// Handle the `run` command.
-pub fn handle_run_command(
-    model_path: &Path,
-    output_path: Option<&Path>,
-    debug_model: bool,
-) -> Result<()> {
-    // Load program settings
-    let mut settings = Settings::load().context("Failed to load settings.")?;
+impl ExampleSubcommands {
+    /// Execute the supplied example subcommand
+    pub fn execute(self) -> Result<()> {
+        match self {
+            Self::List => handle_example_list_command(),
+            Self::Info { name } => handle_example_info_command(&name)?,
+            Self::Extract {
+                name,
+                new_path: dest,
+            } => handle_example_extract_command(&name, dest.as_deref())?,
+            Self::Run {
+                name,
+                output_dir,
+                debug_model,
+            } => handle_example_run_command(&name, output_dir.as_deref(), debug_model)?,
+        }
 
-    // This setting can be overridden by command-line argument
-    if debug_model {
-        settings.debug_model = true;
+        Ok(())
     }
-
-    // Create output folder
-    let output_path = match output_path {
-        Some(p) => p.to_owned(),
-        None => get_output_dir(model_path)?,
-    };
-    create_output_directory(&output_path).context("Failed to create output directory.")?;
-
-    // Initialise program logger
-    log::init(settings.log_level.as_deref(), &output_path)
-        .context("Failed to initialise logging.")?;
-
-    // Load the model to run
-    let (model, assets) = load_model(model_path).context("Failed to load model.")?;
-    info!("Loaded model from {}", model_path.display());
-    info!("Output data will be written to {}", output_path.display());
-
-    // Run the simulation
-    crate::simulation::run(model, assets, &output_path, settings.debug_model)?;
-
-    Ok(())
 }
 
 /// Handle the `example list` command.
-pub fn handle_example_list_command() {
+fn handle_example_list_command() {
     for entry in EXAMPLES_DIR.dirs() {
         println!("{}", entry.path().display());
     }
 }
 
 /// Handle the `example info` command.
-pub fn handle_example_info_command(name: &str) -> Result<()> {
+fn handle_example_info_command(name: &str) -> Result<()> {
     let path: PathBuf = [name, "README.txt"].iter().collect();
     let readme = EXAMPLES_DIR
         .get_file(path)
@@ -136,7 +83,7 @@ pub fn handle_example_info_command(name: &str) -> Result<()> {
 }
 
 /// Handle the `example extract` command
-pub fn handle_example_extract_command(name: &str, dest: Option<&Path>) -> Result<()> {
+fn handle_example_extract_command(name: &str, dest: Option<&Path>) -> Result<()> {
     let dest = dest.unwrap_or(Path::new(name));
     extract_example(name, dest)
 }

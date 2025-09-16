@@ -1,7 +1,7 @@
 //! Common code for running regression tests.
 use float_cmp::approx_eq;
 use itertools::Itertools;
-use muse2::commands::handle_example_run_command;
+use muse2::cli::example::handle_example_run_command;
 use std::fs::{File, read_dir};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};

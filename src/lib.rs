@@ -2,7 +2,7 @@
 #![warn(missing_docs)]
 pub mod agent;
 pub mod asset;
-pub mod commands;
+pub mod cli;
 pub mod commodity;
 pub mod finance;
 pub mod graph;
