@@ -205,14 +205,14 @@ a penalty):
 
 \\[
   TotalSystemProduction_{SVD}[c,r,t] + NetImports_{SVD}[c,r,t] + UnmetD[c,r,t]
-    = demand[r,c] \times timeslice\\_ share[c,t]
+    \ge demand[r,c] \times timeslice\\_ share[c,t]
 \\]
 
 Else (if SVD \\( c \\) must be strictly met and is not included in \\( \mathbf{C}^{VoLL} \\)):
 
 \\[
   TotalSystemProduction_{SVD}[c,r,t] + NetImports_{SVD}[c,r,t]
-    = demand[r,c] \times timeslice\\_ share[c,t]
+    \ge demand[r,c] \times timeslice\\_ share[c,t]
 \\]
 
 ### Commodity Balance for \\( c\in \mathbf{C}^{\mathrm{SED}} \\)
@@ -240,15 +240,9 @@ other regions).
         \end{cases}
       \right)
       && \text{(Flex Asset Production)} \\\\
-    &+ \sum\_{r'\neq r, c \in \mathbf{C}^R} ship\_{R2R}[r',r,c,t](1 - loss\_{R2R}[r',r,c,t])
-      && \text{(R2R Imports)} \\\\
-    &+ \sum\_{p, c \in \mathbf{C}^P} ship\_{pool}[p,r,c,t](1 - loss\_{pool}[p,r,c,t])
-      && \text{(Pool Imports)} \\\\
-    &+ \mathbb{I}(c \in \mathbf{C}^{VoLL}) \cdot UnmetD[c,r,t]
-      && \text{(Unserved SED, if modelled)} \\\\
-    &= \sum\_{a \in \mathbf{A}^{std}} input\_{coeff}[a,c]\\,act[a,r,t]
+    &-\sum\_{a \in \mathbf{A}^{std}} input\_{coeff}[a,c]\\,act[a,r,t]
       && \text{(Std Asset Consumption)} \\\\
-    &+ \sum\_{a \in \mathbf{A}^{flex}}
+    &- \sum\_{a \in \mathbf{A}^{flex}}
       \left(
         \begin{cases}
           InputSpec[a,c,r,t] & \text{if } c \in \mathbf{C}^{eff\\_in}\_a \\\\
@@ -257,8 +251,15 @@ other regions).
         \end{cases}
       \right)
       && \text{(Flex Asset Consumption)} \\\\
-    &+ \sum\_{r'\neq r, c \in \mathbf{C}^R} ship\_{R2R}[r,r',c,t]
-      && \text{(R2R Exports)}
+    &+ \sum\_{r'\neq r, c \in \mathbf{C}^R} ship\_{R2R}[r',r,c,t](1 - loss\_{R2R}[r',r,c,t])
+      && \text{(R2R Imports)} \\\\
+    &+ \sum\_{p, c \in \mathbf{C}^P} ship\_{pool}[p,r,c,t](1 - loss\_{pool}[p,r,c,t])
+      && \text{(Pool Imports)} \\\\
+    &- \sum\_{r'\neq r, c \in \mathbf{C}^R} ship\_{R2R}[r,r',c,t]
+      && \text{(R2R Exports)} \\\\
+    &+ \mathbb{I}(c \in \mathbf{C}^{VoLL}) \cdot UnmetD[c,r,t]
+      && \text{(Unserved SED, if modelled)} \\\\
+    &\ge 0
   \end{aligned}
 \\]
 
