@@ -31,7 +31,9 @@ pub struct AssetID(u32);
 /// `commission_future` or `commission_candidate` respectively.
 ///
 /// `Commissioned` assets can be decommissioned by calling `decommission`.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(
+    Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize, strum::Display,
+)]
 pub enum AssetState {
     /// The asset has been commissioned
     Commissioned {
@@ -61,19 +63,6 @@ pub enum AssetState {
     },
     /// The asset is a candidate for investment but has not yet been selected by an agent
     Candidate,
-}
-
-impl AssetState {
-    /// Get the name of the asset state
-    pub fn name(&self) -> &str {
-        match self {
-            AssetState::Commissioned { .. } => "Commissioned",
-            AssetState::Decommissioned { .. } => "Decommissioned",
-            AssetState::Future { .. } => "Future",
-            AssetState::Selected { .. } => "Selected",
-            AssetState::Candidate => "Candidate",
-        }
-    }
 }
 
 /// An asset controlled by an agent.
@@ -429,7 +418,7 @@ impl Asset {
         assert!(
             matches!(self.state, AssetState::Commissioned { .. }),
             "as_candidate can only be called on Commissioned assets, not {}",
-            self.state.name()
+            self.state
         );
         let mut copy = self.clone();
         copy.state = AssetState::Candidate;
@@ -752,7 +741,7 @@ impl AssetPool {
                     self.next_id += 1;
                 }
                 _ => panic!(
-                    "Cannot extend asset pool with asset in state {:?}",
+                    "Cannot extend asset pool with asset in state {}",
                     asset.state
                 ),
             }
