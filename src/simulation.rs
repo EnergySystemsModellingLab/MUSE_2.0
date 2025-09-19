@@ -39,11 +39,8 @@ pub fn run(
 
     info!("Milestone year: {year}");
 
-    // There shouldn't be assets already commissioned, but let's do this just in case
-    assets.decommission_old(year);
-
     // Commission assets for base year
-    assets.commission_new(year);
+    assets.update_for_year(year);
 
     // Write assets to file
     writer.write_assets(assets.iter_all())?;
@@ -73,13 +70,10 @@ pub fn run(
     while let Some(year) = year_iter.next() {
         info!("Milestone year: {year}");
 
-        // Decommission assets whose lifetime has passed. We do this *before* agent investment, to
-        // prevent agents from selecting assets that are being decommissioned in this milestone
-        // year.
-        assets.decommission_old(year);
-
-        // Commission pre-defined assets for this year
-        assets.commission_new(year);
+        // Commission new assets and decommission those whose lifetime has passed. We do this
+        // *before* agent investment, to prevent agents from selecting assets that are being
+        // decommissioned in this milestone year.
+        assets.update_for_year(year);
 
         // Take all the active assets as a list of existing assets
         let existing_assets = assets.take();
