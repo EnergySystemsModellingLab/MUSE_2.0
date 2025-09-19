@@ -197,7 +197,7 @@ fn compute_demand_maps(
             );
 
             // NB: This has already been checked, so shouldn't fail
-            let demand_fraction = slices.get(&slice_key).unwrap();
+            let demand_fraction = slices[&slice_key];
 
             // Get or create entry
             let map = map
@@ -207,7 +207,7 @@ fn compute_demand_maps(
             // Add a new demand entry
             map.insert(
                 (region_id.clone(), *year, ts_selection.clone()),
-                *annual_demand * *demand_fraction,
+                *annual_demand * demand_fraction,
             );
         }
     }

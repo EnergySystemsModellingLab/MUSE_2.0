@@ -105,7 +105,7 @@ impl TimeSliceSelection {
             Self::Season(season) => {
                 Box::new(ts_info.iter().filter(move |(ts, _)| ts.season == *season))
             }
-            Self::Single(ts) => Box::new(iter::once((ts, *ts_info.time_slices.get(ts).unwrap()))),
+            Self::Single(ts) => Box::new(iter::once((ts, ts_info.time_slices[ts]))),
         }
     }
 
@@ -146,10 +146,9 @@ impl TimeSliceSelection {
                 ),
             },
             Self::Season(season) => match level {
-                TimeSliceLevel::Season => Box::new(iter::once((
-                    self.clone(),
-                    *ts_info.seasons.get(season).unwrap(),
-                ))),
+                TimeSliceLevel::Season => {
+                    Box::new(iter::once((self.clone(), ts_info.seasons[season])))
+                }
                 TimeSliceLevel::DayNight => Box::new(
                     ts_info
                         .time_slices
@@ -161,7 +160,7 @@ impl TimeSliceSelection {
             },
             Self::Single(time_slice) => Box::new(iter::once((
                 time_slice.clone().into(),
-                *ts_info.time_slices.get(time_slice).unwrap(),
+                ts_info.time_slices[time_slice],
             ))),
         };
 
