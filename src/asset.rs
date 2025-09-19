@@ -727,7 +727,7 @@ impl AssetPool {
                     self.next_id += 1;
                 }
                 _ => panic!(
-                    "Cannot extend asset pool with asset in state {}",
+                    "Cannot extend asset pool with asset in state {}. Only assets in Commissioned or Selected states are allowed.",
                     asset.state
                 ),
             }
