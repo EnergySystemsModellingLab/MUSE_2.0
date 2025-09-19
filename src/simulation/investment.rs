@@ -171,6 +171,7 @@ fn flatten_preset_demands_for_year(
     year: u32,
 ) -> AllDemandMap {
     let mut demand_map = AllDemandMap::new();
+    let mut time_slices = Vec::new();
     for (commodity_id, commodity) in commodities.iter() {
         for ((region_id, data_year, time_slice_selection), demand) in commodity.demand.iter() {
             if *data_year != year {
@@ -180,9 +181,9 @@ fn flatten_preset_demands_for_year(
             // We split the demand equally over all timeslices in the selection
             // NOTE: since demands will only be balanced to the timeslice level of the commodity
             // it doesn't matter how we do this distribution, only the total matters.
-            let n_timeslices = time_slice_selection.iter(time_slice_info).count() as f64;
-            let demand_per_slice = *demand / Dimensionless(n_timeslices);
-            for (time_slice, _) in time_slice_selection.iter(time_slice_info) {
+            time_slices.extend(time_slice_selection.iter(time_slice_info));
+            let demand_per_slice = *demand / Dimensionless(time_slices.len() as f64);
+            for (time_slice, _) in time_slices.drain(..) {
                 demand_map.insert(
                     (commodity_id.clone(), region_id.clone(), time_slice.clone()),
                     demand_per_slice,
