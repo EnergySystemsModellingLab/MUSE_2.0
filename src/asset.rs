@@ -714,32 +714,34 @@ impl AssetPool {
     }
 
     /// Extend the active pool with Commissioned or Selected assets
-    ///
-    /// Returns the same assets after ID assignment.
-    pub fn extend(&mut self, mut assets: Vec<AssetRef>) -> Vec<AssetRef> {
-        for asset in assets.iter_mut() {
-            match &asset.state {
-                AssetState::Commissioned { .. } => {}
-                AssetState::Selected { .. } => {
-                    asset
-                        .make_mut()
-                        .commission(AssetID(self.next_id), "selected");
-                    self.next_id += 1;
-                }
-                _ => panic!(
-                    "Cannot extend asset pool with asset in state {}. Only assets in Commissioned or Selected states are allowed.",
-                    asset.state
-                ),
+    pub fn extend<I>(&mut self, assets: I)
+    where
+        I: IntoIterator<Item = AssetRef>,
+    {
+        // Check all assets are either Commissioned or Selected, and, if the latter,
+        // then commission them
+        let assets = assets.into_iter().map(|mut asset| match &asset.state {
+            AssetState::Commissioned { .. } => asset,
+            AssetState::Selected { .. } => {
+                asset
+                    .make_mut()
+                    .commission(AssetID(self.next_id), "selected");
+                self.next_id += 1;
+                asset
             }
-        }
+            _ => panic!(
+                "Cannot extend asset pool with asset in state {}. Only assets in \
+                Commissioned or Selected states are allowed.",
+                asset.state
+            ),
+        });
 
         // New assets may not have been sorted, but active needs to be sorted by ID
-        self.active.extend(assets.iter().cloned());
+        self.active.extend(assets);
         self.active.sort();
 
         // Sanity check: all assets should be unique
         debug_assert_eq!(self.active.iter().unique().count(), self.active.len());
-        assets
     }
 }
 
