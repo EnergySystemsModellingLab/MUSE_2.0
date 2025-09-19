@@ -110,9 +110,9 @@ pub fn run(
                     .iter()
                     .filter(|asset| !selected_assets.contains(asset))
                     .map(|asset| {
-                        asset
-                            .as_candidate(Some(model.parameters.candidate_asset_capacity))
-                            .into()
+                        let mut asset = Asset::new_candidate_from(asset);
+                        asset.set_capacity(model.parameters.candidate_asset_capacity);
+                        asset.into()
                     }),
             );
 

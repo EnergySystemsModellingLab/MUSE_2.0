@@ -99,6 +99,19 @@ impl Asset {
         )
     }
 
+    /// Create a new candidate asset from an existing asset
+    pub fn new_candidate_from(asset: &Asset) -> Self {
+        assert!(
+            asset.is_commissioned(),
+            "Can only create candidate assets from commissioned assets"
+        );
+
+        Self {
+            state: AssetState::Candidate,
+            ..asset.clone()
+        }
+    }
+
     /// Create a new future asset
     pub fn new_future(
         agent_id: AgentID,
@@ -422,21 +435,6 @@ impl Asset {
             "select_candidate_for_investment can only be called on Candidate assets"
         );
         self.state = AssetState::Selected { agent_id };
-    }
-
-    /// Creates a Candidate asset matching a given Commissioned asset
-    ///
-    /// Optionally, the capacity can be set to a different value.
-    pub fn as_candidate(&self, capacity: Option<Capacity>) -> Asset {
-        assert!(
-            matches!(self.state, AssetState::Commissioned { .. }),
-            "as_candidate can only be called on Commissioned assets, not {}",
-            self.state
-        );
-        let mut copy = self.clone();
-        copy.state = AssetState::Candidate;
-        copy.set_capacity(capacity.unwrap_or(copy.capacity));
-        copy
     }
 }
 

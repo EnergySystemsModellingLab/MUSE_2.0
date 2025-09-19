@@ -1,5 +1,5 @@
 //! Code for updating the simulation state.
-use crate::asset::AssetRef;
+use crate::asset::{Asset, AssetRef};
 use crate::commodity::CommodityID;
 use crate::model::{Model, PricingStrategy};
 use crate::process::ProcessFlow;
@@ -35,7 +35,9 @@ impl ReducedCosts {
         *self
             .0
             .get(&(asset.clone(), time_slice.clone()))
-            .unwrap_or_else(|| &self.0[&(asset.as_candidate(None).into(), time_slice.clone())])
+            .unwrap_or_else(|| {
+                &self.0[&(Asset::new_candidate_from(asset).into(), time_slice.clone())]
+            })
     }
 
     /// Extend the reduced costs map
@@ -416,7 +418,7 @@ mod tests {
         let asset = asset_pool.as_slice().first().unwrap();
 
         // Create reduced costs with only the candidate version
-        let candidate = asset.as_candidate(None);
+        let candidate = Asset::new_candidate_from(asset);
         let mut reduced_costs = ReducedCosts::from(indexmap! {
             (candidate.into(), time_slice.clone()) => MoneyPerActivity(42.0)
         });
