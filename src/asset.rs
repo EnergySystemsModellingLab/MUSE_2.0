@@ -578,21 +578,6 @@ impl Ord for AssetRef {
     }
 }
 
-/// Convert the specified assets to being decommissioned and return
-fn decommission_assets<'a, I>(
-    assets: I,
-    year: u32,
-    reason: &'a str,
-) -> impl Iterator<Item = AssetRef> + 'a
-where
-    I: IntoIterator<Item = AssetRef> + 'a,
-{
-    assets.into_iter().map(move |mut asset| {
-        asset.make_mut().decommission(year, reason);
-        asset
-    })
-}
-
 /// A pool of [`Asset`]s
 pub struct AssetPool {
     /// The pool of active assets, sorted by ID
@@ -648,9 +633,11 @@ impl AssetPool {
             .active
             .extract_if(.., |asset| asset.max_decommission_year() <= year);
 
-        // Set `decommission_year` and copy to `self.decommissioned`
-        let decommissioned = decommission_assets(to_decommission, year, "end of life");
-        self.decommissioned.extend(decommissioned);
+        for mut asset in to_decommission {
+            // Set `decommission_year` and move to `self.decommissioned`
+            asset.make_mut().decommission(year, "end of life");
+            self.decommissioned.push(asset);
+        }
     }
 
     /// Decommission the specified assets if they are no longer in the active pool.
@@ -680,8 +667,11 @@ impl AssetPool {
                 _ => panic!("Active pool should only contain commissioned assets"),
             })
         });
-        let decommissioned = decommission_assets(to_decommission, year, "not selected");
-        self.decommissioned.extend(decommissioned);
+
+        for mut asset in to_decommission {
+            asset.make_mut().decommission(year, "not selected");
+            self.decommissioned.push(asset);
+        }
     }
 
     /// Get an asset with the specified ID.
