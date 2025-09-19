@@ -369,11 +369,18 @@ impl Asset {
     }
 
     /// Decommission this asset
-    fn decommission(&mut self, decommission_year: u32) {
+    fn decommission(&mut self, decommission_year: u32, reason: &str) {
         let (id, agent_id) = match &self.state {
             AssetState::Commissioned { id, agent_id } => (*id, agent_id.clone()),
             _ => panic!("Cannot decommission an asset that hasn't been commissioned"),
         };
+        debug!(
+            "Decommissioning asset '{}' for agent '{}' (reason: {})",
+            self.process_id(),
+            agent_id,
+            reason
+        );
+
         self.state = AssetState::Decommissioned {
             id,
             agent_id,
@@ -581,14 +588,7 @@ where
     I: IntoIterator<Item = AssetRef> + 'a,
 {
     assets.into_iter().map(move |mut asset| {
-        debug!(
-            "Decommissioning asset '{}' for agent '{}' (reason: {})",
-            asset.process_id(),
-            asset.agent_id().unwrap(),
-            reason
-        );
-
-        asset.make_mut().decommission(year);
+        asset.make_mut().decommission(year, reason);
         asset
     })
 }
@@ -1421,7 +1421,7 @@ mod tests {
         assert_eq!(asset2.id(), Some(AssetID(2)));
 
         // Test successful decommissioning
-        asset1.decommission(2025);
+        asset1.decommission(2025, "");
         assert!(!asset1.is_commissioned());
         assert_eq!(asset1.decommission_year(), Some(2025));
     }
@@ -1439,6 +1439,6 @@ mod tests {
     fn test_decommission_wrong_state(process: Process) {
         let mut asset =
             Asset::new_candidate(process.into(), "GBR".into(), Capacity(1.0), 2020).unwrap();
-        asset.decommission(2025);
+        asset.decommission(2025, "");
     }
 }
