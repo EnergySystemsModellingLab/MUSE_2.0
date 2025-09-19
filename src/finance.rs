@@ -40,7 +40,7 @@ pub fn profitability_index(
     // Calculate the total annualised surplus
     let mut total_annualised_surplus = Money(0.0);
     for (time_slice, activity) in activity.iter() {
-        let activity_surplus = *activity_surpluses.get(time_slice).unwrap();
+        let activity_surplus = activity_surpluses[time_slice];
         total_annualised_surplus += activity_surplus * *activity;
     }
 
@@ -61,7 +61,7 @@ pub fn lcox(
     let mut total_activity_costs = Money(0.0);
     let mut total_activity = Activity(0.0);
     for (time_slice, activity) in activity.iter() {
-        let activity_cost = *activity_costs.get(time_slice).unwrap();
+        let activity_cost = activity_costs[time_slice];
         total_activity += *activity;
         total_activity_costs += activity_cost * *activity;
     }

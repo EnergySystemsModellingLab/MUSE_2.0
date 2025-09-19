@@ -113,10 +113,10 @@ pub fn add_demand_constraints(
         let mut demand_for_ts_selection = Flow(0.0);
         let mut terms = Vec::new();
         for (time_slice, _) in ts_selection.iter(time_slice_info) {
-            demand_for_ts_selection += *demand.get(time_slice).unwrap();
+            demand_for_ts_selection += demand[time_slice];
             let flow_coeff = asset.get_flow(&commodity.id).unwrap().coeff;
-            terms.push((*activity_vars.get(time_slice).unwrap(), flow_coeff.value()));
-            terms.push((*unmet_demand_vars.get(time_slice).unwrap(), 1.0));
+            terms.push((activity_vars[time_slice], flow_coeff.value()));
+            terms.push((unmet_demand_vars[time_slice], 1.0));
         }
         problem.add_row(
             demand_for_ts_selection.value()..=demand_for_ts_selection.value(),
