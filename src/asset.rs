@@ -381,13 +381,24 @@ impl Asset {
         };
     }
 
-    /// Commission a future asset
-    fn commission_future(&mut self, id: AssetID) {
+    /// Commission the asset.
+    ///
+    /// Only assets with an [`AssetState`] of `Future` or `Selected` can be commissioned. If the
+    /// asset's state is something else, this function will panic.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID to give the newly commissioned asset
+    fn commission(&mut self, id: AssetID) {
         let agent_id = match &self.state {
-            AssetState::Future { agent_id } => agent_id.clone(),
-            _ => panic!("commission_future can only be called on Future assets"),
+            AssetState::Future { agent_id } => agent_id,
+            AssetState::Selected { agent_id } => agent_id,
+            state => panic!("Assets with state {state} cannot be commissioned"),
         };
-        self.state = AssetState::Commissioned { id, agent_id };
+        self.state = AssetState::Commissioned {
+            id,
+            agent_id: agent_id.clone(),
+        };
     }
 
     /// Select a Candidate asset for investment, converting it to a Selected state
@@ -397,18 +408,6 @@ impl Asset {
             "select_candidate_for_investment can only be called on Candidate assets"
         );
         self.state = AssetState::Selected { agent_id };
-    }
-
-    /// Commission a selected asset and give ownership to the specified agent
-    ///
-    /// At this point we also check that the capacity is valid (panics if not).
-    fn commission_selected(&mut self, id: AssetID) {
-        check_capacity_valid_for_asset(self.capacity).unwrap();
-        let agent_id = match &self.state {
-            AssetState::Selected { agent_id } => agent_id.clone(),
-            _ => panic!("commission_selected can only be called on Selected assets"),
-        };
-        self.state = AssetState::Commissioned { id, agent_id };
     }
 
     /// Creates a Candidate asset matching a given Commissioned asset
@@ -634,7 +633,7 @@ impl AssetPool {
                 asset.process_id(),
                 asset.agent_id().unwrap(),
             );
-            asset.commission_future(AssetID(self.next_id));
+            asset.commission(AssetID(self.next_id));
             self.next_id += 1;
             self.active.push(asset.into());
         }
@@ -737,7 +736,7 @@ impl AssetPool {
                         asset.process_id(),
                         asset.agent_id().unwrap(),
                     );
-                    asset.make_mut().commission_selected(AssetID(self.next_id));
+                    asset.make_mut().commission(AssetID(self.next_id));
                     self.next_id += 1;
                 }
                 _ => panic!(
@@ -1405,7 +1404,7 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset1.commission_future(AssetID(1));
+        asset1.commission(AssetID(1));
         assert!(asset1.is_commissioned());
         assert_eq!(asset1.id(), Some(AssetID(1)));
 
@@ -1418,7 +1417,7 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset2.commission_selected(AssetID(2));
+        asset2.commission(AssetID(2));
         assert!(asset2.is_commissioned());
         assert_eq!(asset2.id(), Some(AssetID(2)));
 
@@ -1429,25 +1428,11 @@ mod tests {
     }
 
     #[rstest]
-    #[should_panic(expected = "commission_future can only be called on Future assets")]
-    fn test_commission_future_wrong_states(process: Process) {
+    #[should_panic(expected = "Assets with state Candidate cannot be commissioned")]
+    fn test_commission_wrong_states(process: Process) {
         let mut asset =
             Asset::new_candidate(process.into(), "GBR".into(), Capacity(1.0), 2020).unwrap();
-        asset.commission_future(AssetID(1));
-    }
-
-    #[rstest]
-    #[should_panic(expected = "commission_selected can only be called on Selected assets")]
-    fn test_commission_candidate_wrong_state(process: Process) {
-        let mut asset = Asset::new_future(
-            "agent1".into(),
-            process.into(),
-            "GBR".into(),
-            Capacity(1.0),
-            2020,
-        )
-        .unwrap();
-        asset.commission_selected(AssetID(1));
+        asset.commission(AssetID(1));
     }
 
     #[rstest]
