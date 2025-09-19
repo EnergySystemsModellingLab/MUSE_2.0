@@ -33,6 +33,7 @@ clap-markdown = "0.1.5"
 platform-info = "2.0.5"
 derive_more = {version = "2.0", features = ["add"]}
 petgraph = "0.8.2"
+strum = {version = "0.27.2", features = ["derive"]}
 
 [dev-dependencies]
 current_dir = "0.1.2"
