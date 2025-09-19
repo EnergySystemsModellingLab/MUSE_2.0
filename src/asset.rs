@@ -180,7 +180,7 @@ impl Asset {
 
         Ok(Self {
             state,
-            process: process.clone(),
+            process,
             process_parameter,
             region_id,
             capacity,
