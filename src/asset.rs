@@ -389,12 +389,19 @@ impl Asset {
     /// # Arguments
     ///
     /// * `id` - The ID to give the newly commissioned asset
-    fn commission(&mut self, id: AssetID) {
+    /// * `reason` - The reason for commissioning (included in log)
+    fn commission(&mut self, id: AssetID, reason: &str) {
         let agent_id = match &self.state {
             AssetState::Future { agent_id } => agent_id,
             AssetState::Selected { agent_id } => agent_id,
             state => panic!("Assets with state {state} cannot be commissioned"),
         };
+        debug!(
+            "Commissioning asset '{}' for agent '{}' (reason: {})",
+            self.process_id(),
+            agent_id,
+            reason
+        );
         self.state = AssetState::Commissioned {
             id,
             agent_id: agent_id.clone(),
@@ -628,12 +635,7 @@ impl AssetPool {
 
         // Move assets from future to active
         for mut asset in self.future.drain(0..count) {
-            debug!(
-                "Commissioning asset '{}' for agent '{}' (reason: user input)",
-                asset.process_id(),
-                asset.agent_id().unwrap(),
-            );
-            asset.commission(AssetID(self.next_id));
+            asset.commission(AssetID(self.next_id), "user input");
             self.next_id += 1;
             self.active.push(asset.into());
         }
@@ -731,12 +733,9 @@ impl AssetPool {
             match &asset.state {
                 AssetState::Commissioned { .. } => {}
                 AssetState::Selected { .. } => {
-                    debug!(
-                        "Commissioning asset '{}' for agent '{}' (reason: selected)",
-                        asset.process_id(),
-                        asset.agent_id().unwrap(),
-                    );
-                    asset.make_mut().commission(AssetID(self.next_id));
+                    asset
+                        .make_mut()
+                        .commission(AssetID(self.next_id), "selected");
                     self.next_id += 1;
                 }
                 _ => panic!(
@@ -1404,7 +1403,7 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset1.commission(AssetID(1));
+        asset1.commission(AssetID(1), "");
         assert!(asset1.is_commissioned());
         assert_eq!(asset1.id(), Some(AssetID(1)));
 
@@ -1417,7 +1416,7 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset2.commission(AssetID(2));
+        asset2.commission(AssetID(2), "");
         assert!(asset2.is_commissioned());
         assert_eq!(asset2.id(), Some(AssetID(2)));
 
@@ -1432,7 +1431,7 @@ mod tests {
     fn test_commission_wrong_states(process: Process) {
         let mut asset =
             Asset::new_candidate(process.into(), "GBR".into(), Capacity(1.0), 2020).unwrap();
-        asset.commission(AssetID(1));
+        asset.commission(AssetID(1), "");
     }
 
     #[rstest]
