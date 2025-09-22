@@ -70,7 +70,7 @@ fn add_activity_constraints_for_existing(
     asset: &AssetRef,
     activity_vars: &IndexMap<TimeSliceID, Variable>,
 ) {
-    for (time_slice, var) in activity_vars.iter() {
+    for (time_slice, var) in activity_vars {
         let limits = asset.get_activity_limits(time_slice);
         let limits = limits.start().value()..=limits.end().value();
         problem.add_row(limits, [(*var, 1.0)]);
@@ -83,7 +83,7 @@ fn add_activity_constraints_for_candidate(
     capacity_var: Variable,
     activity_vars: &IndexMap<TimeSliceID, Variable>,
 ) {
-    for (time_slice, activity_var) in activity_vars.iter() {
+    for (time_slice, activity_var) in activity_vars {
         let limits = asset.get_activity_per_capacity_limits(time_slice);
         let lower_limit = limits.start().value();
         let upper_limit = limits.end().value();

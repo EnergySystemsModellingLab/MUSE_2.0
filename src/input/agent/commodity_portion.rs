@@ -128,7 +128,7 @@ fn validate_agent_commodity_portions(
     // First step is to create a map with the key as (commodity_id, year, region_id), and the value
     // as the sum of the portions for that key across all agents
     let mut summed_portions = HashMap::new();
-    for (id, agent_commodity_portions) in agent_commodity_portions.iter() {
+    for (id, agent_commodity_portions) in agent_commodity_portions {
         let agent = agents.get(id).context("Invalid agent ID")?;
         for ((commodity_id, year), portion) in agent_commodity_portions {
             for region in region_ids {
@@ -144,7 +144,7 @@ fn validate_agent_commodity_portions(
     }
 
     // We then check the map to ensure values for each key are 1
-    for (key, portion) in summed_portions.iter() {
+    for (key, portion) in &summed_portions {
         ensure!(
             approx_eq!(Dimensionless, *portion, Dimensionless(1.0), epsilon = 1e-5),
             "Commodity {} in year {} and region {} does not sum to 1.0",

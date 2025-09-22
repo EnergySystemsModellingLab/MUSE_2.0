@@ -230,7 +230,7 @@ fn candidate_assets_for_year(
         .values()
         .filter(move |process| process.active_for_year(year))
     {
-        for region_id in process.regions.iter() {
+        for region_id in &process.regions {
             candidates.push(
                 Asset::new_candidate(
                     Rc::clone(process),

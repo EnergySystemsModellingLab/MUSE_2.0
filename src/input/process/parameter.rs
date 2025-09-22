@@ -159,7 +159,7 @@ fn check_process_parameters(
     map: &HashMap<ProcessID, ProcessParameterMap>,
     base_year: u32,
 ) -> Result<()> {
-    for (process_id, process) in processes.iter() {
+    for (process_id, process) in processes {
         let parameters = map
             .get(process_id)
             .with_context(|| format!("Missing parameters for process {process_id}"))?;

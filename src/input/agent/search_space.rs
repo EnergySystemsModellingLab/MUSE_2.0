@@ -151,7 +151,7 @@ where
         }
     }
 
-    for (agent_id, agent) in agents.iter() {
+    for (agent_id, agent) in agents {
         // Get or create search space map
         let search_space = search_spaces
             .entry(agent_id.clone())

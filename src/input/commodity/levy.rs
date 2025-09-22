@@ -111,12 +111,12 @@ where
         };
 
         // Insert cost into map for each region/year/time slice
-        for region in regions.iter() {
+        for region in &regions {
             commodity_regions
                 .entry(commodity_id.clone())
                 .or_default()
                 .insert(region.clone());
-            for year in years.iter() {
+            for year in &years {
                 for (time_slice, _) in ts_selection.iter(time_slice_info) {
                     try_insert(
                         map,
@@ -129,7 +129,7 @@ where
     }
 
     // Validate map and complete with missing regions/years/time slices
-    for (commodity_id, regions) in commodity_regions.iter() {
+    for (commodity_id, regions) in &commodity_regions {
         let map = map.get_mut(commodity_id).unwrap();
         validate_commodity_levy_map(map, regions, milestone_years, time_slice_info)
             .with_context(|| format!("Missing costs for commodity {commodity_id}"))?;
@@ -164,7 +164,7 @@ fn add_missing_region_to_commodity_levy_map(
     milestone_years: &[u32],
     time_slice_info: &TimeSliceInfo,
 ) {
-    for year in milestone_years.iter() {
+    for year in milestone_years {
         for time_slice in time_slice_info.iter_ids() {
             map.insert(
                 (region_id.clone(), *year, time_slice.clone()),
@@ -196,8 +196,8 @@ fn validate_commodity_levy_map(
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
     // Check that all regions, years and time slices are covered
-    for region_id in regions.iter() {
-        for year in milestone_years.iter() {
+    for region_id in regions {
+        for year in milestone_years {
             for time_slice in time_slice_info.iter_ids() {
                 ensure!(
                     map.contains_key(&(region_id.clone(), *year, time_slice.clone())),

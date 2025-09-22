@@ -152,7 +152,7 @@ fn validate_activity_limits_maps(
     processes: &ProcessMap,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
-    for (process_id, process) in processes.iter() {
+    for (process_id, process) in processes {
         let map = map
             .get(process_id)
             .with_context(|| format!("Missing availabilities for process {process_id}"))?;

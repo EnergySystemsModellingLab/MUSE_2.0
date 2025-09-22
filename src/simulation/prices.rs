@@ -201,7 +201,7 @@ impl CommodityPrices {
 
         // Add the highest activity dual for each commodity/region/timeslice to each commodity
         // balance dual
-        for (key, highest) in highest_duals.iter() {
+        for (key, highest) in &highest_duals {
             if let Some(price) = self.0.get_mut(key) {
                 // highest is in units of MoneyPerActivity, but this is correct according to Adam
                 *price += MoneyPerFlow(highest.value());

@@ -186,7 +186,7 @@ fn compute_demand_maps(
     slices: &DemandSliceMap,
 ) -> HashMap<CommodityID, DemandMap> {
     let mut map = HashMap::new();
-    for ((commodity_id, region_id, year), (level, annual_demand)) in demand.iter() {
+    for ((commodity_id, region_id, year), (level, annual_demand)) in demand {
         for ts_selection in time_slice_info.iter_selections_at_level(*level) {
             let slice_key = (
                 commodity_id.clone(),

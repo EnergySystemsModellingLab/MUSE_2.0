@@ -43,7 +43,7 @@ fn add_variables(problem: &mut Problem, cost_coefficients: &CoefficientsMap) -> 
 
     // Create activity variables
     let mut activity_vars = IndexMap::new();
-    for (time_slice, cost) in cost_coefficients.activity_coefficients.iter() {
+    for (time_slice, cost) in &cost_coefficients.activity_coefficients {
         let var = problem.add_column(cost.value(), 0.0..);
         activity_vars.insert(time_slice.clone(), var);
     }

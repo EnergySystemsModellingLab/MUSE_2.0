@@ -74,7 +74,7 @@ where
     }
 
     // Validation: if cost limits are specified for an agent, they must be present for all years.
-    for (id, cost_limits) in map.iter() {
+    for (id, cost_limits) in &map {
         for year in milestone_years {
             ensure!(
                 cost_limits.contains_key(year),
