@@ -37,7 +37,7 @@ use time_slice::read_time_slice_info;
 pub fn read_csv<'a, T: DeserializeOwned + 'a>(
     file_path: &'a Path,
 ) -> Result<impl Iterator<Item = T> + 'a> {
-    let vec = _read_csv_internal(file_path)?;
+    let vec = read_csv_internal(file_path)?;
     if vec.is_empty() {
         bail!("CSV file {} cannot be empty", file_path.display());
     }
@@ -52,11 +52,11 @@ pub fn read_csv<'a, T: DeserializeOwned + 'a>(
 pub fn read_csv_optional<'a, T: DeserializeOwned + 'a>(
     file_path: &'a Path,
 ) -> Result<impl Iterator<Item = T> + 'a> {
-    let vec = _read_csv_internal(file_path)?;
+    let vec = read_csv_internal(file_path)?;
     Ok(vec.into_iter())
 }
 
-fn _read_csv_internal<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> Result<Vec<T>> {
+fn read_csv_internal<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> Result<Vec<T>> {
     let vec = csv::Reader::from_path(file_path)
         .with_context(|| input_err_msg(file_path))?
         .into_deserialize()
@@ -89,7 +89,7 @@ where
 {
     let value = f64::deserialize(deserialiser)?;
     if !(value > 0.0 && value <= 1.0) {
-        Err(serde::de::Error::custom("Value must be > 0 and <= 1"))?
+        Err(serde::de::Error::custom("Value must be > 0 and <= 1"))?;
     }
 
     Ok(T::new(value))

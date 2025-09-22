@@ -54,10 +54,10 @@ pub fn add_activity_constraints(
 ) {
     match asset.state() {
         AssetState::Commissioned { .. } => {
-            add_activity_constraints_for_existing(problem, asset, activity_vars)
+            add_activity_constraints_for_existing(problem, asset, activity_vars);
         }
         AssetState::Candidate => {
-            add_activity_constraints_for_candidate(problem, asset, capacity_var, activity_vars)
+            add_activity_constraints_for_candidate(problem, asset, capacity_var, activity_vars);
         }
         _ => panic!(
             "add_activity_constraints should only be called with Commissioned or Candidate assets"

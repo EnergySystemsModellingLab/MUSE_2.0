@@ -202,10 +202,9 @@ fn validate_commodities_graph(
     for node_idx in graph.node_indices() {
         // Get the commodity ID for the node
         let graph_node = graph.node_weight(node_idx).unwrap();
-        let commodity_id = match graph_node {
-            GraphNode::Commodity(id) => id,
+        let GraphNode::Commodity(commodity_id) = graph_node else {
             // Skip special nodes
-            _ => continue,
+            continue;
         };
 
         // Only validate commodities with the specified time slice level

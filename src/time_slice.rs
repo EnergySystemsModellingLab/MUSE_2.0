@@ -52,7 +52,7 @@ impl<'de> Deserialize<'de> for TimeSliceID {
         D: serde::Deserializer<'de>,
     {
         let s: &str = Deserialize::deserialize(deserialiser)?;
-        let (season, time_of_day) = s.split(".").collect_tuple().ok_or_else(|| {
+        let (season, time_of_day) = s.split('.').collect_tuple().ok_or_else(|| {
             D::Error::custom(format!(
                 "Invalid input '{s}': Should be in form season.time_of_day"
             ))
@@ -156,7 +156,7 @@ impl TimeSliceSelection {
                         .filter(move |(ts, _)| &ts.season == season)
                         .map(|(ts, duration)| (ts.clone().into(), *duration)),
                 ),
-                _ => unreachable!(),
+                TimeSliceLevel::Annual => unreachable!(),
             },
             Self::Single(time_slice) => Box::new(iter::once((
                 time_slice.clone().into(),

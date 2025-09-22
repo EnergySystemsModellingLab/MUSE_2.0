@@ -17,6 +17,7 @@ use std::path::Path;
 const DEMAND_FILE_NAME: &str = "demand.csv";
 
 /// Represents a single demand entry in the dataset.
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 struct Demand {
     /// The commodity this demand entry refers to

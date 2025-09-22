@@ -362,7 +362,7 @@ impl Asset {
             | AssetState::Decommissioned { agent_id, .. }
             | AssetState::Future { agent_id }
             | AssetState::Selected { agent_id } => Some(agent_id),
-            _ => None,
+            AssetState::Candidate => None,
         }
     }
 
@@ -450,6 +450,7 @@ impl Asset {
     }
 }
 
+#[allow(clippy::missing_fields_in_debug)]
 impl std::fmt::Debug for Asset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Asset")

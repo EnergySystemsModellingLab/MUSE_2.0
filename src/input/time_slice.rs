@@ -26,12 +26,11 @@ struct TimeSliceRaw {
 /// The purpose of returning an ID is so that we can dedup memory.
 fn get_or_insert<T: IDLike>(id: T, set: &mut IndexSet<T>) -> T {
     // Sadly there's no entry API for HashSets: https://github.com/rust-lang/rfcs/issues/1490
-    match set.get_id(&id) {
-        Ok(id) => id.clone(),
-        Err(_) => {
-            set.insert(id.clone());
-            id
-        }
+    if let Ok(id) = set.get_id(&id) {
+        id.clone()
+    } else {
+        set.insert(id.clone());
+        id
     }
 }
 
@@ -70,7 +69,7 @@ where
     }
 
     // Validate data
-    check_values_sum_to_one_approx(time_slices.values().cloned())
+    check_values_sum_to_one_approx(time_slices.values().copied())
         .context("Invalid time slice fractions")?;
 
     Ok(TimeSliceInfo {

@@ -146,7 +146,7 @@ fn check_objective_parameter(
             check_field_none!(decision_weight);
             check_field_some!(decision_lexico_order);
         }
-    };
+    }
 
     Ok(())
 }

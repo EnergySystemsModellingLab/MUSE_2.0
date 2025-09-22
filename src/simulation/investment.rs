@@ -180,6 +180,7 @@ fn flatten_preset_demands_for_year(
             // We split the demand equally over all timeslices in the selection
             // NOTE: since demands will only be balanced to the timeslice level of the commodity
             // it doesn't matter how we do this distribution, only the total matters.
+            #[allow(clippy::cast_precision_loss)]
             let n_timeslices = time_slice_selection.iter(time_slice_info).count() as f64;
             let demand_per_slice = *demand / Dimensionless(n_timeslices);
             for (time_slice, _) in time_slice_selection.iter(time_slice_info) {
@@ -517,7 +518,7 @@ fn update_assets(
                 // Otherwise, update the capacity of the chosen asset and add it to the list of best assets
                 best_asset.make_mut().set_capacity(capacity);
                 best_assets.push(best_asset);
-            };
+            }
         }
         _ => panic!("update_assets should only be called with Commissioned or Candidate assets"),
     }

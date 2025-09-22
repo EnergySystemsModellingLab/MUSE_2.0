@@ -158,7 +158,7 @@ where
                     commodity_id.clone(),
                     region_id.clone(),
                     ts_selection.clone(),
-                ))
+                ));
             }
         }
     }
@@ -184,7 +184,7 @@ fn add_activity_constraints(problem: &mut Problem, variables: &VariableMap) -> A
         let limits = limits.start().value()..=limits.end().value();
 
         problem.add_row(limits, [(var, 1.0)]);
-        keys.push((asset.clone(), time_slice.clone()))
+        keys.push((asset.clone(), time_slice.clone()));
     }
 
     ActivityKeys { offset, keys }

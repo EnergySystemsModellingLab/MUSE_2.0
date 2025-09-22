@@ -31,7 +31,7 @@ pub fn parse_region_str(s: &str, region_ids: &IndexSet<RegionID>) -> Result<Inde
         return Ok(region_ids.clone());
     }
 
-    s.split(";")
+    s.split(';')
         .map(|y| Ok(region_ids.get_id(y.trim())?.clone()))
         .collect()
 }

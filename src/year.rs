@@ -45,7 +45,7 @@ pub fn parse_year_str(s: &str, valid_years: &[u32]) -> Result<Vec<u32>> {
     }
 
     let years: Vec<_> = s
-        .split(";")
+        .split(';')
         .map(|y| {
             parse_and_validate_year(y, valid_years).with_context(|| format!("Invalid year: {y}"))
         })

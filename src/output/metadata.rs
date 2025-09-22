@@ -10,6 +10,7 @@ use std::path::Path;
 const METADATA_FILE_NAME: &str = "metadata.toml";
 
 /// Information about the program build via `built` crate
+#[allow(clippy::doc_markdown)]
 mod built_info {
     // The file has been placed there by the build script.
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
