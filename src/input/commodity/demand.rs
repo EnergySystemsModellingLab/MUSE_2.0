@@ -1,14 +1,14 @@
 //! Code for working with demand for a given commodity. Demand can vary by region, year and time
 //! slice.
-use super::super::*;
+use super::super::{input_err_msg, read_csv};
 use super::demand_slicing::{DemandSliceMap, read_demand_slices};
 use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
 use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel};
 use crate::units::Flow;
-use anyhow::{Result, ensure};
-use indexmap::IndexSet;
+use anyhow::{Context, Result, ensure};
+use indexmap::{IndexMap, IndexSet};
 use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::HashMap;

@@ -1,5 +1,5 @@
 //! Code for reading [Asset]s from a CSV file.
-use super::*;
+use super::{input_err_msg, read_csv};
 use crate::agent::AgentID;
 use crate::asset::Asset;
 use crate::id::IDCollection;

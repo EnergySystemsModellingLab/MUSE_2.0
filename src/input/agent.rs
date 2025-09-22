@@ -1,5 +1,5 @@
 //! Code for reading in agent-related data from CSV files.
-use super::*;
+use super::{input_err_msg, read_csv};
 use crate::agent::{
     Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, AgentID, AgentMap, AgentObjectiveMap,
     AgentSearchSpaceMap, DecisionRule,

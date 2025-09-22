@@ -1,11 +1,12 @@
 //! Code for reading process flows file
-use super::super::*;
+use super::super::{input_err_msg, read_csv};
 use crate::commodity::{CommodityID, CommodityMap};
 use crate::process::{FlowType, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
 use crate::units::{FlowPerActivity, MoneyPerFlow};
 use crate::year::parse_year_str;
 use anyhow::{Context, Result, ensure};
+use indexmap::IndexMap;
 use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -236,6 +237,7 @@ mod tests {
     use crate::process::{FlowType, Process, ProcessFlow, ProcessMap};
     use crate::units::{FlowPerActivity, MoneyPerFlow};
     use indexmap::IndexMap;
+    use itertools::Itertools;
     use map_macro::hash_map;
     use rstest::rstest;
     use std::iter;

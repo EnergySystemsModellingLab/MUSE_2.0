@@ -1,6 +1,7 @@
 //! Code for reading region-related information from CSV files.
-use super::*;
+use super::read_csv_id_file;
 use crate::region::RegionMap;
+use anyhow::Result;
 use std::path::Path;
 
 const REGIONS_FILE_NAME: &str = "regions.csv";

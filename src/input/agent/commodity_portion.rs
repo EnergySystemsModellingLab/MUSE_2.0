@@ -1,15 +1,16 @@
 //! Code for reading the agent commodities CSV file.
-use super::super::*;
+use super::super::{deserialise_proportion_nonzero, input_err_msg, read_csv, try_insert};
 use crate::agent::{AgentCommodityPortionsMap, AgentID, AgentMap};
-use crate::commodity::{CommodityID, CommodityMap, CommodityType};
+use crate::commodity::{CommodityMap, CommodityType};
 use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use anyhow::{Context, Result, ensure};
+use float_cmp::approx_eq;
 use indexmap::IndexSet;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 const AGENT_COMMODITIES_FILE_NAME: &str = "agent_commodity_portions.csv";
@@ -110,8 +111,7 @@ fn validate_agent_commodity_portions(
     // CHECK 1: Each specified commodity must have data for all years
     for (id, portions) in agent_commodity_portions {
         // Colate set of commodities for this agent
-        let commodity_ids: HashSet<CommodityID> =
-            HashSet::from_iter(portions.keys().map(|(id, _)| id.clone()));
+        let commodity_ids: HashSet<_> = portions.keys().map(|(id, _)| id.clone()).collect();
 
         // Check that each commodity has data for all milestone years
         for commodity_id in commodity_ids {
@@ -198,6 +198,7 @@ mod tests {
     };
     use crate::commodity::{Commodity, CommodityID, CommodityLevyMap, CommodityType, DemandMap};
     use crate::time_slice::TimeSliceLevel;
+    use indexmap::IndexMap;
     use std::rc::Rc;
 
     #[test]
