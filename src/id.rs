@@ -13,7 +13,15 @@ impl<T> IDLike for T where T: Eq + Hash + Borrow<str> + Clone + Display + From<S
 macro_rules! define_id_type {
     ($name:ident) => {
         #[derive(
-            Clone, std::hash::Hash, PartialOrd, Ord, PartialEq, Eq, Debug, serde::Serialize,
+            Clone,
+            derive_more::Display,
+            std::hash::Hash,
+            PartialOrd,
+            Ord,
+            PartialEq,
+            Eq,
+            Debug,
+            serde::Serialize,
         )]
         /// An ID type (e.g. `AgentID`, `CommodityID`, etc.)
         pub struct $name(pub std::rc::Rc<str>);
@@ -21,12 +29,6 @@ macro_rules! define_id_type {
         impl std::borrow::Borrow<str> for $name {
             fn borrow(&self) -> &str {
                 &self.0
-            }
-        }
-
-        impl std::fmt::Display for $name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}", self.0)
             }
         }
 
