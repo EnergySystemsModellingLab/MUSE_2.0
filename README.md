@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 -->
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-6-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-7-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 [![Build and test](https://github.com/EnergySystemsModellingLab/MUSE_2.0/actions/workflows/cargo-test.yml/badge.svg)](https://github.com/EnergySystemsModellingLab/MUSE_2.0/actions/workflows/cargo-test.yml)
 [![codecov](https://codecov.io/github/EnergySystemsModellingLab/MUSE_2.0/graph/badge.svg?token=nV8gp1NCh8)](https://codecov.io/github/EnergySystemsModellingLab/MUSE_2.0)
@@ -63,6 +63,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Ashmit8583"><img src="https://avatars.githubusercontent.com/u/137117727?v=4?s=100" width="100px;" alt="Ashmit8583"/><br /><sub><b>Ashmit8583</b></sub></a><br /><a href="https://github.com/EnergySystemsModellingLab/MUSE_2.0/commits?author=Ashmit8583" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://www.imperial.ac.uk/admin-services/ict/self-service/research-support/rcs/service-offering/research-software-engineering/"><img src="https://avatars.githubusercontent.com/u/6095790?v=4?s=100" width="100px;" alt="Diego Alonso Álvarez"/><br /><sub><b>Diego Alonso Álvarez</b></sub></a><br /><a href="https://github.com/EnergySystemsModellingLab/MUSE_2.0/commits?author=dalonsoa" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/AdrianDAlessandro"><img src="https://avatars.githubusercontent.com/u/40875798?v=4?s=100" width="100px;" alt="Adrian D'Alessandro"/><br /><sub><b>Adrian D'Alessandro</b></sub></a><br /><a href="https://github.com/EnergySystemsModellingLab/MUSE_2.0/commits?author=AdrianDAlessandro" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/TinyMarsh"><img src="https://avatars.githubusercontent.com/u/13540127?v=4?s=100" width="100px;" alt="Ryan"/><br /><sub><b>Ryan</b></sub></a><br /><a href="https://github.com/EnergySystemsModellingLab/MUSE_2.0/commits?author=TinyMarsh" title="Code">💻</a></td>
     </tr>
   </tbody>
   <tfoot>
