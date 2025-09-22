@@ -157,11 +157,9 @@ pub fn try_insert<K, V>(map: &mut HashMap<K, V>, key: K, value: V) -> Result<()>
 where
     K: Eq + Hash + Clone + std::fmt::Debug,
 {
-    let existing = map.insert(key.clone(), value);
-    match existing {
-        Some(_) => bail!("Key {key:?} already exists in the map"),
-        None => Ok(()),
-    }
+    let existing = map.insert(key.clone(), value).is_some();
+    ensure!(!existing, "Key {key:?} already exists in the map");
+    Ok(())
 }
 
 /// Read a model from the specified directory.
