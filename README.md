@@ -1,4 +1,7 @@
 <!-- markdownlint-disable MD041 -->
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-0-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 [![Build and test](https://github.com/EnergySystemsModellingLab/MUSE_2.0/actions/workflows/cargo-test.yml/badge.svg)](https://github.com/EnergySystemsModellingLab/MUSE_2.0/actions/workflows/cargo-test.yml)
 [![codecov](https://codecov.io/github/EnergySystemsModellingLab/MUSE_2.0/graph/badge.svg?token=nV8gp1NCh8)](https://codecov.io/github/EnergySystemsModellingLab/MUSE_2.0)
 [![GitHub](https://img.shields.io/github/license/EnergySystemsModellingLab/MUSE_2.0)](https://raw.githubusercontent.com/EnergySystemsModellingLab/MUSE_2.0/main/LICENSE)
@@ -43,6 +46,21 @@ build it from source, please see [the developer guide].
 
 [the documentation]: https://energysystemsmodellinglab.github.io/MUSE_2.0/introduction.html
 [the developer guide]: https://energysystemsmodellinglab.github.io/MUSE_2.0/developer_guide.html
+
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors)
+specification. Contributions of any kind welcome!
 
 ## Copyright
 
