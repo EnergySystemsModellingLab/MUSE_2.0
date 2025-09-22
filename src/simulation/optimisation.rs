@@ -308,7 +308,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             &mut problem,
             &variables,
             self.model,
-            all_assets,
+            &all_assets,
             commodities,
             self.year,
         );

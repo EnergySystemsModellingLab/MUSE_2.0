@@ -145,7 +145,7 @@ where
         for year in search_space.years {
             try_insert(
                 map,
-                (search_space.commodity_id.clone(), year),
+                &(search_space.commodity_id.clone(), year),
                 search_space.search_space.clone(),
             )?;
         }

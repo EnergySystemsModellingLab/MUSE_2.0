@@ -84,7 +84,7 @@ where
         for year in years {
             try_insert(
                 entry,
-                (commodity_id.clone(), year),
+                &(commodity_id.clone(), year),
                 agent_commodity_portion_raw.commodity_portion,
             )?;
         }

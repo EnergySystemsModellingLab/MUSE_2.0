@@ -9,18 +9,18 @@ use crate::units::{MoneyPerActivity, MoneyPerCapacity, Year};
 pub fn activity_cost(
     asset: &AssetRef,
     reduced_costs: &ReducedCosts,
-    time_slice: TimeSliceID,
+    time_slice: &TimeSliceID,
 ) -> MoneyPerActivity {
-    reduced_costs.get(asset, &time_slice)
+    reduced_costs.get(asset, time_slice)
 }
 
 /// Calculates the surplus per unit of activity for an asset.
 pub fn activity_surplus(
     asset: &AssetRef,
     reduced_costs: &ReducedCosts,
-    time_slice: TimeSliceID,
+    time_slice: &TimeSliceID,
 ) -> MoneyPerActivity {
-    -reduced_costs.get(asset, &time_slice)
+    -reduced_costs.get(asset, time_slice)
 }
 
 /// Calculates the annual fixed costs per unit of capacity for an asset.

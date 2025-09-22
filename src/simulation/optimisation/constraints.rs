@@ -66,21 +66,15 @@ pub fn add_asset_constraints<'a, I>(
     problem: &mut Problem,
     variables: &VariableMap,
     model: &'a Model,
-    assets: I,
+    assets: &I,
     commodities: &'a [CommodityID],
     year: u32,
 ) -> ConstraintKeys
 where
     I: Iterator<Item = &'a AssetRef> + Clone + 'a,
 {
-    let commodity_balance_keys = add_commodity_balance_constraints(
-        problem,
-        variables,
-        model,
-        assets.clone(),
-        commodities,
-        year,
-    );
+    let commodity_balance_keys =
+        add_commodity_balance_constraints(problem, variables, model, assets, commodities, year);
 
     let activity_keys = add_activity_constraints(problem, variables);
 
@@ -102,7 +96,7 @@ fn add_commodity_balance_constraints<'a, I>(
     problem: &mut Problem,
     variables: &VariableMap,
     model: &'a Model,
-    assets: I,
+    assets: &I,
     commodities: &'a [CommodityID],
     year: u32,
 ) -> CommodityBalanceKeys

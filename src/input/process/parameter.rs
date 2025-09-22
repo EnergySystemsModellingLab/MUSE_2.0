@@ -143,7 +143,7 @@ where
         let entry = map.entry(id.clone()).or_default();
         for year in parameter_years {
             for region in parameter_regions.clone() {
-                try_insert(entry, (region, year), param.clone())?;
+                try_insert(entry, &(region, year), param.clone())?;
             }
         }
     }

@@ -120,7 +120,7 @@ where
                 for (time_slice, _) in ts_selection.iter(time_slice_info) {
                     try_insert(
                         map,
-                        (region.clone(), *year, time_slice.clone()),
+                        &(region.clone(), *year, time_slice.clone()),
                         cost.clone(),
                     )?;
                 }

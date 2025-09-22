@@ -153,7 +153,7 @@ where
 /// Inserts a key-value pair into a `HashMap` if the key does not already exist.
 ///
 /// If the key already exists, it returns an error with a message indicating the key's existence.
-pub fn try_insert<K, V>(map: &mut HashMap<K, V>, key: K, value: V) -> Result<()>
+pub fn try_insert<K, V>(map: &mut HashMap<K, V>, key: &K, value: V) -> Result<()>
 where
     K: Eq + Hash + Clone + std::fmt::Debug,
 {

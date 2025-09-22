@@ -133,7 +133,7 @@ where
                 for year in record_years.iter().copied() {
                     try_insert(
                         entry,
-                        (region.clone(), year, time_slice.clone()),
+                        &(region.clone(), year, time_slice.clone()),
                         bounds.clone(),
                     )?;
                 }

@@ -68,7 +68,7 @@ where
             .entry(id.clone())
             .or_insert_with(AgentObjectiveMap::new);
         for year in parse_year_str(&objective.years, milestone_years)? {
-            try_insert(agent_objectives, year, objective.objective_type).with_context(|| {
+            try_insert(agent_objectives, &year, objective.objective_type).with_context(|| {
                 format!("Duplicate agent objective entry for agent {id} and year {year}")
             })?;
         }
