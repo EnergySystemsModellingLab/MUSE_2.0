@@ -434,6 +434,7 @@ impl Asset {
             self.state == AssetState::Candidate,
             "select_candidate_for_investment can only be called on Candidate assets"
         );
+        check_capacity_valid_for_asset(self.capacity).unwrap();
         self.state = AssetState::Selected { agent_id };
     }
 }
