@@ -66,7 +66,7 @@ pub fn read_process_flows(
         .with_context(|| input_err_msg(&file_path))
 }
 
-/// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.
+/// Read '`ProcessFlowRaw`' records from an iterator and convert them into '`ProcessFlow`' records.
 fn read_process_flows_from_iter<I>(
     iter: I,
     processes: &mut ProcessMap,

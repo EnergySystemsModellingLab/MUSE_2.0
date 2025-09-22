@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, HashMap};
 
 /// A map of reduced costs for different assets in different time slices
 ///
-/// This is the system cost associated with one unit of activity (MoneyPerActivity) for each asset
+/// This is the system cost associated with one unit of activity (`MoneyPerActivity`) for each asset
 /// in each time slice.
 ///
 /// For candidate assets this is calculated directly from the activity variable duals.

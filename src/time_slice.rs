@@ -235,6 +235,7 @@ impl Default for TimeSliceInfo {
 }
 
 impl TimeSliceInfo {
+    #[allow(clippy::doc_markdown)]
     /// Get the `TimeSliceID` corresponding to the `time_slice`.
     ///
     /// `time_slice` must be in the form "season.time_of_day".

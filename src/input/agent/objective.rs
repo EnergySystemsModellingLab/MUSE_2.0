@@ -26,7 +26,7 @@ struct AgentObjectiveRaw {
     decision_lexico_order: Option<u32>,
 }
 
-/// Read agent objective info from the agent_objectives.csv file.
+/// Read agent objective info from the `agent_objectives.csv` file.
 ///
 /// # Arguments
 ///

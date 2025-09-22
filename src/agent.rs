@@ -72,7 +72,7 @@ impl Agent {
 pub struct AgentCostLimits {
     /// The maximum capital cost the agent will pay.
     pub capex_limit: Option<Money>,
-    /// The maximum annual operating cost (fuel plus var_opex etc) that the agent will pay.
+    /// The maximum annual operating cost (fuel etc.) that the agent will pay.
     pub annual_cost_limit: Option<Money>,
 }
 

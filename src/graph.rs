@@ -125,8 +125,8 @@ fn create_commodities_graph_for_region_year(
 /// returning a new graph.
 ///
 /// Commodity demands are represented by the `Demand` node. We only add edges to the `Demand` node
-/// for commodities with the same time_slice_level as the selection. Other demands can be ignored
-/// since this graph will only be validated for commodities with the same time_slice_level as the
+/// for commodities with the same `time_slice_level` as the selection. Other demands can be ignored
+/// since this graph will only be validated for commodities with the same `time_slice_level` as the
 /// selection.
 fn prepare_commodities_graph_for_validation(
     base_graph: &CommoditiesGraph,

@@ -28,7 +28,7 @@ impl AgentCostLimitsRaw {
     }
 }
 
-/// Read agent cost limits info from the agent_cost_limits.csv file.
+/// Read agent cost limits info from the `agent_cost_limits.csv` file.
 ///
 /// # Arguments
 ///
