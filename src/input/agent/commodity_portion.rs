@@ -118,10 +118,7 @@ fn validate_agent_commodity_portions(
             for year in milestone_years {
                 ensure!(
                     portions.contains_key(&(commodity_id.clone(), *year)),
-                    "Agent {} does not have data for commodity {} in year {}",
-                    id,
-                    commodity_id,
-                    year
+                    "Agent {id} does not have data for commodity {commodity_id} in year {year}"
                 );
             }
         }
@@ -178,10 +175,7 @@ fn validate_agent_commodity_portions(
                 let key = (&commodity_id, year, region);
                 ensure!(
                     summed_portions.contains_key(&key),
-                    "Commodity {} in year {} and region {} is not covered",
-                    commodity_id,
-                    year,
-                    region
+                    "Commodity {commodity_id} in year {year} and region {region} is not covered"
                 );
             }
         }

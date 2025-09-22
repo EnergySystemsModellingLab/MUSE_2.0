@@ -69,7 +69,7 @@ pub fn init(log_level_from_settings: Option<&str>, output_path: &Path) -> Result
         "info" => LevelFilter::Info,
         "debug" => LevelFilter::Debug,
         "trace" => LevelFilter::Trace,
-        unknown => bail!("Unknown log level: {}", unknown),
+        unknown => bail!("Unknown log level: {unknown}"),
     };
 
     // Set up colours for log levels

@@ -87,9 +87,7 @@ where
             .collect_vec();
         ensure!(
             missing_years.is_empty(),
-            "Agent {} is missing objectives for the following milestone years: {:?}",
-            agent_id,
-            missing_years
+            "Agent {agent_id} is missing objectives for the following milestone years: {missing_years:?}"
         );
 
         let npv_years = milestone_years

@@ -233,8 +233,7 @@ fn validate_commodities_graph(
                     .any(|edge| edge.weight() != &GraphEdge::Demand);
                 ensure!(
                     !has_non_demand_outgoing,
-                    "SVD commodity {} cannot be an input to a process",
-                    commodity_id
+                    "SVD commodity {commodity_id} cannot be an input to a process"
                 );
 
                 // If it has `Demand` edges, it must have at least one producer
@@ -244,8 +243,7 @@ fn validate_commodities_graph(
                 if has_demand_edges {
                     ensure!(
                         has_incoming,
-                        "SVD commodity {} is demanded but has no producers",
-                        commodity_id
+                        "SVD commodity {commodity_id} is demanded but has no producers"
                     );
                 }
             }
@@ -253,16 +251,14 @@ fn validate_commodities_graph(
                 // SED: if consumed (outgoing edges), must also be produced (incoming edges)
                 ensure!(
                     !has_outgoing || has_incoming,
-                    "SED commodity {} may be consumed but has no producers",
-                    commodity_id
+                    "SED commodity {commodity_id} may be consumed but has no producers"
                 );
             }
             CommodityType::Other => {
                 // OTH: cannot have both incoming and outgoing edges
                 ensure!(
                     !(has_incoming && has_outgoing),
-                    "OTH commodity {} cannot have both producers and consumers",
-                    commodity_id
+                    "OTH commodity {commodity_id} cannot have both producers and consumers"
                 );
             }
         }
@@ -281,10 +277,7 @@ fn topo_sort_commodities(
     // Perform a topological sort on the graph
     let order = toposort(graph, None).map_err(|cycle| {
         let cycle_commodity = graph.node_weight(cycle.node_id()).unwrap().clone();
-        anyhow!(
-            "Cycle detected in commodity graph for commodity {}",
-            cycle_commodity
-        )
+        anyhow!("Cycle detected in commodity graph for commodity {cycle_commodity}")
     })?;
 
     // We return the order in reverse so that leaf-node commodities are solved first

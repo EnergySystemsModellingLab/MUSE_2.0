@@ -133,12 +133,11 @@ where
                     .with_context(|| "Missing tolerance for lexico decision rule")?;
                 ensure!(
                     tolerance >= 0.0,
-                    "Lexico tolerance must be non-negative, got {}",
-                    tolerance
+                    "Lexico tolerance must be non-negative, got {tolerance}"
                 );
                 DecisionRule::Lexicographical { tolerance }
             }
-            invalid_rule => bail!("Invalid decision rule: {}", invalid_rule),
+            invalid_rule => bail!("Invalid decision rule: {invalid_rule}"),
         };
 
         ensure!(

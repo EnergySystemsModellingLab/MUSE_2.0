@@ -201,10 +201,7 @@ fn validate_commodity_levy_map(
             for time_slice in time_slice_info.iter_ids() {
                 ensure!(
                     map.contains_key(&(region_id.clone(), *year, time_slice.clone())),
-                    "Missing cost for region {}, year {}, time slice {}",
-                    region_id,
-                    year,
-                    time_slice
+                    "Missing cost for region {region_id}, year {year}, time slice {time_slice}"
                 );
             }
         }

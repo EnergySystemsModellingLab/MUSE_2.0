@@ -172,9 +172,7 @@ fn validate_activity_limits_maps(
         }
         ensure!(
             missing_keys.is_empty(),
-            "Process {} is missing availabilities for the following regions, years and timeslice: {:?}",
-            process_id,
-            missing_keys
+            "Process {process_id} is missing availabilities for the following regions, years and timeslice: {missing_keys:?}"
         );
     }
 

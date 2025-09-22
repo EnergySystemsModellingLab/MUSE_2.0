@@ -135,8 +135,7 @@ where
     let sum = fractions.sum();
     ensure!(
         approx_eq!(T, sum, T::new(1.0), epsilon = 1e-5),
-        "Sum of fractions does not equal one (actual: {})",
-        sum
+        "Sum of fractions does not equal one (actual: {sum})"
     );
 
     Ok(())
@@ -160,7 +159,7 @@ where
 {
     let existing = map.insert(key.clone(), value);
     match existing {
-        Some(_) => bail!("Key {:?} already exists in the map", key),
+        Some(_) => bail!("Key {key:?} already exists in the map"),
         None => Ok(()),
     }
 }

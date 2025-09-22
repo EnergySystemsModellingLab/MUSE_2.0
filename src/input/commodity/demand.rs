@@ -161,9 +161,7 @@ where
         }
         ensure!(
             missing_keys.is_empty(),
-            "Commodity {} is missing demand data for {:?}",
-            commodity_id,
-            missing_keys
+            "Commodity {commodity_id} is missing demand data for {missing_keys:?}"
         );
     }
 
