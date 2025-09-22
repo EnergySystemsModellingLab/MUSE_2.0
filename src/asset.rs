@@ -348,8 +348,9 @@ impl Asset {
     /// Get the ID for this asset
     pub fn id(&self) -> Option<AssetID> {
         match &self.state {
-            AssetState::Commissioned { id, .. } => Some(*id),
-            AssetState::Decommissioned { id, .. } => Some(*id),
+            AssetState::Commissioned { id, .. } | AssetState::Decommissioned { id, .. } => {
+                Some(*id)
+            }
             _ => None,
         }
     }
@@ -357,10 +358,10 @@ impl Asset {
     /// Get the agent ID for this asset
     pub fn agent_id(&self) -> Option<&AgentID> {
         match &self.state {
-            AssetState::Commissioned { agent_id, .. } => Some(agent_id),
-            AssetState::Decommissioned { agent_id, .. } => Some(agent_id),
-            AssetState::Future { agent_id } => Some(agent_id),
-            AssetState::Selected { agent_id } => Some(agent_id),
+            AssetState::Commissioned { agent_id, .. }
+            | AssetState::Decommissioned { agent_id, .. }
+            | AssetState::Future { agent_id }
+            | AssetState::Selected { agent_id } => Some(agent_id),
             _ => None,
         }
     }
@@ -422,8 +423,7 @@ impl Asset {
     /// * `reason` - The reason for commissioning (included in log)
     fn commission(&mut self, id: AssetID, reason: &str) {
         let agent_id = match &self.state {
-            AssetState::Future { agent_id } => agent_id,
-            AssetState::Selected { agent_id } => agent_id,
+            AssetState::Future { agent_id } | AssetState::Selected { agent_id } => agent_id,
             state => panic!("Assets with state {state} cannot be commissioned"),
         };
         debug!(
