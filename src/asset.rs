@@ -99,12 +99,9 @@ impl Asset {
         )
     }
 
-    /// Create a new candidate asset from an existing asset
-    pub fn new_candidate_from(asset: &Asset) -> Self {
-        assert!(
-            asset.is_commissioned(),
-            "Can only create candidate assets from commissioned assets"
-        );
+    /// Create a new candidate asset from a commissioned asset
+    pub fn new_candidate_from_commissioned(asset: &Asset) -> Self {
+        assert!(asset.is_commissioned(), "Asset must be commissioned");
 
         Self {
             state: AssetState::Candidate,

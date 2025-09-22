@@ -36,7 +36,10 @@ impl ReducedCosts {
             .0
             .get(&(asset.clone(), time_slice.clone()))
             .unwrap_or_else(|| {
-                &self.0[&(Asset::new_candidate_from(asset).into(), time_slice.clone())]
+                &self.0[&(
+                    Asset::new_candidate_from_commissioned(asset).into(),
+                    time_slice.clone(),
+                )]
             })
     }
 
@@ -418,7 +421,7 @@ mod tests {
         let asset = asset_pool.as_slice().first().unwrap();
 
         // Create reduced costs with only the candidate version
-        let candidate = Asset::new_candidate_from(asset);
+        let candidate = Asset::new_candidate_from_commissioned(asset);
         let mut reduced_costs = ReducedCosts::from(indexmap! {
             (candidate.into(), time_slice.clone()) => MoneyPerActivity(42.0)
         });
