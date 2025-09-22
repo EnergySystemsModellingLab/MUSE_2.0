@@ -17,7 +17,19 @@ use std::rc::Rc;
 use std::slice;
 
 /// A unique identifier for an asset
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    derive_more::Display,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Deserialize,
+    Serialize,
+)]
 pub struct AssetID(u32);
 
 /// The state of an asset
