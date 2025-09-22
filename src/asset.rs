@@ -397,8 +397,9 @@ impl Asset {
             _ => panic!("Cannot decommission an asset that hasn't been commissioned"),
         };
         debug!(
-            "Decommissioning asset '{}' for agent '{}' (reason: {})",
+            "Decommissioning '{}' asset (ID: {}) for agent '{}' (reason: {})",
             self.process_id(),
+            id,
             agent_id,
             reason
         );
@@ -426,8 +427,9 @@ impl Asset {
             state => panic!("Assets with state {state} cannot be commissioned"),
         };
         debug!(
-            "Commissioning asset '{}' for agent '{}' (reason: {})",
+            "Commissioning '{}' asset (ID: {}) for agent '{}' (reason: {})",
             self.process_id(),
+            id,
             agent_id,
             reason
         );
