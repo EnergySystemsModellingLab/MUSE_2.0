@@ -81,6 +81,16 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "ahawkes",
+      "name": "Adam Hawkes",
+      "avatar_url": "https://avatars.githubusercontent.com/u/12055725?v=4",
+      "profile": "https://github.com/ahawkes",
+      "contributions": [
+        "ideas",
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
