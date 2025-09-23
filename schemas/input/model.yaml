@@ -39,4 +39,13 @@ properties:
     default: 1e9
     notes: |
       Currently this only applies to the LCOX appraisal.
+  max_ironing_out_iterations:
+    type: integer
+    description: The maximum number of iterations to run the "ironing out" step of agent investment for
+    default: 10
+  price_tolerance:
+    type: number
+    description: The relative tolerance for price convergence in the ironing out loop
+    default: 1e-6
+
 required: [milestone_years]
