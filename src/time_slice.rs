@@ -191,7 +191,9 @@ impl Display for TimeSliceSelection {
 }
 
 /// The time granularity for a particular operation
-#[derive(PartialEq, PartialOrd, Copy, Clone, Debug, DeserializeLabeledStringEnum)]
+#[derive(
+    PartialEq, PartialOrd, Copy, Clone, Debug, DeserializeLabeledStringEnum, strum::EnumIter,
+)]
 pub enum TimeSliceLevel {
     /// Treat individual time slices separately
     #[string = "daynight"]

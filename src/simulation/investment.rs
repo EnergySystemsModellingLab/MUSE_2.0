@@ -442,14 +442,9 @@ fn select_best_assets(
             .unwrap();
 
         // Log the selected asset
-        let commissioned_txt = match best_output.asset.state() {
-            AssetState::Commissioned { .. } => "existing",
-            AssetState::Candidate => "candidate",
-            _ => panic!("Selected asset should be either Commissioned or Candidate"),
-        };
         debug!(
             "Selected {} asset '{}' (capacity: {})",
-            commissioned_txt,
+            &best_output.asset.state(),
             &best_output.asset.process_id(),
             best_output.capacity
         );

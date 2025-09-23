@@ -12,6 +12,7 @@ use petgraph::algo::toposort;
 use petgraph::graph::Graph;
 use std::collections::HashMap;
 use std::fmt::Display;
+use strum::IntoEnumIterator;
 
 /// A graph of commodity flows for a given region and year
 type CommoditiesGraph = Graph<GraphNode, GraphEdge, Directed>;
@@ -371,11 +372,7 @@ pub fn build_and_validate_commodity_graphs_for_model(
 
     // Validate graphs at all time slice levels (taking into account process availability and demand)
     for ((region_id, year), base_graph) in &commodity_graphs {
-        for ts_level in [
-            TimeSliceLevel::Annual,
-            TimeSliceLevel::Season,
-            TimeSliceLevel::DayNight,
-        ] {
+        for ts_level in TimeSliceLevel::iter() {
             for ts_selection in time_slice_info.iter_selections_at_level(ts_level) {
                 let graph = prepare_commodities_graph_for_validation(
                     base_graph,
