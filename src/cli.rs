@@ -105,14 +105,17 @@ pub fn handle_run_command(
     }
 
     // Create output folder
-    let output_path = match output_path {
-        Some(p) => p.to_owned(),
-        None => get_output_dir(model_path)?,
+    let pathbuf: PathBuf;
+    let output_path = if let Some(p) = output_path {
+        p
+    } else {
+        pathbuf = get_output_dir(model_path)?;
+        &pathbuf
     };
-    create_output_directory(&output_path).context("Failed to create output directory.")?;
+    create_output_directory(output_path).context("Failed to create output directory.")?;
 
     // Initialise program logger
-    log::init(settings.log_level.as_deref(), Some(&output_path))
+    log::init(settings.log_level.as_deref(), Some(output_path))
         .context("Failed to initialise logging.")?;
 
     // Load the model to run
@@ -121,7 +124,7 @@ pub fn handle_run_command(
     info!("Output data will be written to {}", output_path.display());
 
     // Run the simulation
-    crate::simulation::run(&model, assets, &output_path, settings.debug_model)?;
+    crate::simulation::run(&model, assets, output_path, settings.debug_model)?;
     info!("Simulation complete!");
 
     Ok(())
