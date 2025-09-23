@@ -111,7 +111,7 @@ fn validate_agent_commodity_portions(
     // CHECK 1: Each specified commodity must have data for all years
     for (id, portions) in agent_commodity_portions {
         // Colate set of commodities for this agent
-        let commodity_ids: HashSet<_> = portions.keys().map(|(id, _)| id.clone()).collect();
+        let commodity_ids: HashSet<_> = portions.keys().map(|(id, _)| id).collect();
 
         // Check that each commodity has data for all milestone years
         for commodity_id in commodity_ids {
@@ -165,14 +165,14 @@ fn validate_agent_commodity_portions(
                 CommodityType::SupplyEqualsDemand | CommodityType::ServiceDemand
             )
         })
-        .map(|(id, _)| id.clone());
+        .map(|(id, _)| id);
 
     // Check that summed_portions contains all SVD/SED commodities for all regions and milestone
     // years
     for commodity_id in svd_and_sed_commodities {
         for year in milestone_years {
             for region in region_ids {
-                let key = (&commodity_id, year, region);
+                let key = (commodity_id, year, region);
                 ensure!(
                     summed_portions.contains_key(&key),
                     "Commodity {commodity_id} in year {year} and region {region} is not covered"
