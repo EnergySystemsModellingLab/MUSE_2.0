@@ -31,8 +31,9 @@ indexmap = "2.11.0"
 human-panic = "2.0.3"
 clap-markdown = "0.1.5"
 platform-info = "2.0.5"
-derive_more = {version = "2.0", features = ["add"]}
+derive_more = {version = "2.0", features = ["add", "display"]}
 petgraph = "0.8.2"
+strum = {version = "0.27.2", features = ["derive"]}
 
 [dev-dependencies]
 current_dir = "0.1.2"

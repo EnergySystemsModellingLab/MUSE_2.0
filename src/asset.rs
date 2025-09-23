@@ -17,7 +17,19 @@ use std::rc::Rc;
 use std::slice;
 
 /// A unique identifier for an asset
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    derive_more::Display,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    Deserialize,
+    Serialize,
+)]
 pub struct AssetID(u32);
 
 /// The state of an asset
@@ -31,7 +43,9 @@ pub struct AssetID(u32);
 /// `commission_future` or `commission_candidate` respectively.
 ///
 /// `Commissioned` assets can be decommissioned by calling `decommission`.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(
+    Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize, strum::Display,
+)]
 pub enum AssetState {
     /// The asset has been commissioned
     Commissioned {
@@ -61,19 +75,6 @@ pub enum AssetState {
     },
     /// The asset is a candidate for investment but has not yet been selected by an agent
     Candidate,
-}
-
-impl AssetState {
-    /// Get the name of the asset state
-    pub fn name(&self) -> &str {
-        match self {
-            AssetState::Commissioned { .. } => "Commissioned",
-            AssetState::Decommissioned { .. } => "Decommissioned",
-            AssetState::Future { .. } => "Future",
-            AssetState::Selected { .. } => "Selected",
-            AssetState::Candidate => "Candidate",
-        }
-    }
 }
 
 /// An asset controlled by an agent.
@@ -108,6 +109,16 @@ impl Asset {
             capacity,
             commission_year,
         )
+    }
+
+    /// Create a new candidate asset from a commissioned asset
+    pub fn new_candidate_from_commissioned(asset: &Asset) -> Self {
+        assert!(asset.is_commissioned(), "Asset must be commissioned");
+
+        Self {
+            state: AssetState::Candidate,
+            ..asset.clone()
+        }
     }
 
     /// Create a new future asset
@@ -178,7 +189,7 @@ impl Asset {
 
         Ok(Self {
             state,
-            process: process.clone(),
+            process,
             process_parameter,
             region_id,
             capacity,
@@ -380,11 +391,19 @@ impl Asset {
     }
 
     /// Decommission this asset
-    fn decommission(&mut self, decommission_year: u32) {
+    fn decommission(&mut self, decommission_year: u32, reason: &str) {
         let (id, agent_id) = match &self.state {
             AssetState::Commissioned { id, agent_id } => (*id, agent_id.clone()),
             _ => panic!("Cannot decommission an asset that hasn't been commissioned"),
         };
+        debug!(
+            "Decommissioning '{}' asset (ID: {}) for agent '{}' (reason: {})",
+            self.process_id(),
+            id,
+            agent_id,
+            reason
+        );
+
         self.state = AssetState::Decommissioned {
             id,
             agent_id,
@@ -392,13 +411,32 @@ impl Asset {
         };
     }
 
-    /// Commission a future asset
-    fn commission_future(&mut self, id: AssetID) {
+    /// Commission the asset.
+    ///
+    /// Only assets with an [`AssetState`] of `Future` or `Selected` can be commissioned. If the
+    /// asset's state is something else, this function will panic.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID to give the newly commissioned asset
+    /// * `reason` - The reason for commissioning (included in log)
+    fn commission(&mut self, id: AssetID, reason: &str) {
         let agent_id = match &self.state {
-            AssetState::Future { agent_id } => agent_id.clone(),
-            _ => panic!("commission_future can only be called on Future assets"),
+            AssetState::Future { agent_id } => agent_id,
+            AssetState::Selected { agent_id } => agent_id,
+            state => panic!("Assets with state {state} cannot be commissioned"),
         };
-        self.state = AssetState::Commissioned { id, agent_id };
+        debug!(
+            "Commissioning '{}' asset (ID: {}) for agent '{}' (reason: {})",
+            self.process_id(),
+            id,
+            agent_id,
+            reason
+        );
+        self.state = AssetState::Commissioned {
+            id,
+            agent_id: agent_id.clone(),
+        };
     }
 
     /// Select a Candidate asset for investment, converting it to a Selected state
@@ -407,34 +445,8 @@ impl Asset {
             self.state == AssetState::Candidate,
             "select_candidate_for_investment can only be called on Candidate assets"
         );
-        self.state = AssetState::Selected { agent_id };
-    }
-
-    /// Commission a selected asset and give ownership to the specified agent
-    ///
-    /// At this point we also check that the capacity is valid (panics if not).
-    fn commission_selected(&mut self, id: AssetID) {
         check_capacity_valid_for_asset(self.capacity).unwrap();
-        let agent_id = match &self.state {
-            AssetState::Selected { agent_id } => agent_id.clone(),
-            _ => panic!("commission_selected can only be called on Selected assets"),
-        };
-        self.state = AssetState::Commissioned { id, agent_id };
-    }
-
-    /// Creates a Candidate asset matching a given Commissioned asset
-    ///
-    /// Optionally, the capacity can be set to a different value.
-    pub fn as_candidate(&self, capacity: Option<Capacity>) -> Asset {
-        assert!(
-            matches!(self.state, AssetState::Commissioned { .. }),
-            "as_candidate can only be called on Commissioned assets, not {}",
-            self.state.name()
-        );
-        let mut copy = self.clone();
-        copy.state = AssetState::Candidate;
-        copy.set_capacity(capacity.unwrap_or(copy.capacity));
-        copy
+        self.state = AssetState::Selected { agent_id };
     }
 }
 
@@ -576,28 +588,6 @@ impl Ord for AssetRef {
     }
 }
 
-/// Convert the specified assets to being decommissioned and return
-fn decommission_assets<'a, I>(
-    assets: I,
-    year: u32,
-    reason: &'a str,
-) -> impl Iterator<Item = AssetRef> + 'a
-where
-    I: IntoIterator<Item = AssetRef> + 'a,
-{
-    assets.into_iter().map(move |mut asset| {
-        debug!(
-            "Decommissioning asset '{}' for agent '{}' (reason: {})",
-            asset.process_id(),
-            asset.agent_id().unwrap(),
-            reason
-        );
-
-        asset.make_mut().decommission(year);
-        asset
-    })
-}
-
 /// A pool of [`Asset`]s
 pub struct AssetPool {
     /// The pool of active assets, sorted by ID
@@ -629,8 +619,14 @@ impl AssetPool {
         &self.active
     }
 
+    /// Decommission assets whose lifetime has passed and commission new assets
+    pub fn update_for_year(&mut self, year: u32) {
+        self.decommission_old(year);
+        self.commission_new(year);
+    }
+
     /// Commission new assets for the specified milestone year from the input data
-    pub fn commission_new(&mut self, year: u32) {
+    fn commission_new(&mut self, year: u32) {
         // Count the number of assets to move
         let count = self
             .future
@@ -640,27 +636,24 @@ impl AssetPool {
 
         // Move assets from future to active
         for mut asset in self.future.drain(0..count) {
-            debug!(
-                "Commissioning asset '{}' for agent '{}' (reason: user input)",
-                asset.process_id(),
-                asset.agent_id().unwrap(),
-            );
-            asset.commission_future(AssetID(self.next_id));
+            asset.commission(AssetID(self.next_id), "user input");
             self.next_id += 1;
             self.active.push(asset.into());
         }
     }
 
     /// Decommission old assets for the specified milestone year
-    pub fn decommission_old(&mut self, year: u32) {
+    fn decommission_old(&mut self, year: u32) {
         // Remove assets which are due for decommissioning
         let to_decommission = self
             .active
             .extract_if(.., |asset| asset.max_decommission_year() <= year);
 
-        // Set `decommission_year` and copy to `self.decommissioned`
-        let decommissioned = decommission_assets(to_decommission, year, "end of life");
-        self.decommissioned.extend(decommissioned);
+        for mut asset in to_decommission {
+            // Set `decommission_year` and move to `self.decommissioned`
+            asset.make_mut().decommission(year, "end of life");
+            self.decommissioned.push(asset);
+        }
     }
 
     /// Decommission the specified assets if they are no longer in the active pool.
@@ -690,8 +683,11 @@ impl AssetPool {
                 _ => panic!("Active pool should only contain commissioned assets"),
             })
         });
-        let decommissioned = decommission_assets(to_decommission, year, "not selected");
-        self.decommissioned.extend(decommissioned);
+
+        for mut asset in to_decommission {
+            asset.make_mut().decommission(year, "not selected");
+            self.decommissioned.push(asset);
+        }
     }
 
     /// Get an asset with the specified ID.
@@ -736,35 +732,34 @@ impl AssetPool {
     }
 
     /// Extend the active pool with Commissioned or Selected assets
-    ///
-    /// Returns the same assets after ID assignment.
-    pub fn extend(&mut self, mut assets: Vec<AssetRef>) -> Vec<AssetRef> {
-        for asset in assets.iter_mut() {
-            match &asset.state {
-                AssetState::Commissioned { .. } => {}
-                AssetState::Selected { .. } => {
-                    debug!(
-                        "Commissioning asset '{}' for agent '{}' (reason: selected)",
-                        asset.process_id(),
-                        asset.agent_id().unwrap(),
-                    );
-                    asset.make_mut().commission_selected(AssetID(self.next_id));
-                    self.next_id += 1;
-                }
-                _ => panic!(
-                    "Cannot extend asset pool with asset in state {:?}",
-                    asset.state
-                ),
+    pub fn extend<I>(&mut self, assets: I)
+    where
+        I: IntoIterator<Item = AssetRef>,
+    {
+        // Check all assets are either Commissioned or Selected, and, if the latter,
+        // then commission them
+        let assets = assets.into_iter().map(|mut asset| match &asset.state {
+            AssetState::Commissioned { .. } => asset,
+            AssetState::Selected { .. } => {
+                asset
+                    .make_mut()
+                    .commission(AssetID(self.next_id), "selected");
+                self.next_id += 1;
+                asset
             }
-        }
+            _ => panic!(
+                "Cannot extend asset pool with asset in state {}. Only assets in \
+                Commissioned or Selected states are allowed.",
+                asset.state
+            ),
+        });
 
         // New assets may not have been sorted, but active needs to be sorted by ID
-        self.active.extend(assets.iter().cloned());
+        self.active.extend(assets);
         self.active.sort();
 
         // Sanity check: all assets should be unique
         debug_assert_eq!(self.active.iter().unique().count(), self.active.len());
-        assets
     }
 }
 
@@ -1416,7 +1411,7 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset1.commission_future(AssetID(1));
+        asset1.commission(AssetID(1), "");
         assert!(asset1.is_commissioned());
         assert_eq!(asset1.id(), Some(AssetID(1)));
 
@@ -1429,36 +1424,22 @@ mod tests {
             2020,
         )
         .unwrap();
-        asset2.commission_selected(AssetID(2));
+        asset2.commission(AssetID(2), "");
         assert!(asset2.is_commissioned());
         assert_eq!(asset2.id(), Some(AssetID(2)));
 
         // Test successful decommissioning
-        asset1.decommission(2025);
+        asset1.decommission(2025, "");
         assert!(!asset1.is_commissioned());
         assert_eq!(asset1.decommission_year(), Some(2025));
     }
 
     #[rstest]
-    #[should_panic(expected = "commission_future can only be called on Future assets")]
-    fn test_commission_future_wrong_states(process: Process) {
+    #[should_panic(expected = "Assets with state Candidate cannot be commissioned")]
+    fn test_commission_wrong_states(process: Process) {
         let mut asset =
             Asset::new_candidate(process.into(), "GBR".into(), Capacity(1.0), 2020).unwrap();
-        asset.commission_future(AssetID(1));
-    }
-
-    #[rstest]
-    #[should_panic(expected = "commission_selected can only be called on Selected assets")]
-    fn test_commission_candidate_wrong_state(process: Process) {
-        let mut asset = Asset::new_future(
-            "agent1".into(),
-            process.into(),
-            "GBR".into(),
-            Capacity(1.0),
-            2020,
-        )
-        .unwrap();
-        asset.commission_selected(AssetID(1));
+        asset.commission(AssetID(1), "");
     }
 
     #[rstest]
@@ -1466,6 +1447,6 @@ mod tests {
     fn test_decommission_wrong_state(process: Process) {
         let mut asset =
             Asset::new_candidate(process.into(), "GBR".into(), Capacity(1.0), 2020).unwrap();
-        asset.decommission(2025);
+        asset.decommission(2025, "");
     }
 }
