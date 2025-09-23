@@ -104,8 +104,8 @@ fn read_demand_file(
 ///
 /// # Returns
 ///
-/// The demand for each combination of commodity, region and year along with a [`HashSet`] of all
-/// commodity + region pairs included in the file.
+/// A map of demand and time slice level for every combination of commodity, region and milestone
+/// year.
 fn read_demand_from_iter<I>(
     iter: I,
     svd_commodities: &BorrowedCommodityMap,
