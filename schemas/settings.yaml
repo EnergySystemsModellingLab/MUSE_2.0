@@ -15,6 +15,10 @@ properties:
     description: The program's log level
     default: info
     notes: Must be one of `error`, `warn`, `info`, `debug`, `trace` or `off` (case insensitive)
+  overwrite:
+    type: boolean
+    description: Whether to overwrite output files by default
+    default: false
   debug_model:
     type: boolean
     description: Whether to include extra debugging information in the model output

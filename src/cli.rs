@@ -105,9 +105,12 @@ pub fn handle_run_command(
         Settings::load().context("Failed to load settings.")?
     };
 
-    // This setting can be overridden by command-line argument
+    // These settings can be overridden by command-line arguments
     if opts.debug_model {
         settings.debug_model = true;
+    }
+    if opts.overwrite {
+        settings.overwrite = true;
     }
 
     // Get path to output folder
@@ -119,12 +122,13 @@ pub fn handle_run_command(
         &pathbuf
     };
 
-    let overwrite = create_output_directory(output_path, opts.overwrite).with_context(|| {
-        format!(
-            "Failed to create output directory: {}",
-            output_path.display()
-        )
-    })?;
+    let overwrite =
+        create_output_directory(output_path, settings.overwrite).with_context(|| {
+            format!(
+                "Failed to create output directory: {}",
+                output_path.display()
+            )
+        })?;
 
     // Initialise program logger
     log::init(settings.log_level.as_deref(), Some(output_path))
