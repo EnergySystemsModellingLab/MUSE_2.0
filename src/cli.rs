@@ -139,8 +139,8 @@ pub fn handle_validate_command(model_path: &Path, settings: Option<Settings>) ->
     // Initialise program logger (we won't save log files when running the validate command)
     log::init(settings.log_level.as_deref(), None).context("Failed to initialise logging.")?;
 
-    // Load the model (validation is performed as the model is loaded)
-    load_model(model_path).context("Failed to load model.")?;
+    // Load/validate the model
+    load_model(model_path).context("Failed to validate model.")?;
     info!("Model validation successful!");
 
     Ok(())
