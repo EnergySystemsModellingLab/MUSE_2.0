@@ -32,6 +32,7 @@ fn run_regression_test_debug_opt(example_name: &str, debug_model: bool) {
     let tempdir = tempdir().unwrap();
     let opts = RunOpts {
         output_dir: Some(tempdir.path().to_path_buf()),
+        overwrite: false,
         debug_model,
     };
     let output_dir = tempdir.path();

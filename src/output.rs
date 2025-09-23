@@ -10,7 +10,7 @@ use crate::simulation::optimisation::{FlowMap, Solution};
 use crate::simulation::prices::ReducedCosts;
 use crate::time_slice::TimeSliceID;
 use crate::units::{Activity, Capacity, Flow, Money, MoneyPerActivity, MoneyPerFlow};
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 use csv;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -69,12 +69,17 @@ pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
     Ok([OUTPUT_DIRECTORY_ROOT, model_name].iter().collect())
 }
 
-/// Create a new output directory for the model, overwriting contents if not empty
+/// Create a new output directory for the model, optionally overwriting existing data
+///
+/// # Arguments
+///
+/// * `output_dir` - The output directory to create/overwrite
+/// * `allow_overwrite` - Whether to delete and recreate the folder if it is non-empty
 ///
 /// # Returns
 ///
-/// True if the output dir contained existing data, false if not, or an error.
-pub fn create_output_directory(output_dir: &Path) -> Result<bool> {
+/// True if the output dir contained existing data that was deleted, false if not, or an error.
+pub fn create_output_directory(output_dir: &Path, allow_overwrite: bool) -> Result<bool> {
     // If the folder already exists, then delete it
     let overwrite = if let Ok(mut it) = fs::read_dir(output_dir) {
         if it.next().is_none() {
@@ -82,8 +87,13 @@ pub fn create_output_directory(output_dir: &Path) -> Result<bool> {
             return Ok(false);
         }
 
-        fs::remove_dir_all(output_dir).context("Could not delete folder")?;
+        ensure!(
+            allow_overwrite,
+            "Output folder already exists. \
+            Please delete the folder or pass the --overwrite command-line option."
+        );
 
+        fs::remove_dir_all(output_dir).context("Could not delete folder")?;
         true
     } else {
         false

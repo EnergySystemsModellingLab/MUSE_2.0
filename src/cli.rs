@@ -29,6 +29,9 @@ pub struct RunOpts {
     /// Directory for output files
     #[arg(short, long)]
     pub output_dir: Option<PathBuf>,
+    /// Whether to overwrite the output directory if it already exists
+    #[arg(long)]
+    pub overwrite: bool,
     /// Whether to write additional information to CSV files
     #[arg(long)]
     pub debug_model: bool,
@@ -116,8 +119,12 @@ pub fn handle_run_command(
         &pathbuf
     };
 
-    let overwrite =
-        create_output_directory(output_path).context("Failed to create output directory.")?;
+    let overwrite = create_output_directory(output_path, opts.overwrite).with_context(|| {
+        format!(
+            "Failed to create output directory: {}",
+            output_path.display()
+        )
+    })?;
 
     // Initialise program logger
     log::init(settings.log_level.as_deref(), Some(output_path))
