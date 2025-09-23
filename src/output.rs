@@ -69,17 +69,30 @@ pub fn get_output_dir(model_dir: &Path) -> Result<PathBuf> {
     Ok([OUTPUT_DIRECTORY_ROOT, model_name].iter().collect())
 }
 
-/// Create a new output directory for the model specified at `model_dir`.
-pub fn create_output_directory(output_dir: &Path) -> Result<()> {
-    if output_dir.is_dir() {
-        // already exists
-        return Ok(());
-    }
+/// Create a new output directory for the model, overwriting contents if not empty
+///
+/// # Returns
+///
+/// True if the output dir contained existing data, false if not, or an error.
+pub fn create_output_directory(output_dir: &Path) -> Result<bool> {
+    // If the folder already exists, then delete it
+    let overwrite = if let Ok(mut it) = fs::read_dir(output_dir) {
+        if it.next().is_none() {
+            // Folder exists and is empty: nothing to do
+            return Ok(false);
+        }
+
+        fs::remove_dir_all(output_dir).context("Could not delete folder")?;
+
+        true
+    } else {
+        false
+    };
 
     // Try to create the directory, with parents
     fs::create_dir_all(output_dir)?;
 
-    Ok(())
+    Ok(overwrite)
 }
 
 /// Represents a row in the assets output CSV file.

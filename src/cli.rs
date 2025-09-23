@@ -3,7 +3,7 @@ use crate::input::load_model;
 use crate::log;
 use crate::output::{create_output_directory, get_output_dir};
 use crate::settings::Settings;
-use ::log::info;
+use ::log::{info, warn};
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 use std::path::{Path, PathBuf};
@@ -104,7 +104,7 @@ pub fn handle_run_command(
         settings.debug_model = true;
     }
 
-    // Create output folder
+    // Get path to output folder
     let pathbuf: PathBuf;
     let output_path = if let Some(p) = output_path {
         p
@@ -112,7 +112,9 @@ pub fn handle_run_command(
         pathbuf = get_output_dir(model_path)?;
         &pathbuf
     };
-    create_output_directory(output_path).context("Failed to create output directory.")?;
+
+    let overwrite =
+        create_output_directory(output_path).context("Failed to create output directory.")?;
 
     // Initialise program logger
     log::init(settings.log_level.as_deref(), Some(output_path))
@@ -121,7 +123,12 @@ pub fn handle_run_command(
     // Load the model to run
     let (model, assets) = load_model(model_path).context("Failed to load model.")?;
     info!("Loaded model from {}", model_path.display());
-    info!("Output data will be written to {}", output_path.display());
+    info!("Output folder: {}", output_path.display());
+
+    // NB: We have to wait until the logger is initialised to display this warning
+    if overwrite {
+        warn!("Output folder will be overwritten");
+    }
 
     // Run the simulation
     crate::simulation::run(&model, assets, output_path, settings.debug_model)?;
