@@ -43,6 +43,11 @@ enum Commands {
         #[command(subcommand)]
         subcommand: ExampleSubcommands,
     },
+    /// Validate a model.
+    Validate {
+        /// The path to the model directory.
+        model_dir: PathBuf,
+    },
 }
 
 impl Commands {
@@ -55,6 +60,7 @@ impl Commands {
                 debug_model,
             } => handle_run_command(&model_dir, output_dir.as_deref(), debug_model, None),
             Self::Example { subcommand } => subcommand.execute(),
+            Self::Validate { model_dir } => handle_validate_command(&model_dir, None),
         }
     }
 }
@@ -106,7 +112,7 @@ pub fn handle_run_command(
     create_output_directory(&output_path).context("Failed to create output directory.")?;
 
     // Initialise program logger
-    log::init(settings.log_level.as_deref(), &output_path)
+    log::init(settings.log_level.as_deref(), Some(&output_path))
         .context("Failed to initialise logging.")?;
 
     // Load the model to run
@@ -116,6 +122,26 @@ pub fn handle_run_command(
 
     // Run the simulation
     crate::simulation::run(model, assets, &output_path, settings.debug_model)?;
+    info!("Simulation complete!");
+
+    Ok(())
+}
+
+/// Handle the `validate` command.
+pub fn handle_validate_command(model_path: &Path, settings: Option<Settings>) -> Result<()> {
+    // Load program settings, if not provided
+    let settings = if let Some(settings) = settings {
+        settings
+    } else {
+        Settings::load().context("Failed to load settings.")?
+    };
+
+    // Initialise program logger (we won't save log files when running the validate command)
+    log::init(settings.log_level.as_deref(), None).context("Failed to initialise logging.")?;
+
+    // Load/validate the model
+    load_model(model_path).context("Failed to validate model.")?;
+    info!("Model validation successful!");
 
     Ok(())
 }

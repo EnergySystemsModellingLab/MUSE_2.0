@@ -52,8 +52,8 @@ pub fn is_logger_initialised() -> bool {
 /// # Arguments
 ///
 /// * `log_level_from_settings`: The log level specified in `settings.toml`
-/// * `output_path`: The output path for the simulation
-pub fn init(log_level_from_settings: Option<&str>, output_path: &Path) -> Result<()> {
+/// * `log_file_path`: The location to save log files (if Some, log files will be created)
+pub fn init(log_level_from_settings: Option<&str>, log_file_path: Option<&Path>) -> Result<()> {
     // Retrieve the log level from the environment variable or settings, or use the default
     let log_level = env::var("MUSE2_LOG_LEVEL").unwrap_or_else(|_| {
         log_level_from_settings
@@ -84,19 +84,25 @@ pub fn init(log_level_from_settings: Option<&str>, output_path: &Path) -> Result
     let use_colour_stdout = std::io::stdout().is_terminal();
     let use_colour_stderr = std::io::stderr().is_terminal();
 
-    // Create log files
-    let new_log_file = |file_name| {
-        OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(output_path.join(file_name))
+    // Create log files if log file path is available
+    let (info_log_file, err_log_file) = if let Some(log_file_path) = log_file_path {
+        let new_log_file = |file_name| {
+            OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(log_file_path.join(file_name))
+        };
+        (
+            Some(new_log_file(LOG_INFO_FILE_NAME)?),
+            Some(new_log_file(LOG_ERROR_FILE_NAME)?),
+        )
+    } else {
+        (None, None)
     };
-    let info_log_file = new_log_file(LOG_INFO_FILE_NAME)?;
-    let err_log_file = new_log_file(LOG_ERROR_FILE_NAME)?;
 
     // Configure the logger
-    let dispatch = Dispatch::new()
+    let mut dispatch = Dispatch::new()
         .chain(
             // Write non-error messages to stdout
             Dispatch::new()
@@ -115,22 +121,29 @@ pub fn init(log_level_from_settings: Option<&str>, output_path: &Path) -> Result
                 })
                 .level(log_level.min(LevelFilter::Warn))
                 .chain(std::io::stderr()),
-        )
-        .chain(
+        );
+
+    // Add log file chains if log files were created
+    if let Some(info_log_file) = info_log_file {
+        dispatch = dispatch.chain(
             // Write non-error messages to log file
             Dispatch::new()
                 .filter(|metadata| metadata.level() > LevelFilter::Warn)
                 .format(write_log_plain)
                 .level(log_level.max(LevelFilter::Info))
                 .chain(info_log_file),
-        )
-        .chain(
+        );
+    }
+
+    if let Some(err_log_file) = err_log_file {
+        dispatch = dispatch.chain(
             // Write error messages to a different log file
             Dispatch::new()
                 .format(write_log_plain)
                 .level(LevelFilter::Warn)
                 .chain(err_log_file),
         );
+    }
 
     // Apply the logger configuration
     dispatch.apply().expect("Logger already initialised");
