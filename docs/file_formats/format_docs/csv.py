@@ -39,7 +39,7 @@ def _load_sections(
         paths: list[str] = []
         for pattern in patterns:
             paths.extend(map(str, schema_dir.glob(f"{pattern}.yaml")))
-        files = (load_file(Path(path)) for path in sorted(paths))
+        files = (load_file(Path(path)) for path in paths)
         yield Section(title, files)
 
 
