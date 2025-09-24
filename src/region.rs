@@ -19,7 +19,7 @@ pub struct Region {
 }
 define_id_getter! {Region, RegionID}
 
-/// Parse a string of regions separated by semicolons into a vector of RegionID.
+/// Parse a string of regions separated by semicolons into a vector of `RegionID`.
 ///
 /// The string can be either "all" (case-insensitive), a single region, or a semicolon-separated
 /// list of regions (e.g. "GBR;FRA;USA" or "GBR; FRA; USA")
@@ -31,7 +31,7 @@ pub fn parse_region_str(s: &str, region_ids: &IndexSet<RegionID>) -> Result<Inde
         return Ok(region_ids.clone());
     }
 
-    s.split(";")
+    s.split(';')
         .map(|y| Ok(region_ids.get_id(y.trim())?.clone()))
         .collect()
 }

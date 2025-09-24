@@ -60,6 +60,7 @@ impl VariableMap {
 }
 
 /// The solution to the dispatch optimisation problem
+#[allow(clippy::struct_field_names)]
 pub struct Solution<'a> {
     solution: highs::Solution,
     variables: VariableMap,
@@ -190,7 +191,7 @@ fn check_input_prices(
     assert!(
         !has_prices_for_commodity_subset,
         "Input prices were included for commodities that are being modelled, which is not allowed."
-    )
+    );
 }
 
 /// Provides the interface for running the dispatch optimisation.
@@ -292,11 +293,11 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
 
         // If the user provided no commodities, we all use of them
         let all_commodities: Vec<_>;
-        let commodities = if !self.commodities.is_empty() {
-            self.commodities
-        } else {
+        let commodities = if self.commodities.is_empty() {
             all_commodities = self.model.commodities.keys().cloned().collect();
             &all_commodities
+        } else {
+            self.commodities
         };
         if let Some(input_prices) = self.input_prices {
             check_input_prices(input_prices, commodities);
@@ -308,7 +309,7 @@ impl<'model, 'run> DispatchRun<'model, 'run> {
             &mut problem,
             &variables,
             self.model,
-            all_assets,
+            &all_assets,
             commodities,
             self.year,
         );

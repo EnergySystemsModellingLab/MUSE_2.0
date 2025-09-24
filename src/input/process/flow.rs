@@ -1,11 +1,12 @@
 //! Code for reading process flows file
-use super::super::*;
+use super::super::{input_err_msg, read_csv};
 use crate::commodity::{CommodityID, CommodityMap};
 use crate::process::{FlowType, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
 use crate::units::{FlowPerActivity, MoneyPerFlow};
 use crate::year::parse_year_str;
 use anyhow::{Context, Result, ensure};
+use indexmap::IndexMap;
 use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -47,7 +48,7 @@ impl ProcessFlowRaw {
             ensure!(
                 (0.0..f64::INFINITY).contains(&cost.value()),
                 "Invalid value for flow cost ({cost}). Must be >=0."
-            )
+            );
         }
 
         Ok(())
@@ -66,7 +67,7 @@ pub fn read_process_flows(
         .with_context(|| input_err_msg(&file_path))
 }
 
-/// Read 'ProcessFlowRaw' records from an iterator and convert them into 'ProcessFlow' records.
+/// Read '`ProcessFlowRaw`' records from an iterator and convert them into '`ProcessFlow`' records.
 fn read_process_flows_from_iter<I>(
     iter: I,
     processes: &mut ProcessMap,
@@ -150,21 +151,20 @@ fn validate_flows_and_update_primary_output(
 
         let mut iter = iproduct!(process.years.iter(), process.regions.iter());
 
-        let primary_output = match &process.primary_output {
-            Some(primary_output) => Some(primary_output.clone()),
-            None => {
-                let (year, region_id) = iter.next().unwrap();
-                infer_primary_output(&map[&(region_id.clone(), *year)]).with_context(|| {
-                    format!("Could not infer primary_output for process {process_id}")
-                })?
-            }
+        let primary_output = if let Some(primary_output) = &process.primary_output {
+            Some(primary_output.clone())
+        } else {
+            let (year, region_id) = iter.next().unwrap();
+            infer_primary_output(&map[&(region_id.clone(), *year)]).with_context(|| {
+                format!("Could not infer primary_output for process {process_id}")
+            })?
         };
 
         for (&year, region_id) in iter {
             let flows = &map[&(region_id.clone(), year)];
 
             // Check that the process has flows for this region/year
-            check_flows_primary_output(flows, &primary_output).with_context(|| {
+            check_flows_primary_output(flows, primary_output.as_ref()).with_context(|| {
                 format!(
                     "Invalid primary output configuration for process {process_id} \
                     (region: {region_id}, year: {year})"
@@ -206,7 +206,7 @@ fn infer_primary_output(map: &IndexMap<CommodityID, ProcessFlow>) -> Result<Opti
 /// Check the flows are correct for the specified primary output (or lack thereof)
 fn check_flows_primary_output(
     flows_map: &IndexMap<CommodityID, ProcessFlow>,
-    primary_output: &Option<CommodityID>,
+    primary_output: Option<&CommodityID>,
 ) -> Result<()> {
     if let Some(primary_output) = primary_output {
         let flow = flows_map.get(primary_output).with_context(|| {
@@ -219,7 +219,7 @@ fn check_flows_primary_output(
         );
     } else {
         ensure!(
-            flows_map.values().all(|flow| flow.is_input()),
+            flows_map.values().all(ProcessFlow::is_input),
             "First year is only inputs, but subsequent years have outputs, although no primary \
             output is specified"
         );
@@ -236,6 +236,7 @@ mod tests {
     use crate::process::{FlowType, Process, ProcessFlow, ProcessMap};
     use crate::units::{FlowPerActivity, MoneyPerFlow};
     use indexmap::IndexMap;
+    use itertools::Itertools;
     use map_macro::hash_map;
     use rstest::rstest;
     use std::iter;

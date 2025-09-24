@@ -26,7 +26,7 @@ pub use prices::CommodityPrices;
 /// * `output_path` - The folder to which output files will be written
 /// * `debug_model` - Whether to write additional information (e.g. duals) to output files
 pub fn run(
-    model: Model,
+    model: &Model,
     mut assets: AssetPool,
     output_path: &Path,
     debug_model: bool,
@@ -60,7 +60,7 @@ pub fn run(
     // Run dispatch optimisation
     info!("Running dispatch optimisation...");
     let (flow_map, mut prices, mut reduced_costs) =
-        run_dispatch_for_year(&model, assets.as_slice(), &candidates, year, &mut writer)?;
+        run_dispatch_for_year(model, assets.as_slice(), &candidates, year, &mut writer)?;
 
     // Write results of dispatch optimisation to file
     writer.write_flows(year, &flow_map)?;
@@ -87,7 +87,7 @@ pub fn run(
             // Perform agent investment
             info!("Running agent investment...");
             let selected_assets = perform_agent_investment(
-                &model,
+                model,
                 year,
                 &existing_assets,
                 &prices,
@@ -113,13 +113,8 @@ pub fn run(
             // Run dispatch optimisation to get updated reduced costs and prices for the next
             // iteration
             info!("Running dispatch optimisation...");
-            let (_flow_map, new_prices, new_reduced_costs) = run_dispatch_for_year(
-                &model,
-                &selected_assets,
-                &all_candidates,
-                year,
-                &mut writer,
-            )?;
+            let (_flow_map, new_prices, new_reduced_costs) =
+                run_dispatch_for_year(model, &selected_assets, &all_candidates, year, &mut writer)?;
 
             // Check if prices have converged
             let prices_stable =
@@ -173,7 +168,7 @@ pub fn run(
         // Run dispatch optimisation
         info!("Running final dispatch optimisation for year {year}...");
         let (flow_map, new_prices, new_reduced_costs) =
-            run_dispatch_for_year(&model, assets.as_slice(), &candidates, year, &mut writer)?;
+            run_dispatch_for_year(model, assets.as_slice(), &candidates, year, &mut writer)?;
 
         // Write results of dispatch optimisation to file
         writer.write_flows(year, &flow_map)?;
@@ -230,7 +225,7 @@ fn candidate_assets_for_year(
         .values()
         .filter(move |process| process.active_for_year(year))
     {
-        for region_id in process.regions.iter() {
+        for region_id in &process.regions {
             candidates.push(
                 Asset::new_candidate(
                     Rc::clone(process),

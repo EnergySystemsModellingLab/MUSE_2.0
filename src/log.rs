@@ -20,7 +20,7 @@ static LOGGER_INIT: OnceLock<()> = OnceLock::new();
 
 /// The default log level for the program.
 ///
-/// Used as a fallback if the user hasn't specified something else with the MUSE2_LOG_LEVEL
+/// Used as a fallback if the user hasn't specified something else with the `MUSE2_LOG_LEVEL`
 /// environment variable or the settings.toml file.
 const DEFAULT_LOG_LEVEL: &str = "info";
 
@@ -69,7 +69,7 @@ pub fn init(log_level_from_settings: Option<&str>, log_file_path: Option<&Path>)
         "info" => LevelFilter::Info,
         "debug" => LevelFilter::Debug,
         "trace" => LevelFilter::Trace,
-        unknown => bail!("Unknown log level: {}", unknown),
+        unknown => bail!("Unknown log level: {unknown}"),
     };
 
     // Set up colours for log levels

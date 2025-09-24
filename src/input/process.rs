@@ -1,5 +1,5 @@
 //! Code for reading process-related information from CSV files.
-use super::*;
+use super::{input_err_msg, read_csv};
 use crate::commodity::CommodityMap;
 use crate::id::IDCollection;
 use crate::process::{
@@ -61,7 +61,7 @@ pub fn read_processes(
     let mut parameters = read_process_parameters(model_dir, &processes, milestone_years[0])?;
 
     // Add data to Process objects
-    for (id, process) in processes.iter_mut() {
+    for (id, process) in &mut processes {
         // This will always succeed as we know there will only be one reference to the process here
         let process = Rc::get_mut(process).unwrap();
 

@@ -1,12 +1,12 @@
 //! Code for reading the agent cost limits CSV file.
-use super::super::*;
+use super::super::{input_err_msg, read_csv_optional};
 use crate::agent::{AgentCostLimits, AgentCostLimitsMap, AgentID};
 use crate::id::IDCollection;
 use crate::units::Money;
 use crate::year::parse_year_str;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 const AGENT_COST_LIMITS_FILE_NAME: &str = "agent_cost_limits.csv";
@@ -28,7 +28,7 @@ impl AgentCostLimitsRaw {
     }
 }
 
-/// Read agent cost limits info from the agent_cost_limits.csv file.
+/// Read agent cost limits info from the `agent_cost_limits.csv` file.
 ///
 /// # Arguments
 ///
@@ -74,7 +74,7 @@ where
     }
 
     // Validation: if cost limits are specified for an agent, they must be present for all years.
-    for (id, cost_limits) in map.iter() {
+    for (id, cost_limits) in &map {
         for year in milestone_years {
             ensure!(
                 cost_limits.contains_key(year),

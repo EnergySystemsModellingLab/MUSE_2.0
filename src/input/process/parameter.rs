@@ -1,5 +1,5 @@
 //! Code for reading process parameters CSV file
-use super::super::*;
+use super::super::{input_err_msg, read_csv, try_insert};
 use crate::process::{ProcessID, ProcessMap, ProcessParameter, ProcessParameterMap};
 use crate::region::parse_region_str;
 use crate::units::{
@@ -143,7 +143,7 @@ where
         let entry = map.entry(id.clone()).or_default();
         for year in parameter_years {
             for region in parameter_regions.clone() {
-                try_insert(entry, (region, year), param.clone())?;
+                try_insert(entry, &(region, year), param.clone())?;
             }
         }
     }
@@ -159,7 +159,7 @@ fn check_process_parameters(
     map: &HashMap<ProcessID, ProcessParameterMap>,
     base_year: u32,
 ) -> Result<()> {
-    for (process_id, process) in processes.iter() {
+    for (process_id, process) in processes {
         let parameters = map
             .get(process_id)
             .with_context(|| format!("Missing parameters for process {process_id}"))?;
@@ -180,9 +180,7 @@ fn check_process_parameters(
         }
         ensure!(
             missing_keys.is_empty(),
-            "Process {} is missing parameters for the following regions and years: {:?}",
-            process_id,
-            missing_keys
+            "Process {process_id} is missing parameters for the following regions and years: {missing_keys:?}"
         );
     }
 

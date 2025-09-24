@@ -348,8 +348,9 @@ impl Asset {
     /// Get the ID for this asset
     pub fn id(&self) -> Option<AssetID> {
         match &self.state {
-            AssetState::Commissioned { id, .. } => Some(*id),
-            AssetState::Decommissioned { id, .. } => Some(*id),
+            AssetState::Commissioned { id, .. } | AssetState::Decommissioned { id, .. } => {
+                Some(*id)
+            }
             _ => None,
         }
     }
@@ -357,11 +358,11 @@ impl Asset {
     /// Get the agent ID for this asset
     pub fn agent_id(&self) -> Option<&AgentID> {
         match &self.state {
-            AssetState::Commissioned { agent_id, .. } => Some(agent_id),
-            AssetState::Decommissioned { agent_id, .. } => Some(agent_id),
-            AssetState::Future { agent_id } => Some(agent_id),
-            AssetState::Selected { agent_id } => Some(agent_id),
-            _ => None,
+            AssetState::Commissioned { agent_id, .. }
+            | AssetState::Decommissioned { agent_id, .. }
+            | AssetState::Future { agent_id }
+            | AssetState::Selected { agent_id } => Some(agent_id),
+            AssetState::Candidate => None,
         }
     }
 
@@ -422,8 +423,7 @@ impl Asset {
     /// * `reason` - The reason for commissioning (included in log)
     fn commission(&mut self, id: AssetID, reason: &str) {
         let agent_id = match &self.state {
-            AssetState::Future { agent_id } => agent_id,
-            AssetState::Selected { agent_id } => agent_id,
+            AssetState::Future { agent_id } | AssetState::Selected { agent_id } => agent_id,
             state => panic!("Assets with state {state} cannot be commissioned"),
         };
         debug!(
@@ -450,6 +450,7 @@ impl Asset {
     }
 }
 
+#[allow(clippy::missing_fields_in_debug)]
 impl std::fmt::Debug for Asset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Asset")
@@ -550,8 +551,8 @@ impl Eq for AssetRef {}
 impl Hash for AssetRef {
     /// Hash an asset according to its state:
     /// - Commissioned assets are hashed based on their ID alone
-    /// - Selected assets are hashed based on process_id, region_id, commission_year and agent_id
-    /// - Candidate assets are hashed based on process_id, region_id and commission_year
+    /// - Selected assets are hashed based on `process_id`, `region_id`, `commission_year` and `agent_id`
+    /// - Candidate assets are hashed based on `process_id`, `region_id` and `commission_year`
     /// - Future and Decommissioned assets cannot currently be hashed
     fn hash<H: Hasher>(&self, state: &mut H) {
         match &self.0.state {

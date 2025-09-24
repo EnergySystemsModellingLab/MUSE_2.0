@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, HashMap};
 
 /// A map of reduced costs for different assets in different time slices
 ///
-/// This is the system cost associated with one unit of activity (MoneyPerActivity) for each asset
+/// This is the system cost associated with one unit of activity (`MoneyPerActivity`) for each asset
 /// in each time slice.
 ///
 /// For candidate assets this is calculated directly from the activity variable duals.
@@ -201,7 +201,7 @@ impl CommodityPrices {
 
         // Add the highest activity dual for each commodity/region/timeslice to each commodity
         // balance dual
-        for (key, highest) in highest_duals.iter() {
+        for (key, highest) in &highest_duals {
             if let Some(price) = self.0.get_mut(key) {
                 // highest is in units of MoneyPerActivity, but this is correct according to Adam
                 *price += MoneyPerFlow(highest.value());

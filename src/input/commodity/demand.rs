@@ -1,14 +1,14 @@
 //! Code for working with demand for a given commodity. Demand can vary by region, year and time
 //! slice.
-use super::super::*;
+use super::super::{input_err_msg, read_csv};
 use super::demand_slicing::{DemandSliceMap, read_demand_slices};
 use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
 use crate::id::IDCollection;
 use crate::region::RegionID;
 use crate::time_slice::{TimeSliceInfo, TimeSliceLevel};
 use crate::units::Flow;
-use anyhow::{Result, ensure};
-use indexmap::IndexSet;
+use anyhow::{Context, Result, ensure};
+use indexmap::{IndexMap, IndexSet};
 use itertools::iproduct;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -17,6 +17,7 @@ use std::path::Path;
 const DEMAND_FILE_NAME: &str = "demand.csv";
 
 /// Represents a single demand entry in the dataset.
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 struct Demand {
     /// The commodity this demand entry refers to
@@ -103,8 +104,8 @@ fn read_demand_file(
 ///
 /// # Returns
 ///
-/// The demand for each combination of commodity, region and year along with a [`HashSet`] of all
-/// commodity + region pairs included in the file.
+/// A map of demand and time slice level for every combination of commodity, region and milestone
+/// year.
 fn read_demand_from_iter<I>(
     iter: I,
     svd_commodities: &BorrowedCommodityMap,
@@ -161,9 +162,7 @@ where
         }
         ensure!(
             missing_keys.is_empty(),
-            "Commodity {} is missing demand data for {:?}",
-            commodity_id,
-            missing_keys
+            "Commodity {commodity_id} is missing demand data for {missing_keys:?}"
         );
     }
 
@@ -188,7 +187,7 @@ fn compute_demand_maps(
     slices: &DemandSliceMap,
 ) -> HashMap<CommodityID, DemandMap> {
     let mut map = HashMap::new();
-    for ((commodity_id, region_id, year), (level, annual_demand)) in demand.iter() {
+    for ((commodity_id, region_id, year), (level, annual_demand)) in demand {
         for ts_selection in time_slice_info.iter_selections_at_level(*level) {
             let slice_key = (
                 commodity_id.clone(),

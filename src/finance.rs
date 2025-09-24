@@ -13,7 +13,8 @@ pub fn capital_recovery_factor(lifetime: u32, discount_rate: Dimensionless) -> D
     if discount_rate == Dimensionless(0.0) {
         return Dimensionless(1.0) / Dimensionless(lifetime as f64);
     }
-    let factor = (Dimensionless(1.0) + discount_rate).powi(lifetime as i32);
+
+    let factor = (Dimensionless(1.0) + discount_rate).powi(lifetime.try_into().unwrap());
     (discount_rate * factor) / (factor - Dimensionless(1.0))
 }
 
@@ -39,7 +40,7 @@ pub fn profitability_index(
 
     // Calculate the total annualised surplus
     let mut total_annualised_surplus = Money(0.0);
-    for (time_slice, activity) in activity.iter() {
+    for (time_slice, activity) in activity {
         let activity_surplus = activity_surpluses[time_slice];
         total_annualised_surplus += activity_surplus * *activity;
     }
@@ -60,7 +61,7 @@ pub fn lcox(
     // Calculate the total activity costs
     let mut total_activity_costs = Money(0.0);
     let mut total_activity = Activity(0.0);
-    for (time_slice, activity) in activity.iter() {
+    for (time_slice, activity) in activity {
         let activity_cost = activity_costs[time_slice];
         total_activity += *activity;
         total_activity_costs += activity_cost * *activity;

@@ -1,5 +1,7 @@
 //! Code for reading in time slice info from a CSV file.
-use super::*;
+use super::{
+    IDLike, check_values_sum_to_one_approx, deserialise_proportion_nonzero, input_err_msg, read_csv,
+};
 use crate::id::IDCollection;
 use crate::time_slice::{Season, TimeOfDay, TimeSliceID, TimeSliceInfo};
 use crate::units::Year;
@@ -24,12 +26,11 @@ struct TimeSliceRaw {
 /// The purpose of returning an ID is so that we can dedup memory.
 fn get_or_insert<T: IDLike>(id: T, set: &mut IndexSet<T>) -> T {
     // Sadly there's no entry API for HashSets: https://github.com/rust-lang/rfcs/issues/1490
-    match set.get_id(&id) {
-        Ok(id) => id.clone(),
-        Err(_) => {
-            set.insert(id.clone());
-            id
-        }
+    if let Ok(id) = set.get_id(&id) {
+        id.clone()
+    } else {
+        set.insert(id.clone());
+        id
     }
 }
 
@@ -68,7 +69,7 @@ where
     }
 
     // Validate data
-    check_values_sum_to_one_approx(time_slices.values().cloned())
+    check_values_sum_to_one_approx(time_slices.values().copied())
         .context("Invalid time slice fractions")?;
 
     Ok(TimeSliceInfo {

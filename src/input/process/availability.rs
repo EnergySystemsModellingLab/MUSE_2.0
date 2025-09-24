@@ -1,11 +1,11 @@
 //! Code for reading process availabilities CSV file
-use super::super::*;
+use super::super::{input_err_msg, read_csv, try_insert};
 use crate::process::{ProcessActivityLimitsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
 use crate::time_slice::TimeSliceInfo;
 use crate::units::{Dimensionless, Year};
 use crate::year::parse_year_str;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 use serde::Deserialize;
 use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
@@ -133,7 +133,7 @@ where
                 for year in record_years.iter().copied() {
                     try_insert(
                         entry,
-                        (region.clone(), year, time_slice.clone()),
+                        &(region.clone(), year, time_slice.clone()),
                         bounds.clone(),
                     )?;
                 }
@@ -152,7 +152,7 @@ fn validate_activity_limits_maps(
     processes: &ProcessMap,
     time_slice_info: &TimeSliceInfo,
 ) -> Result<()> {
-    for (process_id, process) in processes.iter() {
+    for (process_id, process) in processes {
         let map = map
             .get(process_id)
             .with_context(|| format!("Missing availabilities for process {process_id}"))?;
@@ -172,9 +172,7 @@ fn validate_activity_limits_maps(
         }
         ensure!(
             missing_keys.is_empty(),
-            "Process {} is missing availabilities for the following regions, years and timeslice: {:?}",
-            process_id,
-            missing_keys
+            "Process {process_id} is missing availabilities for the following regions, years and timeslice: {missing_keys:?}"
         );
     }
 

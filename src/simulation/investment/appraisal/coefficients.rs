@@ -29,7 +29,7 @@ pub fn calculate_coefficients_for_lcox(
     // Activity coefficients
     let mut activity_coefficients = IndexMap::new();
     for time_slice in time_slice_info.iter_ids() {
-        let coefficient = activity_cost(asset, reduced_costs, time_slice.clone());
+        let coefficient = activity_cost(asset, reduced_costs, time_slice);
         activity_coefficients.insert(time_slice.clone(), coefficient);
     }
 
@@ -55,7 +55,7 @@ pub fn calculate_coefficients_for_npv(
     // Activity coefficients
     let mut activity_coefficients = IndexMap::new();
     for time_slice in time_slice_info.iter_ids() {
-        let coefficient = activity_surplus(asset, reduced_costs, time_slice.clone());
+        let coefficient = activity_surplus(asset, reduced_costs, time_slice);
         activity_coefficients.insert(time_slice.clone(), coefficient);
     }
 

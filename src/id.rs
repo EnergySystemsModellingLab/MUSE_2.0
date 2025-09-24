@@ -50,6 +50,7 @@ macro_rules! define_id_type {
                 D: serde::Deserializer<'de>,
             {
                 use serde::de::Error;
+                const FORBIDDEN_IDS: [&str; 2] = ["all", "annual"];
 
                 let id: String = serde::Deserialize::deserialize(deserialiser)?;
                 let id = id.trim();
@@ -57,7 +58,6 @@ macro_rules! define_id_type {
                     return Err(D::Error::custom("IDs cannot be empty"));
                 }
 
-                const FORBIDDEN_IDS: [&str; 2] = ["all", "annual"];
                 for forbidden in FORBIDDEN_IDS.iter() {
                     if id.eq_ignore_ascii_case(forbidden) {
                         return Err(D::Error::custom(format!(

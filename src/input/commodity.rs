@@ -1,5 +1,5 @@
 //! Code for reading in commodity-related data from CSV files.
-use super::*;
+use super::read_csv_id_file;
 use crate::commodity::{Commodity, CommodityID, CommodityMap};
 use crate::region::RegionID;
 use crate::time_slice::TimeSliceInfo;

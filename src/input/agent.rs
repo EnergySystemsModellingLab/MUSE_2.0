@@ -1,5 +1,5 @@
 //! Code for reading in agent-related data from CSV files.
-use super::*;
+use super::{input_err_msg, read_csv};
 use crate::agent::{
     Agent, AgentCommodityPortionsMap, AgentCostLimitsMap, AgentID, AgentMap, AgentObjectiveMap,
     AgentSearchSpaceMap, DecisionRule,
@@ -68,7 +68,7 @@ pub fn read_agents(
         region_ids,
         milestone_years,
     )?;
-    for (id, agent) in agents.iter_mut() {
+    for (id, agent) in &mut agents {
         agent.commodity_portions = agent_commodities
             .remove(id)
             .with_context(|| format!("Missing commodity portions for agent {id}"))?;
@@ -85,7 +85,7 @@ pub fn read_agents(
     )?;
     let mut cost_limits = read_agent_cost_limits(model_dir, &agent_ids, milestone_years)?;
 
-    for (id, agent) in agents.iter_mut() {
+    for (id, agent) in &mut agents {
         agent.objectives = objectives.remove(id).unwrap();
         agent.search_space = search_spaces.remove(id).unwrap();
         if let Some(cost_limits) = cost_limits.remove(id) {
@@ -133,12 +133,11 @@ where
                     .with_context(|| "Missing tolerance for lexico decision rule")?;
                 ensure!(
                     tolerance >= 0.0,
-                    "Lexico tolerance must be non-negative, got {}",
-                    tolerance
+                    "Lexico tolerance must be non-negative, got {tolerance}"
                 );
                 DecisionRule::Lexicographical { tolerance }
             }
-            invalid_rule => bail!("Invalid decision rule: {}", invalid_rule),
+            invalid_rule => bail!("Invalid decision rule: {invalid_rule}"),
         };
 
         ensure!(

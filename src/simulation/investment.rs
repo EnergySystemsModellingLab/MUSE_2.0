@@ -58,7 +58,7 @@ pub fn perform_agent_investment(
         let mut external_prices =
             get_prices_for_commodities(prices, &model.time_slice_info, region_id, cur_commodities);
         let mut seen_commodities = Vec::new();
-        for commodity_id in cur_commodities.iter() {
+        for commodity_id in cur_commodities {
             seen_commodities.push(commodity_id.clone());
             let commodity = &model.commodities[commodity_id];
 
@@ -171,8 +171,8 @@ fn flatten_preset_demands_for_year(
     year: u32,
 ) -> AllDemandMap {
     let mut demand_map = AllDemandMap::new();
-    for (commodity_id, commodity) in commodities.iter() {
-        for ((region_id, data_year, time_slice_selection), demand) in commodity.demand.iter() {
+    for (commodity_id, commodity) in commodities {
+        for ((region_id, data_year, time_slice_selection), demand) in &commodity.demand {
             if *data_year != year {
                 continue;
             }
@@ -180,6 +180,7 @@ fn flatten_preset_demands_for_year(
             // We split the demand equally over all timeslices in the selection
             // NOTE: since demands will only be balanced to the timeslice level of the commodity
             // it doesn't matter how we do this distribution, only the total matters.
+            #[allow(clippy::cast_precision_loss)]
             let n_timeslices = time_slice_selection.iter(time_slice_info).count() as f64;
             let demand_per_slice = *demand / Dimensionless(n_timeslices);
             for (time_slice, _) in time_slice_selection.iter(time_slice_info) {
@@ -195,7 +196,7 @@ fn flatten_preset_demands_for_year(
 
 /// Update demand map with flows from a set of assets
 fn update_demand_map(demand: &mut AllDemandMap, flows: &FlowMap, assets: &[AssetRef]) {
-    for ((asset, commodity_id, time_slice), flow) in flows.iter() {
+    for ((asset, commodity_id, time_slice), flow) in flows {
         if assets.contains(asset) {
             let key = (
                 commodity_id.clone(),
@@ -389,7 +390,7 @@ fn select_best_assets(
 
         // Appraise all options
         let mut outputs_for_opts = Vec::new();
-        for asset in opt_assets.iter() {
+        for asset in &opt_assets {
             let max_capacity = (!asset.is_commissioned()).then(|| {
                 let max_capacity = model.parameters.capacity_limit_factor * asset.capacity();
                 let remaining_capacity = remaining_candidate_capacity[asset];
@@ -464,7 +465,7 @@ fn select_best_assets(
 
     // Convert Candidate assets to Selected
     // At this point we also assign the agent ID to the asset
-    for asset in best_assets.iter_mut() {
+    for asset in &mut best_assets {
         if let AssetState::Candidate = asset.state() {
             asset
                 .make_mut()
@@ -517,7 +518,7 @@ fn update_assets(
                 // Otherwise, update the capacity of the chosen asset and add it to the list of best assets
                 best_asset.make_mut().set_capacity(capacity);
                 best_assets.push(best_asset);
-            };
+            }
         }
         _ => panic!("update_assets should only be called with Commissioned or Candidate assets"),
     }

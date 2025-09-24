@@ -1,9 +1,10 @@
 //! Code for reading the agent objectives CSV file.
-use super::super::*;
+use super::super::{input_err_msg, read_csv, try_insert};
 use crate::agent::{AgentID, AgentMap, AgentObjectiveMap, DecisionRule, ObjectiveType};
 use crate::units::Dimensionless;
 use crate::year::parse_year_str;
 use anyhow::{Context, Result, ensure};
+use itertools::Itertools;
 use log::warn;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -26,7 +27,7 @@ struct AgentObjectiveRaw {
     decision_lexico_order: Option<u32>,
 }
 
-/// Read agent objective info from the agent_objectives.csv file.
+/// Read agent objective info from the `agent_objectives.csv` file.
 ///
 /// # Arguments
 ///
@@ -67,7 +68,7 @@ where
             .entry(id.clone())
             .or_insert_with(AgentObjectiveMap::new);
         for year in parse_year_str(&objective.years, milestone_years)? {
-            try_insert(agent_objectives, year, objective.objective_type).with_context(|| {
+            try_insert(agent_objectives, &year, objective.objective_type).with_context(|| {
                 format!("Duplicate agent objective entry for agent {id} and year {year}")
             })?;
         }
@@ -86,9 +87,7 @@ where
             .collect_vec();
         ensure!(
             missing_years.is_empty(),
-            "Agent {} is missing objectives for the following milestone years: {:?}",
-            agent_id,
-            missing_years
+            "Agent {agent_id} is missing objectives for the following milestone years: {missing_years:?}"
         );
 
         let npv_years = milestone_years
@@ -147,7 +146,7 @@ fn check_objective_parameter(
             check_field_none!(decision_weight);
             check_field_some!(decision_lexico_order);
         }
-    };
+    }
 
     Ok(())
 }

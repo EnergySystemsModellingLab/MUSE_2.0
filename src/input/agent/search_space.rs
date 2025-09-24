@@ -1,13 +1,14 @@
 //! Code for reading the agent search space CSV file.
-use super::super::*;
+use super::super::{input_err_msg, read_csv_optional, try_insert};
 use crate::agent::{Agent, AgentID, AgentMap, AgentSearchSpaceMap};
 use crate::commodity::CommodityID;
 use crate::id::IDCollection;
 use crate::process::{Process, ProcessMap};
 use crate::year::parse_year_str;
 use anyhow::{Context, Result};
+use itertools::Itertools;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
@@ -90,7 +91,7 @@ fn parse_search_space_str(search_space: &str, processes: &ProcessMap) -> Result<
     }
 }
 
-/// Read agent search space info from the agent_search_space.csv file.
+/// Read agent search space info from the `agent_search_space.csv` file.
 ///
 /// # Arguments
 ///
@@ -144,13 +145,13 @@ where
         for year in search_space.years {
             try_insert(
                 map,
-                (search_space.commodity_id.clone(), year),
+                &(search_space.commodity_id.clone(), year),
                 search_space.search_space.clone(),
             )?;
         }
     }
 
-    for (agent_id, agent) in agents.iter() {
+    for (agent_id, agent) in agents {
         // Get or create search space map
         let search_space = search_spaces
             .entry(agent_id.clone())

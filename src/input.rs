@@ -9,7 +9,7 @@ use float_cmp::approx_eq;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde::de::{Deserialize, DeserializeOwned, Deserializer};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::hash::Hash;
 use std::path::Path;
@@ -37,7 +37,7 @@ use time_slice::read_time_slice_info;
 pub fn read_csv<'a, T: DeserializeOwned + 'a>(
     file_path: &'a Path,
 ) -> Result<impl Iterator<Item = T> + 'a> {
-    let vec = _read_csv_internal(file_path)?;
+    let vec = read_csv_internal(file_path)?;
     if vec.is_empty() {
         bail!("CSV file {} cannot be empty", file_path.display());
     }
@@ -52,11 +52,11 @@ pub fn read_csv<'a, T: DeserializeOwned + 'a>(
 pub fn read_csv_optional<'a, T: DeserializeOwned + 'a>(
     file_path: &'a Path,
 ) -> Result<impl Iterator<Item = T> + 'a> {
-    let vec = _read_csv_internal(file_path)?;
+    let vec = read_csv_internal(file_path)?;
     Ok(vec.into_iter())
 }
 
-fn _read_csv_internal<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> Result<Vec<T>> {
+fn read_csv_internal<'a, T: DeserializeOwned + 'a>(file_path: &'a Path) -> Result<Vec<T>> {
     let vec = csv::Reader::from_path(file_path)
         .with_context(|| input_err_msg(file_path))?
         .into_deserialize()
@@ -89,7 +89,7 @@ where
 {
     let value = f64::deserialize(deserialiser)?;
     if !(value > 0.0 && value <= 1.0) {
-        Err(serde::de::Error::custom("Value must be > 0 and <= 1"))?
+        Err(serde::de::Error::custom("Value must be > 0 and <= 1"))?;
     }
 
     Ok(T::new(value))
@@ -135,8 +135,7 @@ where
     let sum = fractions.sum();
     ensure!(
         approx_eq!(T, sum, T::new(1.0), epsilon = 1e-5),
-        "Sum of fractions does not equal one (actual: {})",
-        sum
+        "Sum of fractions does not equal one (actual: {sum})"
     );
 
     Ok(())
@@ -151,18 +150,16 @@ where
     iter.into_iter().tuple_windows().all(|(a, b)| a < b)
 }
 
-/// Inserts a key-value pair into a HashMap if the key does not already exist.
+/// Inserts a key-value pair into a `HashMap` if the key does not already exist.
 ///
 /// If the key already exists, it returns an error with a message indicating the key's existence.
-pub fn try_insert<K, V>(map: &mut HashMap<K, V>, key: K, value: V) -> Result<()>
+pub fn try_insert<K, V>(map: &mut HashMap<K, V>, key: &K, value: V) -> Result<()>
 where
     K: Eq + Hash + Clone + std::fmt::Debug,
 {
-    let existing = map.insert(key.clone(), value);
-    match existing {
-        Some(_) => bail!("Key {:?} already exists in the map", key),
-        None => Ok(()),
-    }
+    let existing = map.insert(key.clone(), value).is_some();
+    ensure!(!existing, "Key {key:?} already exists in the map");
+    Ok(())
 }
 
 /// Read a model from the specified directory.
