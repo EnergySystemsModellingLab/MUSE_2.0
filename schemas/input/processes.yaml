@@ -18,7 +18,7 @@ fields:
     description: The primary output commodity, if any, for this process
     notes: |
       This field *must* be omitted for processes with only input flows. It *can* be omitted if
-      there is only one output flow, in which can it will be inferred.
+      there is only one output flow, in which case it will be inferred.
   - name: start_year
     type: integer
     description: The first year when this process is available to agents

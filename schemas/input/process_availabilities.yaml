@@ -28,7 +28,7 @@ fields:
     type: string
     description: The type of limit
     notes: |
-      Can be `lo` (a lower bound), `hi` (an upper bound) or `fx` (indicating that the availability
+      Can be `lo` (a lower bound), `up` (an upper bound) or `fx` (indicating that the availability
       is constant)
   - name: value
     type: number

@@ -18,8 +18,7 @@ fields:
     type: string
     description: The type of commodity
     notes: |
-      Must be one of `svd` (service demand), `sed` (supply equals demand), `inc` (input
-      commodity) or `ouc` (output commodity)
+      Must be one of `svd` (service demand), `sed` (supply equals demand) or `oth` (other)
   - name: time_slice_level
     type: string
     description: The time slice level at which constraints for this commodity are applied
