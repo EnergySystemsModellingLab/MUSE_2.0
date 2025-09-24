@@ -7,6 +7,9 @@ use std::path::Path;
 const SETTINGS_FILE_NAME: &str = "settings.toml";
 
 /// Program settings from config file
+///
+/// NOTE: If you add or change a field in this struct, you must also update the schema in
+/// `schemas/settings.yaml`.
 #[derive(Debug, Default, Deserialize, PartialEq)]
 pub struct Settings {
     /// The user's preferred logging level

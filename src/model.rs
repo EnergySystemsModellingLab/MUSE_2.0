@@ -61,6 +61,9 @@ pub struct Model {
 }
 
 /// Represents the contents of the entire model file.
+///
+/// NOTE: If you add or change a field in this struct, you must also update the schema in
+/// `schemas/input/model.yaml`.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct ModelFile {
     /// Milestone years
