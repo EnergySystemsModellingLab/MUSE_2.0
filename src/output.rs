@@ -929,4 +929,101 @@ mod tests {
                 .unwrap();
         assert_equal(records, iter::once(expected));
     }
+
+    #[test]
+    fn test_create_output_directory_new_directory() {
+        let temp_dir = tempdir().unwrap();
+        let output_dir = temp_dir.path().join("new_output");
+
+        // Create a new directory should succeed and return false (no overwrite)
+        let result = create_output_directory(&output_dir, false).unwrap();
+        assert!(!result);
+        assert!(output_dir.exists());
+        assert!(output_dir.is_dir());
+    }
+
+    #[test]
+    fn test_create_output_directory_existing_empty_directory() {
+        let temp_dir = tempdir().unwrap();
+        let output_dir = temp_dir.path().join("empty_output");
+
+        // Create the directory first
+        fs::create_dir(&output_dir).unwrap();
+
+        // Creating again should succeed and return false (no overwrite needed)
+        let result = create_output_directory(&output_dir, false).unwrap();
+        assert!(!result);
+        assert!(output_dir.exists());
+        assert!(output_dir.is_dir());
+    }
+
+    #[test]
+    fn test_create_output_directory_existing_with_files_no_overwrite() {
+        let temp_dir = tempdir().unwrap();
+        let output_dir = temp_dir.path().join("output_with_files");
+
+        // Create directory with a file
+        fs::create_dir(&output_dir).unwrap();
+        fs::write(output_dir.join("existing_file.txt"), "some content").unwrap();
+
+        // Should fail when allow_overwrite is false
+        let result = create_output_directory(&output_dir, false);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Output folder already exists")
+        );
+    }
+
+    #[test]
+    fn test_create_output_directory_existing_with_files_allow_overwrite() {
+        let temp_dir = tempdir().unwrap();
+        let output_dir = temp_dir.path().join("output_with_files");
+
+        // Create directory with a file
+        fs::create_dir(&output_dir).unwrap();
+        let file_path = output_dir.join("existing_file.txt");
+        fs::write(&file_path, "some content").unwrap();
+
+        // Should succeed when allow_overwrite is true and return true (overwrite occurred)
+        let result = create_output_directory(&output_dir, true).unwrap();
+        assert!(result);
+        assert!(output_dir.exists());
+        assert!(output_dir.is_dir());
+        assert!(!file_path.exists()); // File should be gone
+    }
+
+    #[test]
+    fn test_create_output_directory_nested_path() {
+        let temp_dir = tempdir().unwrap();
+        let output_dir = temp_dir.path().join("nested").join("path").join("output");
+
+        // Should create nested directories and return false (no overwrite)
+        let result = create_output_directory(&output_dir, false).unwrap();
+        assert!(!result);
+        assert!(output_dir.exists());
+        assert!(output_dir.is_dir());
+    }
+
+    #[test]
+    fn test_create_output_directory_existing_subdirs_with_files_allow_overwrite() {
+        let temp_dir = tempdir().unwrap();
+        let output_dir = temp_dir.path().join("output_with_subdirs");
+
+        // Create directory structure with files
+        fs::create_dir_all(&output_dir.join("subdir")).unwrap();
+        fs::write(output_dir.join("file1.txt"), "content1").unwrap();
+        fs::write(output_dir.join("subdir").join("file2.txt"), "content2").unwrap();
+
+        // Should succeed when allow_overwrite is true and return true (overwrite occurred)
+        let result = create_output_directory(&output_dir, true).unwrap();
+        assert!(result);
+        assert!(output_dir.exists());
+        assert!(output_dir.is_dir());
+        // All previous content should be gone
+        assert!(!output_dir.join("file1.txt").exists());
+        assert!(!output_dir.join("subdir").exists());
+    }
 }
