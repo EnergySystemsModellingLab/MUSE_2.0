@@ -7,10 +7,16 @@ use std::path::Path;
 const SETTINGS_FILE_NAME: &str = "settings.toml";
 
 /// Program settings from config file
+///
+/// NOTE: If you add or change a field in this struct, you must also update the schema in
+/// `schemas/settings.yaml`.
 #[derive(Debug, Default, Deserialize, PartialEq)]
 pub struct Settings {
     /// The user's preferred logging level
     pub log_level: Option<String>,
+    /// Whether to overwrite output files by default
+    #[serde(default)]
+    pub overwrite: bool,
     /// Whether to write additional information to CSV files
     #[serde(default)]
     pub debug_model: bool,
@@ -69,7 +75,8 @@ mod tests {
             Settings::load().unwrap(),
             Settings {
                 log_level: Some("warn".to_string()),
-                debug_model: false
+                debug_model: false,
+                overwrite: false
             }
         );
     }

@@ -1,5 +1,5 @@
 //! Code related to the example models and the CLI commands for interacting with them.
-use super::handle_run_command;
+use super::{RunOpts, handle_run_command};
 use crate::settings::Settings;
 use anyhow::{Context, Result, ensure};
 use clap::Subcommand;
@@ -32,12 +32,9 @@ pub enum ExampleSubcommands {
     Run {
         /// The name of the example to run.
         name: String,
-        /// Directory for output files
-        #[arg(short, long)]
-        output_dir: Option<PathBuf>,
-        /// Whether to write additional information to CSV files
-        #[arg(long)]
-        debug_model: bool,
+        /// Other run options
+        #[command(flatten)]
+        opts: RunOpts,
     },
 }
 
@@ -51,11 +48,7 @@ impl ExampleSubcommands {
                 name,
                 new_path: dest,
             } => handle_example_extract_command(&name, dest.as_deref())?,
-            Self::Run {
-                name,
-                output_dir,
-                debug_model,
-            } => handle_example_run_command(&name, output_dir.as_deref(), debug_model, None)?,
+            Self::Run { name, opts } => handle_example_run_command(&name, &opts, None)?,
         }
 
         Ok(())
@@ -119,12 +112,11 @@ fn extract_example(name: &str, new_path: &Path) -> Result<()> {
 /// Handle the `example run` command.
 pub fn handle_example_run_command(
     name: &str,
-    output_path: Option<&Path>,
-    debug_model: bool,
+    opts: &RunOpts,
     settings: Option<Settings>,
 ) -> Result<()> {
     let temp_dir = TempDir::new().context("Failed to create temporary directory.")?;
     let model_path = temp_dir.path().join(name);
     extract_example(name, &model_path)?;
-    handle_run_command(&model_path, output_path, debug_model, settings)
+    handle_run_command(&model_path, opts, settings)
 }

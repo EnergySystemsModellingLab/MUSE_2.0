@@ -1,5 +1,5 @@
 //! Integration tests for the `run` command.
-use muse2::cli::handle_run_command;
+use muse2::cli::{RunOpts, handle_run_command};
 use muse2::log::is_logger_initialised;
 use muse2::settings::Settings;
 use std::path::PathBuf;
@@ -22,13 +22,12 @@ fn test_handle_run_command() {
     // Save results to non-existent directory to check that directory creation works
     let tempdir = tempdir().unwrap();
     let output_dir = tempdir.path().join("results");
-    handle_run_command(
-        &get_model_dir(),
-        Some(&output_dir),
-        false,
-        Some(Settings::default()),
-    )
-    .unwrap();
+    let opts = RunOpts {
+        output_dir: Some(output_dir),
+        overwrite: false,
+        debug_model: false,
+    };
+    handle_run_command(&get_model_dir(), &opts, Some(Settings::default())).unwrap();
 
     assert!(is_logger_initialised());
 }
