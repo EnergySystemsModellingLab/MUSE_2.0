@@ -59,16 +59,21 @@ enum Commands {
         /// The path to the model directory.
         model_dir: PathBuf,
     },
+    /// Print default settings file.
+    DumpDefaultSettings,
 }
 
 impl Commands {
     /// Execute the supplied CLI command
     fn execute(self) -> Result<()> {
         match self {
-            Self::Run { model_dir, opts } => handle_run_command(&model_dir, &opts, None),
-            Self::Example { subcommand } => subcommand.execute(),
-            Self::Validate { model_dir } => handle_validate_command(&model_dir, None),
+            Self::Run { model_dir, opts } => handle_run_command(&model_dir, &opts, None)?,
+            Self::Example { subcommand } => subcommand.execute()?,
+            Self::Validate { model_dir } => handle_validate_command(&model_dir, None)?,
+            Self::DumpDefaultSettings => handle_dump_default_settings(),
         }
+
+        Ok(())
     }
 }
 
@@ -167,4 +172,9 @@ pub fn handle_validate_command(model_path: &Path, settings: Option<Settings>) ->
     info!("Model validation successful!");
 
     Ok(())
+}
+
+/// Handle the `dump-default-settings` command
+fn handle_dump_default_settings() {
+    print!("{}", Settings::default_file_contents());
 }
