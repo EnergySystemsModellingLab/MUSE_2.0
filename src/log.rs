@@ -22,7 +22,7 @@ static LOGGER_INIT: OnceLock<()> = OnceLock::new();
 ///
 /// Used as a fallback if the user hasn't specified something else with the `MUSE2_LOG_LEVEL`
 /// environment variable or the settings.toml file.
-const DEFAULT_LOG_LEVEL: &str = "info";
+pub const DEFAULT_LOG_LEVEL: &str = "info";
 
 /// The file name for the log file containing messages about the ordinary operation of MUSE 2.0
 const LOG_INFO_FILE_NAME: &str = "muse2_info.log";
@@ -53,13 +53,10 @@ pub fn is_logger_initialised() -> bool {
 ///
 /// * `log_level_from_settings`: The log level specified in `settings.toml`
 /// * `log_file_path`: The location to save log files (if Some, log files will be created)
-pub fn init(log_level_from_settings: Option<&str>, log_file_path: Option<&Path>) -> Result<()> {
+pub fn init(log_level_from_settings: &str, log_file_path: Option<&Path>) -> Result<()> {
     // Retrieve the log level from the environment variable or settings, or use the default
-    let log_level = env::var("MUSE2_LOG_LEVEL").unwrap_or_else(|_| {
-        log_level_from_settings
-            .unwrap_or(DEFAULT_LOG_LEVEL)
-            .to_string()
-    });
+    let log_level =
+        env::var("MUSE2_LOG_LEVEL").unwrap_or_else(|_| log_level_from_settings.to_string());
 
     // Convert the log level string to a log::LevelFilter
     let log_level = match log_level.to_lowercase().as_str() {

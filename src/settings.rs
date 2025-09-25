@@ -1,10 +1,16 @@
 //! Code for loading program settings.
 use crate::input::read_toml;
+use crate::log::DEFAULT_LOG_LEVEL;
 use anyhow::Result;
 use serde::Deserialize;
 use std::path::Path;
 
 const SETTINGS_FILE_NAME: &str = "settings.toml";
+
+/// Default log level for program
+fn default_log_level() -> String {
+    DEFAULT_LOG_LEVEL.to_string()
+}
 
 /// Program settings from config file
 ///
@@ -13,7 +19,8 @@ const SETTINGS_FILE_NAME: &str = "settings.toml";
 #[derive(Debug, Default, Deserialize, PartialEq)]
 pub struct Settings {
     /// The user's preferred logging level
-    pub log_level: Option<String>,
+    #[serde(default = "default_log_level")]
+    pub log_level: String,
     /// Whether to overwrite output files by default
     #[serde(default)]
     pub overwrite: bool,
@@ -74,7 +81,7 @@ mod tests {
         assert_eq!(
             Settings::load().unwrap(),
             Settings {
-                log_level: Some("warn".to_string()),
+                log_level: "warn".to_string(),
                 debug_model: false,
                 overwrite: false
             }
