@@ -111,7 +111,7 @@ fn check_max_ironing_out_iterations(value: u32) -> Result<()> {
 fn check_price_tolerance(value: Dimensionless) -> Result<()> {
     ensure!(
         value.is_finite() && value >= Dimensionless(0.0),
-        "price_tolerance must be a finite number greater than zero"
+        "price_tolerance must be a finite number greater than or equal to zero"
     );
 
     Ok(())
@@ -290,7 +290,7 @@ mod tests {
             result,
             expected_valid,
             value,
-            "price_tolerance must be a finite number greater than zero",
+            "price_tolerance must be a finite number greater than or equal to zero",
         );
     }
 }
