@@ -78,21 +78,40 @@ pub enum PricingStrategy {
     ScarcityAdjusted,
 }
 
-/// Check that the milestone years parameter is valid
-///
-/// # Arguments
-///
-/// * `years` - Integer list of milestone years
-///
-/// # Returns
-///
-/// An error if the milestone years are invalid
+/// Check that the `milestone_years` parameter is valid
 fn check_milestone_years(years: &[u32]) -> Result<()> {
     ensure!(!years.is_empty(), "`milestone_years` is empty");
 
     ensure!(
         is_sorted_and_unique(years),
         "`milestone_years` must be composed of unique values in order"
+    );
+
+    Ok(())
+}
+
+/// Check that the `value_of_lost_load` parameter is valid
+fn check_value_of_lost_load(value: MoneyPerFlow) -> Result<()> {
+    ensure!(
+        value.is_finite() && value > MoneyPerFlow(0.0),
+        "value_of_lost_load must be a finite number greater than zero"
+    );
+
+    Ok(())
+}
+
+/// Check that the `max_ironing_out_iterations` parameter is valid
+fn check_max_ironing_out_iterations(value: u32) -> Result<()> {
+    ensure!(value > 0, "max_ironing_out_iterations cannot be zero");
+
+    Ok(())
+}
+
+/// Check the `price_tolerance` parameter is valid
+fn check_price_tolerance(value: Dimensionless) -> Result<()> {
+    ensure!(
+        value.is_finite() && value >= Dimensionless(0.0),
+        "price_tolerance must be a finite number greater than zero"
     );
 
     Ok(())
@@ -139,6 +158,15 @@ impl ModelParameters {
         check_capacity_valid_for_asset(self.candidate_asset_capacity)
             .context("Invalid value for candidate_asset_capacity")?;
 
+        // value_of_lost_load
+        check_value_of_lost_load(self.value_of_lost_load)?;
+
+        // max_ironing_out_iterations
+        check_max_ironing_out_iterations(self.max_ironing_out_iterations)?;
+
+        // price_tolerance
+        check_price_tolerance(self.price_tolerance)?;
+
         Ok(())
     }
 }
@@ -146,9 +174,38 @@ impl ModelParameters {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
+    use std::fmt::Display;
     use std::fs::File;
     use std::io::Write;
     use tempfile::tempdir;
+
+    /// Helper function to assert validation result based on expected validity
+    fn assert_validation_result<T, U: Display>(
+        result: Result<T>,
+        expected_valid: bool,
+        value: U,
+        expected_error_fragment: &str,
+    ) {
+        if expected_valid {
+            assert!(
+                result.is_ok(),
+                "Expected value {} to be valid, but got error: {:?}",
+                value,
+                result.err()
+            );
+        } else {
+            assert!(
+                result.is_err(),
+                "Expected value {value} to be invalid, but it was accepted",
+            );
+            let error_message = result.err().unwrap().to_string();
+            assert!(
+                error_message.contains(expected_error_fragment),
+                "Error message should mention the validation constraint, got: {error_message}",
+            );
+        }
+    }
 
     #[test]
     fn test_check_milestone_years() {
@@ -172,5 +229,68 @@ mod tests {
 
         let model_params = ModelParameters::from_path(dir.path()).unwrap();
         assert_eq!(model_params.milestone_years, [2020, 2100]);
+    }
+
+    #[rstest]
+    #[case(1.0, true)] // Valid positive value
+    #[case(1e-10, true)] // Valid very small positive value
+    #[case(1e9, true)] // Valid large value (default)
+    #[case(f64::MAX, true)] // Valid maximum finite value
+    #[case(0.0, false)] // Invalid: exactly zero
+    #[case(-1.0, false)] // Invalid: negative value
+    #[case(-1e-10, false)] // Invalid: very small negative value
+    #[case(f64::INFINITY, false)] // Invalid: infinite value
+    #[case(f64::NEG_INFINITY, false)] // Invalid: negative infinite value
+    #[case(f64::NAN, false)] // Invalid: NaN value
+    fn test_check_value_of_lost_load(#[case] value: f64, #[case] expected_valid: bool) {
+        let money_per_flow = MoneyPerFlow::new(value);
+        let result = check_value_of_lost_load(money_per_flow);
+
+        assert_validation_result(
+            result,
+            expected_valid,
+            value,
+            "value_of_lost_load must be a finite number greater than zero",
+        );
+    }
+
+    #[rstest]
+    #[case(1, true)] // Valid minimum value
+    #[case(10, true)] // Valid default value
+    #[case(100, true)] // Valid large value
+    #[case(u32::MAX, true)] // Valid maximum value
+    #[case(0, false)] // Invalid: zero
+    fn test_check_max_ironing_out_iterations(#[case] value: u32, #[case] expected_valid: bool) {
+        let result = check_max_ironing_out_iterations(value);
+
+        assert_validation_result(
+            result,
+            expected_valid,
+            value,
+            "max_ironing_out_iterations cannot be zero",
+        );
+    }
+
+    #[rstest]
+    #[case(0.0, true)] // Valid minimum value (exactly zero)
+    #[case(1e-10, true)] // Valid very small positive value
+    #[case(1e-6, true)] // Valid default value
+    #[case(1.0, true)] // Valid larger value
+    #[case(f64::MAX, true)] // Valid maximum finite value
+    #[case(-1e-10, false)] // Invalid: negative value
+    #[case(-1.0, false)] // Invalid: negative value
+    #[case(f64::INFINITY, false)] // Invalid: infinite value
+    #[case(f64::NEG_INFINITY, false)] // Invalid: negative infinite value
+    #[case(f64::NAN, false)] // Invalid: NaN value
+    fn test_check_price_tolerance(#[case] value: f64, #[case] expected_valid: bool) {
+        let dimensionless = Dimensionless::new(value);
+        let result = check_price_tolerance(dimensionless);
+
+        assert_validation_result(
+            result,
+            expected_valid,
+            value,
+            "price_tolerance must be a finite number greater than zero",
+        );
     }
 }
