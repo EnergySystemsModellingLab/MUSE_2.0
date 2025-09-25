@@ -386,4 +386,11 @@ mod tests {
     fn test_is_sorted_and_unique(#[case] values: &[u32], #[case] expected: bool) {
         assert_eq!(is_sorted_and_unique(values), expected)
     }
+
+    #[test]
+    fn test_format_items_with_cap() {
+        let items = vec!["a", "b", "c"];
+        assert_eq!(format_items_with_cap(&items, 10), r#"["a", "b", "c"]"#);
+        assert_eq!(format_items_with_cap(&items, 2), r#"["a", "b"] and 1 more"#);
+    }
 }
