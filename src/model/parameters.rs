@@ -112,7 +112,20 @@ impl ModelParameters {
         let file_path = model_dir.as_ref().join(MODEL_PARAMETERS_FILE_NAME);
         let model_params: ModelParameters = read_toml(&file_path)?;
 
-        if model_params.pricing_strategy == PricingStrategy::ScarcityAdjusted {
+        model_params
+            .validate()
+            .with_context(|| input_err_msg(file_path))?;
+
+        Ok(model_params)
+    }
+
+    /// Validate parameters after reading in file
+    fn validate(&self) -> Result<()> {
+        // milestone_years
+        check_milestone_years(&self.milestone_years)?;
+
+        // pricing_strategy
+        if self.pricing_strategy == PricingStrategy::ScarcityAdjusted {
             warn!(
                 "The pricing strategy is set to 'scarcity_adjusted'. Commodity prices may be \
                 incorrect if assets have more than one output commodity. See: {}/issues/677",
@@ -120,16 +133,13 @@ impl ModelParameters {
             );
         }
 
-        let validate = || -> Result<()> {
-            check_milestone_years(&model_params.milestone_years)?;
-            check_capacity_valid_for_asset(model_params.candidate_asset_capacity)
-                .context("Invalid value for candidate_asset_capacity")?;
+        // capacity_limit_factor already validated with deserialise_proportion_nonzero
 
-            Ok(())
-        };
-        validate().with_context(|| input_err_msg(file_path))?;
+        // candidate_asset_capacity
+        check_capacity_valid_for_asset(self.candidate_asset_capacity)
+            .context("Invalid value for candidate_asset_capacity")?;
 
-        Ok(model_params)
+        Ok(())
     }
 }
 
