@@ -29,5 +29,4 @@ fields:
   - name: capacity_to_activity
     type: number
     description: Factor for calculating the maximum consumption/production over a year.
-    notes: |
-      Must be >=0. Defaults to 1.0 if not specified.
+    notes: Must be >=0. Optional (defaults to 1.0).
