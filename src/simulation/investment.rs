@@ -536,15 +536,15 @@ mod tests {
     use crate::region::RegionID;
     use crate::time_slice::{TimeSliceID, TimeSliceInfo};
     use crate::units::{
-        ActivityPerCapacity, Dimensionless, Flow, FlowPerActivity, MoneyPerActivity,
-        MoneyPerCapacity, MoneyPerCapacityPerYear, MoneyPerFlow,
+        Dimensionless, Flow, FlowPerActivity, MoneyPerActivity, MoneyPerCapacity,
+        MoneyPerCapacityPerYear, MoneyPerFlow,
     };
     use indexmap::indexmap;
     use itertools::Itertools;
     use rstest::rstest;
     use std::rc::Rc;
 
-    /// Custom fixture for process parameters with non-zero capacity_to_activity
+    /// Custom fixture for process parameters
     fn process_parameter_with_capacity_to_activity() -> Rc<ProcessParameter> {
         Rc::new(ProcessParameter {
             capital_cost: MoneyPerCapacity(0.0),
@@ -552,7 +552,6 @@ mod tests {
             variable_operating_cost: MoneyPerActivity(0.0),
             lifetime: 1,
             discount_rate: Dimensionless(1.0),
-            capacity_to_activity: ActivityPerCapacity(1.0), // Non-zero value
         })
     }
 

@@ -26,3 +26,8 @@ fields:
     type: integer
     description: The last year when this process is available to agents
     notes: Must be >= to `start_year`
+  - name: capacity_to_activity
+    type: number
+    description: Factor for calculating the maximum consumption/production over a year.
+    notes: |
+      Must be >=0. Defaults to 1.0 if not specified.
