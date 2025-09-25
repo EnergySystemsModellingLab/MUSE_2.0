@@ -162,6 +162,20 @@ where
     Ok(())
 }
 
+/// Format a list of items with a cap on display count for error messages
+pub fn format_items_with_cap<T: std::fmt::Debug>(items: &[T]) -> String {
+    const MAX_DISPLAY: usize = 10;
+    if items.len() <= MAX_DISPLAY {
+        format!("{items:?}")
+    } else {
+        format!(
+            "{:?} and {} more",
+            &items[..MAX_DISPLAY],
+            items.len() - MAX_DISPLAY
+        )
+    }
+}
+
 /// Read a model from the specified directory.
 ///
 /// # Arguments
@@ -372,5 +386,18 @@ mod tests {
     #[case(&[1,3,2,4], false)]
     fn test_is_sorted_and_unique(#[case] values: &[u32], #[case] expected: bool) {
         assert_eq!(is_sorted_and_unique(values), expected)
+    }
+
+    #[test]
+    fn test_format_items_with_cap() {
+        let items = vec!["a", "b", "c"];
+        assert_eq!(format_items_with_cap(&items), r#"["a", "b", "c"]"#);
+
+        // Test with more than 10 items to trigger the cap
+        let many_items = vec!["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"];
+        assert_eq!(
+            format_items_with_cap(&many_items),
+            r#"["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"] and 2 more"#
+        );
     }
 }
