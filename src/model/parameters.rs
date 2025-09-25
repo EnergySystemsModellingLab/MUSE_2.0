@@ -3,7 +3,7 @@ use crate::asset::check_capacity_valid_for_asset;
 use crate::input::{
     deserialise_proportion_nonzero, input_err_msg, is_sorted_and_unique, read_toml,
 };
-use crate::units::{Capacity, Dimensionless, MoneyPerFlow};
+use crate::units::{Capacity, Dimensionless, MoneyPerFlow, UnitType};
 use anyhow::{Context, Result, ensure};
 use log::warn;
 use serde::Deserialize;
@@ -12,26 +12,35 @@ use std::path::Path;
 
 const MODEL_PARAMETERS_FILE_NAME: &str = "model.toml";
 
-macro_rules! define_unit_param_default {
-    ($name:ident, $type: ty, $value: expr) => {
-        fn $name() -> $type {
-            <$type>::new($value)
-        }
-    };
+/// A helper trait to construct both unit and non-unit types from a literal
+trait FromLiteral<T> {
+    fn from_literal(lit: T) -> Self;
+}
+
+impl<T: UnitType> FromLiteral<f64> for T {
+    fn from_literal(lit: f64) -> Self {
+        Self::new(lit)
+    }
+}
+
+impl<T> FromLiteral<T> for T {
+    fn from_literal(lit: T) -> Self {
+        lit
+    }
 }
 
 macro_rules! define_param_default {
     ($name:ident, $type: ty, $value: expr) => {
         fn $name() -> $type {
-            $value
+            <$type>::from_literal($value)
         }
     };
 }
 
-define_unit_param_default!(default_candidate_asset_capacity, Capacity, 0.0001);
-define_unit_param_default!(default_capacity_limit_factor, Dimensionless, 0.1);
-define_unit_param_default!(default_value_of_lost_load, MoneyPerFlow, 1e9);
-define_unit_param_default!(default_price_tolerance, Dimensionless, 1e-6);
+define_param_default!(default_candidate_asset_capacity, Capacity, 0.0001);
+define_param_default!(default_capacity_limit_factor, Dimensionless, 0.1);
+define_param_default!(default_value_of_lost_load, MoneyPerFlow, 1e9);
+define_param_default!(default_price_tolerance, Dimensionless, 1e-6);
 define_param_default!(default_max_ironing_out_iterations, u32, 10);
 
 /// Represents the contents of the entire model file.
