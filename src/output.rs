@@ -89,7 +89,7 @@ pub fn create_output_directory(output_dir: &Path, allow_overwrite: bool) -> Resu
 
         ensure!(
             allow_overwrite,
-            "Output folder already exists. \
+            "Output folder already exists and is not empty. \
             Please delete the folder or pass the --overwrite command-line option."
         );
 
