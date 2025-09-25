@@ -163,14 +163,15 @@ where
 }
 
 /// Format a list of items with a cap on display count for error messages
-pub fn format_items_with_cap<T: std::fmt::Debug>(items: &[T], max_display: usize) -> String {
-    if items.len() <= max_display {
+pub fn format_items_with_cap<T: std::fmt::Debug>(items: &[T]) -> String {
+    const MAX_DISPLAY: usize = 10;
+    if items.len() <= MAX_DISPLAY {
         format!("{items:?}")
     } else {
         format!(
             "{:?} and {} more",
-            &items[..max_display],
-            items.len() - max_display
+            &items[..MAX_DISPLAY],
+            items.len() - MAX_DISPLAY
         )
     }
 }
@@ -390,7 +391,13 @@ mod tests {
     #[test]
     fn test_format_items_with_cap() {
         let items = vec!["a", "b", "c"];
-        assert_eq!(format_items_with_cap(&items, 10), r#"["a", "b", "c"]"#);
-        assert_eq!(format_items_with_cap(&items, 2), r#"["a", "b"] and 1 more"#);
+        assert_eq!(format_items_with_cap(&items), r#"["a", "b", "c"]"#);
+
+        // Test with more than 10 items to trigger the cap
+        let many_items = vec!["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"];
+        assert_eq!(
+            format_items_with_cap(&many_items),
+            r#"["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"] and 2 more"#
+        );
     }
 }

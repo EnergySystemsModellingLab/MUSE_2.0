@@ -181,7 +181,7 @@ fn check_process_parameters(
         ensure!(
             missing_keys.is_empty(),
             "Process {process_id} is missing parameters for the following regions and years: {}",
-            format_items_with_cap(&missing_keys, 10)
+            format_items_with_cap(&missing_keys)
         );
     }
 

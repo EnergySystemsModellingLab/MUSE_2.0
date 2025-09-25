@@ -163,7 +163,7 @@ where
         ensure!(
             missing_keys.is_empty(),
             "Commodity {commodity_id} is missing demand data for {}",
-            format_items_with_cap(&missing_keys, 10)
+            format_items_with_cap(&missing_keys)
         );
     }
 
