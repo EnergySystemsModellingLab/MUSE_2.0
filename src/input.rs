@@ -2,7 +2,7 @@
 use crate::asset::AssetPool;
 use crate::graph::build_and_validate_commodity_graphs_for_model;
 use crate::id::{HasID, IDLike};
-use crate::model::{Model, ModelFile};
+use crate::model::{Model, ModelParameters};
 use crate::units::UnitType;
 use anyhow::{Context, Result, bail, ensure};
 use float_cmp::approx_eq;
@@ -172,12 +172,12 @@ where
 ///
 /// The static model data ([`Model`]) and an [`AssetPool`] struct or an error.
 pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
-    let model_file = ModelFile::from_path(&model_dir)?;
+    let model_params = ModelParameters::from_path(&model_dir)?;
 
     let time_slice_info = read_time_slice_info(model_dir.as_ref())?;
     let regions = read_regions(model_dir.as_ref())?;
     let region_ids = regions.keys().cloned().collect();
-    let years = &model_file.milestone_years;
+    let years = &model_params.milestone_years;
 
     let commodities = read_commodities(model_dir.as_ref(), &region_ids, &time_slice_info, years)?;
     let processes = read_processes(
@@ -213,7 +213,7 @@ pub fn load_model<P: AsRef<Path>>(model_dir: P) -> Result<(Model, AssetPool)> {
         .context("Could not parse path to model")?;
     let model = Model {
         model_path,
-        parameters: model_file,
+        parameters: model_params,
         agents,
         commodities,
         processes,

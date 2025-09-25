@@ -16,7 +16,7 @@ use serde_string_enum::DeserializeLabeledStringEnum;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-const MODEL_FILE_NAME: &str = "model.toml";
+const MODEL_PARAMETERS_FILE_NAME: &str = "model.toml";
 
 macro_rules! define_unit_param_default {
     ($name:ident, $type: ty, $value: expr) => {
@@ -45,7 +45,7 @@ pub struct Model {
     /// Path to model folder
     pub model_path: PathBuf,
     /// Parameters from the model TOML file
-    pub parameters: ModelFile,
+    pub parameters: ModelParameters,
     /// Agents for the simulation
     pub agents: AgentMap,
     /// Commodities for the simulation
@@ -62,7 +62,7 @@ pub struct Model {
 
 /// Represents the contents of the entire model file.
 #[derive(Debug, Deserialize, PartialEq)]
-pub struct ModelFile {
+pub struct ModelParameters {
     /// Milestone years
     pub milestone_years: Vec<u32>,
     /// The (small) value of capacity given to candidate assets.
@@ -124,7 +124,7 @@ fn check_milestone_years(years: &[u32]) -> Result<()> {
     Ok(())
 }
 
-impl ModelFile {
+impl ModelParameters {
     /// Read a model file from the specified directory.
     ///
     /// # Arguments
@@ -133,12 +133,12 @@ impl ModelFile {
     ///
     /// # Returns
     ///
-    /// The model file contents as a `ModelFile` struct or an error if the file is invalid
-    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelFile> {
-        let file_path = model_dir.as_ref().join(MODEL_FILE_NAME);
-        let model_file: ModelFile = read_toml(&file_path)?;
+    /// The model file contents as a [`ModelParameters`] struct or an error if the file is invalid
+    pub fn from_path<P: AsRef<Path>>(model_dir: P) -> Result<ModelParameters> {
+        let file_path = model_dir.as_ref().join(MODEL_PARAMETERS_FILE_NAME);
+        let model_params: ModelParameters = read_toml(&file_path)?;
 
-        if model_file.pricing_strategy == PricingStrategy::ScarcityAdjusted {
+        if model_params.pricing_strategy == PricingStrategy::ScarcityAdjusted {
             warn!(
                 "The pricing strategy is set to 'scarcity_adjusted'. Commodity prices may be \
                 incorrect if assets have more than one output commodity. See: {}/issues/677",
@@ -147,15 +147,15 @@ impl ModelFile {
         }
 
         let validate = || -> Result<()> {
-            check_milestone_years(&model_file.milestone_years)?;
-            check_capacity_valid_for_asset(model_file.candidate_asset_capacity)
+            check_milestone_years(&model_params.milestone_years)?;
+            check_capacity_valid_for_asset(model_params.candidate_asset_capacity)
                 .context("Invalid value for candidate_asset_capacity")?;
 
             Ok(())
         };
         validate().with_context(|| input_err_msg(file_path))?;
 
-        Ok(model_file)
+        Ok(model_params)
     }
 }
 
@@ -191,14 +191,14 @@ mod tests {
     }
 
     #[test]
-    fn test_model_file_from_path() {
+    fn test_model_params_from_path() {
         let dir = tempdir().unwrap();
         {
-            let mut file = File::create(dir.path().join(MODEL_FILE_NAME)).unwrap();
+            let mut file = File::create(dir.path().join(MODEL_PARAMETERS_FILE_NAME)).unwrap();
             writeln!(file, "milestone_years = [2020, 2100]").unwrap();
         }
 
-        let model_file = ModelFile::from_path(dir.path()).unwrap();
-        assert_eq!(model_file.milestone_years, [2020, 2100]);
+        let model_params = ModelParameters::from_path(dir.path()).unwrap();
+        assert_eq!(model_params.milestone_years, [2020, 2100]);
     }
 }
