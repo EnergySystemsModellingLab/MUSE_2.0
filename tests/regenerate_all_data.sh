@@ -3,6 +3,9 @@
 mydir=$(dirname "$0")
 cd "$mydir"
 
+echo Cleaning output folder
+rm -rf data/*
+
 echo Building MUSE 2.0
 examples=$(cargo run example list 2> /dev/null)
 

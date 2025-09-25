@@ -1,5 +1,5 @@
 //! Code for reading process parameters CSV file
-use super::super::{input_err_msg, read_csv, try_insert};
+use super::super::{format_items_with_cap, input_err_msg, read_csv, try_insert};
 use crate::process::{ProcessID, ProcessMap, ProcessParameter, ProcessParameterMap};
 use crate::region::parse_region_str;
 use crate::units::{
@@ -180,7 +180,8 @@ fn check_process_parameters(
         }
         ensure!(
             missing_keys.is_empty(),
-            "Process {process_id} is missing parameters for the following regions and years: {missing_keys:?}"
+            "Process {process_id} is missing parameters for the following regions and years: {}",
+            format_items_with_cap(&missing_keys)
         );
     }
 

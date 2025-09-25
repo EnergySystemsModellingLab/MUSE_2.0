@@ -1,6 +1,7 @@
 //! Common code for running regression tests.
 use float_cmp::approx_eq;
 use itertools::Itertools;
+use muse2::cli::RunOpts;
 use muse2::cli::example::handle_example_run_command;
 use muse2::settings::Settings;
 use std::fs::{File, read_dir};
@@ -29,14 +30,13 @@ fn run_regression_test_debug_opt(example_name: &str, debug_model: bool) {
     unsafe { std::env::set_var("MUSE2_LOG_LEVEL", "off") };
 
     let tempdir = tempdir().unwrap();
-    let output_dir = tempdir.path();
-    handle_example_run_command(
-        example_name,
-        Some(output_dir),
+    let opts = RunOpts {
+        output_dir: Some(tempdir.path().to_path_buf()),
+        overwrite: false,
         debug_model,
-        Some(Settings::default()),
-    )
-    .unwrap();
+    };
+    let output_dir = tempdir.path();
+    handle_example_run_command(example_name, &opts, Some(Settings::default())).unwrap();
 
     let test_data_dir = PathBuf::from(format!("tests/data/{example_name}"));
     compare_output_dirs(output_dir, &test_data_dir);

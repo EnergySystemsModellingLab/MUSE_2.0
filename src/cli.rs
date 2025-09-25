@@ -3,9 +3,9 @@ use crate::input::load_model;
 use crate::log;
 use crate::output::{create_output_directory, get_output_dir};
 use crate::settings::Settings;
-use ::log::info;
+use ::log::{info, warn};
 use anyhow::{Context, Result};
-use clap::{CommandFactory, Parser, Subcommand};
+use clap::{Args, CommandFactory, Parser, Subcommand};
 use std::path::{Path, PathBuf};
 
 pub mod example;
@@ -23,6 +23,20 @@ struct Cli {
     markdown_help: bool,
 }
 
+/// Options for the run command
+#[derive(Args)]
+pub struct RunOpts {
+    /// Directory for output files
+    #[arg(short, long)]
+    pub output_dir: Option<PathBuf>,
+    /// Whether to overwrite the output directory if it already exists
+    #[arg(long)]
+    pub overwrite: bool,
+    /// Whether to write additional information to CSV files
+    #[arg(long)]
+    pub debug_model: bool,
+}
+
 /// The available commands.
 #[derive(Subcommand)]
 enum Commands {
@@ -30,12 +44,9 @@ enum Commands {
     Run {
         /// Path to the model directory.
         model_dir: PathBuf,
-        /// Directory for output files
-        #[arg(short, long)]
-        output_dir: Option<PathBuf>,
-        /// Whether to write additional information to CSV files
-        #[arg(long)]
-        debug_model: bool,
+        /// Other run options
+        #[command(flatten)]
+        opts: RunOpts,
     },
     /// Manage example models.
     Example {
@@ -54,11 +65,7 @@ impl Commands {
     /// Execute the supplied CLI command
     fn execute(self) -> Result<()> {
         match self {
-            Self::Run {
-                model_dir,
-                output_dir,
-                debug_model,
-            } => handle_run_command(&model_dir, output_dir.as_deref(), debug_model, None),
+            Self::Run { model_dir, opts } => handle_run_command(&model_dir, &opts, None),
             Self::Example { subcommand } => subcommand.execute(),
             Self::Validate { model_dir } => handle_validate_command(&model_dir, None),
         }
@@ -88,8 +95,7 @@ pub fn run_cli() -> Result<()> {
 /// Handle the `run` command.
 pub fn handle_run_command(
     model_path: &Path,
-    output_path: Option<&Path>,
-    debug_model: bool,
+    opts: &RunOpts,
     settings: Option<Settings>,
 ) -> Result<()> {
     // Load program settings, if not provided
@@ -99,29 +105,47 @@ pub fn handle_run_command(
         Settings::load().context("Failed to load settings.")?
     };
 
-    // This setting can be overridden by command-line argument
-    if debug_model {
+    // These settings can be overridden by command-line arguments
+    if opts.debug_model {
         settings.debug_model = true;
     }
+    if opts.overwrite {
+        settings.overwrite = true;
+    }
 
-    // Create output folder
-    let output_path = match output_path {
-        Some(p) => p.to_owned(),
-        None => get_output_dir(model_path)?,
+    // Get path to output folder
+    let pathbuf: PathBuf;
+    let output_path = if let Some(p) = opts.output_dir.as_deref() {
+        p
+    } else {
+        pathbuf = get_output_dir(model_path)?;
+        &pathbuf
     };
-    create_output_directory(&output_path).context("Failed to create output directory.")?;
+
+    let overwrite =
+        create_output_directory(output_path, settings.overwrite).with_context(|| {
+            format!(
+                "Failed to create output directory: {}",
+                output_path.display()
+            )
+        })?;
 
     // Initialise program logger
-    log::init(settings.log_level.as_deref(), Some(&output_path))
+    log::init(settings.log_level.as_deref(), Some(output_path))
         .context("Failed to initialise logging.")?;
 
     // Load the model to run
     let (model, assets) = load_model(model_path).context("Failed to load model.")?;
     info!("Loaded model from {}", model_path.display());
-    info!("Output data will be written to {}", output_path.display());
+    info!("Output folder: {}", output_path.display());
+
+    // NB: We have to wait until the logger is initialised to display this warning
+    if overwrite {
+        warn!("Output folder will be overwritten");
+    }
 
     // Run the simulation
-    crate::simulation::run(&model, assets, &output_path, settings.debug_model)?;
+    crate::simulation::run(&model, assets, output_path, settings.debug_model)?;
     info!("Simulation complete!");
 
     Ok(())

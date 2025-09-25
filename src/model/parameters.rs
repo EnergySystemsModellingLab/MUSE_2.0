@@ -34,7 +34,10 @@ define_unit_param_default!(default_value_of_lost_load, MoneyPerFlow, 1e9);
 define_unit_param_default!(default_price_tolerance, Dimensionless, 1e-6);
 define_param_default!(default_max_ironing_out_iterations, u32, 10);
 
-/// Represents the contents of the entire model file.
+/// Model parameters as defined in the `model.toml` file.
+///
+/// NOTE: If you add or change a field in this struct, you must also update the schema in
+/// `schemas/input/model.yaml`.
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct ModelParameters {
     /// Milestone years
