@@ -1,6 +1,6 @@
 //! Code for working with demand for a given commodity. Demand can vary by region, year and time
 //! slice.
-use super::super::{input_err_msg, read_csv};
+use super::super::{format_items_with_cap, input_err_msg, read_csv};
 use super::demand_slicing::{DemandSliceMap, read_demand_slices};
 use crate::commodity::{Commodity, CommodityID, CommodityType, DemandMap};
 use crate::id::IDCollection;
@@ -162,7 +162,8 @@ where
         }
         ensure!(
             missing_keys.is_empty(),
-            "Commodity {commodity_id} is missing demand data for {missing_keys:?}"
+            "Commodity {commodity_id} is missing demand data for {}",
+            format_items_with_cap(&missing_keys, 10)
         );
     }
 

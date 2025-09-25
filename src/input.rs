@@ -162,6 +162,19 @@ where
     Ok(())
 }
 
+/// Format a list of items with a cap on display count for error messages
+pub fn format_items_with_cap<T: std::fmt::Debug>(items: &[T], max_display: usize) -> String {
+    if items.len() <= max_display {
+        format!("{items:?}")
+    } else {
+        format!(
+            "{:?} and {} more",
+            &items[..max_display],
+            items.len() - max_display
+        )
+    }
+}
+
 /// Read a model from the specified directory.
 ///
 /// # Arguments

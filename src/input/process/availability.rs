@@ -1,5 +1,5 @@
 //! Code for reading process availabilities CSV file
-use super::super::{input_err_msg, read_csv, try_insert};
+use super::super::{format_items_with_cap, input_err_msg, read_csv, try_insert};
 use crate::process::{ProcessActivityLimitsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
 use crate::time_slice::TimeSliceInfo;
@@ -172,7 +172,8 @@ fn validate_activity_limits_maps(
         }
         ensure!(
             missing_keys.is_empty(),
-            "Process {process_id} is missing availabilities for the following regions, years and timeslice: {missing_keys:?}"
+            "Process {process_id} is missing availabilities for the following regions, years and timeslice: {}",
+            format_items_with_cap(&missing_keys, 10)
         );
     }
 
