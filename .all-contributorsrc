@@ -1,0 +1,98 @@
+{
+  "projectName": "MUSE_2.0",
+  "projectOwner": "EnergySystemsModellingLab",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": true,
+  "commitConvention": "gitmoji",
+  "contributors": [
+    {
+      "login": "alexdewar",
+      "name": "Alex Dewar",
+      "avatar_url": "https://avatars.githubusercontent.com/u/23149834?v=4",
+      "profile": "https://www.imperial.ac.uk/admin-services/ict/self-service/research-support/rcs/service-offering/research-software-engineering/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "tsmbland",
+      "name": "Tom Bland",
+      "avatar_url": "https://avatars.githubusercontent.com/u/23723407?v=4",
+      "profile": "https://github.com/tsmbland",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Sahil590",
+      "name": "Sahil Raja",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56438860?v=4",
+      "profile": "https://github.com/Sahil590",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Ashmit8583",
+      "name": "Ashmit Sikdar",
+      "avatar_url": "https://avatars.githubusercontent.com/u/137117727?v=4",
+      "profile": "https://github.com/Ashmit8583",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "dalonsoa",
+      "name": "Diego Alonso Álvarez",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6095790?v=4",
+      "profile": "https://www.imperial.ac.uk/admin-services/ict/self-service/research-support/rcs/service-offering/research-software-engineering/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "AdrianDAlessandro",
+      "name": "Adrian D'Alessandro",
+      "avatar_url": "https://avatars.githubusercontent.com/u/40875798?v=4",
+      "profile": "https://github.com/AdrianDAlessandro",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "TinyMarsh",
+      "name": "Ryan Smith",
+      "avatar_url": "https://avatars.githubusercontent.com/u/13540127?v=4",
+      "profile": "https://github.com/TinyMarsh",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "HarmonicReflux",
+      "name": "Benjamin Scharpf",
+      "avatar_url": "https://avatars.githubusercontent.com/u/16504600?v=4",
+      "profile": "https://github.com/HarmonicReflux",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "ahawkes",
+      "name": "Adam Hawkes",
+      "avatar_url": "https://avatars.githubusercontent.com/u/12055725?v=4",
+      "profile": "https://github.com/ahawkes",
+      "contributions": [
+        "ideas",
+        "doc"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "linkToUsage": true
+}
