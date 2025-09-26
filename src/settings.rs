@@ -72,10 +72,11 @@ impl Settings {
             if let Some(last) = line.find('=') {
                 // Add documentation from doc comments
                 let field = line[..last].trim();
-                if let Ok(docs) = Settings::get_field_docs(field) {
-                    for line in docs.split('\n') {
-                        write!(&mut out, "\n# # {}\n", line.trim()).unwrap();
-                    }
+
+                // Use doc comment to document parameter. All fields should have doc comments.
+                let docs = Settings::get_field_docs(field).expect("Missing doc comment for field");
+                for line in docs.split('\n') {
+                    write!(&mut out, "\n# # {}\n", line.trim()).unwrap();
                 }
 
                 writeln!(&mut out, "# {}", line.trim()).unwrap();
