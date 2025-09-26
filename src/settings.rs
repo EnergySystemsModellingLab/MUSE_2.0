@@ -1,19 +1,33 @@
 //! Code for loading program settings.
 use crate::input::read_toml;
+use crate::log::DEFAULT_LOG_LEVEL;
 use anyhow::Result;
-use serde::Deserialize;
+use documented::DocumentedFields;
+use serde::{Deserialize, Serialize};
+use std::fmt::Write;
 use std::path::Path;
 
 const SETTINGS_FILE_NAME: &str = "settings.toml";
+
+const DEFAULT_SETTINGS_FILE_HEADER: &str = "# This file contains the program settings for MUSE 2.0
+# For more information, visit:
+# \thttps://energysystemsmodellinglab.github.io/MUSE_2.0/file_formats/program_settings.html
+";
+
+/// Default log level for program
+fn default_log_level() -> String {
+    DEFAULT_LOG_LEVEL.to_string()
+}
 
 /// Program settings from config file
 ///
 /// NOTE: If you add or change a field in this struct, you must also update the schema in
 /// `schemas/settings.yaml`.
-#[derive(Debug, Default, Deserialize, PartialEq)]
+#[derive(Debug, DocumentedFields, Default, Serialize, Deserialize, PartialEq)]
 pub struct Settings {
-    /// The user's preferred logging level
-    pub log_level: Option<String>,
+    /// The default program log level
+    #[serde(default = "default_log_level")]
+    pub log_level: String,
     /// Whether to overwrite output files by default
     #[serde(default)]
     pub overwrite: bool,
@@ -41,6 +55,35 @@ impl Settings {
         }
 
         read_toml(file_path)
+    }
+
+    /// The contents of the default settings file
+    pub fn default_file_contents() -> String {
+        // Settings object with default values set by serde
+        let settings: Settings =
+            toml::from_str("").expect("Cannot create settings from empty TOML file");
+
+        // Convert to TOML
+        let settings_raw = toml::to_string(&settings).expect("Could not convert settings to TOML");
+
+        // Iterate through the generated TOML, commenting out lines and adding docs
+        let mut out = DEFAULT_SETTINGS_FILE_HEADER.to_string();
+        for line in settings_raw.split('\n') {
+            if let Some(last) = line.find('=') {
+                // Add documentation from doc comments
+                let field = line[..last].trim();
+
+                // Use doc comment to document parameter. All fields should have doc comments.
+                let docs = Settings::get_field_docs(field).expect("Missing doc comment for field");
+                for line in docs.split('\n') {
+                    write!(&mut out, "\n# # {}\n", line.trim()).unwrap();
+                }
+
+                writeln!(&mut out, "# {}", line.trim()).unwrap();
+            }
+        }
+
+        out
     }
 }
 
@@ -74,10 +117,15 @@ mod tests {
         assert_eq!(
             Settings::load().unwrap(),
             Settings {
-                log_level: Some("warn".to_string()),
+                log_level: "warn".to_string(),
                 debug_model: false,
                 overwrite: false
             }
         );
+    }
+
+    #[test]
+    fn test_default_file_contents() {
+        assert!(!Settings::default_file_contents().is_empty());
     }
 }
