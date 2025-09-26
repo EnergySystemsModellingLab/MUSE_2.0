@@ -125,8 +125,8 @@ where
             .with_context(|| format!("Process {} not found", param_raw.process_id))?;
 
         // Get years
-        let process_years = &process.years;
-        let parameter_years = parse_year_str(&param_raw.years, process_years.iter().copied())
+        let process_years = &process.year_range;
+        let parameter_years = parse_year_str(&param_raw.years, process_years.clone())
             .with_context(|| {
                 format!("Invalid year for process {id}. Valid years are {process_years:?}")
             })?;
@@ -164,7 +164,7 @@ fn check_process_parameters(
             .get(process_id)
             .with_context(|| format!("Missing parameters for process {process_id}"))?;
 
-        let reference_years = &process.years;
+        let reference_years = &process.milestone_years;
         let reference_regions = &process.regions;
 
         // Only give an error for missing parameters >=base_year, so that users are not obliged to

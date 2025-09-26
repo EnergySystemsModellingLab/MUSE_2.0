@@ -114,7 +114,7 @@ where
             })?;
 
         // Get years
-        let process_years = &process.years;
+        let process_years = &process.milestone_years;
         let record_years = parse_year_str(&record.years, process_years.iter().copied())
             .with_context(|| {
                 format!("Invalid year for process {id}. Valid years are {process_years:?}")
@@ -158,7 +158,7 @@ fn validate_activity_limits_maps(
             .get(process_id)
             .with_context(|| format!("Missing availabilities for process {process_id}"))?;
 
-        let reference_years = &process.years.clone();
+        let reference_years = &process.milestone_years;
         let reference_regions = &process.regions;
         let mut missing_keys = Vec::new();
         for year in reference_years {

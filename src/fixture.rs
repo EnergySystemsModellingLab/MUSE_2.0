@@ -149,7 +149,8 @@ pub fn process(
     Process {
         id: "process1".into(),
         description: "Description".into(),
-        years: (2010..=2020).collect(),
+        year_range: 2010..=2020,
+        milestone_years: (2010..=2020).collect(),
         activity_limits: ProcessActivityLimitsMap::new(),
         flows: ProcessFlowsMap::new(),
         parameters: process_parameter_map,

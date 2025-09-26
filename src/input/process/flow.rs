@@ -93,7 +93,7 @@ where
             })?;
 
         // Get years
-        let process_years = &process.years;
+        let process_years = &process.milestone_years;
         let record_years = parse_year_str(&record.years, process_years.iter().copied())
             .with_context(|| {
                 format!("Invalid year for process {id}. Valid years are {process_years:?}")
@@ -146,11 +146,11 @@ fn validate_flows_and_update_primary_output(
             .with_context(|| format!("Missing flows map for process {process_id}"))?;
 
         ensure!(
-            map.len() == process.years.len() * process.regions.len(),
+            map.len() == process.milestone_years.len() * process.regions.len(),
             "Flows map for process {process_id} does not cover all regions and years"
         );
 
-        let mut iter = iproduct!(process.years.iter(), process.regions.iter());
+        let mut iter = iproduct!(process.milestone_years.iter(), process.regions.iter());
 
         let primary_output = if let Some(primary_output) = &process.primary_output {
             Some(primary_output.clone())
@@ -260,7 +260,7 @@ mod tests {
         I: Clone + Iterator<Item = (CommodityID, ProcessFlow)>,
     {
         let map: IndexMap<CommodityID, ProcessFlow> = flows.clone().collect();
-        let flows_inner = iproduct!(&process.regions, &process.years)
+        let flows_inner = iproduct!(&process.regions, &process.milestone_years)
             .map(|(region_id, year)| ((region_id.clone(), *year), map.clone()))
             .collect();
         let flows = hash_map! {process.id.clone() => flows_inner};
