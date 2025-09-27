@@ -114,9 +114,9 @@ where
             })?;
 
         // Get years
-        let process_years = &process.milestone_years;
-        let record_years = parse_year_str(&record.years, process_years.iter().copied())
-            .with_context(|| {
+        let process_years = &process.year_range;
+        let record_years =
+            parse_year_str(&record.years, process_years.clone()).with_context(|| {
                 format!("Invalid year for process {id}. Valid years are {process_years:?}")
             })?;
 

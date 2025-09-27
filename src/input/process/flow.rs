@@ -1,13 +1,15 @@
 //! Code for reading process flows file
 use super::super::{input_err_msg, read_csv};
 use crate::commodity::{CommodityID, CommodityMap};
+use crate::input::format_items_with_cap;
+use crate::model::Model;
 use crate::process::{FlowType, ProcessFlow, ProcessFlowsMap, ProcessID, ProcessMap};
 use crate::region::parse_region_str;
 use crate::units::{FlowPerActivity, MoneyPerFlow};
 use crate::year::parse_year_str;
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use indexmap::IndexMap;
-use itertools::iproduct;
+use itertools::{Itertools, iproduct};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -60,10 +62,11 @@ pub fn read_process_flows(
     model_dir: &Path,
     processes: &mut ProcessMap,
     commodities: &CommodityMap,
+    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessFlowsMap>> {
     let file_path = model_dir.join(PROCESS_FLOWS_FILE_NAME);
     let process_flow_csv = read_csv(&file_path)?;
-    read_process_flows_from_iter(process_flow_csv, processes, commodities)
+    read_process_flows_from_iter(process_flow_csv, processes, commodities, milestone_years)
         .with_context(|| input_err_msg(&file_path))
 }
 
@@ -72,6 +75,7 @@ fn read_process_flows_from_iter<I>(
     iter: I,
     processes: &mut ProcessMap,
     commodities: &CommodityMap,
+    milestone_years: &[u32],
 ) -> Result<HashMap<ProcessID, ProcessFlowsMap>>
 where
     I: Iterator<Item = ProcessFlowRaw>,
@@ -93,9 +97,9 @@ where
             })?;
 
         // Get years
-        let process_years = &process.milestone_years;
-        let record_years = parse_year_str(&record.years, process_years.iter().copied())
-            .with_context(|| {
+        let process_years = &process.year_range;
+        let record_years =
+            parse_year_str(&record.years, process_years.clone()).with_context(|| {
                 format!("Invalid year for process {id}. Valid years are {process_years:?}")
             })?;
 
@@ -131,7 +135,7 @@ where
         }
     }
 
-    validate_flows_and_update_primary_output(processes, &flows_map)?;
+    validate_flows_and_update_primary_output(processes, &flows_map, milestone_years)?;
 
     Ok(flows_map)
 }
@@ -139,29 +143,54 @@ where
 fn validate_flows_and_update_primary_output(
     processes: &mut ProcessMap,
     flows_map: &HashMap<ProcessID, ProcessFlowsMap>,
+    milestone_years: &[u32],
 ) -> Result<()> {
     for (process_id, process) in processes.iter_mut() {
         let map = flows_map
             .get(process_id)
             .with_context(|| format!("Missing flows map for process {process_id}"))?;
 
-        ensure!(
-            map.len() == process.milestone_years.len() * process.regions.len(),
-            "Flows map for process {process_id} does not cover all regions and years"
-        );
+        // ensure!(
+        //     map.len() == process.milestone_years.len() * process.regions.len(),
+        //     "Flows map for process {process_id} does not cover all regions and years"
+        // );
 
-        let mut iter = iproduct!(process.milestone_years.iter(), process.regions.iter());
+        let mut iter = iproduct!(process.regions.iter(), process.year_range.clone());
+
+        let missing = iter
+            .clone()
+            .filter(|(&region_id, year)| !map.contains_key(&(region_id.clone(), *year)))
+            .into_group_map();
+        if !missing.is_empty() {
+            let errs = process.regions.iter().filter_map(|region_id| {
+                let missing_years = missing.get(region_id)?;
+                Some(format!(
+                    "Process {} missing flows in region {} for years: {}",
+                    process_id,
+                    region_id,
+                    format_items_with_cap(missing_years)
+                ))
+            });
+
+            bail!("{}", errs.into_iter().join("\n"));
+        }
+        // let mut missing = IndexMap::new();
+        // for (year, region_id) in iter.clone() {
+        //     if !map.contains_key(&(year, region_id.clone())) {
+        //         missing.insert(key, value)
+        //     }
+        // }
 
         let primary_output = if let Some(primary_output) = &process.primary_output {
             Some(primary_output.clone())
         } else {
             let (year, region_id) = iter.next().unwrap();
-            infer_primary_output(&map[&(region_id.clone(), *year)]).with_context(|| {
+            infer_primary_output(&map[&(region_id.clone(), year)]).with_context(|| {
                 format!("Could not infer primary_output for process {process_id}")
             })?
         };
 
-        for (&year, region_id) in iter {
+        for (year, region_id) in iter {
             let flows = &map[&(region_id.clone(), year)];
 
             // Check that the process has flows for this region/year
