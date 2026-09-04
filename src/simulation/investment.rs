@@ -1,7 +1,7 @@
 //! Code for performing agent investment.
 use super::optimisation::{DispatchRun, FlowMap};
 use crate::agent::{Agent, AgentID};
-use crate::asset::{Asset, AssetRef};
+use crate::asset::{Asset, AssetCapacity, AssetRef};
 use crate::commodity::{Commodity, CommodityID, CommodityMap};
 use crate::model::Model;
 use crate::output::DataWriter;
@@ -32,6 +32,130 @@ pub type DemandMap = IndexMap<TimeSliceID, Flow>;
 
 /// Demand for a given combination of commodity, region and time slice
 pub type AllDemandMap = IndexMap<(CommodityID, RegionID, TimeSliceID), Flow>;
+
+/// An asset that can provide one or more tranches during investment selection.
+pub enum InvestmentOption {
+    /// A candidate asset that can be selected repeatedly.
+    Candidate {
+        /// The single tranche used for appraisal and repeated investment.
+        single_tranche: AssetRef,
+        /// The number of tranches selected from this option.
+        selected_tranches: u32,
+    },
+    /// A commissioned asset whose existing tranches can be retained.
+    Commissioned {
+        /// The original asset, including its full capacity and mothball history.
+        asset: AssetRef,
+        /// The number of tranches selected for retention.
+        selected_tranches: u32,
+    },
+}
+
+impl InvestmentOption {
+    /// Create an investment option from a candidate or commissioned asset.
+    pub fn new(asset: AssetRef) -> Self {
+        if asset.is_candidate() {
+            Self::Candidate {
+                single_tranche: asset.as_single_tranche(),
+                selected_tranches: 0,
+            }
+        } else if asset.is_commissioned() {
+            Self::Commissioned {
+                asset,
+                selected_tranches: 0,
+            }
+        } else {
+            panic!("Investment options must be Candidate or Commissioned assets")
+        }
+    }
+
+    /// Return the next single tranche available for appraisal, if any.
+    pub fn expose_tranche(&self) -> Option<AssetRef> {
+        match self {
+            Self::Candidate { single_tranche, .. } => Some(single_tranche.clone()),
+            Self::Commissioned {
+                asset,
+                selected_tranches,
+            } => (*selected_tranches < asset.num_tranches())
+                .then(|| asset.clone().as_single_tranche()),
+        }
+    }
+
+    /// Record the selection of one exposed tranche.
+    pub fn select_tranche(&mut self) {
+        match self {
+            Self::Candidate {
+                selected_tranches, ..
+            } => *selected_tranches += 1,
+            Self::Commissioned {
+                asset,
+                selected_tranches,
+            } => {
+                assert!(
+                    *selected_tranches < asset.num_tranches(),
+                    "Cannot select more tranches than a commissioned asset contains"
+                );
+                *selected_tranches += 1;
+            }
+        }
+    }
+
+    /// Return the asset represented by this option for process and limit lookups.
+    pub fn asset(&self) -> &AssetRef {
+        match self {
+            Self::Candidate { single_tranche, .. } => single_tranche,
+            Self::Commissioned { asset, .. } => asset,
+        }
+    }
+
+    /// Return the process ID for this option.
+    pub fn process_id(&self) -> &ProcessID {
+        self.asset().process_id()
+    }
+
+    /// Return the number of tranches selected from this option.
+    pub fn selected_tranches(&self) -> u32 {
+        match self {
+            Self::Candidate {
+                selected_tranches, ..
+            }
+            | Self::Commissioned {
+                selected_tranches, ..
+            } => *selected_tranches,
+        }
+    }
+
+    /// Materialise the option's selected capacity for the next investment state.
+    ///
+    /// Commissioned assets are returned even when no tranche was selected, with all of their
+    /// tranches mothballed for `year`. Candidates with no selected tranches return `None`.
+    pub fn materialise(&self, year: u32, agent_id: &AgentID) -> Option<AssetRef> {
+        match self {
+            Self::Candidate {
+                single_tranche,
+                selected_tranches,
+            } => (*selected_tranches > 0).then(|| {
+                let mut asset = single_tranche.clone();
+                let tranche_size = asset.capacity().tranche_size();
+                asset
+                    .make_mut()
+                    .set_capacity(AssetCapacity::new(*selected_tranches, tranche_size));
+                asset
+                    .make_mut()
+                    .select_candidate_for_investment(agent_id.clone());
+                asset
+            }),
+            Self::Commissioned {
+                asset,
+                selected_tranches,
+            } => Some(
+                asset
+                    .clone()
+                    .with_mothballed_tranches(asset.num_tranches() - selected_tranches, Some(year)),
+            ),
+        }
+    }
+}
 
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
