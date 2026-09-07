@@ -367,6 +367,9 @@ pub fn select_assets_for_cycle(
         }
     }
 
+    // Drop any assets who's capacities were dropped to zero
+    all_cycle_assets.retain(|asset| asset.num_tranches() > 0);
+
     Ok(all_cycle_assets)
 }
 
