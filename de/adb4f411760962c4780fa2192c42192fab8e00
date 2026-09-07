@@ -1,0 +1,27 @@
+src/asset.rs
+  s_f21e6a9e7d3e8d::t_1467a0b0048c21 1027-1030
+src/simulation/market.rs
+  h_e76403a1cd4bf1 370
+  s_f21e6a9e7d3e8d::t_1467a0b0048c21 371-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "deadb4f411760962c4780fa2192c42192fab8e00",
+  "prompts": {},
+  "humans": {
+    "h_e76403a1cd4bf1": {
+      "author": "Tom Bland <tom_bland@hotmail.co.uk>"
+    }
+  },
+  "sessions": {
+    "s_f21e6a9e7d3e8d": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "f4415712-3bc4-4f80-ba25-8c90b9d2b18d",
+        "model": "copilot/claude-opus-4.8"
+      },
+      "human_author": "Tom Bland <tom_bland@hotmail.co.uk>"
+    }
+  }
+}
