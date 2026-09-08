@@ -1,0 +1,19 @@
+src/simulation/investment/appraisal/constraints.rs
+  h_e76403a1cd4bf1 24,26
+src/asset.rs
+  h_e76403a1cd4bf1 295,560,849-852
+  h_e76403a1cd4bf1 853
+tests/data/simple_mothball/commodity_flows.csv
+  h_e76403a1cd4bf1 322-369,642-657,706-769
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "dd1d72f5ce8bc79591a75872927bbbd6b4b663d3",
+  "prompts": {},
+  "humans": {
+    "h_e76403a1cd4bf1": {
+      "author": "Tom Bland <tom_bland@hotmail.co.uk>"
+    }
+  }
+}
