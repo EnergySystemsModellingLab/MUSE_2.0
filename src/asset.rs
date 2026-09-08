@@ -987,54 +987,13 @@ impl AssetRef {
         }
     }
 
-    /// Get an [`AssetRef`] representing a subset of this asset's tranches.
-    ///
-    /// If some of the asset's tranches are mothballed, these are discarded before non-mothballed
-    /// tranches. For example, if an asset has seven tranches of which four are mothballed and we are
-    /// reducing the number of tranches to four, the new asset will have one mothballed tranche.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `new_num_tranches` is zero or exceeds the total capacity of this asset.
-    pub fn with_subset_of_tranches(self, new_num_tranches: u32) -> Self {
-        if new_num_tranches == self.num_tranches() {
-            return self;
-        }
-
-        assert!(
-            new_num_tranches > 0,
-            "Cannot make an asset with zero tranches"
-        );
-
-        let max_num_tranches = self.capacity().num_tranches();
-        let tranche_size = self.capacity().tranche_size();
-
-        assert!(
-            new_num_tranches <= max_num_tranches,
-            "Cannot make an asset with more tranches than original"
-        );
-
-        // Make a new Asset with fewer tranches. If there are more mothballed tranches than the new asset
-        // will have, we reduce this number to avoid there being more mothballed tranches than the new
-        // asset has, which would be a logic error. We discard mothballed before non-mothballed
-        // tranches.
-        let new_num_mothballed =
-            new_num_tranches.saturating_sub(self.get_num_nonmothballed_tranches());
-        let mut asset = self.with_mothballed_tranches(new_num_mothballed, None);
-        asset
-            .make_mut()
-            .set_capacity(AssetCapacity::new(new_num_tranches, tranche_size));
-        asset
-    }
-
     /// Get an [`AssetRef`] representing a single tranche of this asset.
     pub fn as_single_tranche(self) -> Self {
-        let new_num_tranches = 1;
         let tranche_size = self.capacity().tranche_size();
         let mut asset = self.with_no_mothballed_tranches();
         asset
             .make_mut()
-            .set_capacity(AssetCapacity::new(new_num_tranches, tranche_size));
+            .set_capacity(AssetCapacity::new(1, tranche_size));
         asset
     }
 
@@ -1071,10 +1030,18 @@ impl AssetRef {
             return None;
         }
 
-        // `with_subset_of_tranches` discards the oldest mothballed tranches first, which are exactly the
-        // ones being decommissioned here.
         log_decommissioning(&self, tranches_to_remove, &reason);
-        Some(self.with_subset_of_tranches(new_num_tranches))
+
+        // Retain the newest mothball events, discarding the oldest events that have just been
+        // decommissioned. The capacity is reduced after trimming the event history.
+        let tranche_size = self.capacity().tranche_size();
+        let new_num_mothballed =
+            new_num_tranches.saturating_sub(self.get_num_nonmothballed_tranches());
+        let mut asset = self.with_mothballed_tranches(new_num_mothballed, None);
+        asset
+            .make_mut()
+            .set_capacity(AssetCapacity::new(new_num_tranches, tranche_size));
+        Some(asset)
     }
 
     /// Return a new [`AssetRef`] with the specified number of tranches mothballed.
@@ -1513,39 +1480,6 @@ mod tests {
     }
 
     #[rstest]
-    #[case::subset(2, false)]
-    #[case::all_tranches(3, true)]
-    fn with_subset_of_tranches(
-        multi_tranche_asset: Asset,
-        #[case] num_tranches: u32,
-        #[case] expect_same_asset: bool,
-    ) {
-        let asset = AssetRef::from(multi_tranche_asset);
-        let asset_subset = asset.clone().with_subset_of_tranches(num_tranches);
-
-        assert_eq!(
-            asset_subset.capacity(),
-            AssetCapacity::new(num_tranches, Capacity(4.0))
-        );
-        assert_eq!(asset_subset.id(), asset.id());
-        assert_eq!(asset_subset.agent_id(), asset.agent_id());
-        assert_eq!(Arc::ptr_eq(&asset_subset.0, &asset.0), expect_same_asset);
-        assert_eq!(asset.capacity(), AssetCapacity::new(3, Capacity(4.0)));
-    }
-
-    #[rstest]
-    #[should_panic(expected = "Cannot make an asset with zero tranches")]
-    fn with_subset_of_tranches_panics_for_zero_tranches(commissioned_multi_tranche: AssetRef) {
-        commissioned_multi_tranche.with_subset_of_tranches(0);
-    }
-
-    #[rstest]
-    #[should_panic(expected = "Cannot make an asset with more tranches than original")]
-    fn with_subset_of_tranches_panics_for_too_many_tranches(commissioned_multi_tranche: AssetRef) {
-        commissioned_multi_tranche.with_subset_of_tranches(4);
-    }
-
-    #[rstest]
     fn asset_commission(process: Process) {
         // Test successful commissioning of Ready asset
         let mut asset = Asset::new_ready(
@@ -1783,18 +1717,6 @@ mod tests {
     }
 
     #[rstest]
-    fn with_subset_of_tranches_caps_mothballed(commissioned_multi_tranche: AssetRef) {
-        // Mothball all 3 tranches
-        let asset = commissioned_multi_tranche.with_mothballed_tranches(3, Some(2020));
-        assert_eq!(asset.get_num_mothballed_tranches(), 3);
-
-        // Taking a subset of 2 tranches caps the mothballed count at the new number of tranches
-        let subset = asset.with_subset_of_tranches(2);
-        assert_eq!(subset.num_tranches(), 2);
-        assert_eq!(subset.get_num_mothballed_tranches(), 2);
-    }
-
-    #[rstest]
     fn with_decommission_mothballed_nothing_old_enough(commissioned_multi_tranche: AssetRef) {
         let asset = commissioned_multi_tranche.with_mothballed_tranches(1, Some(2020));
         // Threshold is 2005, so the 2020 event is not old enough: the asset is returned unchanged
@@ -1813,8 +1735,14 @@ mod tests {
             .with_mothballed_tranches(2, Some(2020));
 
         // With a threshold of 2015, only the 2010 event is old enough to decommission
-        let result = asset.with_decommission_mothballed(2025, 10).unwrap();
+        let result = asset
+            .clone()
+            .with_decommission_mothballed(2025, 10)
+            .unwrap();
         assert_eq!(result.num_tranches(), 2);
+        assert_eq!(result.capacity(), AssetCapacity::new(2, Capacity(4.0)));
+        assert_eq!(result.id(), asset.id());
+        assert_eq!(result.agent_id(), asset.agent_id());
         assert_eq!(result.get_num_mothballed_tranches(), 1);
         assert_equal(
             result.get_mothball_events().unwrap().iter(),
