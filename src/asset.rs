@@ -292,7 +292,7 @@ impl Asset {
     ) -> RangeInclusive<Activity> {
         let activity_per_capacity_limits = self.activity_limits.get_limit(time_slice_selection);
         let cap2act = self.process.capacity_to_activity;
-        let max_activity = self.total_capacity() * cap2act;
+        let max_activity = self.active_capacity() * cap2act;
         let lb = max_activity * *activity_per_capacity_limits.start();
         let ub = max_activity * *activity_per_capacity_limits.end();
         lb..=ub
@@ -557,7 +557,7 @@ impl Asset {
 
     /// Maximum activity for this asset
     pub fn max_activity(&self) -> Activity {
-        self.total_capacity() * self.process.capacity_to_activity
+        self.active_capacity() * self.process.capacity_to_activity
     }
 
     /// Get a specific process flow
@@ -844,6 +844,11 @@ impl Asset {
     /// For non-commissioned assets, this always returns the total number of tranches.
     pub fn get_num_nonmothballed_tranches(&self) -> u32 {
         self.num_tranches() - self.get_num_mothballed_tranches()
+    }
+
+    /// Get the active (non-mothballed) capacity for this asset
+    pub fn active_capacity(&self) -> Capacity {
+        self.capacity().tranche_size() * Dimensionless(self.get_num_nonmothballed_tranches() as f64)
     }
 
     /// The number of tranches this asset represents

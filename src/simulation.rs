@@ -178,27 +178,6 @@ fn run_dispatch_for_year(
     debug_assert!(assets.iter().all(|asset| !asset.is_candidate()));
     debug_assert!(candidates.iter().all(|asset| asset.is_candidate()));
 
-    // Only include non-mothballed tranches
-    let assets_vec: Vec<AssetRef>;
-    let assets = if assets
-        .iter()
-        .any(|asset| asset.has_any_mothballed_tranches())
-    {
-        assets_vec = assets
-            .iter()
-            .cloned()
-            .filter_map(|asset| {
-                // Exclude fully mothballed assets entirely. If assets are partially mothballed,
-                // get a new asset without the mothballed tranches.
-                let num_tranches = asset.get_num_nonmothballed_tranches();
-                (num_tranches > 0).then(|| asset.with_subset_of_tranches(num_tranches))
-            })
-            .collect();
-        &assets_vec
-    } else {
-        assets
-    };
-
     // Run dispatch optimisation with existing assets only, if there are any. If not, then assume no
     // flows (i.e. all are zero)
     let (solution_existing, flow_map) = if assets.is_empty() {
