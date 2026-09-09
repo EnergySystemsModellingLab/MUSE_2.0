@@ -1,0 +1,24 @@
+src/simulation/investment.rs
+  h_e76403a1cd4bf1 108
+tests/data/simple/debug_appraisal_results.csv
+  h_e76403a1cd4bf1 107
+tests/data/simple/debug_appraisal_results_time_slices.csv
+  h_e76403a1cd4bf1 1666-1673,1678-1689,1694-1697,4154-4161,4170-4177
+tests/data/simple/debug_commodity_balance_duals.csv
+  h_e76403a1cd4bf1 148-149,154-157,474-477
+tests/data/simple/debug_dispatch_assets.csv
+  h_e76403a1cd4bf1 355-356,362-363,371-373,379-381,405,409,414-417,421-425,430-433,1209,1213-1233
+tests/data/simple/debug_solver.csv
+  h_e76403a1cd4bf1 6-7,13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c3de55a5e5475e0c93093ce867ea2b239c337603",
+  "prompts": {},
+  "humans": {
+    "h_e76403a1cd4bf1": {
+      "author": "Tom Bland <tom_bland@hotmail.co.uk>"
+    }
+  }
+}
