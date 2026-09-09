@@ -1,0 +1,21 @@
+src/simulation/optimisation/constraints.rs
+  h_e76403a1cd4bf1 543
+  h_e76403a1cd4bf1 12,459,479-480,482-486,488-489,491-492,506,553
+src/simulation/market.rs
+  h_e76403a1cd4bf1 241,294,305-306
+  h_e76403a1cd4bf1 4,239
+src/simulation/optimisation.rs
+  h_e76403a1cd4bf1 266
+  h_e76403a1cd4bf1 4,12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "72c4da3b49d0a830527baa370db27697cb089aff",
+  "prompts": {},
+  "humans": {
+    "h_e76403a1cd4bf1": {
+      "author": "Tom Bland <tom_bland@hotmail.co.uk>"
+    }
+  }
+}
