@@ -33,7 +33,7 @@ derive_more = {version = "2.1", features = ["add", "add_assign", "not", "deref",
 petgraph = "0.8.3"
 strum = {version = "0.28.0", features = ["derive"]}
 documented = "0.10.0"
-dirs = "6.0.0"
+dirs = "7.0.0"
 edit = "0.1.5"
 erased-serde = "0.4.10"
 context_manager = "0.1.3"
