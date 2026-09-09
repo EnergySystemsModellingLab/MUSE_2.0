@@ -1,0 +1,15 @@
+src/time_slice.rs
+  h_e76403a1cd4bf1 194
+  h_e76403a1cd4bf1 193,195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "673136b890f222993802dbce554931058f877d95",
+  "prompts": {},
+  "humans": {
+    "h_e76403a1cd4bf1": {
+      "author": "Tom Bland <tom_bland@hotmail.co.uk>"
+    }
+  }
+}
