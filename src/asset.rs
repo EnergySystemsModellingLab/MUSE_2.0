@@ -989,6 +989,10 @@ impl AssetRef {
 
     /// Get an [`AssetRef`] representing a single tranche of this asset.
     pub fn as_single_tranche(self) -> Self {
+        assert!(
+            self.num_tranches() > 0,
+            "Cannot convert an asset with zero tranches to a single tranche"
+        );
         let tranche_size = self.capacity().tranche_size();
         let mut asset = self.with_no_mothballed_tranches();
         asset
