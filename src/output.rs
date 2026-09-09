@@ -511,11 +511,7 @@ impl DebugDataWriter {
                 let activity_coefficient = result.coefficients.activity_coefficients[time_slice];
                 // Map the individual time slice back to its containing selection so we can look
                 // up selection-level demand and unmet demand.
-                let selection = match time_slice_level {
-                    TimeSliceLevel::Annual => TimeSliceSelection::Annual,
-                    TimeSliceLevel::Season => TimeSliceSelection::Season(time_slice.season.clone()),
-                    TimeSliceLevel::DayNight => TimeSliceSelection::Single(time_slice.clone()),
-                };
+                let selection = time_slice_level.containing_selection(time_slice);
                 let demand = demand[&selection];
                 let unmet_demand = result.unmet_demand[&selection];
                 let row = AppraisalResultsTimeSliceRow {
