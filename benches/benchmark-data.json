@@ -1,5 +1,5 @@
 {
-  "lastUpdate": 1788440667673,
+  "lastUpdate": 1788967143915,
   "repoUrl": "https://github.com/EnergySystemsModellingLab/MUSE2",
   "entries": {
     "Benchmark": [
@@ -311,6 +311,110 @@
           {
             "name": "select_best_assets_sequential/20",
             "value": 175652280.5,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "t.bland@imperial.ac.uk",
+            "name": "Tom Bland",
+            "username": "tsmbland"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "f0c1049557cc8540ed140a3c1b2b901c7ff669ca",
+          "message": "Merge pull request #1540 from EnergySystemsModellingLab/demand_map\n\nUse `TimeSliceSelection` for demand maps",
+          "timestamp": "2026-09-09T16:14:46+01:00",
+          "tree_id": "a17cad5617efc5f8c724bc9101805238beb9ad19",
+          "url": "https://github.com/EnergySystemsModellingLab/MUSE2/commit/f0c1049557cc8540ed140a3c1b2b901c7ff669ca"
+        },
+        "date": 1788967143914,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "example_run/circularity example",
+            "value": 491991545.5,
+            "unit": "ns"
+          },
+          {
+            "name": "example_run/missing_commodity example",
+            "value": 275340991,
+            "unit": "ns"
+          },
+          {
+            "name": "example_run/muse1_default example",
+            "value": 363138419.5,
+            "unit": "ns"
+          },
+          {
+            "name": "example_run/simple example",
+            "value": 101066028.16666666,
+            "unit": "ns"
+          },
+          {
+            "name": "example_run/two_outputs example",
+            "value": 488491296,
+            "unit": "ns"
+          },
+          {
+            "name": "example_run/two_regions example",
+            "value": 568585165,
+            "unit": "ns"
+          },
+          {
+            "name": "select_best_assets_parallel/01",
+            "value": 9132739.78888889,
+            "unit": "ns"
+          },
+          {
+            "name": "select_best_assets_parallel/05",
+            "value": 27020074.262032084,
+            "unit": "ns"
+          },
+          {
+            "name": "select_best_assets_parallel/10",
+            "value": 45256271.125,
+            "unit": "ns"
+          },
+          {
+            "name": "select_best_assets_parallel/15",
+            "value": 65281159.5,
+            "unit": "ns"
+          },
+          {
+            "name": "select_best_assets_parallel/20",
+            "value": 85239053.75,
+            "unit": "ns"
+          },
+          {
+            "name": "select_best_assets_sequential/01",
+            "value": 9302129.2375,
+            "unit": "ns"
+          },
+          {
+            "name": "select_best_assets_sequential/05",
+            "value": 44653254.25,
+            "unit": "ns"
+          },
+          {
+            "name": "select_best_assets_sequential/10",
+            "value": 90025779.25,
+            "unit": "ns"
+          },
+          {
+            "name": "select_best_assets_sequential/15",
+            "value": 133799280.25,
+            "unit": "ns"
+          },
+          {
+            "name": "select_best_assets_sequential/20",
+            "value": 178983836,
             "unit": "ns"
           }
         ]
