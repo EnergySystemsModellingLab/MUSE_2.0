@@ -1,8 +1,9 @@
 //! Code for performing agent investment.
+use super::demand::{AllDemandMap, DemandMap, collect_preset_demands_for_year};
 use super::optimisation::{DispatchRun, FlowMap};
 use crate::agent::{Agent, AgentID};
 use crate::asset::{Asset, AssetRef};
-use crate::commodity::{Commodity, CommodityID, CommodityMap};
+use crate::commodity::{Commodity, CommodityID};
 use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::ProcessID;
@@ -13,7 +14,6 @@ use crate::timeit::InvestmentTimer;
 use crate::units::{ActivityPerCapacity, Capacity, Flow, FlowPerCapacity};
 use anyhow::{Result, ensure};
 use context_manager;
-use indexmap::IndexMap;
 use itertools::Itertools;
 use log::{debug, warn};
 use rayon::prelude::*;
@@ -26,12 +26,6 @@ use appraisal::{
     AppraisalOutput, appraise_investment, count_equal_and_best_appraisal_outputs,
     sort_and_filter_appraisal_outputs,
 };
-
-/// A map of demand across time-slice selections for a specific market
-pub type DemandMap = IndexMap<TimeSliceSelection, Flow>;
-
-/// Demand for a given combination of commodity, region and time-slice selection
-pub type AllDemandMap = IndexMap<(CommodityID, RegionID, TimeSliceSelection), Flow>;
 
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
@@ -126,31 +120,6 @@ pub fn perform_agent_investment(
     }
 
     Ok(all_selected_assets)
-}
-
-/// Collect the preset commodity demands for a given year into a map of commodity, region and
-/// time slice selection to demand.
-///
-/// Demand for each commodity is stored at its natural time-slice selection level, matching the
-/// balance level at which the investment appraisal operates.
-pub fn collect_preset_demands_for_year(commodities: &CommodityMap, year: u32) -> AllDemandMap {
-    let mut demand_map = AllDemandMap::new();
-    for (commodity_id, commodity) in commodities {
-        for ((region_id, data_year, time_slice_selection), demand) in &commodity.demand {
-            if *data_year != year {
-                continue;
-            }
-            demand_map.insert(
-                (
-                    commodity_id.clone(),
-                    region_id.clone(),
-                    time_slice_selection.clone(),
-                ),
-                *demand,
-            );
-        }
-    }
-    demand_map
 }
 
 /// Update net demand map with flows from a set of assets

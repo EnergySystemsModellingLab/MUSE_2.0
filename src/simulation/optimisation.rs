@@ -8,7 +8,7 @@ use crate::model::Model;
 use crate::output::DataWriter;
 use crate::region::RegionID;
 use crate::simulation::PriceMap;
-use crate::simulation::investment::AllDemandMap;
+use crate::simulation::demand::AllDemandMap;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo, TimeSliceSelection};
 use crate::units::{Activity, Flow, Money, MoneyPerActivity, MoneyPerFlow};
 use anyhow::{Context, Result, anyhow, bail};

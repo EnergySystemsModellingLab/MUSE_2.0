@@ -7,9 +7,9 @@ use crate::model::Model;
 use crate::output::DataWriter;
 use crate::process::{Process, ProcessID};
 use crate::region::RegionID;
+use crate::simulation::demand::{AllDemandMap, DemandMap};
 use crate::simulation::investment::{
-    AllDemandMap, DemandMap, calculate_candidate_asset_capacity_scale, select_best_assets,
-    update_net_demand_map,
+    calculate_candidate_asset_capacity_scale, select_best_assets, update_net_demand_map,
 };
 use crate::simulation::prices::Prices;
 use crate::time_slice::TimeSliceInfo;
