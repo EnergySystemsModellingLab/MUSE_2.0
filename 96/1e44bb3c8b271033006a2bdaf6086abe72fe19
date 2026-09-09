@@ -1,0 +1,50 @@
+tests/data/circularity/asset_capacities.csv
+  h_e76403a1cd4bf1 29,35,46
+tests/data/circularity/commodity_flows.csv
+  h_e76403a1cd4bf1 626-641,650-657,706-729,742-753,821-826,830-841,854-865,948-951,954-961,970-977,1042-1057,1066-1073,1122-1129,1134-1137,1314-1329,1698-1713
+tests/data/circularity/commodity_prices.csv
+  h_e76403a1cd4bf1 178-185,190-193,210-241,274-297,302-305,338-346,350-353,386-401,434-449,498-513
+tests/data/circularity_npv/asset_capacities.csv
+  h_e76403a1cd4bf1 29,35,46
+tests/data/circularity_npv/commodity_flows.csv
+  h_e76403a1cd4bf1 626-641,650-657,706-729,742-753,821-826,830-841,854-865,948-951,954-961,970-977,1042-1057,1066-1073,1122-1129,1134-1137,1314-1329,1698-1713
+tests/data/circularity_npv/commodity_prices.csv
+  h_e76403a1cd4bf1 178-185,190-193,210-241,274-297,302-305,338-346,350-353,386-401,434-449,498-513
+tests/data/missing_commodity/asset_capacities.csv
+  h_e76403a1cd4bf1 17,20,23
+tests/data/missing_commodity/commodity_flows.csv
+  h_e76403a1cd4bf1 610-625,690-705
+tests/data/missing_commodity/commodity_prices.csv
+  h_e76403a1cd4bf1 114-129,146-161,179-180,182,184,190-241
+tests/data/simple/debug_appraisal_results.csv
+  h_e76403a1cd4bf1 104-107,261-262
+tests/data/simple/debug_appraisal_results_time_slices.csv
+  h_e76403a1cd4bf1 1638-1641,1646-1657,1662-1673,1678-1689,1694-1697,4154-4165,4167-4177
+tests/data/simple/debug_commodity_balance_duals.csv
+  h_e76403a1cd4bf1 150,152-153,158-161
+tests/data/simple/debug_dispatch_assets.csv
+  h_e76403a1cd4bf1 354-393,398-401,406,409,414,416-417,422,424-425,430-433,438,441,446-489,494-545,549-553,558-601,606-665,670-673,675,677-681,686-689,1458-1493,1498-1501,1505-1554,1556-1558,1560-1569
+tests/data/simple/debug_solver.csv
+  h_e76403a1cd4bf1 5-7,13-14
+tests/data/simple_tranche_size/asset_capacities.csv
+  h_e76403a1cd4bf1 27
+tests/data/simple_tranche_size/commodity_flows.csv
+  h_e76403a1cd4bf1 882-895,906-907,910-911
+tests/data/two_outputs/asset_capacities.csv
+  h_e76403a1cd4bf1 26,29,36,39,42-44,46-47
+tests/data/two_outputs/commodity_flows.csv
+  h_e76403a1cd4bf1 562-593,642-689,733-738,757-762,766-777,793-801,820-823,884-887,890-897,900-903,908-913,957-962,978-1025,1074-1121,1170-1175,1178,1182,1204-1209,1213-1221,1225-1233,1266-1271,1274,1278,1300-1305,1309-1317,1321-1329,1342-1377,1458-1473,1554-1569,1588-1593,1597-1605,1609-1665,1714-1745
+tests/data/two_outputs/commodity_prices.csv
+  h_e76403a1cd4bf1 162-177,194-225,258-273,275-277,279-281,283-285,287-289,291-293,295-297,299-301,303-321,330-337,354-385,402-465
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "961e44bb3c8b271033006a2bdaf6086abe72fe19",
+  "prompts": {},
+  "humans": {
+    "h_e76403a1cd4bf1": {
+      "author": "Tom Bland <tom_bland@hotmail.co.uk>"
+    }
+  }
+}
