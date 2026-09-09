@@ -50,12 +50,10 @@ pub fn add_demand_constraints(
 ) {
     for ts_selection in time_slice_info.iter_selections_at_level(commodity.time_slice_level) {
         let demand_for_ts_selection = demand[&ts_selection];
+        let flow_coeff = asset.get_flow(&commodity.id).unwrap().coeff;
         let terms: Vec<_> = ts_selection
             .iter(time_slice_info)
-            .map(|(time_slice, _)| {
-                let flow_coeff = asset.get_flow(&commodity.id).unwrap().coeff;
-                (activity_vars[time_slice], flow_coeff.value())
-            })
+            .map(|(time_slice, _)| (activity_vars[time_slice], flow_coeff.value()))
             .collect();
         problem.add_row(0.0..=demand_for_ts_selection.value(), terms);
     }

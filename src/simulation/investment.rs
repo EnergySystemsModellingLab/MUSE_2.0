@@ -128,12 +128,10 @@ pub fn perform_agent_investment(
 }
 
 /// Collect the preset commodity demands for a given year into a map of commodity, region and
-/// time slice to demand.
+/// time slice selection to demand.
 ///
 /// Demand for each commodity is stored at its natural time-slice selection level, matching the
 /// balance level at which the investment appraisal operates.
-///
-/// **TODO**: these assumptions may need to be revisited, e.g. when we come to storage technologies
 pub fn collect_preset_demands_for_year(commodities: &CommodityMap, year: u32) -> AllDemandMap {
     let mut demand_map = AllDemandMap::new();
     for (commodity_id, commodity) in commodities {
