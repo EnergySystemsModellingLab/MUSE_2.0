@@ -1,0 +1,29 @@
+src/simulation/optimisation.rs
+  h_e76403a1cd4bf1 11
+benches/assets.rs
+  h_e76403a1cd4bf1 12-13
+src/simulation.rs
+  h_e76403a1cd4bf1 19-20
+  h_e76403a1cd4bf1 18
+src/simulation/investment.rs
+  h_e76403a1cd4bf1 2
+  h_e76403a1cd4bf1 6
+src/simulation/optimisation/constraints.rs
+  h_e76403a1cd4bf1 8
+src/simulation/market.rs
+  h_e76403a1cd4bf1 10
+  h_e76403a1cd4bf1 12
+src/simulation/demand.rs
+  h_e76403a1cd4bf1 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "90588c82df5dfece90a8b30f3842f6996b63d51f",
+  "prompts": {},
+  "humans": {
+    "h_e76403a1cd4bf1": {
+      "author": "Tom Bland <tom_bland@hotmail.co.uk>"
+    }
+  }
+}
