@@ -629,7 +629,10 @@ mod tests {
     fn asset_pool_mothball_unretained_partial(commissioned_multi_tranche: AssetRef) {
         // The full asset has three tranches; only two of them were retained in the pool
         let full = commissioned_multi_tranche;
-        let retained = full.clone().with_subset_of_tranches(2);
+        let mut retained = full.clone();
+        retained
+            .make_mut()
+            .set_capacity(AssetCapacity::new(2, Capacity(4.0)));
 
         let mut asset_pool = AssetPool::new();
         asset_pool.assets.push(retained);
