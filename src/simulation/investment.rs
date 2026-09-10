@@ -27,6 +27,132 @@ use appraisal::{
     sort_and_filter_appraisal_outputs,
 };
 
+/// An investment option with its tranche selection state.
+#[allow(dead_code)]
+pub enum InvestmentOption {
+    /// A new asset which can be selected and commissioned by an agent.
+    Candidate {
+        /// One tranche of the candidate asset.
+        tranche: AssetRef,
+        /// The number of tranches selected so far.
+        selected_tranches: u32,
+    },
+    /// An existing asset whose tranches can be retained or mothballed.
+    Commissioned {
+        /// The commissioned asset.
+        asset: AssetRef,
+        /// The number of tranches selected for retention so far.
+        selected_tranches: u32,
+    },
+}
+
+#[allow(dead_code)]
+impl InvestmentOption {
+    /// Create an investment option from an asset.
+    pub fn new(asset: AssetRef) -> Self {
+        if asset.is_candidate() {
+            assert_eq!(
+                asset.num_tranches(),
+                1,
+                "Candidate investment options must be created from single-tranche assets"
+            );
+            Self::Candidate {
+                tranche: asset,
+                selected_tranches: 0,
+            }
+        } else {
+            Self::Commissioned {
+                asset,
+                selected_tranches: 0,
+            }
+        }
+    }
+
+    /// Expose the next tranche for appraisal, if one remains.
+    pub fn expose_tranche(&self) -> Option<AssetRef> {
+        match self {
+            Self::Candidate { tranche, .. } => Some(tranche.clone()),
+            Self::Commissioned {
+                asset,
+                selected_tranches,
+            } => (*selected_tranches < asset.num_tranches())
+                .then(|| asset.clone().as_single_tranche()),
+        }
+    }
+
+    /// Mark one tranche as selected.
+    pub fn select_tranche(&mut self) {
+        match self {
+            Self::Candidate {
+                selected_tranches, ..
+            } => *selected_tranches += 1,
+            Self::Commissioned {
+                asset,
+                selected_tranches,
+            } => {
+                assert!(
+                    *selected_tranches < asset.num_tranches(),
+                    "Cannot select more tranches than the asset represents"
+                );
+                *selected_tranches += 1;
+            }
+        }
+    }
+
+    /// Return the underlying asset.
+    pub fn asset(&self) -> &AssetRef {
+        match self {
+            Self::Candidate { tranche, .. } => tranche,
+            Self::Commissioned { asset, .. } => asset,
+        }
+    }
+
+    /// Return the process represented by this option.
+    pub fn process_id(&self) -> &ProcessID {
+        self.asset().process_id()
+    }
+
+    /// Materialise the selected tranches as an asset.
+    pub fn materialise(
+        &self,
+        year: u32,
+        mothball_years: u32,
+        agent_id: &AgentID,
+    ) -> Option<AssetRef> {
+        match self {
+            Self::Candidate {
+                tranche,
+                selected_tranches,
+            } => (*selected_tranches > 0).then(|| {
+                let mut result = tranche.clone();
+                result
+                    .make_mut()
+                    .select_candidate_for_investment(agent_id.clone());
+                let tranche_size = result.capacity().tranche_size();
+                result
+                    .make_mut()
+                    .set_capacity(crate::asset::AssetCapacity::new(
+                        *selected_tranches,
+                        tranche_size,
+                    ));
+                result
+            }),
+            Self::Commissioned {
+                asset,
+                selected_tranches,
+            } => {
+                let asset = (*selected_tranches > 0).then(|| {
+                    asset.clone().with_mothballed_tranches(
+                        asset.num_tranches() - selected_tranches,
+                        Some(year),
+                    )
+                })?;
+                asset.with_decommission_mothballed(year, mothball_years)
+            }
+        }
+    }
+}
+
 /// Perform agent investment to determine capacity investment of new assets for next milestone year.
 ///
 /// # Arguments

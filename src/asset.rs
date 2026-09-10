@@ -1009,7 +1009,7 @@ impl AssetRef {
     /// Decommission any tranches that were mothballed at least `mothball_years` ago.
     ///
     /// If the asset still has some tranches remaining, it is returned, else None.
-    fn with_decommission_mothballed(self, year: u32, mothball_years: u32) -> Option<Self> {
+    pub fn with_decommission_mothballed(self, year: u32, mothball_years: u32) -> Option<Self> {
         let events = self
             .get_mothball_events()
             .expect("Can only decommission mothballed tranches in commissioned assets");
