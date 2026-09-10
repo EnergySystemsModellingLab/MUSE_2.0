@@ -127,10 +127,6 @@ pub fn run(model: &Model, output_path: &Path, debug_model: bool) -> Result<()> {
         let newly_selected = asset_pool.extend(selected_assets);
         new_assets.extend_from_slice(newly_selected);
 
-        // Decommission unused assets
-        asset_pool.mothball_unretained(existing_assets, year);
-        asset_pool.decommission_mothballed(year, model.parameters.mothball_years);
-
         // Write newly commissioned assets
         writer.write_assets(&new_assets)?;
         writer.write_asset_capacities(year, &asset_pool)?;

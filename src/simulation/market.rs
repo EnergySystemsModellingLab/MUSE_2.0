@@ -9,7 +9,8 @@ use crate::process::{Process, ProcessID};
 use crate::region::RegionID;
 use crate::simulation::demand::{AllDemandMap, DemandMap};
 use crate::simulation::investment::{
-    calculate_candidate_asset_capacity_scale, select_best_assets, update_net_demand_map,
+    InvestmentOption, calculate_candidate_asset_capacity_scale, select_best_assets,
+    update_net_demand_map,
 };
 use crate::simulation::prices::Prices;
 use crate::time_slice::TimeSliceInfo;
@@ -346,14 +347,15 @@ pub fn get_asset_options<'a>(
     region_id: &'a RegionID,
     year: u32,
     capacity_tranche_fraction: Dimensionless,
-) -> impl Iterator<Item = AssetRef> + 'a {
+) -> impl Iterator<Item = InvestmentOption> + 'a {
     // Get existing assets which produce the commodity of interest
     let existing_assets = all_existing_assets
         .iter()
         .filter_agent(&agent.id)
         .filter_region(region_id)
         .filter_primary_producers_of(&commodity.id)
-        .cloned();
+        .cloned()
+        .map(InvestmentOption::new);
 
     // Get candidates assets which produce the commodity of interest
     let candidate_assets = get_candidate_assets(
@@ -383,7 +385,7 @@ fn get_candidate_assets<'a>(
     commodity: &'a Commodity,
     year: u32,
     capacity_tranche_fraction: Dimensionless,
-) -> impl Iterator<Item = AssetRef> + 'a {
+) -> impl Iterator<Item = InvestmentOption> + 'a {
     agent
         .iter_search_space(region_id, &commodity.id, year)
         .map(move |process| {
@@ -404,7 +406,7 @@ fn get_candidate_assets<'a>(
             };
             let asset_capacity = AssetCapacity::single(tranche_size);
             asset.set_capacity(asset_capacity);
-            asset.into()
+            InvestmentOption::new(asset.into())
         })
 }
 

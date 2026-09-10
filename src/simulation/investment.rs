@@ -18,17 +18,18 @@ use itertools::Itertools;
 use log::{debug, warn};
 use rayon::prelude::*;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use strum::IntoEnumIterator;
 
 pub mod appraisal;
-use appraisal::coefficients::calculate_coefficients_for_assets;
+use appraisal::coefficients::calculate_coefficients_for_asset_options;
 use appraisal::{
     AppraisalOutput, appraise_investment, count_equal_and_best_appraisal_outputs,
     sort_and_filter_appraisal_outputs,
 };
 
 /// An investment option with its tranche selection state.
-#[allow(dead_code)]
+#[derive(Clone)]
 pub enum InvestmentOption {
     /// A new asset which can be selected and commissioned by an agent.
     Candidate {
@@ -78,6 +79,11 @@ impl InvestmentOption {
             } => (*selected_tranches < asset.num_tranches())
                 .then(|| asset.clone().as_single_tranche()),
         }
+    }
+
+    /// Get the tranche size
+    pub fn tranche_size(&self) -> Capacity {
+        self.asset().capacity().tranche_size()
     }
 
     /// Mark one tranche as selected.
@@ -140,16 +146,25 @@ impl InvestmentOption {
             Self::Commissioned {
                 asset,
                 selected_tranches,
-            } => {
-                let asset = (*selected_tranches > 0).then(|| {
-                    asset.clone().with_mothballed_tranches(
-                        asset.num_tranches() - selected_tranches,
-                        Some(year),
-                    )
-                })?;
-                asset.with_decommission_mothballed(year, mothball_years)
-            }
+            } => asset
+                .clone()
+                .with_mothballed_tranches(asset.num_tranches() - selected_tranches, Some(year))
+                .with_decommission_mothballed(year, mothball_years),
         }
+    }
+}
+
+impl PartialEq for InvestmentOption {
+    fn eq(&self, other: &Self) -> bool {
+        self.asset() == other.asset()
+    }
+}
+
+impl Eq for InvestmentOption {}
+
+impl Hash for InvestmentOption {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.asset().hash(state);
     }
 }
 
@@ -423,7 +438,7 @@ fn log_on_equal_appraisal_outputs(
 #[allow(clippy::too_many_arguments)]
 pub fn select_best_assets(
     model: &Model,
-    mut opt_assets: Vec<AssetRef>,
+    mut opt_assets: Vec<InvestmentOption>,
     agent_addition_limits: HashMap<ProcessID, Capacity>,
     agent_total_limits: HashMap<ProcessID, Capacity>,
     commodity: &Commodity,
@@ -444,54 +459,53 @@ pub fn select_best_assets(
     // Initialised as full agent total limits, and reduced as each asset is selection
     let mut remaining_agent_total_limits = agent_total_limits;
 
-    // Store commissioned tranches available for retention and replace assets with single tranches
-    let mut available_retention_tranches =
-        prepare_commissioned_assets_for_retention(&mut opt_assets);
-
     // Calculate coefficients for all asset options according to the agent's objective
     let coefficients =
-        calculate_coefficients_for_assets(model, objective_type, &opt_assets, prices, year);
+        calculate_coefficients_for_asset_options(model, objective_type, &opt_assets, prices, year);
+
+    // Indices into `opt_assets` in the order each option is first selected. Materialising in this
+    // order reproduces the dispatch asset ordering used before the tranche-selection refactor,
+    // keeping degenerate dispatch tie-breaks stable.
+    // TEMPORARY: this is a plaster to keep asset order as it was before
+    let mut selection_order: Vec<usize> = Vec::new();
 
     // Iteratively select the best asset until demand is met
     let mut round = 0;
-    let mut best_assets: Vec<AssetRef> = Vec::new();
     while is_any_remaining_demand(
         &demand,
         model.parameters.remaining_demand_absolute_tolerance,
     ) {
-        // Remove assets that would exceed the remaining limits for their processes from the options
-        // The addition limit applies only to candidate assets, the total limit applies to all assets
-        remove_assets_exceeding_agent_limits(
-            &mut opt_assets,
-            &remaining_agent_addition_limits,
-            true,
-        );
-        remove_assets_exceeding_agent_limits(&mut opt_assets, &remaining_agent_total_limits, false);
-        ensure!(
-            !opt_assets.is_empty(),
-            "Failed to meet demand for commodity '{}' in region '{}' with provided investment \
-            options. This may be due to overly restrictive process investment constraints.",
-            commodity.id,
-            region_id
-        );
         // Appraise all options in parallel: each asset's appraisal is independent (all shared
         // state is read-only within this block), so we can safely use Rayon here.
         // Each HiGHS solve inside `appraise_investment` is configured to use only one thread
         // (via `parallel="off"`) to avoid over-subscription.
         let mut outputs: Vec<AppraisalOutput> = opt_assets
             .par_iter()
-            .map(|asset| -> Result<Option<AppraisalOutput>> {
-                // Skip assets with zero capacity
-                if asset.total_capacity() <= Capacity(0.0) {
+            .map(|option| -> Result<Option<AppraisalOutput>> {
+                // Skip options with zero tranche size
+                if option.tranche_size() <= Capacity(0.0) {
                     return Ok(None);
                 }
 
+                // Skip assets exceeding remaining limits
+                if option_exceeds_agent_limit(option, &remaining_agent_addition_limits, true) {
+                    return Ok(None);
+                }
+                if option_exceeds_agent_limit(option, &remaining_agent_total_limits, false) {
+                    return Ok(None);
+                }
+
+                // Skip exhausted options
+                let Some(tranche) = option.expose_tranche() else {
+                    return Ok(None);
+                };
+
                 Ok(Some(appraise_investment(
                     model,
-                    asset,
+                    &tranche,
                     commodity,
                     objective_type,
-                    &coefficients[asset],
+                    &coefficients[option],
                     &demand,
                 )?))
             })
@@ -499,6 +513,14 @@ pub fn select_best_assets(
             .into_iter()
             .flatten()
             .collect();
+
+        ensure!(
+            !outputs.is_empty(),
+            "Failed to meet demand for commodity '{}' in region '{}' with provided investment \
+            options. This may be due to overly restrictive process investment constraints.",
+            commodity.id,
+            region_id
+        );
 
         // Save appraisal results
         writer.write_appraisal_debug_info(
@@ -538,20 +560,58 @@ pub fn select_best_assets(
             best_output.asset.total_capacity()
         );
 
-        // Update the remaining selection state
+        // Update investment limits
         update_selection_state(
             &best_output.asset,
-            &mut opt_assets,
             &mut remaining_agent_addition_limits,
             &mut remaining_agent_total_limits,
-            &mut available_retention_tranches,
         );
 
         // Record the selected asset
-        record_asset_selection(best_output.asset, &mut best_assets);
+        // let selected_option = opt_assets
+        //     .iter_mut()
+        //     .find(|option| option.asset() == &best_output.asset)
+        //     .expect("Appraisal output must correspond to an investment option");
+        // selected_option.select_tranche();
+
+        // TEMPORARY
+        let selected_idx = opt_assets
+            .iter()
+            .position(|option| option.asset() == &best_output.asset)
+            .expect("Appraisal output must correspond to an investment option");
+        if !selection_order.contains(&selected_idx) {
+            selection_order.push(selected_idx);
+        }
+        opt_assets[selected_idx].select_tranche();
 
         demand = best_output.unmet_demand;
         round += 1;
+    }
+
+    // Materialise
+    // let mut best_assets = opt_assets
+    //     .iter()
+    //     .filter_map(|option| option.materialise(year, model.parameters.mothball_years, &agent.id))
+    //     .collect::<Vec<_>>();
+
+    // TEMPORARY
+    // Materialise selected options first, in first-selection order (keeps degenerate dispatch
+    // tie-breaks stable). Then materialise the rest: unselected commissioned assets still need
+    // mothballing/retaining rather than being dropped. Unselected candidates yield `None`.
+    let mut best_assets: Vec<AssetRef> = selection_order
+        .iter()
+        .filter_map(|&idx| {
+            opt_assets[idx].materialise(year, model.parameters.mothball_years, &agent.id)
+        })
+        .collect();
+    for (idx, option) in opt_assets.iter().enumerate() {
+        if !selection_order.contains(&idx) {
+            best_assets.extend(option.materialise(
+                year,
+                model.parameters.mothball_years,
+                &agent.id,
+            ));
+        }
     }
 
     // Convert Candidate assets to Ready
@@ -567,43 +627,23 @@ pub fn select_best_assets(
     Ok(best_assets)
 }
 
-/// Prepare existing assets for reappraisal.
-///
-/// Assets are replaced in `assets` with an asset representing a single tranche, as they are
-/// appraised one tranche at a time. Returns a map from the asset to its original number of tranches.
-fn prepare_commissioned_assets_for_retention(assets: &mut [AssetRef]) -> HashMap<AssetRef, u32> {
-    let mut available_retention_tranches = HashMap::new();
-
-    for asset in assets.iter_mut().filter(|asset| asset.is_commissioned()) {
-        let num_tranches = asset.num_tranches();
-
-        // Replace with single tranche as we appraise one tranche at a time
-        *asset = asset.clone().as_single_tranche();
-
-        // Store remaining tranches
-        available_retention_tranches.insert(asset.clone(), num_tranches);
-    }
-
-    available_retention_tranches
-}
-
 /// Check whether there is any remaining demand that is unmet in any time slice
 fn is_any_remaining_demand(demand: &DemandMap, absolute_tolerance: Flow) -> bool {
     demand.values().any(|flow| *flow > absolute_tolerance)
 }
 
-/// Remove assets that exceed the provided process limits for one complete tranche.
-fn remove_assets_exceeding_agent_limits(
-    opt_assets: &mut Vec<AssetRef>,
+fn option_exceeds_agent_limit(
+    option: &InvestmentOption,
     remaining_agent_limits: &HashMap<ProcessID, Capacity>,
     only_candidates: bool,
-) {
-    opt_assets.retain(|asset| {
-        (only_candidates && !asset.is_candidate())
-            || remaining_agent_limits
-                .get(asset.process_id())
-                .is_none_or(|limit| *limit >= asset.total_capacity())
-    });
+) -> bool {
+    if only_candidates && !matches!(option, InvestmentOption::Candidate { .. }) {
+        return false;
+    }
+
+    remaining_agent_limits
+        .get(option.process_id())
+        .is_some_and(|limit| *limit < option.tranche_size())
 }
 
 // Update remaining process capacity limit with the capacity of a selected asset
@@ -636,10 +676,8 @@ fn subtract_capacity_from_remaining_limit(
 /// * `available_retention_tranches` - The commissioned tranches available for retention
 fn update_selection_state(
     best_asset: &AssetRef,
-    opt_assets: &mut Vec<AssetRef>,
     remaining_agent_addition_limits: &mut HashMap<ProcessID, Capacity>,
     remaining_agent_total_limits: &mut HashMap<ProcessID, Capacity>,
-    available_retention_tranches: &mut HashMap<AssetRef, u32>,
 ) {
     // Subtract asset capacity from the total capacity limit, if applicable.
     subtract_capacity_from_remaining_limit(best_asset, remaining_agent_total_limits);
@@ -649,47 +687,6 @@ fn update_selection_state(
     if best_asset.is_candidate() {
         // Candidate assets: remove capacity from the investment limit, if applicable.
         subtract_capacity_from_remaining_limit(best_asset, remaining_agent_addition_limits);
-    } else {
-        // Commissioned assets: we've appraised a single tranche, so remove one tranche from the
-        // available retention count for this asset.
-        let remaining = available_retention_tranches.get_mut(best_asset).unwrap();
-        *remaining = remaining.saturating_sub(1);
-
-        // If all tranches have been selected, remove the asset from the investment options.
-        if *remaining == 0 {
-            let old_idx = opt_assets
-                .iter()
-                .position(|asset| *asset == *best_asset)
-                .unwrap();
-            opt_assets.swap_remove(old_idx);
-            available_retention_tranches.remove(best_asset);
-        }
-    }
-}
-
-/// Record a selected asset. Candidate selections represent one tranche; repeated selections of the
-/// same candidate increase the resulting asset's number of tranches while preserving its tranche
-/// size.
-///
-/// # Arguments
-///
-/// * `best_asset` - The asset that has been selected as the best option in this round
-/// * `best_assets` - The list of assets that have been selected so far
-fn record_asset_selection(best_asset: AssetRef, best_assets: &mut Vec<AssetRef>) {
-    assert!(
-        best_asset.is_commissioned() || best_asset.is_candidate(),
-        "Invalid asset type"
-    );
-
-    // Add the selected asset to the list of best assets, or add one tranche if it's already there.
-    if let Some(existing_asset) = best_assets.iter_mut().find(|asset| **asset == best_asset) {
-        // If the asset is already selected, add the additional required tranche
-        existing_asset
-            .make_mut()
-            .increase_capacity(best_asset.capacity());
-    } else {
-        // Otherwise add it to the list of best assets. Selected assets are unmothballed.
-        best_assets.push(best_asset.with_no_mothballed_tranches());
     }
 }
 

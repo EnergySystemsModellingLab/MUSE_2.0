@@ -3,6 +3,7 @@ use crate::agent::ObjectiveType;
 use crate::asset::AssetRef;
 use crate::model::Model;
 use crate::simulation::PriceMap;
+use crate::simulation::investment::InvestmentOption;
 use crate::simulation::prices::Prices;
 use crate::time_slice::{TimeSliceID, TimeSliceInfo};
 use crate::units::{MoneyPerActivity, MoneyPerFlow};
@@ -37,24 +38,24 @@ pub struct ObjectiveCoefficients {
 /// same revenue-minus-operating-cost calculation as the activity coefficients. For LCOX the sign is
 /// inverted (as the value represents a cost) and the primary output (commodity of interest) is
 /// excluded.
-pub fn calculate_coefficients_for_assets(
+pub fn calculate_coefficients_for_asset_options(
     model: &Model,
     objective_type: &ObjectiveType,
-    assets: &[AssetRef],
+    assets: &[InvestmentOption],
     prices: &Prices,
     year: u32,
-) -> HashMap<AssetRef, Arc<ObjectiveCoefficients>> {
+) -> HashMap<InvestmentOption, Arc<ObjectiveCoefficients>> {
     assets
         .iter()
-        .map(|asset| {
+        .map(|option| {
             let coefficient = calculate_coefficients_for_asset(
-                asset,
+                &option.expose_tranche().unwrap(),
                 objective_type,
                 &model.time_slice_info,
                 prices,
                 year,
             );
-            (asset.clone(), Arc::new(coefficient))
+            (option.clone(), Arc::new(coefficient))
         })
         .collect()
 }
