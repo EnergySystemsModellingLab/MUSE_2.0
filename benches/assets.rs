@@ -9,7 +9,8 @@ use muse2::model::Model;
 use muse2::output::DataWriter;
 use muse2::process::{Process, ProcessID};
 use muse2::simulation::candidate_assets_for_next_year;
-use muse2::simulation::investment::{collect_preset_demands_for_year, select_best_assets};
+use muse2::simulation::demand::collect_preset_demands_for_year;
+use muse2::simulation::investment::select_best_assets;
 use muse2::simulation::market::{
     collect_agent_limits, get_asset_options, get_demand_portion_for_market, get_responsible_agents,
 };
@@ -95,13 +96,15 @@ fn calculate_seed_prices(
     candidates: &[AssetRef],
     writer: &mut DataWriter,
 ) -> Prices {
-    let solution_existing = DispatchRun::new(model, base_year_assets, BASE_YEAR)
+    let market_demands = collect_preset_demands_for_year(&model.commodities, BASE_YEAR);
+    let solution_existing = DispatchRun::new(model, base_year_assets, BASE_YEAR, &market_demands)
         .run("bench setup: without candidates", writer)
         .expect("Dispatch without candidates failed");
-    let solution_with_candidates = DispatchRun::new(model, base_year_assets, BASE_YEAR)
-        .with_candidates(candidates)
-        .run("bench setup: with candidates", writer)
-        .expect("Dispatch with candidates failed");
+    let solution_with_candidates =
+        DispatchRun::new(model, base_year_assets, BASE_YEAR, &market_demands)
+            .with_candidates(candidates)
+            .run("bench setup: with candidates", writer)
+            .expect("Dispatch with candidates failed");
 
     calculate_prices(
         model,
