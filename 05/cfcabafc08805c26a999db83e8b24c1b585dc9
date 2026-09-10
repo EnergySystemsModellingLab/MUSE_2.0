@@ -1,0 +1,34 @@
+src/asset.rs
+  h_e76403a1cd4bf1 1012
+src/simulation/investment.rs
+  h_e76403a1cd4bf1 147-148
+  s_60631948bf1fe3::t_05043b1a335545 62,67,92,98,143-144,149-151
+  s_60631948bf1fe3::t_49d820f6a7c304 59-61
+  s_60631948bf1fe3::t_fd2cb43c5f22d3 63-66
+  s_60631948bf1fe3::t_aaddd25034d400 68-70,89-91
+  s_60631948bf1fe3::t_5c9b0df9605fb1 93-97
+  s_60631948bf1fe3::t_940a928feb614c 99-101,140-142
+  s_60631948bf1fe3::t_344ef715ef5702 152-154
+  h_e76403a1cd4bf1 30-58,71-88,102-139,145-146,155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "05cfcabafc08805c26a999db83e8b24c1b585dc9",
+  "prompts": {},
+  "humans": {
+    "h_e76403a1cd4bf1": {
+      "author": "Tom Bland <tom_bland@hotmail.co.uk>"
+    }
+  },
+  "sessions": {
+    "s_60631948bf1fe3": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "24f0bfa4-ab3b-4cc6-9473-a8d270eebdde",
+        "model": "copilot/gpt-5.6-luna"
+      },
+      "human_author": "Tom Bland <tom_bland@hotmail.co.uk>"
+    }
+  }
+}
